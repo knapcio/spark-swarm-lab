@@ -24,5 +24,16 @@
     "max_tokens": 192,
     "chat_template_kwargs": {"enable_thinking": false}
   },
-  "note": "Pilot settings. Read the recorded run and serving probe for verified results."
+  "dspark_candidate": {
+    "status": "Prepared candidate; deployment and performance validation pending",
+    "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+    "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+    "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+    "draft_weight_bytes": 1349057504,
+    "draft_weight_files": 1,
+    "draft_mount": "~/swarm-lab/draft:/draft:ro",
+    "method": "dspark",
+    "num_speculative_tokens": 3
+  },
+  "note": "Pilot settings. The baseline records the target-only configuration; DSpark is a prospective candidate pending validation. Read the recorded run and serving probe for verified results."
 }

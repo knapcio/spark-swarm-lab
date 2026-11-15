@@ -6,6 +6,10 @@ IMAGE=vllm/vllm-openai@sha256:1c8e60a0841b333c700488cb029d3664807249da0c071e8621
 MODEL_REPO=nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4
 MODEL_REV=bee7596271d1495f6992ae224aefde4410e816b8
 CONTAINER=swarm-lightning
+SPECULATION=${SWARM_SPECULATION:-dspark}
+DRAFT_REPO=nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark
+DRAFT_REV=6d127b50ecd98562cea85d0087680b7d86091fb0
+case "$SPECULATION" in none|dspark) ;; *) echo 'SWARM_SPECULATION must be none or dspark' >&2; exit 2 ;; esac
 
 usage() {
   echo "Usage: $0 {prepare|pull|start|status|stop} [01 02 03 04] | restore" >&2
@@ -31,14 +35,16 @@ host_for() {
 remote() {
   local node=$1 operation=$2
   ssh -o BatchMode=yes -o ConnectTimeout=15 "$(host_for "$node")" \
-    bash -s -- "$node" "$operation" "$OWNER" "$IMAGE" "$MODEL_REPO" "$MODEL_REV" "$CONTAINER" <<'REMOTE'
+    bash -s -- "$node" "$operation" "$OWNER" "$IMAGE" "$MODEL_REPO" "$MODEL_REV" "$CONTAINER" "$SPECULATION" "$DRAFT_REPO" "$DRAFT_REV" <<'REMOTE'
 set -euo pipefail
 node=$1 operation=$2 owner=$3 image=$4 model_repo=$5 model_rev=$6 container=$7
+speculation=$8 draft_repo=$9 draft_rev=${10}
 expected="spark-$node"
 actual=$(hostname -s)
 [[ "$actual" == "$expected" ]] || { echo "Refusing host $actual; expected $expected" >&2; exit 1; }
 root="$HOME/swarm-lab"
 model="$root/model"
+draft="$root/draft"
 guards=()
 if [[ "$node" == 01 ]]; then
   guards=("$HOME/dsgb10/no-autostart" "$HOME/fleet_busy")
@@ -74,6 +80,17 @@ require_ours() {
   label=$(docker container inspect --format '{{index .Config.Labels "swarm-lab.owner"}}' "$container")
   [[ "$label" == "$owner" ]] || { echo "Foreign container $container; left intact" >&2; return 1; }
 }
+check_running_speculation() {
+  local current
+  [[ "$(docker container inspect --format '{{.State.Running}}' "$container")" == true ]] || return 0
+  current=$(docker container inspect --format '{{index .Config.Labels "swarm-lab.speculation"}}' "$container")
+  # The original target-only baseline predates the speculation label.
+  if [[ -z "$current" || "$current" == '<no value>' ]]; then current=none; fi
+  [[ "$current" == "$speculation" ]] || {
+    echo "$actual: running speculation=$current, requested=$speculation; refusing to reuse it. Run fleet.sh stop $node, then SWARM_SPECULATION=$speculation fleet.sh start $node." >&2
+    return 1
+  }
+}
 stop_ours() {
   if container_exists; then
     require_ours
@@ -104,6 +121,28 @@ for name in ['config.json', 'model.safetensors.index.json', 'tokenizer.json', 't
 print(f'Model snapshot verified: {revision}, {len(shards)} shards')
 PY
 }
+check_draft() {
+  [[ "$speculation" == dspark ]] || return 0
+  python3 - "$draft" "$draft_repo" "$draft_rev" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])
+repo, revision = sys.argv[2:]
+names = ['config.json', 'hf_quant_config.json', 'model.safetensors']
+for name in names:
+    path = p / name
+    marker = p / '.cache/huggingface/download' / (name + '.metadata')
+    if not path.is_file() or not path.stat().st_size:
+        raise SystemExit(f'Incomplete draft: {path}; download {repo}@{revision} into {p}')
+    if not marker.is_file() or marker.read_text().splitlines()[:1] != [revision]:
+        raise SystemExit(f'Unverified draft revision for {name}; expected {revision}')
+for name in ['config.json', 'hf_quant_config.json']:
+    if not isinstance(json.loads((p / name).read_text()), dict):
+        raise SystemExit(f'Invalid draft configuration: {name}')
+if (p / 'model.safetensors').stat().st_size != 1349057504:
+    raise SystemExit('Draft weight size mismatch; expected 1349057504 bytes')
+print(f'Draft snapshot verified: {repo}@{revision}, 1 weight file')
+PY
+}
 disk_check() {
   local available
   available=$(df -Pk "$HOME" | awk 'END {print $4}')
@@ -125,10 +164,11 @@ case "$operation" in
     ;;
   preflight)
     guard_check
+    if container_exists; then require_ours; check_running_speculation; fi
     disk_check
     check_model
+    check_draft
     [[ "$(docker image inspect "$image" --format '{{.Architecture}}')" == arm64 ]]
-    if container_exists; then require_ours; fi
     ;;
   claim)
     claim_guards
@@ -142,8 +182,10 @@ case "$operation" in
   start)
     guard_check
     for path in "${guards[@]}"; do [[ -f "$path" ]]; done
+    if container_exists; then require_ours; check_running_speculation; fi
     disk_check
     check_model
+    check_draft
     if container_exists; then
       require_ours
       if [[ "$(docker container inspect --format '{{.State.Running}}' "$container")" == true ]]; then
@@ -158,16 +200,22 @@ case "$operation" in
     }
     if container_exists; then docker container rm "$container"; fi
     mkdir -p "$root/cache"
+    extra_mounts=() extra_args=()
+    if [[ "$speculation" == dspark ]]; then
+      extra_mounts=(-v "$draft:/draft:ro")
+      extra_args=(--speculative-config '{"method":"dspark","model":"/draft","num_speculative_tokens":3}')
+    fi
     docker run -d --name "$container" --label "swarm-lab.owner=$owner" \
       --label "swarm-lab.model=$model_repo" --label "swarm-lab.revision=$model_rev" \
+      --label "swarm-lab.speculation=$speculation" \
       --gpus all --ipc=host --network=host --restart=no \
-      -v "$model:/model:ro" -v "$root/cache:/root/.cache" \
+      -v "$model:/model:ro" -v "$root/cache:/root/.cache" "${extra_mounts[@]}" \
       "$image" /model --served-model-name nemotron-lightning \
       --host 127.0.0.1 --port 18096 --max-model-len 16384 --max-num-seqs 25 \
       --max-num-batched-tokens 4096 --gpu-memory-utilization 0.70 \
       --moe-backend marlin --kv-cache-dtype fp8 --mamba-backend flashinfer \
       --mamba-cache-mode align --enable-prefix-caching --enable-chunked-prefill \
-      --reasoning-parser nemotron_v3 --tool-call-parser qwen3_coder --enable-auto-tool-choice
+      --reasoning-parser nemotron_v3 --tool-call-parser qwen3_coder --enable-auto-tool-choice "${extra_args[@]}"
     echo "$actual: started; wait for /health before sending work"
     ;;
   status)
@@ -180,7 +228,7 @@ case "$operation" in
       else echo "Absent guard: $path"; fi
     done
     if container_exists; then
-      docker container inspect --format '{{.Name}} {{.State.Status}} restart={{.HostConfig.RestartPolicy.Name}} owner={{index .Config.Labels "swarm-lab.owner"}}' "$container"
+      docker container inspect --format '{{.Name}} {{.State.Status}} restart={{.HostConfig.RestartPolicy.Name}} owner={{index .Config.Labels "swarm-lab.owner"}} speculation={{index .Config.Labels "swarm-lab.speculation"}}' "$container"
     else echo 'Prototype container absent'; fi
     curl --fail --silent --show-error --max-time 5 http://127.0.0.1:18096/health && echo ' health=200' || echo ' health=not-ready'
     ;;
