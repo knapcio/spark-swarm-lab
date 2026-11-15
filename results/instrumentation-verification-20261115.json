@@ -1,0 +1,118 @@
+{
+  "host": "Spark_04",
+  "leftover_check": {
+    "command": [
+      "docker",
+      "ps",
+      "-a",
+      "--filter",
+      "label=swarm-lab.code-owner=swarm-lab-code-eval",
+      "--format",
+      "{{.Names}}"
+    ],
+    "returncode": 0
+  },
+  "limits": {
+    "cpus": 1,
+    "memory": "256m",
+    "network": "none",
+    "timeout_seconds": 1
+  },
+  "model_calls": 0,
+  "owned_containers_remaining": [],
+  "smoke_results": [
+    {
+      "cleanup_ok": true,
+      "expected_failure_kind": null,
+      "expected_status": "passed",
+      "failure_kind": null,
+      "infrastructure": false,
+      "name": "pass_add42",
+      "report": {
+        "captured_output": "",
+        "cleanup_ok": true,
+        "container_state": {
+          "Error": "",
+          "ExitCode": 0,
+          "OOMKilled": false,
+          "Running": false
+        },
+        "failed": 0,
+        "failure_kind": null,
+        "first_failure": null,
+        "passed": 1,
+        "provenance": "candidate",
+        "status": "passed",
+        "tests_run": 1,
+        "total": 1
+      },
+      "status": "passed"
+    },
+    {
+      "cleanup_ok": true,
+      "expected_failure_kind": "candidate_timeout",
+      "expected_status": "timeout",
+      "failure_kind": "candidate_timeout",
+      "infrastructure": false,
+      "name": "candidate_timeout",
+      "report": {
+        "captured_output": "",
+        "cleanup_ok": true,
+        "container_state": {
+          "Error": "",
+          "ExitCode": 0,
+          "OOMKilled": false,
+          "Running": false
+        },
+        "error": "Execution deadline exceeded",
+        "failed": 0,
+        "failure_kind": "candidate_timeout",
+        "passed": 0,
+        "provenance": "candidate",
+        "status": "timeout",
+        "tests_run": 0,
+        "total": 1
+      },
+      "status": "timeout"
+    },
+    {
+      "cleanup_ok": true,
+      "expected_failure_kind": "candidate_oom",
+      "expected_status": "error",
+      "failure_kind": "candidate_oom",
+      "infrastructure": false,
+      "name": "candidate_oom",
+      "report": {
+        "cleanup_ok": true,
+        "container_state": {
+          "Error": "",
+          "ExitCode": 137,
+          "OOMKilled": true,
+          "Running": false
+        },
+        "error": "candidate oom",
+        "exit_code": 137,
+        "failed": 0,
+        "failure_kind": "candidate_oom",
+        "passed": 0,
+        "provenance": "candidate",
+        "status": "error",
+        "tests_run": 0,
+        "total": 1
+      },
+      "status": "error"
+    }
+  ],
+  "source_path": "source@evaluation-infra-v1",
+  "source_revision": "6c9dfe83bcb7fca46bc3059914b7407cabf865d4",
+  "source_sha256": {
+    "coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2",
+    "sandbox_code.py": "501dde8737548850663323658fb42a903b18545ac76d7ba754e25c82c2864b90"
+  },
+  "started_at": "2026-11-15T15:35:22.671937+00:00",
+  "timestamp": "2026-11-15T15:35:28.562454+00:00",
+  "verified": true,
+  "verified_utc": "2026-11-15T15:35:28.562454+00:00",
+  "original_receipt_sha256": "4743c0cd8cb3f1191c2436f226c76fafd6198519256a3a2fd526e52898dcb1fa",
+  "normalization": "Only absolute local source_path normalized; remaining parsed receipt values preserved."
+}
