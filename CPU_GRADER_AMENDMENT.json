@@ -1,0 +1,33 @@
+{
+  "protocol": "cpu-grader-image-amendment-v2.1",
+  "frozen_utc": "2026-11-15T16:35:03.237596+00:00",
+  "reason": "The CPU-only stdlib grader does not require a large ML serving image. A tiny image permits safe disk headroom on Spark01 while keeping all four serving and grading environments uniform.",
+  "old_image": "vllm/vllm-openai@sha256:1c8e60a0841b333c700488cb029d3664807249da0c071e862191b00fe34b228c",
+  "new_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+  "source_sha256": {
+    "sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+    "coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2"
+  },
+  "only_code_change": "Actual coding/evaluation snapshot: exactly one IMAGE string assignment in sandbox_code.py. Math-only snapshots retain all historical Python files byte-identical, including unused grading modules. Grader logic/isolation, agent/solver prompts, budgets and corpora unchanged.",
+  "environment_change": {
+    "old": "Python3.12.13/GCC11.4/glibc2.35",
+    "new": "Python3.12.16/GCC14.2/glibc2.41"
+  },
+  "verification": {
+    "smokes": 3,
+    "reference_batches": 48,
+    "reference_cases": 357,
+    "all_passed": true,
+    "owned_containers_remaining": {
+      "Spark_01": [],
+      "Spark_02": [],
+      "Spark_03": [],
+      "Spark_04": []
+    },
+    "raw_receipt_sha256": "92c5fa0a45020655038a7e8a4340634ba01bf2b978b1d06ed951e966878ff4a0",
+    "scope": "Trusted reference implementations include existing module imports re/Counter; private test cases unchanged. This is finite corpus conformance, not universal runtime equivalence."
+  },
+  "old_runtime_sha256": "7a707444b4048612dbed49b7c933c940a48158ee18fffcdf78ce46c7fbf05395",
+  "runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+  "pooling": "No v2 primary calls occurred before this amendment. All900+80 run fresh under the amended uniform environment; v1 remains separate."
+}
