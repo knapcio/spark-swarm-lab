@@ -1,0 +1,44 @@
+{
+  "protocol": "serving-runtime-v2-amendment",
+  "frozen_utc": "2026-11-15T16:13:46.072055+00:00",
+  "reason": "One sustained-load v0.27.1 engine CUDA illegal-memory-access failure. Adopt qualified supported runtime containing upstream hybrid-state indexing fix; crash cause and complete fix remain unproven.",
+  "exposure": "V1 first-seed arithmetic outcomes already inspected. No method, prompt, budget, task or seed selection changed; this is an explicit infrastructure amendment, not new unseen-data confirmation.",
+  "old_runtime_sha256": "5ba312b8d45b2146f39d4d3762f82d9e60d3a5d40e5dbbadcae8b741dd1a897e",
+  "runtime_sha256": "7a707444b4048612dbed49b7c933c940a48158ee18fffcdf78ce46c7fbf05395",
+  "old_image": "vllm/vllm-openai@sha256:1c8e60a0841b333c700488cb029d3664807249da0c071e862191b00fe34b228c",
+  "new_image": "vllm/vllm-openai@sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+  "changes": [
+    "Serving image0.27.1 ->0.32.0, including its dependency/kernel implementation changes",
+    "Separate versioned compilation cache; diagnostic canary port returns to standard18096 on deployment",
+    "Fleet adapter checks pinned running image before reuse"
+  ],
+  "unchanged": [
+    "Target and draft repositories/revisions/weight files",
+    "All model prompts and agent/solver policies",
+    "Tasks, hidden tests, seed lists, selection declarations and request budgets",
+    "25engine slots,16K context,4096batch tokens,70%memory,Marlin/FP8/FlashInfer/align/prefix/DSpark3 flags",
+    "CPU grading code and independently pinned0.27.1 container"
+  ],
+  "pooling": "All900 primary and80solo attempts rerun fresh; no v1 or partial-quality rows pooled. Preserve every earlier diagnostic and original first-seed report.",
+  "throughput": "Original5-arm plan and late4-arm extension bytes/rules unchanged; run under runtime-v2 with explicit old-to-new source mapping.",
+  "qualification": {
+    "old_c25": [
+      519.3338814648316,
+      535.3678074115974,
+      545.0471773955518
+    ],
+    "new_c25": [
+      538.2003230477438,
+      549.8597585814216,
+      543.948100333403
+    ],
+    "median_ratio": 1.0160269123451589,
+    "short_json": "100/100 atT0 and100/100 atT0.8, single node/100HTTPclients/25engine cap",
+    "tool_roundtrip": "passed",
+    "functional_replay_cases": 20,
+    "reasoning_on_exact_plan": "passed,4workers",
+    "limit": "Finite canary pass is not proof of sustained reliability or root cause;1.6% observed median difference is not a robust speedup claim."
+  },
+  "primary_declaration_sha256": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
+  "deployment_gate": "Require four healthy idle pinned replicas and exact source pins before any v2 evaluation generation"
+}
