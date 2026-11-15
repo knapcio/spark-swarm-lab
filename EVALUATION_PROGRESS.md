@@ -186,6 +186,48 @@ The [owned-grader boundary](results/evaluation-v2/coding-s2/owned-grader-boundar
 
 [108-case CSV](results/evaluation-v2/coding-s2/summary.csv) · [metadata/source pins](results/evaluation-v2/coding-s2/metadata.json) · [analysis](results/evaluation-v2/coding-s2/analysis/analysis.json) · [paired task outcomes](results/evaluation-v2/coding-s2/analysis/paired-results.csv) · [accuracy SVG](results/evaluation-v2/coding-s2/analysis/accuracy-wilson95.svg) · [cost SVG](results/evaluation-v2/coding-s2/analysis/success-vs-completion-cost.svg) · [latency SVG](results/evaluation-v2/coding-s2/analysis/case-latency.svg).
 
+## Completed v2 arithmetic — seed 3 of 3, primary aggregate pending
+
+The third arithmetic cohort adds **192 complete cases**, bringing the independently audited primary total to **792/900**. All three arithmetic seeds are now preserved separately; cross-seed aggregation waits for the remaining verified coding cohort. The [ledger receipt](results/evaluation-v2/arithmetic-s3/analysis/verified-ledger-entry.json) is verified/admitted with return code 0. Source `cbcde299716b7842536b008880a089590e9816f8`, runtime `072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5`, all seven source/final/git-blob hashes, target/draft and CPU-grader metadata remain pinned. Public task records and commands contain no witness/oracle input.
+
+The table follows the predeclared **half-rotated arm order for seed 3**, with task-local rotation. Limits remain 1280 calls / 32,768 completion tokens, five rounds, a 180-second deadline, T0.8 and ON/8192 full-plan versus OFF/192 cheap responses. Four fixed endpoint slots retain their assignments. Whole mixed-arm queue wall is **2015.258091s**, separate from occupied case wall and per-arm fleet throughput. These are single-seed task outcomes with descriptive Wilson intervals; no pooled task-clustered result or final winner is declared here.
+
+| Arm | Solved | Wilson 95% | Median wall s | p95 wall s | Length finishes |
+|---|---:|---:|---:|---:|---:|
+| Independent 100 | 9/24 | 21.2–57.3% | 14.714 | 27.480 | 3 |
+| Democracy + guard 32 | 5/24 | 9.2–40.5% | 18.883 | 30.909 | 6 |
+| Shared memory 8 | 3/24 | 4.3–31.0% | 4.104 | 5.722 | 0 |
+| Cascade 32 then direct (on, 8k) | 11/24 | 27.9–64.9% | 64.875 | 82.461 | 15 |
+| Direct (thinking on, 8k) | 4/24 | 6.7–35.9% | 69.588 | 73.452 | 19 |
+| Full-plan ensemble 2 (on, 8k) | 11/24 | 27.9–64.9% | 86.694 | 95.145 | 26 |
+| Full-plan ensemble 4 (on, 8k) | 18/24 | 55.1–88.0% | 81.810 | 131.081 | 27 |
+| Independent 32 | 3/24 | 4.3–31.0% | 6.625 | 11.265 | 2 |
+
+### Observed arithmetic seed-3 costs and audit
+
+Server costs are independently known for **192/192 cases**, 24/24 per arm. Starred completed-client totals are lower bounds due to stopped responses; input/output token quantities remain distinct from GPU-equivalent cost.
+
+| Arm | Calls | Client prompt | Client completion | Unfinished calls | Server prompt | Server completion |
+|---|---:|---:|---:|---:|---:|---:|
+| Independent 100 | 7481 | 888,235* | 105,837* | 221 | 892,188 | 106,336 |
+| Democracy + guard 32 | 5600 | 1,386,432 | 91,953 | 0 | 1,386,432 | 91,953 |
+| Shared memory 8 | 760 | 92,066 | 11,005 | 0 | 92,066 | 11,005 |
+| Cascade 32 | 2781 | 339,179 | 165,840 | 0 | 339,179 | 165,840 |
+| Direct (on, 8k) | 24 | 3,970 | 175,293 | 0 | 3,970 | 175,293 |
+| Full-plan ensemble 2 | 48 | 6,294* | 275,582* | 10 | 7,940 | 322,739 |
+| Full-plan ensemble 4 | 96 | 7,386* | 296,680* | 51 | 15,880 | 501,579 |
+| Independent 32 | 2871 | 339,753* | 40,990* | 75 | 339,995 | 41,019 |
+
+There are no recorded deadlines, budget denials, controller errors or unexpected process errors. Retained request-format/parser events comprise **104 `JSONDecodeError` and 85 `ValueError`**. Available final worker infrastructure counters sum to zero, while **40 early-stopped cases retain unknown final counters**. Successful controller stops are backed by earlier producer proof; unknown usage/counts are not zero-filled.
+
+The [independent audit](results/evaluation-v2/arithmetic-s3/analysis/proof-cost-audit.json) and [script](results/evaluation-v2/arithmetic-s3/analysis/proof-cost-audit.py) check **16,240 legal `Fraction` transitions**, 325 illegal proposal flags, 305 original-task roots, bounded own-root plan prefixes, all 119 successful path/reward proofs and complete legal ancestry. They reconcile **19,661 starts / 19,304 ends**, including 357 unfinished responses, globally unique request IDs, usage/reservation settlement, caps, case budgets and server deltas.
+
+The [592-artifact manifest](results/evaluation-v2/arithmetic-s3/manifest.json) and [ledger normalization audit](results/evaluation-v2/arithmetic-s3/analysis/verified-ledger-entry-normalizations.json) retain original/export hashes, source pins, all model text/reasoning, negative cases and unknown counts with audited path/interpreter edits. No partial coding seed-3 outcome, model API or active/frozen source change was used for this curation.
+
+![Runtime-v2 arithmetic seed 3 of 3, primary aggregate pending](results/evaluation-v2/arithmetic-s3/analysis/accuracy-wilson95.png)
+
+[192-case CSV](results/evaluation-v2/arithmetic-s3/summary.csv) · [metadata/source pins](results/evaluation-v2/arithmetic-s3/metadata.json) · [analysis](results/evaluation-v2/arithmetic-s3/analysis/analysis.json) · [paired task outcomes](results/evaluation-v2/arithmetic-s3/analysis/paired-results.csv) · [accuracy SVG](results/evaluation-v2/arithmetic-s3/analysis/accuracy-wilson95.svg) · [cost SVG](results/evaluation-v2/arithmetic-s3/analysis/success-vs-completion-cost.svg) · [latency SVG](results/evaluation-v2/arithmetic-s3/analysis/case-latency.svg).
+
 ## Preserved runtime-v1 arithmetic seed 1
 
 This is an interim record for [spark-swarm-lab](https://github.com/knapcio/spark-swarm-lab). Only the first completed **arithmetic** cohort is reported here: **24 evaluation tasks × 8 frozen arms = 192 cases**, seed 1. The final three-seed, task-clustered aggregate is pending. These observations do not select or change a method, prompt, budget or configuration, and no winner is declared.
