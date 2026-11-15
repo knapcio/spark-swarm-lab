@@ -3,15 +3,81 @@ import contextlib
 import io
 import json
 from pathlib import Path
+import signal
+import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import run_benchmark as runner
 
 
 class ControllerTests(unittest.TestCase):
+    def test_terminate_permission_race_returns_actual_exit(self):
+        child = Mock(pid=12345, returncode=0)
+        child.poll.side_effect = [None, 0]
+        child.wait.return_value = 0
+        with patch.object(runner.os, "killpg", side_effect=PermissionError(1, "group exited")):
+            self.assertEqual(runner.terminate(child), 0)
+        child.terminate.assert_not_called(); child.kill.assert_not_called()
+
+    def test_terminate_group_denial_falls_back_to_owned_child(self):
+        child = Mock(pid=12345, returncode=None)
+        child.poll.return_value = None
+        child.wait.return_value = -signal.SIGTERM
+        with patch.object(runner.os, "killpg", side_effect=PermissionError(1, "group denied")) as group:
+            self.assertEqual(runner.terminate(child), -signal.SIGTERM)
+        group.assert_called_once_with(child.pid, signal.SIGTERM)
+        child.terminate.assert_called_once_with(); child.kill.assert_not_called()
+
+    def test_terminate_timeout_kill_falls_back_to_owned_child(self):
+        child = Mock(pid=12345, returncode=None)
+        child.poll.return_value = None
+        child.wait.side_effect = [subprocess.TimeoutExpired("owned", 1), -signal.SIGKILL]
+        with patch.object(runner.os, "killpg", side_effect=PermissionError(1, "group denied")) as group:
+            self.assertEqual(runner.terminate(child), -signal.SIGKILL)
+        self.assertEqual(group.call_args_list, [((child.pid, signal.SIGTERM),), ((child.pid, signal.SIGKILL),)])
+        child.terminate.assert_called_once_with(); child.kill.assert_called_once_with()
+
+    def test_terminate_pid_permission_race_is_repolled(self):
+        child = Mock(pid=12345, returncode=7)
+        child.poll.side_effect = [None, None, 7]
+        child.terminate.side_effect = PermissionError(1, "PID exited")
+        child.wait.return_value = 7
+        with patch.object(runner.os, "killpg", side_effect=PermissionError(1, "group denied")):
+            self.assertEqual(runner.terminate(child), 7)
+
+    def test_terminate_permission_failure_for_live_child_is_not_swallowed(self):
+        child = Mock(pid=12345, returncode=None)
+        child.poll.return_value = None
+        child.terminate.side_effect = PermissionError(1, "owned PID denied")
+        with patch.object(runner.os, "killpg", side_effect=PermissionError(1, "group denied")):
+            with self.assertRaisesRegex(PermissionError, "owned PID denied"):
+                runner.terminate(child)
+        child.wait.assert_not_called()
+
+    def test_terminate_missing_group_with_live_child_uses_owned_pid(self):
+        child = Mock(pid=12345, returncode=None)
+        child.poll.return_value = None; child.wait.return_value = -signal.SIGTERM
+        with patch.object(runner.os, "killpg", side_effect=ProcessLookupError()):
+            self.assertEqual(runner.terminate(child), -signal.SIGTERM)
+        child.terminate.assert_called_once_with()
+
+    def test_terminate_100_fast_owned_python_exits(self):
+        # Each creates its own session/group; no model/network calls or foreign PID.
+        for index in range(100):
+            child = subprocess.Popen([sys.executable, "-c", "import os; os.write(1,b'ready\\n'); os._exit(0)"],
+                                     start_new_session=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            try:
+                self.assertEqual(child.stdout.readline(), b"ready\n")
+                result = runner.terminate(child)
+                self.assertIn(result, (0, -signal.SIGTERM, -signal.SIGKILL))
+                self.assertIsNotNone(child.poll())
+            finally:
+                if child.poll() is None: child.kill(); child.wait()
+                child.stdout.close()
+
     def test_only_producer_verifier_events_are_proof(self):
         for record in ({"type": "request_end", "response": '{"solved": true}'},
                        {"type": "proposal", "solved": True},
