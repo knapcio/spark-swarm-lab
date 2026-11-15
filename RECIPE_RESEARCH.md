@@ -118,3 +118,85 @@ Unresolved: target-only versus DSpark/MTP at c25 with our16K histories and
 sampling; cache-hit distribution; long-run error rate; tool-task success;
 whether a second small flag change improves useful throughput. Resolve only
 what is needed after the simple baseline works.
+
+## Reliability incident and an isolated v0.32 canary candidate
+
+2026-11-15, Europe/Warsaw — research update after Spark_02's engine failed
+after approximately 3.4 hours on the pinned v0.27.1/DSpark3 recipe. The saved
+`spark02-engine-failure-1636.log` reports illegal CUDA memory access while
+`mamba2_attn.py` reads `torch.any(common.has_initial_states_p).item()`.
+This is a synchronization point; the originating kernel and cause remain
+**unknown**. The failed scheduler step had 25 new 134-token prompts, zero
+prefix-cache hits and 8.67% KV-cache utilization. These facts do not establish
+an OOM or a prefix-resume fault.
+
+The most specific source-level lead is upstream
+[issue 55600](https://github.com/vllm-project/vllm/issues/55600) and
+[fix 55601](https://github.com/vllm-project/vllm/pull/55601), merged October 7 as
+[`3d6853b32c7c872df00d9e3489f642dc22e974e0`](https://github.com/vllm-project/vllm/commit/3d6853b32c7c872df00d9e3489f642dc22e974e0).
+With heterogeneous cache-group block sizes, the V2 runner can seed a restored
+Mamba-state column in attention-block units, causing an out-of-bounds read or
+wrong recurrent state. The fix uses `mamba_block_size`. Its reported reproducer
+used GLM/DFlash2 on GB10; **our failure has not been linked to that mechanism**.
+
+Source inspection found the old divisor in stable v0.28.0, v0.29.0, v0.30.0
+and v0.31.0; [v0.32.0 contains the fix](https://github.com/vllm-project/vllm/blob/v0.32.0/vllm/v1/worker/gpu/model_states/mamba_hybrid.py).
+The official registry's v0.31 tag listing contains only v0.31.0 variants, not a
+stable v0.31.1. Thus **v0.32.0 is the earliest verified stable release candidate
+in this check**, preferable to a larger blind jump to v0.33.0.
+
+Read-only registry manifest/config inspection verified this candidate:
+
+```text
+vllm/vllm-openai:v0.32.0
+linux/arm64 child: sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc
+multiarch index:   sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34
+config:           sha256:4ceb6c60eed291c1d179c35674bd8ece7acfd4f9abe8b9be83a6a4dcc3c70ea2
+image source:     5df63a7203cdb9328d824a27b682e77c7b9928be
+image CUDA:       13.0.2
+```
+
+Primary artifact metadata: [Docker Hub tag](https://hub.docker.com/v2/repositories/vllm/vllm-openai/tags/v0.32.0/)
+and [official release](https://github.com/vllm-project/vllm/releases/tag/v0.32.0).
+The inspected image configuration, rather than the source Dockerfile's current
+default build argument, supplies the CUDA version above. Existing driver
+580.173.02 exceeds the [CUDA 13.0 Update 2 requirement of 580.95.05](https://docs.nvidia.com/cuda/archive/13.0.2/cuda-toolkit-release-notes/).
+No driver change is indicated by that requirement. This is compatibility
+evidence, not a successful GB10 deployment or reliability qualification.
+
+Static [argument documentation](https://docs.vllm.ai/en/v0.32.0/configuration/engine_args/)
+and source retain DSpark, the pinned draft's `Qwen3DSparkModel` architecture,
+FlashInfer Mamba, `align` caching, [Marlin NVFP4](https://docs.vllm.ai/en/v0.32.0/features/quantization/modelopt/),
+and the `nemotron_v3` / `qwen3_coder` parsers. Cache mode `all` was removed;
+our explicit `align` remains accepted. Source dependency pins are PyTorch
+2.13.0 and FlashInfer 0.7.0.post1; v0.33.0 instead pins 2.14.0 and 0.7.2.post1.
+Preserving flags does not preserve every engine default or numerical path.
+
+The proposed next comparison is a **separate Spark_02 canary**, with the same
+target/draft snapshots and explicit settings, changing only the image and
+using a separate loopback port/container. Retain the old container for rollback.
+First reproduce the failed sequence on the unchanged recipe; then qualify the
+candidate with functional/tool checks, the same short throughput workload,
+mixed concurrent requests and cancellation/drain transitions. A short passing
+smoke cannot establish reliability against a fault observed only after hours.
+Record request count, elapsed exposure and every failure; keep old/new runtime
+cohorts separate and rerun the complete comparison if adopting a new recipe.
+
+Diagnostic alternatives, each tested separately if needed:
+
+- `--enforce-eager`: removes CUDA graphs. An [exact-model SM110 report](https://github.com/vllm-project/vllm/issues/55406)
+  found it effective on v0.28.0; different hardware and failure sequence mean
+  it is a candidate workaround, not proof for this GB10 incident.
+- `--no-enable-prefix-caching --mamba-cache-mode none`: removes the align
+  cache-resume path. This changes caching and cost; no demonstrated fix here.
+- `CUDA_LAUNCH_BLOCKING=1`: debug synchronous fault reporting, not a performance
+  recipe; synchronization can mask races.
+
+The often-cited [accepted-token-copy race](https://github.com/vllm-project/vllm/pull/53919)
+is marked V1-runner-only; DSpark uses V2. Historical FlashInfer CUTLASS MoE
+reports also do not directly explain our explicitly Marlin MoE route. Neither
+is sufficient reason to change backend, precision, driver or algorithms.
+
+Evidence receipt: `diagnostics/swarm-prototype-20261115/vllm032-canary-research.json`
+in the parent infrastructure workspace. This research pulled no image layers,
+made no model inference/SSH calls, and changed no serving or fleet source.

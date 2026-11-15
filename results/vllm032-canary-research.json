@@ -1,0 +1,147 @@
+{
+  "research_timestamp": "2026-11-15T16:46:39.513404+01:00",
+  "status": "Research-verified candidate; deployment and reliability NOT validated",
+  "operations": "Public registry manifest/config and source metadata GETs only; no layers pulled, SSH, service changes, or model inference calls",
+  "failure_log": "diagnostics/swarm-prototype-20261115/spark02-engine-failure-1636.log",
+  "failure_scope": {
+    "reported_sync": "mamba2_attn.py torch.any(common.has_initial_states_p).item()",
+    "cause": "unknown; asynchronous CUDA reporting does not locate the originating kernel",
+    "running_requests": 25,
+    "prefix_hits_in_failed_step": 0,
+    "prompt_tokens_each": 134,
+    "kv_cache_usage_fraction": 0.08672191173636534
+  },
+  "candidate": "v0.32.0",
+  "registry": [
+    {
+      "tag": "v0.32.0",
+      "source_url": "https://hub.docker.com/v2/repositories/vllm/vllm-openai/tags/v0.32.0",
+      "metadata_sha256": "d52482524eec761b97a258a0c51191681f8c0a46d7feb0e8ba341ed7997b54b2",
+      "index_digest": "sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34",
+      "architecture": "arm64",
+      "os": "linux",
+      "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+      "compressed_layers_bytes": 10306685803,
+      "last_pushed": "2026-10-18T10:53:54.526001821Z",
+      "config_digest": "sha256:4ceb6c60eed291c1d179c35674bd8ece7acfd4f9abe8b9be83a6a4dcc3c70ea2",
+      "image_source_revision": "5df63a7203cdb9328d824a27b682e77c7b9928be",
+      "cuda_version": "13.0.2"
+    },
+    {
+      "tag": "v0.33.0",
+      "source_url": "https://hub.docker.com/v2/repositories/vllm/vllm-openai/tags/v0.33.0",
+      "metadata_sha256": "4dd2296f0382bb0edea17b25b8f5619e3f5b75c0b9ad3b7e2e868a224ef9e48c",
+      "index_digest": "sha256:d825baf9ce4b1b6bfc5ecc7b79880c7e6748c65a72d697ce3d47607aafa84c6e",
+      "architecture": "arm64",
+      "os": "linux",
+      "arm64_manifest_digest": "sha256:e3481489818d3e563cae517b84ab959cc8b69f85a9fbb771c189140131ffc65c",
+      "compressed_layers_bytes": 10901645367,
+      "last_pushed": "2026-11-02T03:06:33.813435707Z",
+      "config_digest": "sha256:a0dfdeea1d42d4201c82d9bb44f2f4bb1ac2ef5aea196e9e0d1007a2834d2f70",
+      "image_source_revision": "4ba787ec9959e566d3b587a796dff07673324da5",
+      "cuda_version": "13.0.2"
+    }
+  ],
+  "fix": {
+    "issue": "https://github.com/vllm-project/vllm/issues/55600",
+    "pull_request": "https://github.com/vllm-project/vllm/pull/55601",
+    "merge_commit": "3d6853b32c7c872df00d9e3489f642dc22e974e0",
+    "merged_date": "2026-10-07",
+    "affected_divisor": "cache_config.block_size",
+    "corrected_divisor": "cache_config.mamba_block_size",
+    "applicability": "Plausible source-level lead only; requires mismatched group sizes and a prefix-cache resume, neither demonstrated by this failure step"
+  },
+  "checked_stable_minor_versions": {
+    "0.28.0": "old divisor",
+    "0.29.0": "old divisor",
+    "0.30.0": "old divisor",
+    "0.31.0": "old divisor",
+    "0.32.0": "corrected divisor",
+    "0.33.0": "corrected divisor"
+  },
+  "stable_031_tags_checked": "Docker Hub name=v0.31 query returned only v0.31.0 variants, no stable v0.31.1",
+  "source_evidence": {
+    "vllm/v1/worker/gpu/model_states/mamba_hybrid.py": {
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm/v0.32.0/vllm/v1/worker/gpu/model_states/mamba_hybrid.py",
+      "sha256": "262de489e3c02a2b1b93acd2a0d88ddced82ecebe050ca95ea91ba3fe501e6f4"
+    },
+    "vllm/engine/arg_utils.py": {
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm/v0.32.0/vllm/engine/arg_utils.py",
+      "sha256": "c10281277fd9a90dc8b22670db4f1af53708c5caa2aefee7aa861fa579329219"
+    },
+    "vllm/config/speculative.py": {
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm/v0.32.0/vllm/config/speculative.py",
+      "sha256": "ce135651a7a0343ff526f72e9545932617378161abd03135d67eda6de89c617c"
+    },
+    "vllm/config/mamba.py": {
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm/v0.32.0/vllm/config/mamba.py",
+      "sha256": "2090f791201ca45dd4f1d72b8651268890eb07574b6084721194eb8fdf612c48"
+    },
+    "vllm/config/kernel.py": {
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm/v0.32.0/vllm/config/kernel.py",
+      "sha256": "dedb58b73dd702834d16f9183845ab40098c1f43a13ec70e9063d745e54a12fe"
+    },
+    "vllm/model_executor/models/registry.py": {
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm/v0.32.0/vllm/model_executor/models/registry.py",
+      "sha256": "16ed7ca91ec949ab88e5210d4fecb2cf3d08641c352b58a152fa48e785fc0243"
+    },
+    "vllm/reasoning/__init__.py": {
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm/v0.32.0/vllm/reasoning/__init__.py",
+      "sha256": "fe06a3f179e6976b88bcfad949e39def4e6a61907b29c5f0ba5c316552ca6389"
+    },
+    "vllm/tool_parsers/__init__.py": {
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm/v0.32.0/vllm/tool_parsers/__init__.py",
+      "sha256": "7f0407088ea827d463b61f3c14f95c4628e538408c5da15d82f3a8786882149a"
+    },
+    "requirements/cuda.txt": {
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm/v0.32.0/requirements/cuda.txt",
+      "sha256": "b168c9beb5bbb28e4900558bd65a87000bf142b087aeca852308addc0e745dbe"
+    }
+  },
+  "driver_compatibility": {
+    "host_driver": "580.173.02",
+    "image_cuda": "13.0.2",
+    "nvidia_update2_driver_floor": "580.95.05",
+    "primary_url": "https://docs.nvidia.com/cuda/archive/13.0.2/cuda-toolkit-release-notes/",
+    "assessment": "Stated CUDA/driver requirement satisfied; this is not an end-to-end GB10 compatibility or reliability qualification"
+  },
+  "source_dependency_pins": {
+    "v0.32.0": {
+      "torch": "2.13.0",
+      "flashinfer-python": "0.7.0.post1"
+    },
+    "v0.33.0": {
+      "torch": "2.14.0",
+      "flashinfer-python": "0.7.2.post1"
+    }
+  },
+  "argument_review": {
+    "dspark": "method dspark and Qwen3DSparkModel remain supported; pinned draft declares Qwen3DSparkModel/model_type qwen3",
+    "mamba_backend": "flashinfer enum and --mamba-backend present",
+    "mamba_cache_mode": "align and none accepted; all removed",
+    "moe_backend": "marlin supported for NVFP4",
+    "parsers": [
+      "nemotron_v3",
+      "qwen3_coder"
+    ],
+    "status": "Static source/docs verification only; parser acceptance, startup, outputs and performance require canary"
+  },
+  "alternatives": [
+    {
+      "change": "--enforce-eager on old image, separately",
+      "scope": "Disable CUDA graphs; exact-model report exists on different SM110/0.28 stack, not proof on GB10",
+      "source": "https://github.com/vllm-project/vllm/issues/55406"
+    },
+    {
+      "change": "--no-enable-prefix-caching --mamba-cache-mode none on old image, separately",
+      "scope": "Remove align cache-resume path; changes cache behavior and cost, no proven remedy here",
+      "source": "https://docs.vllm.ai/en/v0.27.1/configuration/engine_args/"
+    },
+    {
+      "change": "CUDA_LAUNCH_BLOCKING=1, debug only",
+      "scope": "Try to locate fault with synchronous reporting; may mask races and changes performance",
+      "source": "https://docs.vllm.ai/en/v0.27.1/usage/troubleshooting/"
+    }
+  ],
+  "qualification": "Only an isolated single-node image canary is proposed. Preserve old recipe and failed cohort; functional/short throughput checks do not establish hours-long reliability. No pooled old/new runtime performance or method-quality cohort."
+}
