@@ -1,0 +1,51 @@
+{
+  "protocol": "throughput-development-v1",
+  "frozen_utc": "2026-11-15T14:35:32.767139+00:00",
+  "dataset": "datasets/arithmetic-v1/tasks.json",
+  "split": "development",
+  "seeds": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "arms": [
+    "direct_thinking_8k",
+    "solo_refine_thinking_8k",
+    "ensemble2_thinking_8k",
+    "ensemble4_thinking_8k",
+    "cascade32"
+  ],
+  "jobs_per_node": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "cohorts": 20,
+  "attempts_per_cohort": 32,
+  "unique_tasks_per_cohort": 8,
+  "case_deadline_after_admission_seconds": 180,
+  "primary_metric": "verified successes per minute of actual four-node queue wall time, including final drain",
+  "cost": "Only global before/after four-endpoint counters are attributable under shared endpoints; missing cost remains unknown.",
+  "selection_rule": "For each arm choose jobs_per_node with greatest development verified successes/min; if within1% choose smaller concurrency. No evaluation-concurrency tuning.",
+  "eval_followup": {
+    "split": "evaluation",
+    "seeds": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "unique_tasks": 24,
+    "attempts": 96,
+    "concurrency": "Selected independently for each arm from development only"
+  },
+  "limits": [
+    "Finite batch:32development attempts can fill at most8taskslots pernode; no claim of full25-slot solo saturation.",
+    "Four repetitions of8/24tasks are clustered, not32/96independenttasks.",
+    "Increasingjobs/node can increaseGPUbatching; throughput gains alone do not demonstrate usefulcollaboration.",
+    "Taskservice deadline startsafteradmission; queuewait andtotal latency reported separately."
+  ],
+  "scheduling": "Run only afterprimary900 and supplementalcontrol complete; neveroverlap GPUcohorts."
+}
