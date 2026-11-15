@@ -1,0 +1,150 @@
+{
+  "protocol": "csp-search-exploratory-v1-draft",
+  "status": "Corpus generation frozen before any CSP outcomes; worker implementation and launch receipt still pending. No inference authorized by this draft alone.",
+  "prepared_utc": "2026-11-15T19:39:52.167536+00:00",
+  "relationship": "Separate post-primary/post-solo/post-throughput exploratory phase. Never pool with existing arithmetic/coding studies.",
+  "model": "Same pinned NVIDIA Nemotron 3.5 Lightning 30B-A3B NVFP4 plus DSpark3; no external runtime advisor.",
+  "corpus": {
+    "protocol": "planted-coloring-csp-v1",
+    "generation_seed": 2026111501,
+    "development_tasks": 4,
+    "evaluation_tasks": 12,
+    "task_file": "datasets/csp-v1/tasks.json",
+    "reference_file": "datasets/csp-v1/reference-witnesses.json",
+    "evaluation_design": {
+      "vertex_counts": [
+        24,
+        40,
+        64
+      ],
+      "color_counts": [
+        3,
+        4
+      ],
+      "eligible_pair_density_percent": [
+        20,
+        40
+      ],
+      "balance": "Full factorial, one independently generated labeled graph per cell."
+    },
+    "sampling": "Balanced planted color classes, shuffled vertices; fixed-count uniformly sampled cross-class edges conditioned on connectivity. No outcome-based rejection.",
+    "information_boundary": "Workers load only public task file via csp_tasks.load_tasks. Witnesses, generation metadata and reference solver outputs are not worker input. Public reproducibility means these tasks are untouched evaluation, not cryptographically hidden.",
+    "limitations": [
+      "Twelve graph instances, not a broad graph-coloring benchmark.",
+      "Planted distribution and connectivity conditioning; no certified computational hardness.",
+      "Uniqueness excludes identical labeled graphs; graph isomorphism is not screened."
+    ]
+  },
+  "first_recipe": {
+    "thinking": false,
+    "temperature": 0.8,
+    "per_call_output_cap": 512,
+    "max_candidate_calls": 16,
+    "max_completion_tokens": 8192,
+    "case_deadline_seconds": 180,
+    "candidate_schema": {
+      "assignment": "Exactly vertex_count integer colors in [0,color_count); booleans invalid."
+    },
+    "initial_evaluation_seed": 1,
+    "repeat_seeds_if_time": [
+      2,
+      3
+    ],
+    "launch_order": "All4developmenttasks and offline gates before evaluation. Freeze final worker/source/protocol hashes before any model calls; no evaluation-based policy changes."
+  },
+  "arms": {
+    "resample16": {
+      "description": "Four batches of four fresh independent candidates; no prior candidate or fitness supplied.",
+      "calls": 16
+    },
+    "sequential16": {
+      "description": "One own-history repair chain of at most16 candidates; full task remains in every prompt.",
+      "calls": 16
+    },
+    "parallel_repair4x4": {
+      "description": "Four independent chains, each four candidates including its initial sample; no cross-chain messages.",
+      "calls": 16
+    },
+    "evolution4": {
+      "description": "Four initial candidates; three generations each producing four new candidates: two single-parent mutations, one two-parent crossover, one task-only immigrant.",
+      "calls": 16,
+      "selection": "Rank exact verifier fitness lexicographically (valid_schema then negative conflict count); deterministic candidate-hash tie break. Survivor pool retains top4 unique assignments from parent+child union.",
+      "parents": "Best available parent for mutation; top2 distinct candidates for crossover; if fewer than2 distinct valid parents, replace crossover with fresh immigrant.",
+      "elitism": "Elites retained without fresh model calls; all generated duplicates remain charged candidates. No hidden retry to fill a deduplicated population."
+    }
+  },
+  "feedback": {
+    "allowed": "Exact candidate validation error, conflict count and indices of conflicting public edges; optionally own or selected-parent full assignment per arm.",
+    "forbidden": [
+      "Reference witness",
+      "Solver-generated next move or repaired assignment",
+      "External model advice",
+      "Other task evaluation outcomes"
+    ],
+    "interpretation": "Machine fitness is mechanical constraint-verifier feedback. It is not unaided self-critique and not a smarter-model advisor.",
+    "fitness": "[1,-number_of_conflicting_edges] for valid schema, [0,0] for malformed output; solved iff valid schema and zero conflicting edges."
+  },
+  "stopping_and_accounting": {
+    "success": "Stop only on exact full graph verification. Independently replay every successful candidate in audit.",
+    "stagnation": "Record unchanged best fitness and unique-candidate counts by generation; do not change fixed policies or grant extra calls.",
+    "duplicate_handling": "Exact assignment hashes for cache/admission; duplicated generated candidates count against calls/tokens; color-permutation-normalized hash may be an additional analysis-only diversity measure.",
+    "budget": "Bound dispatched candidate calls and reserved output tokens; count unfinished/cancelled work and preserve unknown usage. Input tokens reported separately. Same caps do not imply equal realized cost.",
+    "curves": "Success versus wall seconds, dispatched candidates, measured completion tokens and prompt tokens; include failures/deadlines and drain overhead.",
+    "claims": "100% means this finite exact-verifier task suite only. No general guarantee."
+  },
+  "zero_llm_control_design": {
+    "status": "Proposed, not implemented or executed. Must freeze parameters before its evaluation.",
+    "purpose": "Identify whether performance is explained by elementary mechanical graph search on this planted distribution.",
+    "arms": [
+      {
+        "name": "random_assignment",
+        "rule": "Uniform independent colors, at most16 scored assignments, retain best."
+      },
+      {
+        "name": "min_conflicts",
+        "rule": "Uniform random start; choose a conflicted vertex and a color minimizing current incident conflicts, random seeded tie breaks. Every inspected candidate/fitness evaluation counted."
+      },
+      {
+        "name": "genetic_assignment",
+        "rule": "Population4 with conflict fitness, uniform crossover, one-vertex mutation, elite retention and fixed seeded selection. Count every evaluated assignment."
+      }
+    ],
+    "comparison": "Report both fixed16-scored-assignment control and separately labeled CPU wall-time control. Primitive edge inspections/fitness evaluations and CPU time reported; no assertion that one CPU mutation equals one LLM call. Exact parameter freeze and validated code required before launch.",
+    "worker_boundary": "These controls produce standalone outcomes, never suggestions or parents for Nemotron arms."
+  },
+  "extensions": {
+    "thinking_on": "Separate predeclared recipe only after explicit source/budget freeze; no pooling with OFF512. Do not select based on this evaluation.",
+    "larger_population": "Separate budget-matched8/16/32-agent study only after a new preregistration and fresh evaluation split; not automatic success-conditioned tuning.",
+    "harder_tasks": "If ceiling reached, keep this result intact and generate/freeze a distinct harder corpus before new outcomes.",
+    "advisor": "Optional GLM-on2Sparks plus Nemotron-on2Sparks only after core. Separate2Spark Nemotron and GLM-only controls, advisor calls/costs/resources explicit."
+  },
+  "analysis": {
+    "unit": "Task; seeds repeated within task.",
+    "comparisons": [
+      "Repair versus resampling",
+      "Interacting evolutionary population versus independent repair chains"
+    ],
+    "crossover_claim": "Not identifiable from core4arms alone; requires matched mutation-only evolutionary ablation.",
+    "schedule": "One owned case slot per node for quality/latency isolation. This is not saturated fleet throughput.",
+    "partial_stage": "Retain full planned matrix and report incomplete blocks; never silently drop deadlines or failed tasks."
+  },
+  "source_and_data_sha256": {
+    "csp_tasks.py": "4a49d387687eb15c98cf226980b63b5a786c67a60ec94fa489ad58855b08373e",
+    "test_csp_tasks.py": "b66ed7be0f6f906f8adf843d668820e2291190ac28f072808ed768aee8578b11",
+    "datasets/csp-v1/tasks.json": "29d659bbc7b4b819ea7d572db073459eb30d6c19f7fda2114e7c174c375de960",
+    "datasets/csp-v1/reference-witnesses.json": "b02be9c50fecf0c779d2959b15e00d145bfbceedecbdab25beb21643c6a9a40c"
+  },
+  "offline_verification": {
+    "command": "python3 -m unittest test_csp_tasks -v",
+    "tests_passed": 8,
+    "model_calls": 0,
+    "checks": [
+      "Deterministic generation and full factorial balance",
+      "Independent full witness validation",
+      "81 exhaustive assignments on small graph",
+      "Vertex/domain/schema/edge negative mutations",
+      "Worker input isolation and contaminated-corpus rejection",
+      "Frozen file reproduction"
+    ]
+  }
+}
