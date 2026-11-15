@@ -5,6 +5,7 @@ import hashlib
 import importlib
 import io
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -12,6 +13,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import urllib.error
 
 HERE = Path(__file__).resolve().parent
 SOURCE_REVISION = 'cbcde299716b7842536b008880a089590e9816f8'
@@ -127,13 +129,21 @@ class OpusTransport:
                             stdout_bytes=len(completed.stdout), stdout_sha256=hashlib.sha256(completed.stdout).hexdigest())
             require(completed.returncode == 0, 'Opus CLI process failed (stderr retained only as hash/size)')
             result = json.loads(completed.stdout)
-            evidence.update({k: result.get(k) for k in ['result', 'usage', 'modelUsage', 'num_turns', 'is_error', 'subtype', 'stop_reason', 'total_cost_usd', 'duration_ms', 'duration_api_ms']})
+            require(isinstance(result, dict), 'Opus CLI wrapper is not an object')
+            raw_usage = result.get('usage')
+            numeric_usage = {k: v for k, v in (raw_usage.items() if isinstance(raw_usage, dict) else [])
+                             if k in ('input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens') and type(v) is int and v >= 0}
+            evidence['usage'] = numeric_usage
+            cost = result.get('total_cost_usd')
+            evidence['total_cost_usd'] = cost if type(cost) in (int, float) and math.isfinite(cost) and cost >= 0 else None
             require(not result.get('is_error') and isinstance(result.get('result'), str), 'Opus CLI returned an error or no model text')
             models = result.get('modelUsage')
             require(isinstance(models, dict) and len(models) == 1, 'Opus actual single-model usage identity missing/ambiguous')
             raw_model, actual = next(iter(models.items()))
             require(actual.get('canonicalModel', raw_model) == OPUS and actual.get('provider') == 'firstParty', 'Opus actual model/provider mismatch')
-            require(result.get('num_turns') == 1, 'Opus reference must complete one agentic turn')
+            require(type(result.get('num_turns')) is int and result['num_turns'] == 1, 'Opus reference must complete one agentic turn')
+            # Persist model text/metadata only after every success and identity check.
+            evidence.update({k: result.get(k) for k in ['result', 'usage', 'modelUsage', 'num_turns', 'is_error', 'subtype', 'stop_reason', 'duration_ms', 'duration_api_ms']})
             reason = result.get('stop_reason')
             evidence['finish_reason'] = 'length' if reason == 'max_tokens' else reason
             usage = token_usage(result)
@@ -171,6 +181,10 @@ class OpenAIRecorder:
             return io.BytesIO(raw)
         except BaseException as exc:
             evidence['failure_classification'] = type(exc).__name__
+            if isinstance(exc, urllib.error.HTTPError):
+                if type(exc.code) is int and 100 <= exc.code <= 599:
+                    evidence['http_status'] = exc.code
+                exc.close()  # Discard the error body without reading or logging it.
             raise RuntimeError('Reference OpenAI transport failure: ' + type(exc).__name__) from None
         finally:
             evidence['transport_wall_seconds'] = time.monotonic() - start

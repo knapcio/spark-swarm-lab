@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import urllib.request
+import urllib.error
 
 import reference_worker as w
 import run_references as r
@@ -70,14 +71,46 @@ class ReferenceTests(unittest.TestCase):
             self.assertNotIn('SYNTHETIC_CREDENTIAL_DO_NOT_RECORD', p.read_text())
             self.assertEqual(json.loads(p.read_text())['stderr_bytes'], 34)
 
+    def test_rc_zero_cli_error_does_not_persist_raw_failure_payload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            def fixture(argv, **kwargs):
+                payload = reply(is_error=True, result='SYNTHETIC_SECRET', subtype='SYNTHETIC_SECRET',
+                                modelUsage={'SYNTHETIC_SECRET': {}}, total_cost_usd='SYNTHETIC_SECRET',
+                                usage={'input_tokens': 12, 'output_tokens': True, 'other': 'SYNTHETIC_SECRET'})
+                return subprocess.CompletedProcess(argv, 0, json.dumps(payload).encode(), b'')
+            p = Path(directory)/'record'
+            with self.assertRaisesRegex(RuntimeError, '^Opus transport failure: RuntimeError$'):
+                w.OpusTransport('/fake', p, fixture)(urllib.request.Request(w.SENTINEL+'/chat/completions', data=json.dumps(body()).encode()))
+            self.assertNotIn('SYNTHETIC_SECRET', p.read_text())
+            evidence = json.loads(p.read_text())
+            self.assertEqual(evidence['usage'], {'input_tokens': 12})
+            self.assertIsNone(evidence['total_cost_usd'])
+            self.assertNotIn('result', evidence)
+            self.assertNotIn('modelUsage', evidence)
+            self.assertNotIn('subtype', evidence)
+            self.assertIn('stdout_sha256', evidence)
+
+    def test_http_failure_records_status_without_error_body(self):
+        with tempfile.TemporaryDirectory() as directory:
+            def fixture(request, **kwargs):
+                raise urllib.error.HTTPError(request.full_url, 403, 'SYNTHETIC_SECRET', {}, io.BytesIO(b'SYNTHETIC_SECRET'))
+            p = Path(directory)/'record'
+            transport = w.OpenAIRecorder('http://localhost:1234/v1', p, fixture)
+            request = urllib.request.Request('http://localhost:1234/v1/chat/completions', data=json.dumps(body()).encode())
+            with self.assertRaisesRegex(RuntimeError, '^Reference OpenAI transport failure: HTTPError$'):
+                transport(request)
+            self.assertEqual(json.loads(p.read_text())['http_status'], 403)
+            self.assertNotIn('SYNTHETIC_SECRET', p.read_text())
+
     def test_wrong_model_or_auxiliary_model_rejected(self):
         for models in [{'other':{'provider':'firstParty'}}, {w.OPUS:{'provider':'gateway'}},
                        {w.OPUS:{'provider':'firstParty'}, 'haiku':{'provider':'firstParty'}}]:
             with tempfile.TemporaryDirectory() as directory:
                 def fixture(argv, **kwargs):
-                    return subprocess.CompletedProcess(argv, 0, json.dumps(reply(modelUsage=models)).encode(), b'')
+                    return subprocess.CompletedProcess(argv, 0, json.dumps(reply(modelUsage=models, result='SYNTHETIC_SECRET')).encode(), b'')
                 with self.assertRaisesRegex(RuntimeError, 'Opus transport failure'):
                     w.OpusTransport('/fake', Path(directory)/'record', fixture)(urllib.request.Request(w.SENTINEL+'/chat/completions', data=json.dumps(body()).encode()))
+                self.assertNotIn('SYNTHETIC_SECRET', (Path(directory)/'record').read_text())
 
     def test_missing_usage_stays_unknown_and_reasoning_not_double_counted(self):
         self.assertEqual(w.token_usage(reply(usage={})), {})
