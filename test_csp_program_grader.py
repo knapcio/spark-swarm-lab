@@ -41,9 +41,13 @@ class ProgramGraderTests(unittest.TestCase):
                 report=compare([{'expected':None}],wire(value))
                 self.assertFalse(report['solved']);self.assertEqual(report['passed'],0)
                 self.assertEqual(report['graph_verifier_calls'],1)
+                self.assertEqual(report['candidate_output'],value)
+                self.assertEqual(c.verify_assignment(PATH,report['candidate_output']),report['proof'])
         report=compare([{'expected':None}],wire({'assignment':[0,1,0]}))
         self.assertEqual(report['status'],'passed');self.assertTrue(report['solved'])
         self.assertEqual(report['graph_edge_checks'],2)
+        self.assertEqual(report['candidate_output'],{'assignment':[0,1,0]})
+        self.assertEqual(c.verify_assignment(PATH,report['candidate_output']),report['proof'])
 
     def test_changed_inputs_never_change_outer_graph(self):
         task=copy.deepcopy(PATH)
@@ -105,6 +109,9 @@ class ProgramGraderTests(unittest.TestCase):
         self.assertFalse(set(command)&{'--gpus','--device','--privileged','--volume','-v','--mount'})
         self.assertEqual(report['graph_verifier_calls'],1)
         self.assertGreaterEqual(report['wall_seconds'],0)
+        self.assertIsNone(report['remote_cpu_seconds'])
+        self.assertIn('not instrumented',report['remote_cpu_seconds_reason'])
+        self.assertIn('concurrent',report['parent_cpu_scope'])
 
     def test_protocol_oom_and_cleanup_failure_remain_non_success(self):
         for raw,rc,oom,cleanup,kind in [('{"status":"passed"}',0,False,0,'candidate_protocol'),('',137,True,0,'candidate_oom'),(wire({'assignment':[0,1,0]}),0,False,1,'cleanup_infrastructure')]:

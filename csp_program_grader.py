@@ -53,7 +53,7 @@ def comparator(task):
             if kind == 'value':
                 proof = verify_assignment(task, observation['value'])
                 accepted = proof['solved'] and unchanged
-                report.update(proof=proof, graph_verifier_calls=1,
+                report.update(candidate_output=observation['value'], proof=proof, graph_verifier_calls=1,
                               graph_edge_checks=len(task['edges']) if proof['valid_schema'] else 0,
                               status='passed' if accepted else 'failed', passed=int(accepted), failed=int(not accepted), solved=accepted,
                               failure_kind=None if accepted else 'candidate_input_mutation' if not unchanged else 'candidate_graph_failure')
@@ -86,7 +86,10 @@ def evaluate_program(code, task, host, timeout=10):
     report['solved'] = bool(report.get('status') == 'passed' and report.get('passed') == 1
                             and report.get('cleanup_ok') is True and report.get('proof', {}).get('solved'))
     report.update(graph_sha256=graph_digest(task), wall_seconds=time.monotonic()-wall,
-                  parent_cpu_seconds=time.process_time()-cpu, graph_verifier_calls=report.get('graph_verifier_calls', 0),
+                  parent_cpu_seconds=time.process_time()-cpu,
+                  parent_cpu_scope='Process-wide local CPU delta; concurrent work may overlap. Excludes remote solver CPU.',
+                  remote_cpu_seconds=None, remote_cpu_seconds_reason='Remote process CPU usage is not instrumented by the qualified transport.',
+                  graph_verifier_calls=report.get('graph_verifier_calls', 0),
                   work_scope='One fresh CPU container and at most one exact full-assignment graph check; wall includes SSH/container/cleanup. No LLM-call or CPU-instruction equivalence.',
                   observation_scope='Child return value and input-after observations are unauthenticated; acceptance checks the returned assignment against the original outer graph.')
     return report
