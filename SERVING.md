@@ -1,8 +1,27 @@
 # Serving qualification — v0.32.0 canary and historical v0.27.1 results
 
+## Completed runtime-v2 four-replica qualification
+
+On **2026-11-15 at 16:46:18 UTC (17:46:18 Europe/Warsaw)**, all four replicas passed the [health/idle gate](results/runtime-v2-fleet-qualification/health-receipt.json). [Container inspection](results/runtime-v2-fleet-qualification/serving-inspection.json) records the same pinned v0.32.0 ARM64 image and serving command on every node, running with restart count 0 and OOM false. This is dated readiness evidence, not a promise of sustained crash-free operation.
+
+One concurrent mixed fleet batch completed **416 requests, including 16 warmups**, with **69,158 completion tokens / 39.008007 full wall seconds = 1,772.918 output tok/s**, and zero recorded transport errors. The full wall includes warmups and drain; a metrics monitor polled every **0.2 seconds**. Each endpoint reached an observed peak of **25 running requests**, matching its engine cap. Endpoint peaks are sampled observations rather than proof that all 100 slots remain active throughout the batch. [Full-wall aggregate](results/runtime-v2-fleet-qualification/mixed-fleet-summary.json).
+
+| Replica | Measured requests + warmups | Warmed output tok/s | Measured wall s | Exact JSON checks | Length finishes / 100 |
+|---|---:|---:|---:|---:|---:|
+| [Spark01](results/runtime-v2-fleet-qualification/mixed-1.json) | 100 + 4 | 540.80 | 30.564 | 13/37 | 62 |
+| [Spark02](results/runtime-v2-fleet-qualification/mixed-2.json) | 100 + 4 | 542.49 | 30.438 | 13/37 | 63 |
+| [Spark03](results/runtime-v2-fleet-qualification/mixed-3.json) | 100 + 4 | 551.42 | 29.901 | 13/37 | 63 |
+| [Spark04](results/runtime-v2-fleet-qualification/mixed-4.json) | 100 + 4 | 539.28 | 30.635 | 13/37 | 63 |
+
+The per-node table excludes warmups from measured wall; its rates are not added to obtain fleet throughput. All nodes use the finite mixed100/c25/T0/thinking-OFF/256-token-cap workload. Long answers can be truncated; the three constrained JSON task types are a limited correctness check. This single diagnostic batch supports neither an agent-method ranking nor a causal speed/scaling comparison with historical serving measurements, and it is not a sustained decode-only rate.
+
+Separate four-endpoint short-JSON probes passed **100/100 at T0 and 100/100 at T0.8**, with 25 clients per distinct endpoint: [T0](results/runtime-v2-fleet-qualification/short100-t0.json), [T0.8](results/runtime-v2-fleet-qualification/short100-t0.8.json). Real `add(17,25)` tool round trips passed on [Spark01](results/runtime-v2-fleet-qualification/tool-1.json), [Spark02](results/runtime-v2-fleet-qualification/tool-2.json), [Spark03](results/runtime-v2-fleet-qualification/tool-3.json) and [Spark04](results/runtime-v2-fleet-qualification/tool-4.json). These interface probes are separate from the 416-request timed batch.
+
+The [manifest](results/runtime-v2-fleet-qualification/manifest.json) covers **13 byte-identical original reports**. The [independent qualification audit](results/runtime-v2-fleet-qualification/qualification-audit.json) reconciles all measured/warmup token totals and wall denominators, four image/command pins, health/idle states, probe responses and tool arguments/results. No model API was called during curation. The amended runtime-v2 primary study started after this gate; its task-quality reports remain separate.
+
 ## v0.32.0 single-node qualification — 2026-11-15
 
-The **Spark_02 canary** qualified for the next uniform runtime-v2 study: the old and new recipes each completed 20 bounded diagnostic replays, and v0.32.0 passed two short-JSON probes, a real tool round trip and one reasoning-on exact-plan smoke. **Four-node deployment/readiness is pending at this qualification stage.** This evidence does not certify sustained crash-free operation or identify the earlier CUDA crash's root cause.
+The earlier **Spark_02 canary** qualified for the next uniform runtime-v2 study: the old and new recipes each completed 20 bounded diagnostic replays, and v0.32.0 passed two short-JSON probes, a real tool round trip and one reasoning-on exact-plan smoke. Four-node readiness was pending at that canary stage and is recorded separately above. This evidence does not certify sustained crash-free operation or identify the earlier CUDA crash's root cause.
 
 The [runtime-v2 amendment](RUNTIME_V2_AMENDMENT.json) selects v0.32.0 with upstream hybrid-state indexing fixes after the v0.27.1 serving failure. Model and draft weights/revisions, agent policies, prompts, tasks, budgets and serving flags stay fixed. The image change also changes dependency/kernel implementations and uses a separate compilation cache. All **900 primary cases plus 80 supplementary solo attempts will run fresh** under v2, without pooling the old first-seed arithmetic rows. Prior outcomes had already been inspected; the amendment records that exposure explicitly.
 

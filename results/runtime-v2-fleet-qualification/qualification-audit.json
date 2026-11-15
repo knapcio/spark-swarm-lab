@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "scope": "Completed four-replica serving qualification; no agent-method quality or causal runtime/scaling claim",
+  "inspection_checked_utc": "2026-11-15T16:45:33.915764+00:00",
+  "health_checked_utc": "2026-11-15T16:46:18.863535+00:00",
+  "image": "vllm/vllm-openai@sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+  "runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+  "replicas": 4,
+  "all_image_and_cmd_equal": true,
+  "all_running_restart0_oom_false": true,
+  "all_health_and_idle_verified": true,
+  "observed_peak_running_per_endpoint": {
+    "http://127.0.0.1:18081/v1": 25.0,
+    "http://127.0.0.1:18082/v1": 25.0,
+    "http://127.0.0.1:18083/v1": 25.0,
+    "http://127.0.0.1:18084/v1": 25.0
+  },
+  "configured_engine_sequences_per_replica": 25,
+  "metrics_poll_interval_seconds": 0.2,
+  "measured_requests": 400,
+  "warmup_requests": 16,
+  "total_requests": 416,
+  "total_completion_tokens": 69158,
+  "batch_wall_including_warmups_and_drain": 39.008007124997675,
+  "output_tokens_per_full_wall_second": 1772.918051885844,
+  "recorded_transport_errors": 0,
+  "per_node_warmed_reports": [
+    {
+      "node": 1,
+      "measured_requests": 100,
+      "warmups": 4,
+      "measured_output_tokens_per_wall_second": 540.7955853433825,
+      "measured_wall_seconds": 30.564228791743517,
+      "json_exact": {
+        "checked": 37,
+        "passed": 13,
+        "failed": 24
+      },
+      "length_finishes": 62
+    },
+    {
+      "node": 2,
+      "measured_requests": 100,
+      "warmups": 4,
+      "measured_output_tokens_per_wall_second": 542.486690142598,
+      "measured_wall_seconds": 30.43761312495917,
+      "json_exact": {
+        "checked": 37,
+        "passed": 13,
+        "failed": 24
+      },
+      "length_finishes": 63
+    },
+    {
+      "node": 3,
+      "measured_requests": 100,
+      "warmups": 4,
+      "measured_output_tokens_per_wall_second": 551.4198985903532,
+      "measured_wall_seconds": 29.900988415814936,
+      "json_exact": {
+        "checked": 37,
+        "passed": 13,
+        "failed": 24
+      },
+      "length_finishes": 63
+    },
+    {
+      "node": 4,
+      "measured_requests": 100,
+      "warmups": 4,
+      "measured_output_tokens_per_wall_second": 539.2842196877195,
+      "measured_wall_seconds": 30.635051790624857,
+      "json_exact": {
+        "checked": 37,
+        "passed": 13,
+        "failed": 24
+      },
+      "length_finishes": 63
+    }
+  ],
+  "short_json": {
+    "temperature0_correct": 100,
+    "temperature08_correct": 100,
+    "clients": 100,
+    "distinct_endpoints": 4,
+    "requests_per_endpoint": 25
+  },
+  "tool_roundtrips_passed": 4,
+  "manifest_sha256": "b5d57799917894e4fe7f7c28de13dae1226be55b29cd7eca60a796fc1f4b6fe0",
+  "limitations": [
+    "One finite mixed serving batch with0.2s metric polling. Fullwall includes warmups and drain; per-node report walls exclude warmups.",
+    "Observed endpoint peaks do not establish constant100active requests over the entire batch.",
+    "No causal comparison with earlier images, no sustained decode-only rate, no model-method winner or universal crash-fix claim."
+  ]
+}
