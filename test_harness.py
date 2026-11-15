@@ -101,6 +101,48 @@ class ClientTests(unittest.TestCase):
             self.assertFalse(last["usage"]["estimated"])
 
 
+    def test_thinking_body_and_trace_without_changing_prompt(self):
+        for thinking in (False, True):
+            with self.subTest(thinking=thinking), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "events.jsonl"
+                events = h.Events(path, "independent")
+                client = h.Client(["http://localhost:1/v1"], "nemotron-lightning", 1, 1024, 1,
+                                  h.Budget(1, 1024), events, 7, thinking=thinking)
+                payload = dict(choices=[dict(finish_reason="stop", message=dict(
+                    content='{"i":1,"j":3,"op":"*"}', reasoning_content="Consider exact arithmetic."))],
+                    usage=dict(prompt_tokens=70, completion_tokens=977, total_tokens=1047))
+                def transport(request, timeout):
+                    body = json.loads(request.data)
+                    self.assertEqual(body["chat_template_kwargs"]["enable_thinking"], thinking)
+                    self.assertEqual(body["messages"][1]["content"], "unchanged prompt")
+                    return io.BytesIO(json.dumps(payload).encode())
+                try:
+                    with patch("urllib.request.urlopen", side_effect=transport):
+                        client.call(0, "propose", "unchanged prompt", puzzle_id="p", node_id="n")
+                finally:
+                    events.close()
+                last = json.loads(path.read_text().splitlines()[-1])
+                self.assertEqual(last["finish_reason"], "stop")
+                self.assertEqual(last["reasoning"], "Consider exact arithmetic.")
+                self.assertEqual(last["completion_tokens_charged"], 977)
+
+    def test_reasoning_only_truncation_is_model_failure_not_infrastructure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            events = h.Events(path, "independent")
+            client = h.Client(["http://localhost:1/v1"], "nemotron-lightning", 1, 192, 1,
+                              h.Budget(1, 192), events, 7, thinking=True)
+            payload = dict(choices=[dict(finish_reason="length", message=dict(
+                content=None, reasoning_content="Unfinished reasoning"))], usage=dict(completion_tokens=192))
+            try:
+                with patch("urllib.request.urlopen", return_value=io.BytesIO(json.dumps(payload).encode())):
+                    self.assertIsNone(client.call(0, "propose", "prompt"))
+                self.assertEqual(client.infra_failures, 0)
+            finally:
+                events.close()
+            self.assertEqual(json.loads(path.read_text().splitlines()[-1])["finish_reason"], "length")
+
+
 class FakeClient:
     def __init__(self):
         self.lock = threading.Lock()
@@ -172,6 +214,15 @@ class ExperimentTests(unittest.TestCase):
                                             puzzle_fingerprints=["same"])))
             with self.assertRaisesRegex(ValueError, "overlaps"):
                 h.load_reputation(path, "test", 1, "same")
+
+    def test_calibration_thinking_mismatch_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "rep.json"
+            path.write_text(json.dumps(dict(model="test", agents=1, seed=1, allow_fractions=False,
+                thinking=False, scores={"0":dict(games=1,successes=1)}, puzzle_fingerprints=[])))
+            self.assertEqual(h.load_reputation(path, "test", 1, "new", 1, False, False)["0"]["successes"], 1)
+            with self.assertRaisesRegex(ValueError, "thinking mode"):
+                h.load_reputation(path, "test", 1, "new", 1, False, True)
 
     def test_failed_calibration_does_not_create_reputation(self):
         with tempfile.TemporaryDirectory() as directory:

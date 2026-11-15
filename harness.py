@@ -123,11 +123,12 @@ class Budget:
 
 
 class Client:
-    def __init__(self, endpoints, model, concurrency, max_tokens, timeout, budget, events, seed):
+    def __init__(self, endpoints, model, concurrency, max_tokens, timeout, budget, events, seed, thinking=False):
         self.endpoints = endpoints
         self.model = model
         self.max_tokens = max_tokens
         self.timeout = timeout
+        self.thinking = thinking
         self.budget, self.events, self.seed = budget, events, seed
         self.limits = [threading.BoundedSemaphore(concurrency) for _ in endpoints]
         self.failure_lock = threading.Lock()
@@ -149,6 +150,7 @@ class Client:
             self.events.emit("request_start", request_id=request_id, agent_id=agent_id,
                              endpoint_index=endpoint_index, stage=stage, **context)
             usage, error, content = {}, None, None
+            reasoning, finish_reason, response_received = None, None, False
             try:
                 material = f"{self.seed}:{agent_id}:{stage}:{prompt}"
                 request_seed = int.from_bytes(hashlib.sha256(material.encode()).digest()[:4], "big")
@@ -156,7 +158,7 @@ class Client:
                     {"role": "system", "content": "Solve the precise arithmetic task. Return only the requested JSON object. Do not explain or use tools."},
                     {"role": "user", "content": prompt}], max_tokens=self.max_tokens,
                     temperature=0.8, seed=request_seed, stream=False,
-                    chat_template_kwargs={"enable_thinking": False})
+                    chat_template_kwargs={"enable_thinking": self.thinking})
                 request = urllib.request.Request(url, data=json.dumps(body).encode(),
                                                  headers={"Content-Type": "application/json"})
                 with urllib.request.urlopen(request, timeout=self.timeout) as response:
@@ -166,12 +168,17 @@ class Client:
                     value = raw_usage.get(name)
                     if type(value) is int and value >= 0:
                         usage[name] = value
-                content = data["choices"][0]["message"]["content"]
+                choice = data["choices"][0]
+                message = choice["message"]
+                content = message.get("content")
+                finish_reason = choice.get("finish_reason")
+                reasoning = message.get("reasoning_content", message.get("reasoning"))
+                response_received = True
                 result = parse_json_response(content)
             except Exception as exc:
                 # No request headers, credentials or full HTTP bodies are recorded.
                 error = f"{type(exc).__name__}: {str(exc)[:300]}"
-                if content is None:
+                if not response_received:
                     with self.failure_lock:
                         self.infra_failures += 1
                 result = None
@@ -182,7 +189,8 @@ class Client:
                              endpoint_index=endpoint_index, stage=stage,
                              latency_ms=round((time.monotonic() - start) * 1000, 2),
                              usage=usage, completion_tokens_charged=self.max_tokens if reported is None else reported,
-                             error=error, response=content, **context)
+                             error=error, response=content, reasoning=reasoning,
+                             finish_reason=finish_reason, **context)
             return result
 
 
@@ -319,7 +327,7 @@ def parse_puzzle(text):
     return state, int(target)
 
 
-def load_reputation(path, model, agents, puzzle_fingerprint, seed=None, allow_fractions=None):
+def load_reputation(path, model, agents, puzzle_fingerprint, seed=None, allow_fractions=None, thinking=None):
     data = json.loads(Path(path).read_text())
     if data.get("model") != model or data.get("agents") != agents:
         raise ValueError("reputation model and agent count must match this run")
@@ -327,6 +335,8 @@ def load_reputation(path, model, agents, puzzle_fingerprint, seed=None, allow_fr
         raise ValueError("reputation seed must match stable agent identities")
     if allow_fractions is not None and data.get("allow_fractions") != allow_fractions:
         raise ValueError("reputation arithmetic rules must match")
+    if thinking is not None and data.get("thinking") != thinking:
+        raise ValueError("reputation thinking mode must match")
     if puzzle_fingerprint in data.get("puzzle_fingerprints", []):
         raise ValueError("evaluation puzzle overlaps calibration puzzles")
     rows = data.get("scores")
@@ -361,6 +371,7 @@ def main(argv=None):
     parser.add_argument("--timeout", type=float, default=90)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--allow-fractions", action="store_true")
+    parser.add_argument("--thinking", action="store_true", help="Enable model reasoning; default off, prompt unchanged")
     parser.add_argument("--events", required=True, help="New JSONL file; refuses overwrite")
     args = parser.parse_args(argv)
     if any(x <= 0 for x in (args.agents, args.per_endpoint_concurrency, args.rounds,
@@ -376,7 +387,7 @@ def main(argv=None):
             if not args.reputation:
                 parser.error("weighted requires --reputation from an earlier calibration run")
             reputation = load_reputation(args.reputation, args.model, args.agents, evaluation_fingerprint,
-                                         args.seed, args.allow_fractions)
+                                         args.seed, args.allow_fractions, args.thinking)
         if args.method == "calibrate":
             if not args.calibration_puzzles or not args.reputation:
                 parser.error("calibrate requires --calibration-puzzles and --reputation output")
@@ -392,7 +403,7 @@ def main(argv=None):
     events = Events(args.events, args.method)
     budget = Budget(args.max_calls, args.max_completion_tokens)
     client = Client(args.endpoint, args.model, args.per_endpoint_concurrency,
-                    args.max_tokens, args.timeout, budget, events, args.seed)
+                    args.max_tokens, args.timeout, budget, events, args.seed, args.thinking)
     experiment = Experiment(args, client, events, reputation)
     scores = {str(i): dict(games=0, successes=0) for i in range(args.agents)}
     events.emit("run_start", config={k: v for k, v in vars(args).items() if k != "endpoint"},
@@ -420,7 +431,7 @@ def main(argv=None):
             if client.infra_failures or client.budget_failures:
                 raise RuntimeError("calibration incomplete: infrastructure or budget failure; reputation not written")
             artifact = dict(schema_version=1, model=args.model, agents=args.agents, seed=args.seed,
-                            allow_fractions=args.allow_fractions,
+                            allow_fractions=args.allow_fractions, thinking=args.thinking,
                             source_run_id=events.run_id, reward="exact_target_reached_binary",
                             puzzle_fingerprints=[fingerprint(s, t) for s, t in puzzles], scores=scores)
             with Path(args.reputation).open("x") as output:

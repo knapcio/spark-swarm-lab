@@ -29,9 +29,18 @@ On `2,3,7,8:24`, democracy ended at **31**, so the exact target was not reached.
 This checks the request, voting, evaluator and event pipeline; it is not a
 Nemotron performance result or evidence of method superiority.
 
-The fixed **NemotronLightning 100-agent pilot is pending**. Comparative quality,
-throughput and the value of reputation remain unmeasured until those runs and
-budget-aware comparisons are recorded.
+The fixed NemotronLightning baseline runs as four healthy TP1 replicas on vLLM
+**v0.27.1**. A short 100-request JSON probe returned **100/100 correct** responses
+in **1.759 seconds**, with **1,890 completion tokens** and **1,074.43 completion
+tokens/second** aggregate. Server logs recorded a peak of **25 running requests
+per replica**. This measures short-output serving throughput, not puzzle quality.
+
+The [first 100-agent democracy pilot](runs/20261115-111919-democracy-100.jsonl)
+on target 952 completed **1,000 calls**, **16,595 completion tokens** in
+**29.700536 seconds**, with **0 infrastructure failures** and **0 successes**.
+This is one thinking-off run; it establishes neither method superiority nor a
+thinking-on/off comparison. Comparative quality and the value of reputation
+remain unmeasured.
 
 ## Quick start on this workspace
 
@@ -65,9 +74,13 @@ Prototype containers use restart=no; start them explicitly after a reboot.
 
 Python 3.10+; no packages or credentials required for the local endpoints.
 Endpoints must serve OpenAI-compatible `/v1/chat/completions`. Each request sets
-`chat_template_kwargs: {enable_thinking: false}`, `stream: false`, a finite
-`max_tokens`, temperature 0.8, and a per-agent seed. Model alias for the deployed
-prototype is `nemotron-lightning`.
+`chat_template_kwargs: {enable_thinking: false}` by default, `stream: false`,
+a finite `max_tokens`, temperature 0.8, and a per-agent seed. Add `--thinking`
+to enable reasoning while keeping the prompt unchanged. Reported completion
+tokens include reasoning; the default 192-token cap may truncate a thinking
+response before its JSON answer. For an explicit larger cap use
+`--thinking --max-tokens 1024` and set the total completion budget accordingly;
+no limit changes automatically. Model alias is `nemotron-lightning`.
 
 Eight-agent smoke against a single endpoint (replace the address):
 
@@ -135,8 +148,8 @@ python3 apps/swarm-lab/harness.py --method weighted \
   --events apps/swarm-lab/runs/weighted-8.jsonl
 ```
 
-A weighted run requires matching model alias, agent count, seed and arithmetic
-rules, and rejects exact overlap between its puzzle and calibration puzzles.
+A weighted run requires matching model alias, agent count, seed, thinking mode
+and arithmetic rules, and rejects exact overlap between its puzzle and calibration puzzles.
 Agent identity here is only model + seeded sampling stream, **not a learned
 specialist**. Few calibration games may yield equal or noisy weights. The listed
 calibration targets are examples, not a validated difficulty-balanced dataset.
@@ -175,7 +188,9 @@ strings. Main records:
 - `pruned`: child `node_id`, `parent_id`, reason.
 - `reward`: terminal node, exact `solved`, binary `reward`, exact `distance`.
 - `request_start`/`request_end`: request ID, agent, stage, endpoint index, latency,
-  reported usage, conservative charge, response/error. `budget_exhausted` and
+  reported usage, conservative charge, response/error, `finish_reason` and optional
+  `reasoning` text. A reasoning-only truncated response is an invalid proposal,
+  not a transport failure. `budget_exhausted` and
   `halt` expose stopped work.
 - `run_start`, `puzzle_start`, `puzzle_end`, `run_end`: configuration/outcomes.
 
