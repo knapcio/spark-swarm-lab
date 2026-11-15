@@ -1,0 +1,220 @@
+{
+  "protocol": "csp-search-selection-v1",
+  "prepared_utc": "2026-11-15T19:54:11.508463+00:00",
+  "status": "Preregistered policy/data proposal before any CSP model outcomes; parent review and immutable source tag required before launch. This record does not itself authorize inference.",
+  "scope": "Separate exploratory CSP study after primary900, supplemental80, and all45 frozen throughput cohorts. Existing studies untouched; no pooling.",
+  "profiles": {
+    "core_off16": {
+      "priority": 1,
+      "thinking": false,
+      "temperature": 0.8,
+      "max_tokens": 512,
+      "max_calls": 16,
+      "max_completion_tokens": 8192,
+      "deadline_seconds": 180,
+      "arms": [
+        "resample",
+        "sequential",
+        "parallel_repair4",
+        "evolution4",
+        "review_elites4",
+        "democracy4",
+        "weighted_democracy4"
+      ],
+      "splits_and_seeds": {
+        "development": [
+          1
+        ],
+        "evaluation": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    "extended_off64": {
+      "priority": 2,
+      "thinking": false,
+      "temperature": 0.8,
+      "max_tokens": 512,
+      "max_calls": 64,
+      "max_completion_tokens": 32768,
+      "deadline_seconds": 600,
+      "arms": [
+        "resample",
+        "sequential",
+        "parallel_repair4",
+        "evolution4",
+        "review_elites4",
+        "democracy4",
+        "weighted_democracy4",
+        "evolution_mutation4"
+      ],
+      "splits_and_seeds": {
+        "evaluation": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    "thinking_on16": {
+      "priority": 3,
+      "thinking": true,
+      "temperature": 0.8,
+      "max_tokens": 4096,
+      "max_calls": 16,
+      "max_completion_tokens": 65536,
+      "deadline_seconds": 900,
+      "arms": [
+        "resample",
+        "sequential",
+        "parallel_repair4",
+        "evolution4",
+        "review_elites4",
+        "democracy4",
+        "weighted_democracy4",
+        "evolution_mutation4"
+      ],
+      "splits_and_seeds": {
+        "evaluation": [
+          1
+        ]
+      }
+    }
+  },
+  "schedule": {
+    "unit": "One complete split x all profile arms x seed cohort per invocation; no task/arm subset arguments.",
+    "priority": [
+      "core_off16/development/1",
+      "core_off16/evaluation/1",
+      "core_off16/evaluation/2",
+      "core_off16/evaluation/3",
+      "extended_off64/evaluation/1",
+      "extended_off64/evaluation/2",
+      "extended_off64/evaluation/3",
+      "thinking_on16/evaluation/1"
+    ],
+    "time_gate": "Parent starts only whole balanced cohorts when remaining night permits; extension launch based on time/resources, never failed-task filtering or outcome-based escalation. Partial interrupted cohorts remain explicitly incomplete.",
+    "core_cases": 280,
+    "extended_cases": 288,
+    "optional_thinking_cases": 96,
+    "endpoints": [
+      "http://127.0.0.1:18081/v1",
+      "http://127.0.0.1:18082/v1",
+      "http://127.0.0.1:18083/v1",
+      "http://127.0.0.1:18084/v1"
+    ],
+    "slots": "Four endpoint-owned persistent case slots; all arms of a task run sequentially on its slot. No simultaneous cases per endpoint.",
+    "rotation": "Tasks sorted by ID, rotated by seed-1 and reversed for even seeds; arms reversed for even seeds then rotated by task index+seed-1. Tasks assigned round-robin to four slots.",
+    "start_gate": "reference_worker.verify_gate(gate_root) verifies original900+80 and final45 throughput cohorts; all4 endpoints must be idle. Parent separately verifies live Docker/model identities before first CSP cohort.",
+    "whole_batch": "No controller early-success cancellation. Worker charges and completes all dispatched siblings before stopping; whole-case deadline remains binding."
+  },
+  "corpus": {
+    "protocol": "planted-coloring-csp-v1",
+    "generation_seed": 2026111501,
+    "development_tasks": 4,
+    "evaluation_tasks": 12,
+    "task_file": "datasets/csp-v1/tasks.json",
+    "reference_file": "datasets/csp-v1/reference-witnesses.json",
+    "evaluation_design": "24/40/64 vertices x3/4 colors x20/40 percent eligible-edge density, full factorial. Balanced planted classes, fixed-count cross-class edges conditioned on connectivity.",
+    "information_boundary": "Worker loads only public task data. Reference witnesses and generation metadata never enter prompts. Public seed permits independent reproduction: untouched evaluation, not cryptographically hidden.",
+    "limitations": [
+      "Twelve task clusters only; seeds are repeats, not new independent graphs.",
+      "Planted connected distribution, no hardness guarantee or isomorphism screening.",
+      "No new harder benchmark is generated in response to these outcomes under this protocol."
+    ]
+  },
+  "model": {
+    "target": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "target_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+    "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+    "runtime": "Pinned ARM64 vLLM0.32.0/DSpark3 from runtime.json",
+    "external_advisor": false,
+    "temperature": 0.8,
+    "seed_scope": "Deterministic request seeds derived by existing Client from replication seed, agent, stage and prompt; exact repeat determinism is not assumed."
+  },
+  "policy_semantics": {
+    "ranking": "Valid-schema first, then fewer exact conflicts, then earliest candidate index. Population survivors retain duplicates; every duplicate is charged.",
+    "resample": "Independent batches4, fresh task-only prompts.",
+    "sequential": "One own-previous-candidate repair chain.",
+    "parallel_repair4": "Four separate own-history chains, one candidate per chain per round.",
+    "evolution4": "Initial4 then rounds of2 mutations,1 crossover,1 fresh immigrant. Mutation parents are best and second valid population entries (fallback best). Crossover uses best2 distinct valid assignment hashes; if unavailable, one-parent mutation or fresh. Keep best4 from old+new including duplicates.",
+    "evolution_mutation4": "Same as evolution4 except crossover slot always uses best-valid single-parent mutation or fresh; directly paired ablation.",
+    "review_elites4": "Initial4; each round two worse population-member candidates review top2 (two same-model calls), then top2 repair using own exact feedback and usable critiques (two calls). Retain best4 old+new.16calls=>10assignment candidates+6reviews;64=>34+30. Invalid critiques are charged and not forwarded. Candidate role delegation, not persistent distinct model personalities.",
+    "democracy4": "Initial4 then four repairs per round from own prior assignment and mechanically derived consensus. Invalid candidates excluded; if none valid, fresh proposals. Consensus checked after each unsolved batch, including final batch.",
+    "weighted_democracy4": "Same consensus method with exact Fraction weight1/(1+conflicts) per valid candidate.",
+    "color_symmetry": "Align candidate labels to best candidate over all k! permutations maximizing agreement; lexicographically first maximizing permutation. Per-vertex vote ties prefer anchor color, then smallest color.",
+    "derived_candidates": "Consensus is a derived zero-model-call proposal and is explicitly counted and verified; never claimed as a sampled model solution.",
+    "feedback": "Only public graph, previous allowed candidates, exact full-constraint validation/conflicts and same-model critiques. No next-move solver, reference witness or stronger-model advice. Mechanical fitness feedback is an oracle for constraint checking, not unaided self-reflection."
+  },
+  "validation_and_accounting": {
+    "success": "Exact full vertex-count/domain/edge verification; independently replay candidate payloads before accepting row. No model-declared correctness.",
+    "budgets": "All model calls including critiques share call/output reservation ceilings. Input/output tokens separate; identical ceilings do not imply equal realized GPU cost.",
+    "cost": "Before/after endpoint counters under exclusive case ownership, final idle drain. Missing costs remain null; unfinished client usage is a lower bound.",
+    "faults": "Stop dispatch after transport/controller/idle/source faults; already running bounded cases finish and drain. Valid controlled deadlines remain task failures or previously proven successes, not infrastructure errors.",
+    "integrity": "Capture frozen Git revision and source/data/runtime/selection SHA before and after; no overwrite/resume. Raw events/stdout/stderr retained; summary JSON/CSV replaced atomically.",
+    "statistics": "Task-clustered estimates across seeds. Separately report each recipe, review/derived/model candidate counts, duplicates, valid schemas and stagnation.",
+    "curves": "Verified success against wall time, dispatched model calls and measured input/output usage; checkpoints4/8/16/32/64 where applicable. Derived votes reported separately.",
+    "claim_limit": "100 percent means the finite exact-verifier suite only, never a general guarantee."
+  },
+  "zero_llm_reference": {
+    "status": "Implementation and10 authored tiny-graph tests complete before any CSP model outcomes; no corpus results yet. Parent review and common immutable source freeze required before launch.",
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "splits": [
+      "development",
+      "evaluation"
+    ],
+    "per_case_cpu_wall_seconds": 30,
+    "arms": {
+      "genetic": {
+        "implementation": "Private verifier-bound clone of existing csp_search.classical_search bytecode; sampling/selection unchanged.",
+        "population_size": 32,
+        "generations": 128,
+        "maximum_fitness_evaluations": 3616,
+        "operators": "Two-way fitness tournaments, uniform crossover, one-vertex recoloring, four elites and one fresh immigrant."
+      },
+      "random_assignment": {
+        "maximum_assignments": 16,
+        "sampling": "Uniform independent color per vertex; fixed seed.",
+        "stopping": "Exactly16 scored assignments including duplicates and assignments after a verified solution, unless wall budget expires."
+      },
+      "min_conflicts": {
+        "restarts": 4,
+        "steps_per_restart": 1024,
+        "evaluation_accounting": "Score every color including the current color with full assignment fitness. Choose a conflicted vertex uniformly, then choose uniformly among minimum-conflict colors. Count every score."
+      }
+    },
+    "scope": "Separate CPU-search references with different primitive evaluation budgets, not matched LLM-call controls. No CPU evaluation equals a model call. Report evaluations, elapsed CPU/wall time and deadlines.",
+    "worker_boundary": "No baseline assignments, reference witnesses or next moves enter model workers.",
+    "start_gate": "Separate plan-first CPU runner calls reference_worker.verify_gate(gate_root) on --run; no corpus run during implementation.",
+    "runner": "csp_classical.py",
+    "api": "run_control(task, arm, seed, seconds=30)",
+    "planned_cases": 144,
+    "execution": "Serial cases; default/--plan writes nothing. --run gates original study, requires a new output directory and preserves full JSON/CSV results.",
+    "final_verification": "Full final assignment check counted separately from fitness evaluations; goals first verified after deadline do not count as in-budget successes."
+  },
+  "frozen_files_sha256": {
+    "csp_search.py": "371f65ce57501102027970d0174516577d7a0c3897f2e9560f75f61c6ec87518",
+    "csp_social.py": "50e899aa980bc5fbf613ed2b2c4bda711b1cf273a5fceb3779b138573650d999",
+    "csp_tasks.py": "4a49d387687eb15c98cf226980b63b5a786c67a60ec94fa489ad58855b08373e",
+    "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+    "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+    "reference_worker.py": "72b71d05cfeb4ee7b9f79070ac14efea5de894759ee3ac07278acbeeb393d086",
+    "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+    "datasets/csp-v1/tasks.json": "29d659bbc7b4b819ea7d572db073459eb30d6c19f7fda2114e7c174c375de960",
+    "datasets/csp-v1/reference-witnesses.json": "b02be9c50fecf0c779d2959b15e00d145bfbceedecbdab25beb21643c6a9a40c",
+    "run_csp_search.py": "d7e6d921f5b7ee971da25f74dcdbf5e240b97d765ccad3df80237287a7734154",
+    "test_run_csp_search.py": "47a5225c418e2fa33cbfcc4ff21761615b3c299324bf4b047a91a5a1ce391eeb",
+    "test_csp_search.py": "e9a655124ae9bc946d48c68471937aa0ebb4e5a8cd7653348fe301d289c1ceeb",
+    "test_csp_social.py": "17ac98240889d0bcb9390e05187478a681dbc711bc9170c7b1b4c0203b874552",
+    "test_csp_tasks.py": "b66ed7be0f6f906f8adf843d668820e2291190ac28f072808ed768aee8578b11",
+    "csp_classical.py": "5a7f9388728a710cdf2d842f0ff35a4517f9612589fc0b2b93a471873c710c10",
+    "test_csp_classical.py": "0a1de0bf061bd0320cd0569af56372abef8c3459ca44447b60ab4fb696eba37f"
+  },
+  "final_source_freeze": "Runner/tests must pass parent review before commit/tag. Selection excludes its own hash; cohort metadata separately captures its SHA plus complete frozen source hashes and Git revision."
+}
