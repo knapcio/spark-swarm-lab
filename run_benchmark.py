@@ -19,6 +19,8 @@ HERE = Path(__file__).resolve().parent
 ARMS = {
     "direct_off": ("direct", 1, False), "direct_thinking": ("direct", 1, True),
     "solo_steps_off": ("independent", 1, False), "solo_steps_thinking": ("independent", 1, True),
+    "direct_thinking_8k": ("direct", 1, True),
+    "solo_steps_thinking_8k": ("independent", 1, True),
     "independent8": ("independent", 8, False),
     "independent_rounds8": ("independent_rounds", 8, False),
     "democracy8": ("democracy", 8, False), "shared8": ("shared", 8, False),
@@ -142,7 +144,8 @@ def main(argv=None):
             command = [sys.executable, str(HERE / "harness.py"), "--method", method,
                        "--puzzle", ",".join(map(str, task["numbers"])) + ":" + str(task["target"]),
                        "--model", "nemotron-lightning", "--agents", str(agents),
-                       "--per-endpoint-concurrency", "25", "--rounds", "5", "--max-tokens", "4096" if thinking else "192",
+                       "--per-endpoint-concurrency", "25", "--rounds", "5", "--max-tokens",
+                       "8192" if arm.endswith("_8k") else "4096" if thinking else "192",
                        "--max-calls", "128", "--max-completion-tokens", "32768", "--timeout", "90",
                        "--seed", str(args.seed), "--events", str(trace), "--endpoint", endpoints[slot]]
             if thinking:
