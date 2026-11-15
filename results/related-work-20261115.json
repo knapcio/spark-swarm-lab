@@ -1,0 +1,224 @@
+{
+  "review_timestamp": "2026-11-15T17:57:47.376456+01:00",
+  "purpose": "Focused related-work context for the already frozen experiment; not a policy recommendation or a complete survey.",
+  "source_policy": "Primary arXiv papers, official author project sites and author repositories only.",
+  "local_experiment_outcomes_read": false,
+  "model_calls": 0,
+  "ssh_calls": 0,
+  "source_or_protocol_changes": false,
+  "papers": [
+    {
+      "id": "self_consistency",
+      "title": "Self-Consistency Improves Chain of Thought Reasoning in Language Models",
+      "authors": "Wang et al.",
+      "first_public_date": "2022-03-21",
+      "version_reviewed": "v4",
+      "version_date": "2023-03-07",
+      "venue": "ICLR 2023",
+      "paper_url": "https://arxiv.org/abs/2203.11171v4",
+      "author_project_url": null,
+      "kind": "independent sampling plus answer aggregation",
+      "claim": "Samples several reasoning paths from one language model and aggregates final answers; reports improvements over greedy chain-of-thought on arithmetic and commonsense benchmarks.",
+      "scope": "Arithmetic and commonsense QA with models available in the original study; no DGX Spark or Nemotron serving measurement.",
+      "prototype_match": "Conceptual independent-sampling control for the full-plan ensembles and independent trajectories.",
+      "important_difference": "Our arithmetic ensembles accept any exactly verified solution, rather than selecting the modal answer. Code candidates are selected using feedback tests, then one frozen candidate receives holdout grading.",
+      "evidence_reviewed": [
+        "arXiv abstract and version history"
+      ]
+    },
+    {
+      "id": "self_refine",
+      "title": "Self-Refine: Iterative Refinement with Self-Feedback",
+      "authors": "Madaan et al.",
+      "first_public_date": "2023-03-30",
+      "version_reviewed": "v2",
+      "version_date": "2023-05-25",
+      "venue": null,
+      "paper_url": "https://arxiv.org/abs/2303.17651v2",
+      "author_project_url": "https://github.com/madaan/self-refine",
+      "kind": "strong sequential single-model control",
+      "claim": "One model generates an answer, critiques it, and revises it iteratively, without further training. Reports gains across seven tasks using contemporary GPT-family models.",
+      "scope": "Mixed tasks and human/automatic evaluation; not exclusively exact arithmetic or executable code correctness.",
+      "prototype_match": "Closest conceptual reference for sequential full-plan refinement and iterative code repair.",
+      "important_difference": "Our refinement receives objective verifier or executable feedback; the original method emphasizes model-generated self-feedback. Its reported gains do not quantify our feedback protocol.",
+      "evidence_reviewed": [
+        "arXiv abstract and version history",
+        "author implementation README"
+      ]
+    },
+    {
+      "id": "tree_of_thoughts",
+      "title": "Tree of Thoughts: Deliberate Problem Solving with Large Language Models",
+      "authors": "Yao et al.",
+      "first_public_date": "2023-05-17",
+      "version_reviewed": "v2",
+      "version_date": "2023-12-03",
+      "venue": "NeurIPS 2023",
+      "paper_url": "https://arxiv.org/abs/2305.10601v2",
+      "author_project_url": "https://github.com/princeton-nlp/tree-of-thought-llm",
+      "kind": "shared search over intermediate states",
+      "claim": "Maintains alternative intermediate thoughts and uses search with model evaluation, lookahead or backtracking. Demonstrates gains on Game of 24, creative writing and mini crosswords.",
+      "scope": "The original tasks, prompts, models and search budgets; not a measurement of independent GPU agents or shared attention KV.",
+      "prototype_match": "Closest established search framing for a coordinator retaining a common frontier and handing states to workers.",
+      "important_difference": "Our shared arithmetic frontier uses exact legal transitions, deduplication and deterministic hash selection; it does not use ToT heuristic evaluation. Countdown rules and datasets differ, so raw success percentages are not directly comparable.",
+      "evidence_reviewed": [
+        "arXiv abstract and version history",
+        "author implementation README"
+      ]
+    },
+    {
+      "id": "multiagent_debate",
+      "title": "Improving Factuality and Reasoning in Language Models through Multiagent Debate",
+      "authors": "Du et al.",
+      "first_public_date": "2023-05-23",
+      "version_reviewed": "v1",
+      "version_date": "2023-05-23",
+      "venue": "ICML 2024 (author project page)",
+      "paper_url": "https://arxiv.org/abs/2305.14325v1",
+      "author_project_url": "https://composable-models.github.io/llm_debate/",
+      "author_code_url": "https://github.com/composable-models/llm_multiagent_debate",
+      "kind": "peer-rationale exchange and revision",
+      "claim": "Several instances of the same model propose answers, read peers and revise over debate rounds. The main setup uses three agents and two rounds; authors report gains over ordinary single-agent generation.",
+      "scope": "Reasoning/factuality tasks from the original paper; positive results are not a universal advantage over compute-matched independent sampling or sequential repair.",
+      "prototype_match": "Related to communicating/voting policies, especially code-review voting among candidate programs.",
+      "important_difference": "Our arithmetic democracy proposes and votes on legal moves, with exact terminal acceptance. It is not unrestricted natural-language debate, and its shared frontier is a different policy.",
+      "evidence_reviewed": [
+        "arXiv abstract and version history",
+        "author project methods/results",
+        "author code repository"
+      ]
+    },
+    {
+      "id": "graph_of_thoughts",
+      "title": "Graph of Thoughts: Solving Elaborate Problems with Large Language Models",
+      "authors": "Besta et al.",
+      "first_public_date": "2023-08-18",
+      "version_reviewed": "v4",
+      "version_date": "2024-02-06",
+      "venue": "AAAI 2024",
+      "paper_url": "https://arxiv.org/abs/2308.09687v4",
+      "author_project_url": "https://github.com/spcl/graph-of-thoughts",
+      "kind": "explicit logical graph with aggregation and feedback",
+      "claim": "Represents generated thoughts as graph nodes and dependencies as edges, permitting aggregation and feedback rather than only linear or tree-shaped reasoning.",
+      "scope": "Task-specific graph transformations and evaluation; examples include sorting and keyword counting. This is logical information organization, not distributed GPU-memory sharing.",
+      "prototype_match": "Relevant precedent for storing reusable intermediate states or verified code-test observations in coordinator memory.",
+      "important_difference": "Our dictionary/JSONL handoff is a small fixed protocol. It is not a reproduction of GoT transformations or evidence that shared memory alone improves quality.",
+      "evidence_reviewed": [
+        "arXiv abstract and version history",
+        "official implementation README"
+      ]
+    },
+    {
+      "id": "agent_forest",
+      "title": "More Agents Is All You Need",
+      "authors": "Li et al.",
+      "first_public_date": "2024-02-03",
+      "version_reviewed": "v2",
+      "version_date": "2024-10-11",
+      "venue": "Transactions on Machine Learning Research",
+      "paper_url": "https://arxiv.org/abs/2402.05120v2",
+      "author_project_url": "https://github.com/MoreAgentsIsAllYouNeed/AgentForest",
+      "kind": "same-model scaling through sampling and voting",
+      "claim": "Agent Forest studies scaling the number of sampled outputs and aggregating them by answer frequency or similarity. Reports gains across reasoning and generation tasks; gains rise then fall as inherent difficulty increases.",
+      "scope": "Several models and datasets; open-ended code aggregation uses similarity scoring, not our executable verifier. Reported accuracy scaling does not establish saturated-fleet efficiency.",
+      "prototype_match": "Direct prior art for the original many-small-agents idea and independent-size controls; step-wise voting is also related to move-level democracy.",
+      "important_difference": "Increasing sample count is not itself cooperation. Our any-verified-solution arithmetic selection and one-frozen-holdout code grading differ from majority/similarity voting.",
+      "evidence_reviewed": [
+        "arXiv abstract and version history",
+        "paper Sections 3, 6 and 7",
+        "author repository"
+      ]
+    },
+    {
+      "id": "stop_overvaluing_debate",
+      "title": "Stop Overvaluing Multi-Agent Debate -- We Must Rethink Evaluation and Embrace Model Heterogeneity",
+      "earlier_title": "If Multi-Agent Debate is the Answer, What is the Question?",
+      "authors": "Zhang et al.",
+      "first_public_date": "2025-02-12",
+      "version_reviewed": "v3",
+      "version_date": "2025-06-21",
+      "venue": null,
+      "paper_url": "https://arxiv.org/abs/2502.08788v3",
+      "author_project_url": null,
+      "kind": "negative evaluation and baseline critique",
+      "claim": "Evaluates five debate methods on nine benchmarks with four base models. Debate often fails to beat chain-of-thought or self-consistency despite more inference computation; the authors also study heterogeneous models.",
+      "scope": "A critical position/evaluation paper, not a theorem that all debate fails or heterogeneous panels universally succeed.",
+      "prototype_match": "Context for preserving strong solo, independent-sampling and sequential controls alongside communicating policies.",
+      "important_difference": "Our experiment deliberately fixes one model and uses verifiable synthetic tasks. It cannot establish conclusions about heterogeneous teams or all agent applications.",
+      "evidence_reviewed": [
+        "current arXiv abstract, title and version history"
+      ]
+    },
+    {
+      "id": "cost_of_consensus",
+      "title": "The Cost of Consensus: Isolated Self-Correction Prevails Over Unguided Homogeneous Multi-Agent Debate",
+      "authors": "Bertalanič and Fortuna",
+      "first_public_date": "2026-04-29",
+      "version_reviewed": "v1",
+      "version_date": "2026-04-29",
+      "venue": "ArXiv metadata lists ACM Conference on AI and Agentic Systems; proceedings not separately verified",
+      "paper_url": "https://arxiv.org/abs/2605.00914v1",
+      "fulltext_url": "https://arxiv.org/html/2605.00914v1",
+      "author_project_url": null,
+      "kind": "negative homogeneous-debate control study",
+      "claim": "Main study: ten same-model agents, three rounds, three 7–8B models, GSM-Hard and a hard MMLU subset. Debate costs 2.1–3.4× more tokens than isolated revision with similar/lower accuracy.",
+      "scope": "The isolated-revision control retains ten tracks; it is not simply one agent. Appendix J shows output-format caps inflate one large negative gap; some Llama gaps are nonsignificant.",
+      "prototype_match": "Relevant to independent repair versus peer exposure, communication cost and consensus discarding correct candidates.",
+      "important_difference": "Unguided rationale exchange differs from our verified-state search and objective feedback. It does not establish our policies’ outcomes.",
+      "evidence_reviewed": [
+        "arXiv abstract/history",
+        "full-text Section 3.3, Results and Appendix J"
+      ]
+    }
+  ],
+  "synthesis": [
+    {
+      "claim": "The core ideas already exist: same-model sampling/voting, debate, iterative revision and explicit intermediate-state search have established literature. Local serving and controlled policy accounting are the relevant scope here, not a claim to invent swarms.",
+      "basis": [
+        "self_consistency",
+        "agent_forest",
+        "multiagent_debate",
+        "self_refine",
+        "tree_of_thoughts",
+        "graph_of_thoughts"
+      ]
+    },
+    {
+      "claim": "Published findings are mixed. A gain over one greedy call does not isolate communication from additional samples, revision opportunities or token expenditure.",
+      "basis": [
+        "stop_overvaluing_debate",
+        "cost_of_consensus"
+      ],
+      "status": "Interpretation of reported comparisons, not a result from the local experiment"
+    },
+    {
+      "claim": "Independent RNG draws are not independent sources of knowledge: one model may repeatedly prefer the same wrong answer. Sharing peer answers additionally creates dependence. Conformity or consensus can therefore coexist with shared error; this review does not assert a measured local error correlation.",
+      "basis": [
+        "self_consistency",
+        "agent_forest",
+        "cost_of_consensus"
+      ],
+      "status": "Statistical/conceptual caution; no correlation coefficient or local effect estimated"
+    },
+    {
+      "claim": "Keep the inference distinct from the evidence: arithmetic any-exactly-verified success is not majority voting; code feedback passing is not proof of held-out correctness; shared-frontier search combines state handoff, deduplication and selection.",
+      "basis": [
+        "prototype design supplied in prior task context"
+      ],
+      "status": "Description of frozen design, not outcome-dependent analysis"
+    },
+    {
+      "claim": "None of these papers qualifies this four-Spark serving recipe or establishes its long-run reliability, GPU cost, useful solutions/minute, or a universal optimal agent count.",
+      "basis": [
+        "reviewed paper scopes"
+      ]
+    }
+  ],
+  "article_framing": "We are testing which already-known ways of spending inference compute yield useful verified work on a fixed local fleet, with strong controls and explicit communication/queue costs. Results remain specific to the frozen model, tasks, budgets, verification and runtime.",
+  "boundaries": [
+    "No partial local evaluation scores or raw traces opened.",
+    "No new policies proposed or tuned during the active run.",
+    "Dates are first arXiv submission dates; publication venue years and revised titles are separately labeled.",
+    "Numerical claims are scoped author reports, not reproduced measurements."
+  ]
+}
