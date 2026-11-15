@@ -23,6 +23,8 @@ that API seeds do not guarantee identical GPU execution.
 
 ## Current evidence
 
+**Current serving recipe: DSpark3 on four replicas**, with the same pinned target and vLLM image. Three same-node c25 repeats measured a median **528.02 output tokens/s**, versus **348.76** target-only (**+51.40%**). All four endpoints passed health and a real function-call round trip; the four-node short JSON probe returned **100/100 correct**. These are serving checks, not evidence of better reasoning. See [SERVING.md](SERVING.md) for prompts, raw reports, pins and limits. The original pilot below used target-only serving.
+
 The saved four-agent DeepSeek pipeline check (`runs/pipeline-check-deepseek-4.jsonl`, local only)
 made **24 calls**, using **341 completion tokens** and **2,952 prompt tokens**.
 On `2,3,7,8:24`, democracy ended at **31**, so the exact target was not reached.
@@ -69,6 +71,8 @@ Fleet control: `fleet.sh status`, `fleet.sh start`, `fleet.sh stop`, and
 `fleet.sh restore`. Start replaces the current DeepSeek service on Spark_01–04;
 restore stops only the prototype containers and restores the saved current
 DeepSeek via `~/dsgb10/window.sh prod`. NFS and Spark_05–06 are untouched.
+`fleet.sh start` now selects DSpark3 and requires the pinned draft prepared on each node (`download_draft.py`, 1.35GB of weight files per node). To switch an existing replica, stop it first; a running mode mismatch is rejected. `SWARM_SPECULATION=none ./fleet.sh start` selects the original target-only fallback. Both modes retain the same restoration command.
+
 Prototype containers use restart=no; start them explicitly after a reboot.
 `connect.sh disconnect` closes only this prototype's four SSH forwards.
 

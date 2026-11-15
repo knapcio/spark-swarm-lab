@@ -11,10 +11,13 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--endpoints", nargs="+", required=True)
     p.add_argument("--per-node", type=int, default=25)
+    p.add_argument("--temperature", type=float, default=0)
     p.add_argument("--output", type=Path, required=True)
     args = p.parse_args()
     if not 1 <= args.per_node <= 32:
         p.error("per-node must be 1..32")
+    if not 0 <= args.temperature <= 2:
+        p.error("temperature must be 0..2")
 
     def request(task):
         node, agent = task
@@ -22,7 +25,7 @@ def main():
             "model": "nemotron-lightning",
             "messages": [{"role": "user", "content":
                 f'Return only JSON with exactly these values: {{"agent": {agent}, "answer": 42}}'}],
-            "max_tokens": 64, "temperature": 0,
+            "max_tokens": 64, "temperature": args.temperature,
             "chat_template_kwargs": {"enable_thinking": False},
         }
         start = time.monotonic()
@@ -55,7 +58,8 @@ def main():
     report = {"kind": "serving_json_probe", "model": "nemotron-lightning",
         "note": "Short JSON requests; not agent task throughput or a sustained decode benchmark.",
         "endpoints": args.endpoints, "requests": len(tasks), "client_concurrency": len(tasks),
-        "per_node": args.per_node, "correct": sum(r["ok"] for r in results),
+        "per_node": args.per_node, "temperature": args.temperature,
+        "correct": sum(r["ok"] for r in results),
         "wall_s": round(elapsed, 3), "completion_tokens": tokens,
         "output_tokens_per_wall_s": round(tokens / elapsed, 2), "results": results}
     args.output.parent.mkdir(parents=True, exist_ok=True)

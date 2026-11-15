@@ -1,0 +1,335 @@
+{
+  "schema_version": 1,
+  "study": "Single-node c25 finite serving comparison: target-only versus DSpark3",
+  "date_local": "2026-11-15",
+  "timezone": "Europe/Warsaw",
+  "measurement_node": "Spark_02",
+  "hardware": "NVIDIA DGX Spark GB10, 128GB unified memory",
+  "endpoint_mapping": "client 127.0.0.1:18082 -> Spark_02 127.0.0.1:18096 (connect.sh)",
+  "source": {
+    "git_commit": "f506ae28d17b933939b62782141d6ccf6e0857aa",
+    "benchmark_file": "bench_serving.py",
+    "benchmark_sha256": "3ee55dead5c73a0c7d5b02d1fb14f15d010ec527abc7ac158e4b7aded5549527",
+    "curation": "Six complete JSON reports copied byte for byte; no response or path edits"
+  },
+  "pins": {
+    "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+    "model_weight_bytes": 21561882284,
+    "model_shards": 52,
+    "image": "vllm/vllm-openai:v0.27.1",
+    "arm64_manifest_digest": "sha256:1c8e60a0841b333c700488cb029d3664807249da0c071e862191b00fe34b228c",
+    "served_model_name": "nemotron-lightning"
+  },
+  "draft_pins": {
+    "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+    "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+    "draft_weight_bytes": 1349057504,
+    "draft_weight_files": 1
+  },
+  "benchmark_configuration": {
+    "concurrency": 25,
+    "measured_requests_per_repeat": 100,
+    "output_cap_tokens": 256,
+    "temperature": 0,
+    "enable_thinking": false,
+    "stream": false,
+    "warmup_requests_per_repeat": 4,
+    "warmup_in_measured_time": false,
+    "request_timeout_seconds": 180,
+    "semantic_task_set_sha256": "cf5b9b20ebefb02c6ae3c148772bef5cde6d6cf14ad280f6c7fcee2d4e57a5f8",
+    "semantic_task_digest_definition": "SHA256 of compact UTF-8 JSON array of {index,task,prompt}, in index order, excluding request markers",
+    "unique_request_markers": 624,
+    "semantic_prompt_matching": "Fixed semantic prompts and task order; run-specific unique markers differ"
+  },
+  "arms": {
+    "target_only": {
+      "speculative_decoding": null,
+      "reports": [
+        {
+          "file": "dspark-baseline-mixed-c25-2.json",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-baseline-mixed-c25-2.json",
+          "sha256": "ae927ce9776d4e8f0f1ab6517ba62bc9c66f88a0a17c45942edf3faaa80df74e",
+          "run_id_utc": "20261115T120852.209879Z",
+          "run_start_europe_warsaw": "2026-11-15T13:08:52.209879+01:00",
+          "summary": {
+            "requests": 100,
+            "successful_requests": 100,
+            "errors": 0,
+            "wall_seconds": 47.31395683251321,
+            "completion_tokens": 16501,
+            "prompt_tokens": 11484,
+            "requests_with_completion_usage": 100,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 348.75544352403097,
+            "latency_seconds_p50": 16.299168249592185,
+            "latency_seconds_p95": 17.195274000056088,
+            "finish_reasons": {
+              "stop": 38,
+              "length": 62
+            },
+            "json_arithmetic_checks": {
+              "checked": 37,
+              "passed": 13,
+              "failed": 24
+            }
+          }
+        },
+        {
+          "file": "dspark-baseline-mixed-c25-3.json",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-baseline-mixed-c25-3.json",
+          "sha256": "1f914cb37bb909ac79f0576210029511cc3519731a3953b581746772b81ab286",
+          "run_id_utc": "20261115T120949.825013Z",
+          "run_start_europe_warsaw": "2026-11-15T13:09:49.825013+01:00",
+          "summary": {
+            "requests": 100,
+            "successful_requests": 100,
+            "errors": 0,
+            "wall_seconds": 47.060426083393395,
+            "completion_tokens": 16494,
+            "prompt_tokens": 11484,
+            "requests_with_completion_usage": 100,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 350.4855644692171,
+            "latency_seconds_p50": 16.36352683417499,
+            "latency_seconds_p95": 17.19151624944061,
+            "finish_reasons": {
+              "stop": 38,
+              "length": 62
+            },
+            "json_arithmetic_checks": {
+              "checked": 37,
+              "passed": 13,
+              "failed": 24
+            }
+          }
+        },
+        {
+          "file": "dspark-baseline-mixed-c25-4.json",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-baseline-mixed-c25-4.json",
+          "sha256": "270e98fb757bb48cbbbe535ee309ea689550698224d2a4c74c554a5b8d768627",
+          "run_id_utc": "20261115T121053.947781Z",
+          "run_start_europe_warsaw": "2026-11-15T13:10:53.947781+01:00",
+          "summary": {
+            "requests": 100,
+            "successful_requests": 100,
+            "errors": 0,
+            "wall_seconds": 47.32311849948019,
+            "completion_tokens": 16494,
+            "prompt_tokens": 11484,
+            "requests_with_completion_usage": 100,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 348.540005878547,
+            "latency_seconds_p50": 16.012054207734764,
+            "latency_seconds_p95": 17.562083709053695,
+            "finish_reasons": {
+              "stop": 37,
+              "length": 63
+            },
+            "json_arithmetic_checks": {
+              "checked": 37,
+              "passed": 13,
+              "failed": 24
+            }
+          }
+        }
+      ],
+      "median_of_run_metrics": {
+        "output_tokens_per_second": 348.75544352403097,
+        "wall_seconds": 47.31395683251321,
+        "latency_seconds_p50": 16.299168249592185,
+        "latency_seconds_p95": 17.195274000056088
+      },
+      "aggregate_counts": {
+        "requests": 300,
+        "successful_requests": 300,
+        "transport_or_report_errors": 0,
+        "missing_completion_usage": 0,
+        "json_arithmetic_checks": {
+          "checked": 111,
+          "passed": 39,
+          "failed": 72
+        },
+        "length_finishes": 187
+      }
+    },
+    "dspark3": {
+      "speculative_decoding": {
+        "method": "dspark",
+        "num_speculative_tokens": 3,
+        "model_mount": "/draft"
+      },
+      "reports": [
+        {
+          "file": "dspark-mixed-c25-1.json",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-mixed-c25-1.json",
+          "sha256": "6c62d92cc579ae554b2ed1ee6d764e02cd7a65050b9c6d9bbd41b392f22357be",
+          "run_id_utc": "20261115T121645.868239Z",
+          "run_start_europe_warsaw": "2026-11-15T13:16:45.868239+01:00",
+          "summary": {
+            "requests": 100,
+            "successful_requests": 100,
+            "errors": 0,
+            "wall_seconds": 31.226090332493186,
+            "completion_tokens": 16488,
+            "prompt_tokens": 11484,
+            "requests_with_completion_usage": 100,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 528.0199930390564,
+            "latency_seconds_p50": 9.280865792185068,
+            "latency_seconds_p95": 12.709374667145312,
+            "finish_reasons": {
+              "stop": 37,
+              "length": 63
+            },
+            "json_arithmetic_checks": {
+              "checked": 37,
+              "passed": 13,
+              "failed": 24
+            }
+          }
+        },
+        {
+          "file": "dspark-mixed-c25-2.json",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-mixed-c25-2.json",
+          "sha256": "81520bcfa8af472e86ddf1736d87ebbb5f6908fceca9a2faa9ab913c3afa12cd",
+          "run_id_utc": "20261115T121724.489529Z",
+          "run_start_europe_warsaw": "2026-11-15T13:17:24.489529+01:00",
+          "summary": {
+            "requests": 100,
+            "successful_requests": 100,
+            "errors": 0,
+            "wall_seconds": 31.296380499377847,
+            "completion_tokens": 16509,
+            "prompt_tokens": 11484,
+            "requests_with_completion_usage": 100,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 527.5050896166152,
+            "latency_seconds_p50": 9.207953208126128,
+            "latency_seconds_p95": 12.372997582890093,
+            "finish_reasons": {
+              "stop": 37,
+              "length": 63
+            },
+            "json_arithmetic_checks": {
+              "checked": 37,
+              "passed": 13,
+              "failed": 24
+            }
+          }
+        },
+        {
+          "file": "dspark-mixed-c25-3.json",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-mixed-c25-3.json",
+          "sha256": "a2ff73ad0e5a9d801e309f88c350739231208a13a7b9fc7a81542657cdf2bf09",
+          "run_id_utc": "20261115T121803.150762Z",
+          "run_start_europe_warsaw": "2026-11-15T13:18:03.150762+01:00",
+          "summary": {
+            "requests": 100,
+            "successful_requests": 100,
+            "errors": 0,
+            "wall_seconds": 31.15131379198283,
+            "completion_tokens": 16503,
+            "prompt_tokens": 11484,
+            "requests_with_completion_usage": 100,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 529.7689885634053,
+            "latency_seconds_p50": 9.238292374648154,
+            "latency_seconds_p95": 12.23279570788145,
+            "finish_reasons": {
+              "stop": 37,
+              "length": 63
+            },
+            "json_arithmetic_checks": {
+              "checked": 37,
+              "passed": 13,
+              "failed": 24
+            }
+          }
+        }
+      ],
+      "median_of_run_metrics": {
+        "output_tokens_per_second": 528.0199930390564,
+        "wall_seconds": 31.226090332493186,
+        "latency_seconds_p50": 9.238292374648154,
+        "latency_seconds_p95": 12.372997582890093
+      },
+      "aggregate_counts": {
+        "requests": 300,
+        "successful_requests": 300,
+        "transport_or_report_errors": 0,
+        "missing_completion_usage": 0,
+        "json_arithmetic_checks": {
+          "checked": 111,
+          "passed": 39,
+          "failed": 72
+        },
+        "length_finishes": 189
+      }
+    }
+  },
+  "comparison": {
+    "median_throughput_gain_percent": 51.40121906159531,
+    "median_wall_time_reduction_percent": 34.002369653777855,
+    "aggregation": "Each arm median of three repeat-level metrics. Latency values are medians of repeat p50/p95, not pooled request quantiles."
+  },
+  "exclusions": [
+    {
+      "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-baseline-mixed-c25-1.json",
+      "reason": "Excluded: overlap with separate two-request tool-call check; clean baseline repeats 2/3/4 used instead."
+    }
+  ],
+  "tool_round_trip_checks": [
+    {
+      "arm": "target_only",
+      "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-baseline-tool.json",
+      "sha256": "e0b35cb6551176adcd2c1398aa317a0c583c855f9173b8db5aaa2dfa642d51be",
+      "passed": true,
+      "function": "add",
+      "arguments": {
+        "a": 17,
+        "b": 25
+      },
+      "final_json": {
+        "result": 42
+      },
+      "measured_request_count": 2,
+      "included_in_serving_timing": false
+    },
+    {
+      "arm": "dspark3",
+      "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-tool-02.json",
+      "sha256": "1091a6926bcec839b6f3470c8379aba23683c1f4f1388d8561d0cc52ad802b3c",
+      "passed": true,
+      "function": "add",
+      "arguments": {
+        "a": 17,
+        "b": 25
+      },
+      "final_json": {
+        "result": 42
+      },
+      "measured_request_count": 2,
+      "included_in_serving_timing": false
+    }
+  ],
+  "limitations": [
+    "Finite non-streaming completion tokens / measured batch wall seconds; includes prefill, HTTP, client scheduling, and server scheduling. Not sustained decode-only TPS.",
+    "Three repeats per arm, all baseline runs before candidate runs; no randomized crossover or universal-optimum claim.",
+    "Candidate 63/100 length finishes each repeat; baseline 62/62/63. Deliberate 256-token cap on long-form code/review/logic tasks, not a code-success benchmark.",
+    "JSON arithmetic exact-answer checks passed 13/37 per repeat in both arms; 24/37 failed. This is a limited quality check, not broad quality parity.",
+    "Outputs and token totals differ; no token-equivalence or distributional-equivalence claim from these results.",
+    "Single-node measurement only; other three replicas were starting during report preparation, with no four-node-health or scaling claim."
+  ],
+  "server_common_except_speculation": {
+    "max_model_len": 16384,
+    "max_num_seqs": 25,
+    "max_num_batched_tokens": 4096,
+    "gpu_memory_utilization": 0.7,
+    "moe_backend": "marlin",
+    "kv_cache_dtype": "fp8",
+    "mamba_backend": "flashinfer",
+    "mamba_cache_mode": "align",
+    "prefix_caching": true
+  }
+}

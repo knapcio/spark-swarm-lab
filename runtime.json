@@ -24,8 +24,9 @@
     "max_tokens": 192,
     "chat_template_kwargs": {"enable_thinking": false}
   },
-  "dspark_candidate": {
-    "status": "Prepared candidate; deployment and performance validation pending",
+  "active_recipe": "dspark3",
+  "dspark": {
+    "status": "Verified healthy on Spark_01–04; same-node c25 median throughput +51.40% over target-only",
     "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
     "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
     "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
@@ -35,5 +36,5 @@
     "method": "dspark",
     "num_speculative_tokens": 3
   },
-  "note": "Pilot settings. The baseline records the target-only configuration; DSpark is a prospective candidate pending validation. Read the recorded run and serving probe for verified results."
+  "note": "The baseline records the original target-only configuration. Active serving uses DSpark3 with otherwise identical settings. See SERVING.md and recorded probes for measurement scope."
 }
