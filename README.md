@@ -1,5 +1,10 @@
 # Swarm Lab: exact arithmetic, visible decisions
 
+**Research in progress.** A new solo-versus-swarm comparison is running on a
+frozen development/evaluation dataset. Existing results below are exploratory;
+they do not establish a generally superior agent architecture. See
+[EXPERIMENT_PLAN.md](EXPERIMENT_PLAN.md) for the current protocol.
+
 A standard-library Python prototype comparing independent search trajectories,
 LLM democracy, and voting weighted by previous objectively scored games. No
 model-written code is executed. The arithmetic evaluator uses `fractions.Fraction`.
