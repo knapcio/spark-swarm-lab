@@ -35,7 +35,13 @@ API seeds do not guarantee identical GPU execution.
 
 ## Current evidence
 
-**Current serving recipe: DSpark3 on four replicas**, with the same pinned target and vLLM image. Three same-node c25 repeats measured a median **528.02 output tokens/s**, versus **348.76** target-only (**+51.40%**). All four endpoints passed health and a real function-call round trip; the four-node short JSON probe returned **100/100 correct**. These are serving checks, not evidence of better reasoning. See [SERVING.md](SERVING.md) for prompts, raw reports, pins and limits. The original pilot below used target-only serving.
+**Current runtime: vLLM 0.32.0 ARM64, DSpark3, four independent replicas.** The uniform runtime-v2 primary study has completed all **900 attempts**, plus **80 supplemental solo-control attempts** (8 development and 72 evaluation). The separate loaded-queue study is still running; there is no final solutions-per-minute winner yet. [Progress and exclusions](EVALUATION_PROGRESS.md).
+
+The arithmetic primary four-sample reasoning ensemble solved **49/72 attempts (68.1%)**; the supplemental sequential own-feedback control solved **45/72 (62.5%)**, versus **18/72 (25.0%)** for one reasoning call. These are repeated attempts on **24 distinct tasks**, not 72 independent tasks, and realized costs differ. Coding results await independent confirmation after a grader integrity and test-coverage audit; original frozen scores remain separately preserved. [Audit and limitations](CORRECTNESS_AUDIT.md).
+
+The runtime-v2 serving qualification completed **416 mixed requests including warmups**, with **69,158 output tokens / 39.008007 full wall seconds = 1,772.918 output tok/s** and zero recorded transport errors. Separate short-JSON probes passed **100/100 at T0 and 100/100 at T0.8**. These bounded serving checks do not measure task-solving efficiency. The historical v0.27.1 DSpark comparison measured **+51.40%** on its particular matched workload; that is not a measured gain for the current runtime. [Serving reports and exact pins](SERVING.md).
+
+Next, the frozen [graph-search protocol](SEARCH_SELECTION.json) compares independent repair, evolution, reviewer reuse, ordinary voting and quality-weighted voting with exact constraint verification. The optional [reusable-program protocol](PROGRAM_SEARCH_SELECTION.json) compares one self-repair chain with four independent program writers, selecting on development graphs before evaluating frozen programs. Neither experiment has produced model outcomes yet.
 
 The saved four-agent DeepSeek pipeline check (`runs/pipeline-check-deepseek-4.jsonl`, local only)
 made **24 calls**, using **341 completion tokens** and **2,952 prompt tokens**.
@@ -43,8 +49,8 @@ On `2,3,7,8:24`, democracy ended at **31**, so the exact target was not reached.
 This checks the request, voting, evaluator and event pipeline; it is not a
 Nemotron performance result or evidence of method superiority.
 
-The fixed NemotronLightning baseline runs as four healthy TP1 replicas on vLLM
-**v0.27.1**. A short 100-request JSON probe returned **100/100 correct** responses
+The historical target-only NemotronLightning baseline used four TP1 replicas on
+vLLM **v0.27.1**. Its short 100-request JSON probe returned **100/100 correct** responses
 in **1.759 seconds**, with **1,890 completion tokens** and **1,074.43 completion
 tokens/second** aggregate. Server logs recorded a peak of **25 running requests
 per replica**. This measures short-output serving throughput, not puzzle quality.
