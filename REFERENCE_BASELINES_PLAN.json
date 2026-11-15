@@ -6,13 +6,71 @@
   "models": [
     {
       "family": "DeepSeek",
-      "route": "Restore existing owner-authorized local four-Spark production recipe after swarm measurements; verify exact served checkpoint, quantization and runtime before calls",
-      "version": "unknown until verified"
+      "version": "mrfakename/DeepSeek-V4.1-Flash-1017-abliterated",
+      "checkpoint_revision": "517efab9ccfef7f714dbd7d679f181a86f43ccf9",
+      "checkpoint_scope": "Custom abliterated DeepSeek-V4.1-Flash-1017 checkpoint, not the unmodified official model. Identity is saved configuration/small-file download metadata; full weight/rank content identity was not rehashed.",
+      "served_model_id": "deepseek-v4.1-flash",
+      "route": "After the final verified throughput gate and complete job/grader drain, owner-checked stop of the four swarm replicas, then existing native production service start with saved settings while retaining both owned guards. Use a fresh owned loopback tunnel directly to Spark_01:8888/v1; no reference tunnel is established by this preflight.",
+      "runtime": {
+        "serving_stack": "Native pico/dsgb10 C++/CUDA four-rank TP4 engine plus Rust dsfront; not SGLang or a Docker serving image.",
+        "source_base_revision": "f2117916f2a4cac0f79fa41680ebd39bf5d42b51",
+        "engine_sha256": "806b673a40b9dea1f0bfb6c19a41f4823e458bf15bc5503dd610b627b34e6156",
+        "frontend_sha256": "183d5998e1b719acc7a9c33f8bae3f0e917a8349b32ebbd8b8d3b8eb153b8fa6",
+        "source_identity_limit": "Remote native and legacy directories contain no Git metadata. Selected source matches and exact binaries do not prove the full source-to-binary build identity.",
+        "quantization_config": {
+          "quant_method": "fp8",
+          "activation_scheme": "dynamic",
+          "weight_block_size": [
+            32,
+            32
+          ],
+          "scale_fmt": "ue8m0",
+          "expert_dtype": "fp4"
+        }
+      },
+      "access_and_qualification": {
+        "restoration_qualified": false,
+        "actual_reference_inference_tested": false,
+        "configured_head_base_url": "http://127.0.0.1:8888/v1",
+        "live_endpoint_or_served_identity_verified_after_restore": false,
+        "status": "PENDING: recheck source/binary/checkpoint settings, native four-rank health, endpoint/model identity, exclusivity, memory headroom and development-only adapter interoperability before any reference cohort.",
+        "existing_access_scope": "Saved production configuration has no API-key requirement; this is not a current endpoint health or authorization test.",
+        "exclusive_window": "Keep owned no-autostart and fleet_busy guards through the reference. Saved window.sh prod overwrites/deletes fleet_busy; fleet.sh restore releases guards, so neither is the exclusive-window admission procedure. Follow the later dedicated procedure without scheduler/config changes.",
+        "runtime_limits": "Native ring jobs do not honor those markers; existing600s idle lending remains. Reverify native ring ownership and absence of foreign/queued work at boundaries; markers alone do not prove exclusivity.",
+        "memory_and_preservation": "Saved native startup floor100GiB available per node; actual restored headroom and CPU grading remain unqualified. Preserve NFS, bee and05/06; verify later rather than infer future health from source scope."
+      },
+      "receipt_files": [
+        "deepseek-restore-preflight-20261115.json",
+        "deepseek-reference-exclusive-preflight.json",
+        "deepseek-reference-exclusive-procedure.md"
+      ]
     },
     {
       "family": "Claude Opus",
-      "route": "Verify current exact available model and existing authorized provider access before calls",
-      "version": "unknown until verified; do not assume the suggested5.5 identifier exists"
+      "version": "claude-opus-5-5",
+      "route": "Existing authenticated Claude Code CLI2.1.325 print mode with explicit claude-opus-5-5, safe/restricted isolation and the existing reference transport adapter; no API-key, login, subscription or account changes.",
+      "cli_version": "2.1.325 (Claude Code)",
+      "provider_hostname": "api.anthropic.com",
+      "settings_scope": "Medium effort, adaptive always-on reasoning;8192 per-process output cap. Temperature and provider seed are unsupported/not forwarded; repetition seeds are labels.",
+      "access_and_qualification": {
+        "auth_present": true,
+        "auth_with_safe_restricted_flags": true,
+        "messages_api_key_access_established": false,
+        "actual_reference_inference_tested": false,
+        "opus_entitlement_verified_by_inference": false,
+        "observed_custom_proxy_or_local_deepseek_remap": false,
+        "routing_limit": "Auth status identifies first-party provider and no inspected environment/user/project override or transport proxy is present. Actual response model identity, network destination, entitlement and server-side instructions remain untested.",
+        "managed_policy_limit": "No system managed-settings.json file observed. Remotely supplied or macOS managed policy was not enumerated; managed hooks can override ordinary disableAllHooks and remain an isolation preflight caveat.",
+        "actual_response_requirement": "Before accepting any clean result, existing strict adapter requires one actual modelUsage identity canonicalModel claude-opus-5-5/provider firstParty and num_turns1. No fallback or relaxed identity checks. Entitlement, runtime output/turn caps, retry/auxiliary usage and actual isolation require later development interoperability evidence."
+      },
+      "primary_urls": [
+        "https://platform.claude.com/docs/en/models/opus-5-5/overview",
+        "https://code.claude.com/docs/en/cli-reference",
+        "https://code.claude.com/docs/en/headless"
+      ],
+      "receipt_files": [
+        "opus-access-preflight-20261115.json"
+      ]
     }
   ],
   "tasks": {
@@ -67,5 +125,17 @@
     "provenance": "Per-case separate .grader-context.json records wrapper, outer-grader and frozen-module SHA256 values, pinned CPU image, grading_authority outer_parent and oracle_sent_to_child false. Runner adapter pins include both new grader files.",
     "comparison": "Compare new outer-graded coding references with independently regraded Nemotron confirmation. Preserve and label original frozen same-interpreter grades separately; do not replace original scores.",
     "limitation": "Outer comparison prevents oracle exposure and child-authored grades. Child-reported return values, exception names and input-after observations are not authenticated against arbitrary interpreter tampering; finite tests do not prove general correctness."
+  },
+  "pre_call_identity_refresh": {
+    "recorded_utc": "2026-11-15T21:37:48.458736+00:00",
+    "scope": "Prospective documentation of already saved read-only command/source/model-doc evidence; no model request, restoration, endpoint health call, new web/SSH access or bound-source change in this refresh.",
+    "evidence_sha256": {
+      "opus-access-preflight-20261115.json": "ecf9bd37abfecca5fa70396541e5a99747314a87ba369200480ae68993406d8f",
+      "deepseek-restore-preflight-20261115.json": "9264be9143aa2045a6bc1e6ab128b3272576601de4348a52eb8475c4e27050a4",
+      "deepseek-reference-exclusive-preflight.json": "1bd937841ce10aaf5b8be8d47ca72937b7e319999b7f8a508d8a8b7699ca7bf6",
+      "deepseek-reference-exclusive-procedure.md": "0b9999c0a0103708eec185017402f3257c2d76a0d725b219887e5cc4c4b61992"
+    },
+    "evidence_order": "The later exclusive DeepSeek preflight/procedure supersedes the earlier restore preflight recommendation to release guards or invoke fleet.sh restore. Earlier identity and binary evidence remains scoped as recorded.",
+    "status": "Both126-case references remain unexecuted and gated. Saved authentication/configuration does not establish actual inference entitlement, restored service qualification or an observed model result."
   }
 }
