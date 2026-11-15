@@ -23,6 +23,7 @@ ARMS = {
     "solo_steps_off": ("independent", 1, False), "solo_steps_thinking": ("independent", 1, True),
     "direct_thinking_8k": ("direct", 1, True),
     "solo_steps_thinking_8k": ("independent", 1, True),
+    "solo_refine_thinking_8k": ("refine", 1, True),
     "independent8": ("independent", 8, False),
     "independent_rounds8": ("independent_rounds", 8, False),
     "democracy8": ("democracy", 8, False), "shared8": ("shared", 8, False),

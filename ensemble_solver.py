@@ -1,6 +1,39 @@
-"""Whole-plan sampling and a cheap-search-then-reasoning cascade."""
+"""Whole-plan sampling, sequential refinement, and a cheap/reasoning cascade."""
+import json
+
 from direct_solver import run_direct
 from shared_search import run_rounds
+
+
+def run_refine(experiment, initial, puzzle_id):
+    """At most four own full plans, using exact verification feedback only."""
+    e, feedback_text, attempts = experiment, "", []
+    if e.args.agents != 1:
+        raise ValueError("refine requires exactly one agent")
+    e.events.emit("phase_start", puzzle_id=puzzle_id, phase="sequential_full_plan_refinement",
+                  agents=1, max_plans=4, thinking=e.client.thinking, max_tokens=e.client.max_tokens)
+    for revision in range(4):
+        e.events.emit("plan_revision", puzzle_id=puzzle_id, agent_id=0,
+                      phase="sequential_full_plan_refinement", plan_revision=revision,
+                      feedback_text=feedback_text)
+        result = run_direct(e, initial, puzzle_id, agent_id=0,
+                            feedback_text=feedback_text, plan_revision=revision)
+        attempts.append(result)
+        e.events.emit("plan_revision_complete", puzzle_id=puzzle_id, agent_id=0,
+                      plan_revision=revision, solved=result["solved"],
+                      validation_error=result["validation_error"], final_state=result["final_state"])
+        if result["solved"] or revision == 3:
+            break
+        feedback_text = (
+            f"Full-plan attempt {revision + 2} of 4. Revise only your own previous plan. "
+            "The following is exact verification feedback, not a proof that other plans are impossible.\n"
+            f"Verifier error: {result['validation_error']}\n"
+            f"Verified final state: {json.dumps(result['final_state'])}\n"
+            f"Your previous parsed plan: {json.dumps(result['plan'], ensure_ascii=False)}"
+        )[:3999]
+    e.events.emit("phase_end", puzzle_id=puzzle_id, phase="sequential_full_plan_refinement",
+                  solved=result["solved"], plans=len(attempts))
+    return dict(result, policy="sequential_full_plan_refinement", plan_attempts=len(attempts))
 
 
 def run_ensemble(experiment, initial, puzzle_id):

@@ -7,6 +7,7 @@ import unittest
 
 import harness as h
 from direct_solver import run_direct
+from unittest.mock import patch
 
 
 class DirectTests(unittest.TestCase):
@@ -45,6 +46,43 @@ class DirectTests(unittest.TestCase):
                 self.assertFalse(result["solved"])
                 self.assertEqual(calls, ["plan"])
                 self.assertFalse(any(r["type"] == "chosen" for r in rows))
+
+    def test_default_prompt_unchanged_and_opt_in_feedback_is_bounded(self):
+        class Client:
+            def __init__(self): self.prompts = []
+            def call(self, agent, stage, prompt, **context):
+                self.prompts.append(prompt)
+                return {"moves": []}
+        with tempfile.TemporaryDirectory() as directory:
+            events = h.Events(Path(directory) / "events.jsonl", "direct")
+            args = argparse.Namespace(agents=1, target=24, rounds=3, allow_fractions=False, seed=1)
+            client = Client()
+            experiment = h.Experiment(args, client, events)
+            try:
+                state = tuple(map(F, (2, 3, 7, 8)))
+                result = run_direct(experiment, state, "same-puzzle")
+                run_direct(experiment, state, "same-puzzle", feedback_text="x" * 10000)
+            finally:
+                experiment.pool.shutdown()
+                events.close()
+        expected = ("Target 24. Current indexed numbers: {0: '2', 1: '3', 2: '7', 3: '8'}. "
+            "Give one complete plan to reach the target using any subset of numbers. "
+            "Each move consumes two different indexed numbers and appends their result; "
+            "remaining numbers keep their order and are reindexed from zero. "
+            "Use +,-,*,/. Every intermediate result must be positive integer. "
+            "Use at most 3 moves. Return only a JSON object with key moves, "
+            "an array of objects with integer indices i,j and single-character operator op.")
+        self.assertEqual(client.prompts[0], expected)
+        self.assertEqual(client.prompts[1], expected + "\n" + "x" * 3999)
+        self.assertEqual(result["plan"], {"moves": []})
+        self.assertEqual(result["validation_error"], "Expected a bounded nonempty moves array")
+
+    def test_plan_code_is_data_not_executed(self):
+        with patch("os.system") as system:
+            result, _, _ = self.trial({"moves": [{"i": 0, "j": 1, "op": "__import__('os').system('id')"}]})
+        system.assert_not_called()
+        self.assertFalse(result["solved"])
+        self.assertEqual(result["validation_error"], "unsupported operator")
 
 
 if __name__ == "__main__":

@@ -270,9 +270,9 @@ class Experiment:
         return dict(agent_id=agent_id, solved=success, node_id=node_id, distance=str(distance))
 
     def run(self, initial, puzzle_id, method):
-        if method in ("ensemble", "cascade"):
-            from ensemble_solver import run_ensemble, run_cascade
-            return (run_ensemble if method == "ensemble" else run_cascade)(self, initial, puzzle_id)
+        if method in ("ensemble", "cascade", "refine"):
+            from ensemble_solver import run_ensemble, run_cascade, run_refine
+            return {"ensemble": run_ensemble, "cascade": run_cascade, "refine": run_refine}[method](self, initial, puzzle_id)
         if method == "direct":
             from direct_solver import run_direct
             return run_direct(self, initial, puzzle_id)
@@ -380,7 +380,7 @@ def fingerprint(state, target):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--method", choices=["direct", "ensemble", "cascade", "independent", "independent_rounds", "shared",
+    parser.add_argument("--method", choices=["direct", "refine", "ensemble", "cascade", "independent", "independent_rounds", "shared",
                                            "democracy", "weighted", "calibrate"], required=True)
     parser.add_argument("--endpoint", action="append", required=True, help="Repeat OpenAI base URLs ending /v1")
     parser.add_argument("--model", required=True)
@@ -401,8 +401,8 @@ def main(argv=None):
                         help="Accept an already-proposed exact target before voting; default off")
     parser.add_argument("--events", required=True, help="New JSONL file; refuses overwrite")
     args = parser.parse_args(argv)
-    if args.method == "direct" and args.agents != 1:
-        parser.error("direct is the single-call baseline; use --agents 1")
+    if args.method in ("direct", "refine") and args.agents != 1:
+        parser.error("direct and refine require --agents 1")
     if any(x <= 0 for x in (args.agents, args.per_endpoint_concurrency, args.rounds,
                             args.max_tokens, args.max_calls, args.max_completion_tokens, args.timeout)):
         parser.error("counts, limits and timeout must be positive")
