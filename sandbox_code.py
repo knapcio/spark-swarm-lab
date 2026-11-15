@@ -14,7 +14,7 @@ import shlex
 import subprocess
 import uuid
 
-IMAGE = "vllm/vllm-openai@sha256:1c8e60a0841b333c700488cb029d3664807249da0c071e862191b00fe34b228c"
+IMAGE = "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd"
 OWNER = "swarm-lab-code-eval"
 
 
