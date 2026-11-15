@@ -1,0 +1,888 @@
+{
+  "protocol": "original-python-functions-v1",
+  "generator_seed": 20261115,
+  "generator_sha256": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6",
+  "authorship": "Original author-written synthetic tasks; no external benchmark content.",
+  "rules": "Python 3 pure functions; positional args; no input mutation or external I/O. Outputs use exact JSON types: bool differs from int, integers are not floats, arrays must be Python lists, object keys strings. Ordered array results must match exactly; dictionary key order is checked only when a case explicitly requires it.",
+  "limitations": "Difficulty descriptions are descriptive, not empirically calibrated. Hidden expected values use trusted references, not an independent correctness proof.",
+  "tasks": [
+    {
+      "id": "dev-stable_unique",
+      "split": "development",
+      "function_name": "stable_unique",
+      "spec": "Input is a list of integers. Return each distinct value once, in first-occurrence order; empty returns [].",
+      "examples": [
+        {
+          "args": [
+            [
+              2,
+              -1,
+              2,
+              3,
+              -1
+            ]
+          ],
+          "expected": [
+            2,
+            -1,
+            3
+          ]
+        },
+        {
+          "args": [
+            []
+          ],
+          "expected": []
+        }
+      ],
+      "difficulty_description": "basic-order"
+    },
+    {
+      "id": "dev-run_length",
+      "split": "development",
+      "function_name": "run_length",
+      "spec": "Run-length encode adjacent equal Unicode code points as [character,count] pairs. No normalization; empty returns [].",
+      "examples": [
+        {
+          "args": [
+            "aaééa"
+          ],
+          "expected": [
+            [
+              "a",
+              2
+            ],
+            [
+              "é",
+              2
+            ],
+            [
+              "a",
+              1
+            ]
+          ]
+        },
+        {
+          "args": [
+            ""
+          ],
+          "expected": []
+        }
+      ],
+      "difficulty_description": "basic-unicode"
+    },
+    {
+      "id": "dev-merge_intervals",
+      "split": "development",
+      "function_name": "merge_intervals",
+      "spec": "Input integer endpoint pairs. Normalize each pair to [min,max], sort, merge intervals that overlap or share an endpoint; adjacency alone does not merge. Return sorted pairs; empty [].",
+      "examples": [
+        {
+          "args": [
+            [
+              [
+                5,
+                2
+              ],
+              [
+                1,
+                3
+              ],
+              [
+                8,
+                9
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              1,
+              5
+            ],
+            [
+              8,
+              9
+            ]
+          ]
+        },
+        {
+          "args": [
+            []
+          ],
+          "expected": []
+        }
+      ],
+      "difficulty_description": "sorting-boundaries"
+    },
+    {
+      "id": "dev-top_k_frequent",
+      "split": "development",
+      "function_name": "top_k_frequent",
+      "spec": "Input integer list and integer k. Return up to k distinct values by descending count; ties follow first occurrence in input. k<=0 or empty returns [].",
+      "examples": [
+        {
+          "args": [
+            [
+              3,
+              1,
+              3,
+              2,
+              1
+            ],
+            2
+          ],
+          "expected": [
+            3,
+            1
+          ]
+        },
+        {
+          "args": [
+            [
+              1,
+              2
+            ],
+            0
+          ],
+          "expected": []
+        }
+      ],
+      "difficulty_description": "counting-ties"
+    },
+    {
+      "id": "dev-moving_sums",
+      "split": "development",
+      "function_name": "moving_sums",
+      "spec": "Input integer list and integer width. Return sums of each contiguous full-width window, left to right. width<=0 or width>length returns []; no padding.",
+      "examples": [
+        {
+          "args": [
+            [
+              1,
+              -2,
+              4,
+              3
+            ],
+            2
+          ],
+          "expected": [
+            -1,
+            2,
+            7
+          ]
+        },
+        {
+          "args": [
+            [
+              1,
+              2
+            ],
+            3
+          ],
+          "expected": []
+        }
+      ],
+      "difficulty_description": "window-boundaries"
+    },
+    {
+      "id": "dev-parse_version",
+      "split": "development",
+      "function_name": "parse_version",
+      "spec": "Input a string. Accept only one or more ASCII decimal digits per dot-separated component, no whitespace/signs/empty components. Return integer components, preserving trailing zeros; invalid returns None. Unicode digits are invalid.",
+      "examples": [
+        {
+          "args": [
+            "01.2.0"
+          ],
+          "expected": [
+            1,
+            2,
+            0
+          ]
+        },
+        {
+          "args": [
+            "1..2"
+          ],
+          "expected": null
+        }
+      ],
+      "difficulty_description": "ascii-validation"
+    },
+    {
+      "id": "eva-stable_group_pairs",
+      "split": "evaluation",
+      "function_name": "stable_group_pairs",
+      "spec": "Input [string_key,integer_value] pairs. Group values by exact key, preserving first key appearance and value order. Return [key,values] pairs; empty []. No Unicode normalization.",
+      "examples": [
+        {
+          "args": [
+            [
+              [
+                "b",
+                2
+              ],
+              [
+                "a",
+                1
+              ],
+              [
+                "b",
+                3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "b",
+              [
+                2,
+                3
+              ]
+            ],
+            [
+              "a",
+              [
+                1
+              ]
+            ]
+          ]
+        },
+        {
+          "args": [
+            []
+          ],
+          "expected": []
+        }
+      ],
+      "difficulty_description": "grouping-order"
+    },
+    {
+      "id": "eva-rotate_matrix",
+      "split": "evaluation",
+      "function_name": "rotate_matrix",
+      "spec": "Input a rectangular integer matrix. Return its 90-degree clockwise rotation. [] and matrices with zero columns return []; rows are guaranteed equal length.",
+      "examples": [
+        {
+          "args": [
+            [
+              [
+                1,
+                2,
+                3
+              ],
+              [
+                4,
+                5,
+                6
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              4,
+              1
+            ],
+            [
+              5,
+              2
+            ],
+            [
+              6,
+              3
+            ]
+          ]
+        },
+        {
+          "args": [
+            []
+          ],
+          "expected": []
+        }
+      ],
+      "difficulty_description": "matrix-shapes"
+    },
+    {
+      "id": "eva-longest_unique_span",
+      "split": "evaluation",
+      "function_name": "longest_unique_span",
+      "spec": "Return the longest contiguous substring with no repeated Unicode code point; choose earliest starting position on a length tie. Empty returns ''. No normalization.",
+      "examples": [
+        {
+          "args": [
+            "abba"
+          ],
+          "expected": "ab"
+        },
+        {
+          "args": [
+            "🙂a🙂b"
+          ],
+          "expected": "a🙂b"
+        }
+      ],
+      "difficulty_description": "substring-ties"
+    },
+    {
+      "id": "eva-balanced_brackets",
+      "split": "evaluation",
+      "function_name": "balanced_brackets",
+      "spec": "For a string, return whether (), [] and {} are properly nested and closed. Ignore every other Unicode code point. Empty/no brackets returns True.",
+      "examples": [
+        {
+          "args": [
+            "a([{}])é"
+          ],
+          "expected": true
+        },
+        {
+          "args": [
+            "([)]"
+          ],
+          "expected": false
+        }
+      ],
+      "difficulty_description": "stack-state"
+    },
+    {
+      "id": "eva-dedupe_by_last",
+      "split": "evaluation",
+      "function_name": "dedupe_by_last",
+      "spec": "Input [string_key,integer_value] records. Keep only the last record for each exact key. Order output records by their last-occurrence positions in the original input. Empty [].",
+      "examples": [
+        {
+          "args": [
+            [
+              [
+                "a",
+                1
+              ],
+              [
+                "b",
+                2
+              ],
+              [
+                "a",
+                3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "b",
+              2
+            ],
+            [
+              "a",
+              3
+            ]
+          ]
+        },
+        {
+          "args": [
+            []
+          ],
+          "expected": []
+        }
+      ],
+      "difficulty_description": "record-order"
+    },
+    {
+      "id": "eva-collapse_whitespace",
+      "split": "evaluation",
+      "function_name": "collapse_whitespace",
+      "spec": "Collapse runs of ASCII space, tab, LF, CR, vertical tab and form feed into one ASCII space and strip only those characters at both ends. Preserve all other code points including NBSP; no normalization.",
+      "examples": [
+        {
+          "args": [
+            " \ta\n b  "
+          ],
+          "expected": "a b"
+        },
+        {
+          "args": [
+            " a "
+          ],
+          "expected": " a "
+        }
+      ],
+      "difficulty_description": "ascii-unicode-boundary"
+    },
+    {
+      "id": "eva-natural_sort_strings",
+      "split": "evaluation",
+      "function_name": "natural_sort_strings",
+      "spec": "Split strings into maximal ASCII-digit and non-digit runs. Compare digit runs by integer value, non-digit runs by case-sensitive Unicode lexical order; text tokens sort before numeric tokens when kinds differ. Shorter equal-prefix token lists sort first; equal keys preserve input order. Empty strings allowed; Unicode digits are text.",
+      "examples": [
+        {
+          "args": [
+            [
+              "x10",
+              "x2",
+              "x02",
+              "x1"
+            ]
+          ],
+          "expected": [
+            "x1",
+            "x2",
+            "x02",
+            "x10"
+          ]
+        },
+        {
+          "args": [
+            [
+              "2",
+              "a",
+              "",
+              "1"
+            ]
+          ],
+          "expected": [
+            "",
+            "a",
+            "1",
+            "2"
+          ]
+        }
+      ],
+      "difficulty_description": "token-sort-ties"
+    },
+    {
+      "id": "eva-zip_longest_sum",
+      "split": "evaluation",
+      "function_name": "zip_longest_sum",
+      "spec": "Input two integer lists. Sum corresponding entries, treating missing entries as zero; return length=max(input lengths). Both empty returns [].",
+      "examples": [
+        {
+          "args": [
+            [
+              1,
+              -2
+            ],
+            [
+              3,
+              4,
+              5
+            ]
+          ],
+          "expected": [
+            4,
+            2,
+            5
+          ]
+        },
+        {
+          "args": [
+            [],
+            []
+          ],
+          "expected": []
+        }
+      ],
+      "difficulty_description": "unequal-lengths"
+    },
+    {
+      "id": "eva-invert_index",
+      "split": "evaluation",
+      "function_name": "invert_index",
+      "spec": "Input [unique_string_key,list_of_strings] groups. Return [value,source_keys] pairs: values ordered by first encounter scanning groups then their lists, source keys by group order with no duplicates per value. Exact Unicode equality; empty [].",
+      "examples": [
+        {
+          "args": [
+            [
+              [
+                "a",
+                [
+                  "x",
+                  "x",
+                  "y"
+                ]
+              ],
+              [
+                "b",
+                [
+                  "y",
+                  "z"
+                ]
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "x",
+              [
+                "a"
+              ]
+            ],
+            [
+              "y",
+              [
+                "a",
+                "b"
+              ]
+            ],
+            [
+              "z",
+              [
+                "b"
+              ]
+            ]
+          ]
+        },
+        {
+          "args": [
+            []
+          ],
+          "expected": []
+        }
+      ],
+      "difficulty_description": "inverse-dedup-order"
+    },
+    {
+      "id": "eva-range_compress",
+      "split": "evaluation",
+      "function_name": "range_compress",
+      "spec": "Input integers in any order, with duplicates. Sort distinct values and compress maximal consecutive integer runs into [start,end] pairs. Empty [].",
+      "examples": [
+        {
+          "args": [
+            [
+              4,
+              2,
+              3,
+              2,
+              -1,
+              0
+            ]
+          ],
+          "expected": [
+            [
+              -1,
+              0
+            ],
+            [
+              2,
+              4
+            ]
+          ]
+        },
+        {
+          "args": [
+            []
+          ],
+          "expected": []
+        }
+      ],
+      "difficulty_description": "integer-ranges"
+    },
+    {
+      "id": "eva-prefix_totals",
+      "split": "evaluation",
+      "function_name": "prefix_totals",
+      "spec": "Input integer list. Return cumulative totals including an initial zero, so output length is input length+1. Empty returns [0].",
+      "examples": [
+        {
+          "args": [
+            [
+              2,
+              -3,
+              4
+            ]
+          ],
+          "expected": [
+            0,
+            2,
+            -1,
+            3
+          ]
+        },
+        {
+          "args": [
+            []
+          ],
+          "expected": [
+            0
+          ]
+        }
+      ],
+      "difficulty_description": "prefix-boundaries"
+    },
+    {
+      "id": "eva-select_nth_distinct",
+      "split": "evaluation",
+      "function_name": "select_nth_distinct",
+      "spec": "Input integer list and integer n. Return the zero-based nth smallest distinct value; n<0 or n>=distinct count returns None. Empty returns None.",
+      "examples": [
+        {
+          "args": [
+            [
+              4,
+              1,
+              4,
+              -2
+            ],
+            1
+          ],
+          "expected": 1
+        },
+        {
+          "args": [
+            [
+              1,
+              2
+            ],
+            -1
+          ],
+          "expected": null
+        }
+      ],
+      "difficulty_description": "selection-invalid-index"
+    },
+    {
+      "id": "eva-word_count_ascii",
+      "split": "evaluation",
+      "function_name": "word_count_ascii",
+      "spec": "Words are maximal original-input runs of ASCII letters A-Z/a-z; all other code points, including Unicode letters, delimit words. Lowercase ASCII words and return [word,count] pairs sorted lexically. Empty/no words returns [].",
+      "examples": [
+        {
+          "args": [
+            "Hi, HI! café"
+          ],
+          "expected": [
+            [
+              "caf",
+              1
+            ],
+            [
+              "hi",
+              2
+            ]
+          ]
+        },
+        {
+          "args": [
+            "123_é"
+          ],
+          "expected": []
+        }
+      ],
+      "difficulty_description": "ascii-tokenization"
+    },
+    {
+      "id": "eva-flatten_depth",
+      "split": "evaluation",
+      "function_name": "flatten_depth",
+      "spec": "Input a list of JSON scalars/nested lists and integer depth. Flatten list-valued elements by one layer per step, at most depth steps; depth<=0 returns an equal list. Do not flatten strings or dicts (dict inputs excluded). Preserve order and scalars including None/bools.",
+      "examples": [
+        {
+          "args": [
+            [
+              1,
+              [
+                2,
+                [
+                  3
+                ]
+              ],
+              null
+            ],
+            1
+          ],
+          "expected": [
+            1,
+            2,
+            [
+              3
+            ],
+            null
+          ]
+        },
+        {
+          "args": [
+            [
+              "ab",
+              [
+                true,
+                []
+              ]
+            ],
+            0
+          ],
+          "expected": [
+            "ab",
+            [
+              true,
+              []
+            ]
+          ]
+        }
+      ],
+      "difficulty_description": "nested-json"
+    },
+    {
+      "id": "eva-transpose_records",
+      "split": "evaluation",
+      "function_name": "transpose_records",
+      "spec": "Input list of dicts with string keys and JSON scalar values. Discover keys by record order and each dict's insertion order. Return [key,column] pairs, each column containing that key's value per record or None if absent. Empty input/only empty dicts returns [].",
+      "examples": [
+        {
+          "args": [
+            [
+              {
+                "b": 2
+              },
+              {
+                "a": 1,
+                "b": 3
+              }
+            ]
+          ],
+          "expected": [
+            [
+              "b",
+              [
+                2,
+                3
+              ]
+            ],
+            [
+              "a",
+              [
+                null,
+                1
+              ]
+            ]
+          ]
+        },
+        {
+          "args": [
+            []
+          ],
+          "expected": []
+        }
+      ],
+      "difficulty_description": "missing-record-fields"
+    },
+    {
+      "id": "eva-min_covering_window",
+      "split": "evaluation",
+      "function_name": "min_covering_window",
+      "spec": "Input integer lists values and required. Return [start,end) indices of shortest contiguous window containing required with its multiplicities; ties choose earliest start. required=[] returns [0,0]; impossible returns None.",
+      "examples": [
+        {
+          "args": [
+            [
+              1,
+              2,
+              1,
+              3,
+              2
+            ],
+            [
+              1,
+              2
+            ]
+          ],
+          "expected": [
+            0,
+            2
+          ]
+        },
+        {
+          "args": [
+            [
+              1,
+              2
+            ],
+            [
+              1,
+              1
+            ]
+          ],
+          "expected": null
+        }
+      ],
+      "difficulty_description": "multiset-window"
+    },
+    {
+      "id": "eva-apply_edits",
+      "split": "evaluation",
+      "function_name": "apply_edits",
+      "spec": "Input Unicode text and valid non-overlapping [start,end,replacement] edits sorted by start. Indices are code-point offsets into ORIGINAL text, 0<=start<=end<=len(text); same-start edits excluded. Apply simultaneously using half-open intervals; start=end inserts. Preserve untouched text; no normalization.",
+      "examples": [
+        {
+          "args": [
+            "abcd",
+            [
+              [
+                1,
+                2,
+                "X"
+              ],
+              [
+                3,
+                4,
+                ""
+              ]
+            ]
+          ],
+          "expected": "aXc"
+        },
+        {
+          "args": [
+            "é🙂",
+            [
+              [
+                1,
+                1,
+                "!"
+              ]
+            ]
+          ],
+          "expected": "é!🙂"
+        }
+      ],
+      "difficulty_description": "original-index-edits"
+    },
+    {
+      "id": "eva-interleave_lists",
+      "split": "evaluation",
+      "function_name": "interleave_lists",
+      "spec": "Input list of integer lists. Take index 0 from each nonempty list in input order, then index 1 from each long enough list, and continue until exhausted. Preserve duplicates/negatives. Empty/all empty returns [].",
+      "examples": [
+        {
+          "args": [
+            [
+              [
+                1,
+                2
+              ],
+              [],
+              [
+                3,
+                4,
+                5
+              ]
+            ]
+          ],
+          "expected": [
+            1,
+            3,
+            2,
+            4,
+            5
+          ]
+        },
+        {
+          "args": [
+            []
+          ],
+          "expected": []
+        }
+      ],
+      "difficulty_description": "ragged-round-robin"
+    }
+  ]
+}

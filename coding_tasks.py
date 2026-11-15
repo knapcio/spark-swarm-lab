@@ -11,10 +11,8 @@ import re
 
 PROTOCOL = "original-python-functions-v1"
 
-
 def stable_unique(values):
     return list(dict.fromkeys(values))
-
 
 def run_length(text):
     out = []
@@ -23,7 +21,6 @@ def run_length(text):
         else: out.append([ch, 1])
     return out
 
-
 def merge_intervals(intervals):
     out = []
     for start, end in sorted([sorted(pair) for pair in intervals]):
@@ -31,28 +28,22 @@ def merge_intervals(intervals):
         else: out.append([start, end])
     return out
 
-
 def top_k_frequent(values, k):
     return sorted(set(values), key=lambda v: (-values.count(v), values.index(v)))[:max(0, k)]
-
 
 def moving_sums(values, width):
     return [sum(values[i:i+width]) for i in range(len(values)-width+1)] if width > 0 else []
 
-
 def parse_version(text):
     return list(map(int, text.split("."))) if re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", text) else None
-
 
 def stable_group_pairs(pairs):
     groups = {}
     for key, value in pairs: groups.setdefault(key, []).append(value)
     return [[key, values] for key, values in groups.items()]
 
-
 def rotate_matrix(matrix):
     return [list(row) for row in zip(*matrix[::-1])] if matrix else []
-
 
 def longest_unique_span(text):
     best = ""
@@ -62,7 +53,6 @@ def longest_unique_span(text):
         if end-start > len(best): best = text[start:end]
     return best
 
-
 def balanced_brackets(text):
     stack, pairs = [], {")": "(", "]": "[", "}": "{"}
     for ch in text:
@@ -71,17 +61,14 @@ def balanced_brackets(text):
             if not stack or stack.pop() != pairs[ch]: return False
     return not stack
 
-
 def dedupe_by_last(records):
     out, seen = [], set()
     for key, value in reversed(records):
         if key not in seen: out.append([key, value]); seen.add(key)
     return out[::-1]
 
-
 def collapse_whitespace(text):
     return re.sub(r"[ \t\n\r\v\f]+", " ", text).strip(" \t\n\r\v\f")
-
 
 def natural_sort_strings(strings):
     def key(text):
@@ -89,10 +76,8 @@ def natural_sort_strings(strings):
                 for part in re.split("([0-9]+)", text) if part]
     return sorted(strings, key=key)
 
-
 def zip_longest_sum(left, right):
     return [(left[i] if i < len(left) else 0)+(right[i] if i < len(right) else 0) for i in range(max(len(left), len(right)))]
-
 
 def invert_index(groups):
     out = {}
@@ -102,7 +87,6 @@ def invert_index(groups):
             if key not in sources: sources.append(key)
     return [[value, sources] for value, sources in out.items()]
 
-
 def range_compress(values):
     out = []
     for value in sorted(set(values)):
@@ -110,22 +94,18 @@ def range_compress(values):
         else: out.append([value, value])
     return out
 
-
 def prefix_totals(values):
     out = [0]
     for value in values: out.append(out[-1]+value)
     return out
 
-
 def select_nth_distinct(values, n):
     ordered = sorted(set(values))
     return ordered[n] if 0 <= n < len(ordered) else None
 
-
 def word_count_ascii(text):
     counts = Counter(word.lower() for word in re.findall("[A-Za-z]+", text, flags=re.ASCII))
     return [[word, counts[word]] for word in sorted(counts)]
-
 
 def flatten_depth(values, depth):
     out = list(values)
@@ -133,11 +113,9 @@ def flatten_depth(values, depth):
         out = [child for value in out for child in (value if isinstance(value, list) else [value])]
     return out
 
-
 def transpose_records(records):
     keys = list(dict.fromkeys(key for record in records for key in record))
     return [[key, [record.get(key) for record in records]] for key in keys]
-
 
 def min_covering_window(values, required):
     if not required: return [0, 0]
@@ -151,16 +129,13 @@ def min_covering_window(values, required):
                 break
     return best
 
-
 def apply_edits(text, edits):
     out, cursor = [], 0
     for start, end, replacement in edits: out.extend([text[cursor:start], replacement]); cursor = end
     return "".join(out)+text[cursor:]
 
-
 def interleave_lists(chunks):
     return [chunk[i] for i in range(max(map(len, chunks), default=0)) for chunk in chunks if i < len(chunk)]
-
 
 def ints(r): return [r.randint(-4, 6) for _ in range(r.randrange(9))]
 def text(r): return "".join(r.choice("abAAé🙂\u0301 \t\u00a0") for _ in range(r.randrange(12)))
@@ -192,10 +167,17 @@ TASKS = [
  (flatten_depth,"nested-json","Input a list of JSON scalars/nested lists and integer depth. Flatten list-valued elements by one layer per step, at most depth steps; depth<=0 returns an equal list. Do not flatten strings or dicts (dict inputs excluded). Preserve order and scalars including None/bools.", [([[1,[2,[3]],None],1],[1,2,[3],None]),([["ab",[True,[]]],0],["ab",[True,[]]])], [[[],3],[[[[]],False],2]],lambda r:[[r.randint(-3,3),[r.randint(0,4),[None,"é"]],True],r.randint(-1,4)]),
  (transpose_records,"missing-record-fields","Input list of dicts with string keys and JSON scalar values. Discover keys by record order and each dict's insertion order. Return [key,column] pairs, each column containing that key's value per record or None if absent. Empty input/only empty dicts returns [].", [([[{"b":2},{"a":1,"b":3}]],[["b",[2,3]],["a",[None,1]]]),([[]],[])], [[[{},{}]],[[{"é":None},{"a":-1}]]],lambda r:[[{k:r.randint(-3,3) for k in ["a","é","b"] if r.randrange(2)} for _ in range(r.randrange(5))]]),
  (min_covering_window,"multiset-window","Input integer lists values and required. Return [start,end) indices of shortest contiguous window containing required with its multiplicities; ties choose earliest start. required=[] returns [0,0]; impossible returns None.", [([[1,2,1,3,2],[1,2]],[0,2]),([[1,2],[1,1]],None)], [[[],[]],[[],[1]],[[2,1,2,1],[1,1]]],lambda r:[ints(r),[r.randint(-2,3) for _ in range(r.randrange(4))]]),
- (apply_edits,"original-index-edits","Input Unicode text and valid non-overlapping [start,end,replacement] edits sorted by start. Indices are code-point offsets into ORIGINAL text, 0<=start<=end<=len(text); same-start edits excluded. Apply simultaneously using half-open intervals; start=end inserts. Preserve untouched text; no normalization.", [(["abcd",[[1,2,"X"],[3,4,""]]],"aXc"),(["é🙂",[[1,1,"!"]]],"é!🙂")], [["",[]],["abc",[[0,1,""],[1,3,"Z"]]]],lambda r:["é🙂abc",[[0,1,r.choice(["","X","🙂"])],[3,5,"!"]]]),
+ (apply_edits,"original-index-edits","Input Unicode text and valid non-overlapping [start,end,replacement] edits sorted by start. Indices are code-point offsets into ORIGINAL text, 0<=start<=end<=len(text); same-start edits excluded. Apply simultaneously using half-open intervals; start=end inserts. Preserve untouched text; no normalization.", [(["abcd",[[1,2,"X"],[3,4,""]]],"aXc"),(["é🙂",[[1,1,"!"]]],"é!🙂")], [["",[]],["abc",[[0,1,""],[1,3,"Z"]]],["abc",[[0,0,"!"]]]],lambda r:["é🙂abc",[[0,1,r.choice(["","X","🙂"])],[3,5,"!"]]]),
  (interleave_lists,"ragged-round-robin","Input list of integer lists. Take index 0 from each nonempty list in input order, then index 1 from each long enough list, and continue until exhausted. Preserve duplicates/negatives. Empty/all empty returns [].", [([[[1,2],[],[3,4,5]]],[1,3,2,4,5]),([[]],[])], [[[[],[]]],[[[-1],[0,0],[]]]],lambda r:[[ints(r) for _ in range(r.randrange(5))]])
 ]
 
+def assert_json(value):
+    assert type(value) in (type(None), bool, int, str, list, dict), "Non-JSON exact output type"
+    if type(value) is list:
+        for item in value: assert_json(item)
+    if type(value) is dict:
+        assert all(type(key) is str for key in value)
+        for item in value.values(): assert_json(item)
 
 def build(seed):
     rng, public, private = random.Random(seed), [], {}
@@ -204,7 +186,9 @@ def build(seed):
         task_id = f"{split[:3]}-{fn.__name__}"
         shown = []
         for args, expected in examples:
-            assert fn(*json.loads(json.dumps(args))) == expected, fn.__name__
+            actual = fn(*json.loads(json.dumps(args)))
+            assert_json(actual)
+            assert json.dumps(actual, sort_keys=True) == json.dumps(expected, sort_keys=True), fn.__name__
             shown.append(dict(args=args, expected=expected))
         seen = {json.dumps(e["args"]) for e in shown}
         cases = []
@@ -215,16 +199,22 @@ def build(seed):
             original = json.loads(encoded)
             expected = fn(*original)
             assert json.dumps(original) == encoded, "Reference mutated input"
-            json.dumps(expected, allow_nan=False)
-            cases.append(dict(args=args, expected=expected))
-        assert len(cases) >= 3, fn.__name__
+            assert_json(expected)
+            cases.append(dict(args=args, expected=expected, check_input_unchanged=True, ordered_dict=False))
+        assert len(cases) >= 6, fn.__name__
+        random.Random(f"{seed}:{fn.__name__}:test-partition").shuffle(cases)
+        feedback, holdout = cases[:len(cases)//2], cases[len(cases)//2:]
+        assert len(feedback) >= 3 and len(holdout) >= 3
+        feedback_args = {json.dumps(case["args"]) for case in feedback}
+        holdout_args = {json.dumps(case["args"]) for case in holdout}
+        example_args = {json.dumps(example["args"]) for example in shown}
+        assert not feedback_args & holdout_args and not (feedback_args | holdout_args) & example_args
         public.append(dict(id=task_id, split=split, function_name=fn.__name__, spec=spec,
                            examples=shown, difficulty_description=label))
-        private[task_id] = dict(tests=cases, trusted_reference_source=inspect.getsource(fn), trusted_reference_sha256=hashlib.sha256(inspect.getsource(fn).encode()).hexdigest())
+        private[task_id] = dict(feedback_tests=feedback, holdout_tests=holdout, trusted_reference_source=inspect.getsource(fn), trusted_reference_sha256=hashlib.sha256(inspect.getsource(fn).encode()).hexdigest())
     assert len(public) == len({t["function_name"] for t in public}) == 24
     assert Counter(t["split"] for t in public) == {"development":6,"evaluation":18}
     return public, private
-
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
@@ -237,14 +227,15 @@ def main(argv=None):
     common = dict(protocol=PROTOCOL, generator_seed=args.seed,
                   generator_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                   authorship="Original author-written synthetic tasks; no external benchmark content.",
-                  rules="Python 3 pure functions, positional args, JSON-serializable outputs, no external I/O.",
+                  rules="Python 3 pure functions; positional args; no input mutation or external I/O. Outputs use exact JSON types: bool differs from int, integers are not floats, arrays must be Python lists, object keys strings. Ordered array results must match exactly; dictionary key order is checked only when a case explicitly requires it.",
                   limitations="Difficulty descriptions are descriptive, not empirically calibrated. Hidden expected values use trusted references, not an independent correctness proof.")
     if args.output:
         args.output.mkdir(parents=True, exist_ok=False)
-        for name, data in [("tasks.json",dict(common,tasks=public)),("hidden-tests.json",dict(common,references=private,note="Never feed tests or reference source to model; references use the imports in coding_tasks.py."))]:
+        for name, data in [("tasks.json",dict(common,tasks=public)),("hidden-tests.json",dict(common,references=private,note="Only failed feedback_tests may be disclosed after testing. Never disclose holdout_tests or reference source. Freeze selection, grade holdout once, then no repairs. References use the imports in coding_tasks.py."))]:
             (args.output/name).write_text(json.dumps(data,indent=2,ensure_ascii=False)+"\n")
     print(json.dumps(dict(mode="written" if args.output else "dry_run",tasks=24,development=6,evaluation=18,
-                         hidden_cases=sum(len(v["tests"]) for v in private.values()),verified=True,output=str(args.output) if args.output else None)))
+                         feedback_cases=sum(len(v["feedback_tests"]) for v in private.values()),
+                         holdout_cases=sum(len(v["holdout_tests"]) for v in private.values()),verified=True,output=str(args.output) if args.output else None)))
 
 
 if __name__ == "__main__": main()

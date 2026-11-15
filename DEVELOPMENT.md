@@ -25,7 +25,7 @@ Wilson 95% intervals below describe these eight task outcomes per arm. All inter
 | Democracy + guard 8 | 1/8 | 2.2–47.1% | 472 | 91,632 | 7,814 | 4.346 | 8.694 | 1 |
 | Shared memory 8 | 0/8 | 0.0–32.4% | 256 | 31,061 | 3,940 | 2.379 | 4.046 | 1 |
 
-**Observed cap issue:** direct thinking ON had 6 length finishes in 8 calls; iterative solo thinking ON had 8 in 8. The latter consumed 4096 completion tokens on every first move and produced no accepted progress. Those are measurements of the 4096-token configuration, not evidence that reasoning in general is worse. A separate 8192-token development follow-up is running; its results will be appended as another cohort after completion, without rewriting these negative cases.
+**Observed cap issue:** direct thinking ON had 6 length finishes in 8 calls; iterative solo thinking ON had 8 in 8. The latter consumed 4096 completion tokens on every first move and produced no accepted progress. Those are measurements of the 4096-token configuration, not evidence that reasoning in general is worse. The separate 8192-token development follow-up is now complete and reported below; these original negative cases remain unchanged.
 
 Independent 8 solved 2/8 here. Its interval overlaps the one-success and zero-success arms; additional development tuning or selecting a finalist does not turn this into held-out evidence. No article or final evaluation claim is made.
 
@@ -128,3 +128,58 @@ python3 -m venv .venv
 ```
 
 The output directory must be new. This command only regenerates analysis and figures; it sends no inference requests. Repeating inference requires the recorded source revisions, dataset and runtime settings, plus working local model endpoints. Current runner defaults may differ after development tuning.
+
+## Separate cohort: 8192-token thinking calibration
+
+Source commit `0d5d5ebdcc4423ac143287e362ffff9ada7db1d8`; **16 cases**, the same eight development tasks and seed 1, with the per-response thinking cap increased to 8192. The ceiling remains 128 calls/32,768 completion tokens per case. Captured source hashes match at start/end; no raw run was changed. This is development retuning, not another independent evaluation sample.
+
+| Arm | Solved | Wilson 95% | Calls | Prompt | Completion | Median wall s | p95 wall s | Length finishes |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Direct (thinking on, 8k cap) | 6/8 | 40.9–92.9% | 8 | 1,325 | 41,161 | 35.548 | 66.800 | 2 |
+| Iterative solo (on, 8k cap) | 0/8 | 0.0–32.4% | 9 | 1,153 | 70,929 | 67.319 | 97.675 | 8 |
+
+Direct full-plan thinking solved **6/8** here; iterative single-move thinking solved **0/8**. The latter hit the cap on the first request in **7/8 tasks**, with 8 length finishes across 9 calls in total. Thus longer reasoning did not fix that stepwise formulation on this development set. Direct 8k is a promising configuration for a later frozen evaluation, not an established general winner. Its descriptive Wilson interval and the zero-success stepwise interval do not overlap in this small cohort; that does not convert development selection into held-out evidence.
+
+Whole mixed-arm queue wall: **251.109208s**, not per-arm fleet throughput. No case deadlines, infrastructure failures, missing usage or budget denials. Server-counter metrics were not requested; their absence is unknown server cost, not zero.
+
+[16-case CSV](results/development-20261115/thinking-8k/summary.csv) · [JSON](results/development-20261115/thinking-8k/summary.json) · [analysis](results/development-20261115/thinking-8k/analysis/analysis.json) · [manifest](results/development-20261115/thinking-8k/manifest.json).
+
+![Development 8k thinking task success](results/development-20261115/thinking-8k/analysis/accuracy-wilson95.png)
+
+[Output-token cost SVG](results/development-20261115/thinking-8k/analysis/success-vs-completion-cost.svg) · [Latency SVG](results/development-20261115/thinking-8k/analysis/case-latency.svg).
+
+## Separate cohort: agent-count scaling
+
+Source commit `ab468234a4cc76d098d00b9e8d43da546583499e` in the isolated `phase3-source` worktree; **72 completed cases** across eight development tasks and nine arms. These source hashes are preserved; current root code is not substituted. The call ceiling is **1280**, versus 128 in the original 64-case cohort; completion ceiling remains 32,768. The arms below are compared within this cohort; repeated N8 results are not pooled with earlier N8 runs.
+
+N means logical agents/paths per task. Each job still owns one Spark, with at most 25 simultaneous endpoint requests; N100 therefore includes queued requests and is not 100 concurrent model calls for one problem across four Sparks. Neither stop-on-first-solution nor server-counter capture was enabled in this cohort.
+
+| Arm | Solved | Wilson 95% | Calls | Prompt | Completion | Median wall s | p95 wall s |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Independent 8 | 1/8 | 2.2–47.1% | 241 | 29,319 | 3,768 | 2.683 | 4.143 |
+| Independent 32 | 3/8 | 13.7–69.4% | 962 | 117,057 | 14,732 | 6.639 | 8.715 |
+| Independent 100 | 3/8 | 13.7–69.4% | 3021 | 367,444 | 46,027 | 19.137 | 29.002 |
+| Democracy + guard 8 | 1/8 | 2.2–47.1% | 472 | 94,632 | 7,848 | 5.914 | 13.490 |
+| Democracy + guard 32 | 2/8 | 7.1–59.1% | 1792 | 458,240 | 29,478 | 14.269 | 28.506 |
+| Democracy + guard 100 | 2/8 | 7.1–59.1% | 5600 | 1,685,000 | 92,429 | 40.869 | 84.279 |
+| Shared memory 8 | 2/8 | 7.1–59.1% | 248 | 30,153 | 3,881 | 2.992 | 5.583 |
+| Shared memory 32 | 2/8 | 7.1–59.1% | 992 | 120,632 | 14,936 | 7.496 | 10.682 |
+| Shared memory 100 | 2/8 | 7.1–59.1% | 3100 | 376,900 | 46,717 | 18.270 | 25.728 |
+
+Increasing N32 to N100 retained the same observed solved counts within each family: independent 3/8, democracy 2/8, shared 2/8. Recorded completion-token cost grew by approximately 3.1× in every family. This is a descriptive cost-scaling result for these eight development tasks, not proof that 100 agents can never help. The nine Wilson intervals overlap and the sample is too small to establish a general ordering. Input/output tokens also are not equal GPU-cost units.
+
+Whole mixed-arm queue wall: **402.260115s**. All 72 cases finished without controller deadlines, infrastructure failures, missing usage or budget denials. These case-time and mixed-queue measurements must not be turned into per-arm saturated-fleet success/minute rates.
+
+[72-case CSV](results/development-20261115/scale/summary.csv) · [JSON](results/development-20261115/scale/summary.json) · [analysis](results/development-20261115/scale/analysis/analysis.json) · [paired tasks](results/development-20261115/scale/analysis/paired-results.csv) · [manifest](results/development-20261115/scale/manifest.json).
+
+![Development agent-count task success](results/development-20261115/scale/analysis/accuracy-wilson95.png)
+
+![Development agent-count output-token cost](results/development-20261115/scale/analysis/success-vs-completion-cost.png)
+
+[Latency SVG](results/development-20261115/scale/analysis/case-latency.svg) · [Accuracy SVG](results/development-20261115/scale/analysis/accuracy-wilson95.svg).
+
+### Integrity and future early-stop accounting
+
+The two new exports contain 60 and 228 artifacts respectively, each with original/export SHA-256 and reverse-normalization byte identity. Normalizations are limited to the same event/metadata/CSV/log paths and command interpreter/HERE prefix as the initial cohort; isolated-worktree harness paths become `./harness.py`. DEVELOPMENT labels and all figure bytes are preserved. Derived analysis hashes retain provenance to original raw metadata/summary; manifests map those inputs to exports. No model API was called during this analysis or curation.
+
+The updated analyzer also supports subsequent controller-stopped cohorts: expected negative kill return codes remain successful early stops, verified deadline successes are preserved, and unfinished client-usage totals are explicitly lower bounds. Server deltas are aggregated only for cases flagged known and covering completed client usage. Unknown or stale server costs remain null; an unavailable pre-run metric snapshot, including a timeout, is never recovered as zero. These accounting capabilities do not add server measurements to the two historical cohorts above.

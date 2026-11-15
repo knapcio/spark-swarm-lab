@@ -11,8 +11,31 @@ import statistics
 LABELS = {"direct_off": "Direct (thinking off)", "direct_thinking": "Direct (thinking on)",
           "solo_steps_off": "Iterative solo (off)", "solo_steps_thinking": "Iterative solo (on)",
           "independent8": "Independent 8", "independent_rounds8": "Independent rounds 8",
-          "democracy8": "Democracy + guard 8", "shared8": "Shared memory 8"}
-COLORS = ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#000000", "#777777"]
+          "democracy8": "Democracy + guard 8", "shared8": "Shared memory 8",
+          "direct_thinking_8k": "Direct (thinking on, 8k cap)",
+          "solo_steps_thinking_8k": "Iterative solo (on, 8k cap)",
+          "ensemble4_thinking_8k": "Full-plan ensemble 4 (on, 8k cap)",
+          **{f"{family}{n}": f"{label} {n}" for n in (32, 100)
+             for family, label in (("independent", "Independent"), ("democracy", "Democracy + guard"), ("shared", "Shared memory"))},
+          **{f"cascade{n}": f"Cascade {n} then direct (on, 8k cap)" for n in (8, 32, 100)}}
+COLORS = ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#000000", "#777777", "#882255"]
+
+
+def valid_server_cost(row):
+    return row.get("server_cost_known") is True and all(
+        type(row.get("server_" + field)) in (int, float) and math.isfinite(row["server_" + field])
+        and row["server_" + field] >= row.get(field, 0)
+        for field in ("prompt_tokens", "completion_tokens"))
+
+
+def outcome(row):
+    if row is None:
+        return "missing"
+    if row.get("deadline"):
+        return "solved_with_deadline" if row["solved"] else "deadline"
+    if row.get("controller_error") or (row.get("returncode") != 0 and not row.get("controller_stop")):
+        return "error"
+    return "solved_early" if row["solved"] and row.get("controller_stop") else "solved" if row["solved"] else "not_solved"
 
 
 def wilson(successes, n):
@@ -54,6 +77,14 @@ def aggregate(arm, rows, planned):
                   mean_recorded_completion_tokens_per_case=result["completion_tokens"] / n if n else None)
     result["observed_cost_is_lower_bound"] = bool(n < planned or result["deadline_cases"] or result["unfinished_calls"]
         or result["missing_prompt_usage"] or result["missing_completion_usage"])
+    known = [r for r in rows if valid_server_cost(r)]
+    result.update(server_cost_known_cases=len(known), server_cost_unknown_cases=n - len(known),
+                  server_counter_floor_failures=sum(r.get("server_cost_known") is True and not valid_server_cost(r) for r in rows),
+                  server_prompt_tokens_known=sum(r["server_prompt_tokens"] for r in known) if known else None,
+                  server_completion_tokens_known=sum(r["server_completion_tokens"] for r in known) if known else None,
+                  success_early_cases=sum(r.get("status") == "success_early" for r in rows),
+                  solved_with_deadline_cases=sum(bool(r.get("deadline") and r["solved"]) for r in rows),
+                  unexpected_process_error_cases=sum(r.get("returncode") != 0 and not r.get("controller_stop") for r in rows))
     return result
 
 
@@ -95,7 +126,7 @@ def plots(report, directory):
     ax.invert_yaxis(); ax.grid(axis="x", alpha=.25)
     save(fig, "accuracy-wilson95")
     fig, ax = plt.subplots(figsize=(11, 6.2))
-    markers = ["o", "s", "^", "D", "P", "X", "v", "h"]
+    markers = ["o", "s", "^", "D", "P", "X", "v", "h", "*"]
     for i, row in enumerate(rows):
         x, y = row["mean_recorded_completion_tokens_per_case"], row["success_rate"] * 100
         ax.scatter(x, y, s=75, color=COLORS[i % len(COLORS)], marker=markers[i % len(markers)],
@@ -156,9 +187,7 @@ def main(argv=None):
         pair = dict(task_id=task, split=meta["split"], seed=seed)
         for arm in meta["arms"]:
             match = next((r for r in rows if (r["task_id"], r["seed"], r["arm"]) == (task, seed, arm)), None)
-            pair[arm] = "missing" if match is None else ("deadline" if match["deadline"] else
-                        "error" if match.get("controller_error") or match.get("returncode") != 0 else
-                        "solved" if match["solved"] else "not_solved")
+            pair[arm] = outcome(match)
         pairs.append(pair)
     report = dict(schema_version=1, benchmark=str(args.benchmark.resolve()), split=meta["split"],
                   provisional=bool(reasons), provisional_reasons=reasons, seed=meta["seed"],
@@ -176,6 +205,8 @@ def main(argv=None):
                          "Sum of case wall seconds is NOT fleet wall time. Mixed-arm queue wall time is NOT per-arm throughput.",
                          "Input/output token counts are observed API usage, not equal GPU cost; output-cost plots omit input cost.",
                          "Deadline/incomplete-usage costs are lower bounds; reported successes preserve the runner's deadline rule.",
+                         "Expected negative exit codes after controller stops are not process/infrastructure failures.",
+                         "Server counter sums include only explicitly known deltas that cover completed client usage; unknowns remain null.",
                          "Paired table matches task/seed, not identical sampled trajectories. No paired causal effect is claimed."])
     directory = args.output or args.benchmark / "analysis"
     directory.mkdir(parents=True, exist_ok=False)

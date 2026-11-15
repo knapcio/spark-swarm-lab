@@ -1,0 +1,7643 @@
+{
+  "protocol": "original-python-functions-v1",
+  "generator_seed": 20261115,
+  "generator_sha256": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6",
+  "authorship": "Original author-written synthetic tasks; no external benchmark content.",
+  "rules": "Python 3 pure functions; positional args; no input mutation or external I/O. Outputs use exact JSON types: bool differs from int, integers are not floats, arrays must be Python lists, object keys strings. Ordered array results must match exactly; dictionary key order is checked only when a case explicitly requires it.",
+  "limitations": "Difficulty descriptions are descriptive, not empirically calibrated. Hidden expected values use trusted references, not an independent correctness proof.",
+  "references": {
+    "dev-stable_unique": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              6,
+              -3,
+              3,
+              6,
+              3,
+              1
+            ]
+          ],
+          "expected": [
+            6,
+            -3,
+            3,
+            1
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              6,
+              -2,
+              4,
+              -4,
+              5
+            ]
+          ],
+          "expected": [
+            6,
+            -2,
+            4,
+            -4,
+            5
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              1,
+              -3,
+              -1,
+              -3
+            ]
+          ],
+          "expected": [
+            2,
+            1,
+            -3,
+            -1
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2,
+              -3
+            ]
+          ],
+          "expected": [
+            -2,
+            -3
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              6,
+              -1,
+              -3,
+              -4,
+              -1,
+              4,
+              6
+            ]
+          ],
+          "expected": [
+            6,
+            -1,
+            -3,
+            -4,
+            4
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -4,
+              3,
+              6,
+              5
+            ]
+          ],
+          "expected": [
+            -4,
+            3,
+            6,
+            5
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              -2
+            ]
+          ],
+          "expected": [
+            1,
+            -2
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              0,
+              0
+            ]
+          ],
+          "expected": [
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              3,
+              -2,
+              4,
+              1,
+              1,
+              -2,
+              1,
+              3
+            ]
+          ],
+          "expected": [
+            3,
+            -2,
+            4,
+            1
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              4,
+              -2,
+              1,
+              4,
+              1,
+              -3,
+              4,
+              3
+            ]
+          ],
+          "expected": [
+            4,
+            -2,
+            1,
+            -3,
+            3
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -3,
+              -1,
+              -3,
+              -3,
+              0,
+              5,
+              0,
+              5
+            ]
+          ],
+          "expected": [
+            -3,
+            -1,
+            0,
+            5
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -4,
+              1,
+              4,
+              0,
+              1,
+              5
+            ]
+          ],
+          "expected": [
+            -4,
+            1,
+            4,
+            0,
+            5
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              6,
+              0,
+              6,
+              -2
+            ]
+          ],
+          "expected": [
+            6,
+            0,
+            -2
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              6,
+              -4,
+              -4,
+              0,
+              -2
+            ]
+          ],
+          "expected": [
+            6,
+            -4,
+            0,
+            -2
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2,
+              -1,
+              -2
+            ]
+          ],
+          "expected": [
+            -2,
+            -1
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              5,
+              0,
+              4,
+              5,
+              -3
+            ]
+          ],
+          "expected": [
+            5,
+            0,
+            4,
+            -3
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def stable_unique(values):\n    return list(dict.fromkeys(values))\n",
+      "trusted_reference_sha256": "cef592b737dd6936bd424537eb3ca8ba95a2836ba9a9175148a99323b7140096"
+    },
+    "dev-run_length": {
+      "feedback_tests": [
+        {
+          "args": [
+            " ́ bá AAA"
+          ],
+          "expected": [
+            [
+              " ",
+              1
+            ],
+            [
+              "́",
+              1
+            ],
+            [
+              " ",
+              1
+            ],
+            [
+              "b",
+              1
+            ],
+            [
+              "a",
+              1
+            ],
+            [
+              "́",
+              1
+            ],
+            [
+              " ",
+              1
+            ],
+            [
+              "A",
+              3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "b\tA A aé"
+          ],
+          "expected": [
+            [
+              "b",
+              1
+            ],
+            [
+              "\t",
+              1
+            ],
+            [
+              "A",
+              1
+            ],
+            [
+              " ",
+              1
+            ],
+            [
+              "A",
+              1
+            ],
+            [
+              " ",
+              1
+            ],
+            [
+              "a",
+              1
+            ],
+            [
+              "é",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            " Áéa 🙂b éA"
+          ],
+          "expected": [
+            [
+              " ",
+              1
+            ],
+            [
+              "A",
+              1
+            ],
+            [
+              "́",
+              1
+            ],
+            [
+              "é",
+              1
+            ],
+            [
+              "a",
+              1
+            ],
+            [
+              " ",
+              1
+            ],
+            [
+              "🙂",
+              1
+            ],
+            [
+              "b",
+              1
+            ],
+            [
+              " ",
+              1
+            ],
+            [
+              "é",
+              1
+            ],
+            [
+              "A",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "éé"
+          ],
+          "expected": [
+            [
+              "e",
+              1
+            ],
+            [
+              "́",
+              1
+            ],
+            [
+              "e",
+              1
+            ],
+            [
+              "́",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "́ "
+          ],
+          "expected": [
+            [
+              "́",
+              1
+            ],
+            [
+              " ",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "béÁab"
+          ],
+          "expected": [
+            [
+              "b",
+              1
+            ],
+            [
+              "é",
+              1
+            ],
+            [
+              "A",
+              1
+            ],
+            [
+              "́",
+              1
+            ],
+            [
+              "a",
+              1
+            ],
+            [
+              "b",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "🙂🙂a"
+          ],
+          "expected": [
+            [
+              "🙂",
+              2
+            ],
+            [
+              "a",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "éb"
+          ],
+          "expected": [
+            [
+              "é",
+              1
+            ],
+            [
+              "b",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            "🙂éAA"
+          ],
+          "expected": [
+            [
+              "🙂",
+              1
+            ],
+            [
+              "é",
+              1
+            ],
+            [
+              "A",
+              2
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "A a\t ́ "
+          ],
+          "expected": [
+            [
+              "A",
+              1
+            ],
+            [
+              " ",
+              1
+            ],
+            [
+              "a",
+              1
+            ],
+            [
+              "\t",
+              1
+            ],
+            [
+              " ",
+              1
+            ],
+            [
+              "́",
+              1
+            ],
+            [
+              " ",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "🙂A\t 🙂 a"
+          ],
+          "expected": [
+            [
+              "🙂",
+              1
+            ],
+            [
+              "A",
+              1
+            ],
+            [
+              "\t",
+              1
+            ],
+            [
+              " ",
+              1
+            ],
+            [
+              "🙂",
+              1
+            ],
+            [
+              " ",
+              1
+            ],
+            [
+              "a",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "a🙂Aba\tb"
+          ],
+          "expected": [
+            [
+              "a",
+              1
+            ],
+            [
+              "🙂",
+              1
+            ],
+            [
+              "A",
+              1
+            ],
+            [
+              "b",
+              1
+            ],
+            [
+              "a",
+              1
+            ],
+            [
+              "\t",
+              1
+            ],
+            [
+              "b",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "́bÁ "
+          ],
+          "expected": [
+            [
+              "́",
+              1
+            ],
+            [
+              "b",
+              1
+            ],
+            [
+              "A",
+              1
+            ],
+            [
+              "́",
+              1
+            ],
+            [
+              " ",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "🙂"
+          ],
+          "expected": [
+            [
+              "🙂",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "\té́"
+          ],
+          "expected": [
+            [
+              "\t",
+              1
+            ],
+            [
+              "é",
+              1
+            ],
+            [
+              "́",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "Aéb"
+          ],
+          "expected": [
+            [
+              "A",
+              1
+            ],
+            [
+              "é",
+              1
+            ],
+            [
+              "b",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def run_length(text):\n    out = []\n    for ch in text:\n        if out and out[-1][0] == ch: out[-1][1] += 1\n        else: out.append([ch, 1])\n    return out\n",
+      "trusted_reference_sha256": "8fbc2554f3115e387c5c98505d12f880f0920d656f73c62ce7139f18bcfa8aca"
+    },
+    "dev-merge_intervals": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              [
+                1,
+                2
+              ],
+              [
+                3,
+                4
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              4
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -8,
+                -5
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              -8,
+              -5
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                0,
+                4
+              ],
+              [
+                4,
+                -4
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                7,
+                -2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              -4,
+              7
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                2,
+                -5
+              ],
+              [
+                -4,
+                -1
+              ],
+              [
+                6,
+                5
+              ],
+              [
+                -4,
+                5
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              -5,
+              6
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -4,
+                -2
+              ],
+              [
+                -4,
+                6
+              ],
+              [
+                6,
+                -5
+              ],
+              [
+                -2,
+                1
+              ],
+              [
+                -2,
+                -5
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              -5,
+              6
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                2,
+                -6
+              ],
+              [
+                8,
+                1
+              ],
+              [
+                -1,
+                8
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              -6,
+              8
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                3,
+                -7
+              ],
+              [
+                -6,
+                -1
+              ],
+              [
+                -3,
+                3
+              ],
+              [
+                -7,
+                -1
+              ],
+              [
+                -2,
+                2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              -7,
+              3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              [
+                -2,
+                -5
+              ],
+              [
+                -3,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              -5,
+              0
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                6,
+                1
+              ],
+              [
+                1,
+                -5
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              -5,
+              6
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                3,
+                -8
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              -8,
+              3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -6,
+                4
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              -6,
+              4
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                8,
+                6
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              6,
+              8
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -4,
+                -3
+              ],
+              [
+                2,
+                6
+              ],
+              [
+                2,
+                -7
+              ],
+              [
+                -7,
+                2
+              ],
+              [
+                -1,
+                -4
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              -7,
+              6
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -5,
+                1
+              ],
+              [
+                -6,
+                1
+              ],
+              [
+                -5,
+                6
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                3,
+                -1
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              -6,
+              6
+            ],
+            [
+              7,
+              7
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def merge_intervals(intervals):\n    out = []\n    for start, end in sorted([sorted(pair) for pair in intervals]):\n        if out and start <= out[-1][1]: out[-1][1] = max(out[-1][1], end)\n        else: out.append([start, end])\n    return out\n",
+      "trusted_reference_sha256": "6f0f93fe91dacb09b26321e633a07745cb4f3a185a9520f67427c8dd52c3c630"
+    },
+    "dev-top_k_frequent": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              -3,
+              6,
+              -4,
+              4
+            ],
+            0
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -3,
+              3
+            ],
+            3
+          ],
+          "expected": [
+            -3,
+            3
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [],
+            1
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2,
+              1
+            ],
+            6
+          ],
+          "expected": [
+            -2,
+            1
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -1,
+              5,
+              -2,
+              -1,
+              6,
+              0
+            ],
+            5
+          ],
+          "expected": [
+            -1,
+            5,
+            -2,
+            6,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -4,
+              4,
+              -1,
+              -3
+            ],
+            1
+          ],
+          "expected": [
+            -4
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              6,
+              2,
+              3,
+              2,
+              -1
+            ],
+            0
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              4,
+              3,
+              5,
+              5
+            ],
+            3
+          ],
+          "expected": [
+            5,
+            4,
+            3
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2,
+              0,
+              -2,
+              3,
+              -3,
+              -4
+            ],
+            2
+          ],
+          "expected": [
+            -2,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              3
+            ],
+            6
+          ],
+          "expected": [
+            3
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              4
+            ],
+            3
+          ],
+          "expected": [
+            1,
+            4
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              3,
+              -3
+            ],
+            0
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -1,
+              -1,
+              0
+            ],
+            9
+          ],
+          "expected": [
+            -1,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [],
+            3
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              6,
+              -4,
+              -3,
+              5,
+              5,
+              3,
+              3,
+              -3
+            ],
+            1
+          ],
+          "expected": [
+            -3
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [],
+            5
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              6,
+              3,
+              -4,
+              5,
+              1,
+              6
+            ],
+            6
+          ],
+          "expected": [
+            6,
+            3,
+            -4,
+            5,
+            1
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              -2
+            ],
+            -1
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def top_k_frequent(values, k):\n    return sorted(set(values), key=lambda v: (-values.count(v), values.index(v)))[:max(0, k)]\n",
+      "trusted_reference_sha256": "b2c47ea7a1b60583978e2d0527959fa90492cf18bc4605211f89821e4fbb2672"
+    },
+    "dev-moving_sums": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              4,
+              0,
+              1,
+              -3,
+              4,
+              3,
+              4,
+              1
+            ],
+            8
+          ],
+          "expected": [
+            14
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [],
+            1
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              -3,
+              1,
+              2
+            ],
+            -1
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              5,
+              0
+            ],
+            8
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              6,
+              6,
+              5,
+              1,
+              6
+            ],
+            0
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -1,
+              -2,
+              -2,
+              4,
+              -1,
+              3,
+              3
+            ],
+            5
+          ],
+          "expected": [
+            -2,
+            2,
+            7
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              4,
+              6,
+              3,
+              -2
+            ],
+            6
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [],
+            5
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [],
+            10
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              4,
+              -3
+            ],
+            6
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              5,
+              0,
+              3,
+              -4,
+              -4,
+              -2,
+              -2
+            ],
+            6
+          ],
+          "expected": [
+            -2,
+            -9
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              -4,
+              3
+            ],
+            -1
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -4,
+              4
+            ],
+            -1
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              4
+            ],
+            1
+          ],
+          "expected": [
+            4
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              3,
+              6,
+              5,
+              -1,
+              5,
+              3
+            ],
+            -1
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              4
+            ],
+            0
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -1,
+              0
+            ],
+            4
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -4,
+              6,
+              3,
+              4,
+              -4,
+              -1,
+              -4
+            ],
+            1
+          ],
+          "expected": [
+            -4,
+            6,
+            3,
+            4,
+            -4,
+            -1,
+            -4
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def moving_sums(values, width):\n    return [sum(values[i:i+width]) for i in range(len(values)-width+1)] if width > 0 else []\n",
+      "trusted_reference_sha256": "9adb67ad4640edcf554cff3eb79b247a256fa51be828fc3e062a7e54dbb0f93d"
+    },
+    "dev-parse_version": {
+      "feedback_tests": [
+        {
+          "args": [
+            ""
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            " 1"
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "1.2\n"
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "1\t2"
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "0.0"
+          ],
+          "expected": [
+            0,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "3.4.5"
+          ],
+          "expected": [
+            3,
+            4,
+            5
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            "1.02"
+          ],
+          "expected": [
+            1,
+            2
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "0"
+          ],
+          "expected": [
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "２"
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "1."
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "+2"
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "١.2"
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def parse_version(text):\n    return list(map(int, text.split(\".\"))) if re.fullmatch(r\"[0-9]+(?:\\.[0-9]+)*\", text) else None\n",
+      "trusted_reference_sha256": "6b9ce66471dabec89cbac291aeaa40b534b5c6c3a26389a2e6d33278bbfb6f3e"
+    },
+    "eva-stable_group_pairs": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              [
+                "é",
+                -1
+              ],
+              [
+                "é",
+                -1
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "é",
+              [
+                -1,
+                -1
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                1
+              ],
+              [
+                "a",
+                2
+              ],
+              [
+                "b",
+                -2
+              ],
+              [
+                "b",
+                1
+              ],
+              [
+                "b",
+                2
+              ],
+              [
+                "a",
+                3
+              ],
+              [
+                "é",
+                -2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              [
+                1,
+                2,
+                3
+              ]
+            ],
+            [
+              "b",
+              [
+                -2,
+                1,
+                2
+              ]
+            ],
+            [
+              "é",
+              [
+                -2
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "b",
+                2
+              ],
+              [
+                "b",
+                2
+              ],
+              [
+                "b",
+                0
+              ],
+              [
+                "b",
+                -3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "b",
+              [
+                2,
+                2,
+                0,
+                -3
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                1
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              [
+                1
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "é",
+                1
+              ],
+              [
+                "a",
+                0
+              ],
+              [
+                "a",
+                2
+              ],
+              [
+                "é",
+                0
+              ],
+              [
+                "é",
+                -2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "é",
+              [
+                1,
+                0,
+                -2
+              ]
+            ],
+            [
+              "a",
+              [
+                0,
+                2
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "é",
+                2
+              ],
+              [
+                "a",
+                -2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "é",
+              [
+                2
+              ]
+            ],
+            [
+              "a",
+              [
+                -2
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              [
+                "é",
+                3
+              ],
+              [
+                "b",
+                3
+              ],
+              [
+                "é",
+                0
+              ],
+              [
+                "a",
+                1
+              ],
+              [
+                "é",
+                -3
+              ],
+              [
+                "b",
+                0
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "é",
+              [
+                3,
+                0,
+                -3
+              ]
+            ],
+            [
+              "b",
+              [
+                3,
+                0
+              ]
+            ],
+            [
+              "a",
+              [
+                1
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                -2
+              ],
+              [
+                "b",
+                -2
+              ],
+              [
+                "a",
+                3
+              ],
+              [
+                "é",
+                -1
+              ],
+              [
+                "b",
+                -2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              [
+                -2,
+                3
+              ]
+            ],
+            [
+              "b",
+              [
+                -2,
+                -2
+              ]
+            ],
+            [
+              "é",
+              [
+                -1
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                0
+              ],
+              [
+                "a",
+                0
+              ],
+              [
+                "a",
+                1
+              ],
+              [
+                "é",
+                2
+              ],
+              [
+                "b",
+                -3
+              ],
+              [
+                "b",
+                0
+              ],
+              [
+                "é",
+                1
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            [
+              "é",
+              [
+                2,
+                1
+              ]
+            ],
+            [
+              "b",
+              [
+                -3,
+                0
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                -2
+              ],
+              [
+                "é",
+                -3
+              ],
+              [
+                "é",
+                -2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              [
+                -2
+              ]
+            ],
+            [
+              "é",
+              [
+                -3,
+                -2
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "b",
+                -3
+              ],
+              [
+                "é",
+                -3
+              ],
+              [
+                "a",
+                1
+              ],
+              [
+                "b",
+                1
+              ],
+              [
+                "a",
+                -2
+              ],
+              [
+                "a",
+                2
+              ],
+              [
+                "é",
+                3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "b",
+              [
+                -3,
+                1
+              ]
+            ],
+            [
+              "é",
+              [
+                -3,
+                3
+              ]
+            ],
+            [
+              "a",
+              [
+                1,
+                -2,
+                2
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                1
+              ],
+              [
+                "a",
+                0
+              ],
+              [
+                "b",
+                -3
+              ],
+              [
+                "b",
+                2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              [
+                1,
+                0
+              ]
+            ],
+            [
+              "b",
+              [
+                -3,
+                2
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def stable_group_pairs(pairs):\n    groups = {}\n    for key, value in pairs: groups.setdefault(key, []).append(value)\n    return [[key, values] for key, values in groups.items()]\n",
+      "trusted_reference_sha256": "3640b9581abe6cb3622c552990e11b53a797346efd6f52801ff37e6ed712b932"
+    },
+    "eva-rotate_matrix": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              [
+                1,
+                2,
+                -3
+              ],
+              [
+                1,
+                0,
+                2
+              ],
+              [
+                -2,
+                -2,
+                -3
+              ],
+              [
+                -1,
+                1,
+                -3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              -1,
+              -2,
+              1,
+              1
+            ],
+            [
+              1,
+              -2,
+              0,
+              2
+            ],
+            [
+              -3,
+              -3,
+              2,
+              -3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                1,
+                3,
+                0
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              1
+            ],
+            [
+              3
+            ],
+            [
+              0
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                0,
+                -2,
+                -3
+              ],
+              [
+                0,
+                1,
+                2
+              ],
+              [
+                -1,
+                -1,
+                -2
+              ],
+              [
+                1,
+                -1,
+                -3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              1,
+              -1,
+              0,
+              0
+            ],
+            [
+              -1,
+              -1,
+              1,
+              -2
+            ],
+            [
+              -3,
+              -2,
+              2,
+              -3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [],
+              []
+            ]
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                3,
+                3,
+                2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              3
+            ],
+            [
+              3
+            ],
+            [
+              2
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -1,
+                1,
+                3
+              ],
+              [
+                -3,
+                2,
+                3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              -3,
+              -1
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              3,
+              3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                3,
+                2,
+                3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              3
+            ],
+            [
+              2
+            ],
+            [
+              3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              [
+                0,
+                2,
+                -1
+              ],
+              [
+                1,
+                1,
+                1
+              ],
+              [
+                -3,
+                -3,
+                -3
+              ],
+              [
+                1,
+                1,
+                -3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              1,
+              -3,
+              1,
+              0
+            ],
+            [
+              1,
+              -3,
+              1,
+              2
+            ],
+            [
+              -3,
+              -3,
+              1,
+              -1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                0,
+                0,
+                -3
+              ],
+              [
+                -3,
+                -2,
+                1
+              ],
+              [
+                0,
+                0,
+                -1
+              ],
+              [
+                1,
+                -2,
+                2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              1,
+              0,
+              -3,
+              0
+            ],
+            [
+              -2,
+              0,
+              -2,
+              0
+            ],
+            [
+              2,
+              -1,
+              1,
+              -3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                2,
+                2,
+                3
+              ],
+              [
+                2,
+                -3,
+                -2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              2,
+              2
+            ],
+            [
+              -3,
+              2
+            ],
+            [
+              -2,
+              3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -1,
+                0,
+                -1
+              ],
+              [
+                2,
+                -2,
+                -3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              2,
+              -1
+            ],
+            [
+              -2,
+              0
+            ],
+            [
+              -3,
+              -1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              0
+            ],
+            [
+              1
+            ],
+            [
+              -1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -1,
+                -3,
+                -3
+              ],
+              [
+                2,
+                -1,
+                -1
+              ],
+              [
+                -1,
+                -1,
+                -2
+              ],
+              [
+                2,
+                0,
+                1
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              2,
+              -1,
+              2,
+              -1
+            ],
+            [
+              0,
+              -1,
+              -1,
+              -3
+            ],
+            [
+              1,
+              -2,
+              -1,
+              -3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -1
+              ],
+              [
+                2
+              ],
+              [
+                3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              3,
+              2,
+              -1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def rotate_matrix(matrix):\n    return [list(row) for row in zip(*matrix[::-1])] if matrix else []\n",
+      "trusted_reference_sha256": "41b2815cbe1004396a81f15b957fe5cc415b140ac0c8b878623528845b8369df"
+    },
+    "eva-longest_unique_span": {
+      "feedback_tests": [
+        {
+          "args": [
+            " A "
+          ],
+          "expected": " A ",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            ""
+          ],
+          "expected": "",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "🙂 bá🙂AAaAb"
+          ],
+          "expected": " bá🙂A",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            " A\t\tba bAé"
+          ],
+          "expected": "a bAé",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "A🙂\t🙂b ́"
+          ],
+          "expected": "\t🙂b ́",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "🙂a"
+          ],
+          "expected": "🙂a",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "́a🙂"
+          ],
+          "expected": "́a🙂",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "aaaa"
+          ],
+          "expected": "a",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            " "
+          ],
+          "expected": " ",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            "\téAbAb\t "
+          ],
+          "expected": "\téAb",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "🙂é\t🙂🙂Aaaa🙂"
+          ],
+          "expected": "🙂é\t",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            " \tb Aé"
+          ],
+          "expected": "\tb Aé",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "b ́"
+          ],
+          "expected": "b ́",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "éA éA🙂 ́é́a"
+          ],
+          "expected": "éA🙂 ́",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "abbÁ🙂A🙂AA"
+          ],
+          "expected": "bÁ🙂",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "ée"
+          ],
+          "expected": "é",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "aá"
+          ],
+          "expected": "á",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "b🙂á é ́́A"
+          ],
+          "expected": "b🙂á é ",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def longest_unique_span(text):\n    best = \"\"\n    for start in range(len(text)):\n        end = start\n        while end < len(text) and text[end] not in text[start:end]: end += 1\n        if end-start > len(best): best = text[start:end]\n    return best\n",
+      "trusted_reference_sha256": "0bc5fb06b11e68c67072ee48e8619db641456c21213de5f7b286791aaf41c8c4"
+    },
+    "eva-balanced_brackets": {
+      "feedback_tests": [
+        {
+          "args": [
+            "])}a(["
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            ")a()"
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            ""
+          ],
+          "expected": true,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "a]}}a}"
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "a(])(a((}é"
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "]}][a]{}"
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "][[é[}}]"
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            ")"
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "[éé{}{[a"
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            "]"
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "é({]a}]([é("
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "[}[))(é])["
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "{[("
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "(()"
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "]{(a{{[])a"
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "éaa}}"
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "[é]"
+          ],
+          "expected": true,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "aé]}é]"
+          ],
+          "expected": false,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def balanced_brackets(text):\n    stack, pairs = [], {\")\": \"(\", \"]\": \"[\", \"}\": \"{\"}\n    for ch in text:\n        if ch in \"([{\": stack.append(ch)\n        elif ch in pairs:\n            if not stack or stack.pop() != pairs[ch]: return False\n    return not stack\n",
+      "trusted_reference_sha256": "903d86bb37b3980d461e169d6447bd3f9788c79d970d25b8d458ac60e130528b"
+    },
+    "eva-dedupe_by_last": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              [
+                "é",
+                -2
+              ],
+              [
+                "é",
+                2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "é",
+              2
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "é",
+                -3
+              ],
+              [
+                "b",
+                3
+              ],
+              [
+                "b",
+                -1
+              ],
+              [
+                "b",
+                0
+              ],
+              [
+                "a",
+                3
+              ],
+              [
+                "é",
+                -3
+              ],
+              [
+                "b",
+                0
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              3
+            ],
+            [
+              "é",
+              -3
+            ],
+            [
+              "b",
+              0
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                -3
+              ],
+              [
+                "b",
+                3
+              ],
+              [
+                "a",
+                -2
+              ],
+              [
+                "a",
+                2
+              ],
+              [
+                "b",
+                1
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              2
+            ],
+            [
+              "b",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                3
+              ],
+              [
+                "b",
+                -1
+              ],
+              [
+                "b",
+                -2
+              ],
+              [
+                "b",
+                0
+              ],
+              [
+                "é",
+                1
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              3
+            ],
+            [
+              "b",
+              0
+            ],
+            [
+              "é",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                1
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "é",
+                3
+              ],
+              [
+                "b",
+                -2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "é",
+              3
+            ],
+            [
+              "b",
+              -2
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "é",
+                1
+              ],
+              [
+                "é",
+                -2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "é",
+              -2
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              [
+                "é",
+                0
+              ],
+              [
+                "é",
+                3
+              ],
+              [
+                "é",
+                2
+              ],
+              [
+                "é",
+                -2
+              ],
+              [
+                "a",
+                1
+              ],
+              [
+                "a",
+                -2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "é",
+              -2
+            ],
+            [
+              "a",
+              -2
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "b",
+                2
+              ],
+              [
+                "é",
+                1
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "b",
+              2
+            ],
+            [
+              "é",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "b",
+                3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "b",
+              3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "b",
+                -3
+              ],
+              [
+                "é",
+                3
+              ],
+              [
+                "b",
+                -3
+              ],
+              [
+                "b",
+                0
+              ],
+              [
+                "a",
+                2
+              ],
+              [
+                "b",
+                -1
+              ],
+              [
+                "é",
+                -2
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              2
+            ],
+            [
+              "b",
+              -1
+            ],
+            [
+              "é",
+              -2
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "b",
+                3
+              ],
+              [
+                "a",
+                1
+              ],
+              [
+                "a",
+                3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "b",
+              3
+            ],
+            [
+              "a",
+              3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "é",
+                0
+              ],
+              [
+                "a",
+                1
+              ],
+              [
+                "a",
+                -2
+              ],
+              [
+                "b",
+                -3
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "é",
+              0
+            ],
+            [
+              "a",
+              -2
+            ],
+            [
+              "b",
+              -3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def dedupe_by_last(records):\n    out, seen = [], set()\n    for key, value in reversed(records):\n        if key not in seen: out.append([key, value]); seen.add(key)\n    return out[::-1]\n",
+      "trusted_reference_sha256": "44f61987c5c47aefb9db3f428cf727f8090cf2df3ad905d1f8d20969ec892901"
+    },
+    "eva-collapse_whitespace": {
+      "feedback_tests": [
+        {
+          "args": [
+            "🙂é🙂\téa A ́"
+          ],
+          "expected": "🙂é🙂 éa A ́",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "  aA"
+          ],
+          "expected": "  aA",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "A"
+          ],
+          "expected": "A",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            " é ́A"
+          ],
+          "expected": "é ́A",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "🙂́A"
+          ],
+          "expected": "🙂́A",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "\tA🙂b  bAA"
+          ],
+          "expected": "A🙂b  bAA",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            " é́AAa\t"
+          ],
+          "expected": " é́AAa",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            " A\t\té"
+          ],
+          "expected": " A é",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            " éÁ\t́"
+          ],
+          "expected": " éÁ ́",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            "\r\u000b\f"
+          ],
+          "expected": "",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            ""
+          ],
+          "expected": "",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "b🙂 🙂éA\t"
+          ],
+          "expected": "b🙂 🙂éA",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "🙂  AA\t🙂"
+          ],
+          "expected": "🙂  AA 🙂",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "ba"
+          ],
+          "expected": "ba",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "A \t A🙂a "
+          ],
+          "expected": "A A🙂a ",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "🙂"
+          ],
+          "expected": "🙂",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "́b a\tAA🙂b "
+          ],
+          "expected": "́b a AA🙂b",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "é\t🙂"
+          ],
+          "expected": "é 🙂",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def collapse_whitespace(text):\n    return re.sub(r\"[ \\t\\n\\r\\v\\f]+\", \" \", text).strip(\" \\t\\n\\r\\v\\f\")\n",
+      "trusted_reference_sha256": "b63079556f60503f5359545143b7719bb05f61bc987d7b7d337128b7a9f28639"
+    },
+    "eva-natural_sort_strings": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              "a10",
+              "a10",
+              "a2",
+              "a02",
+              "a02",
+              "a02"
+            ]
+          ],
+          "expected": [
+            "a2",
+            "a02",
+            "a02",
+            "a02",
+            "a10",
+            "a10"
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              "a10",
+              "A1",
+              "A1",
+              "é3",
+              "a2"
+            ]
+          ],
+          "expected": [
+            "A1",
+            "A1",
+            "a2",
+            "a10",
+            "é3"
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              "é3",
+              "A1",
+              "2",
+              "A1",
+              "2"
+            ]
+          ],
+          "expected": [
+            "A1",
+            "A1",
+            "é3",
+            "2",
+            "2"
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              "a02",
+              "2",
+              "A1"
+            ]
+          ],
+          "expected": [
+            "A1",
+            "a02",
+            "2"
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              "a02"
+            ]
+          ],
+          "expected": [
+            "a02"
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              "é3",
+              "a10",
+              "A1",
+              "2",
+              "2",
+              "A1"
+            ]
+          ],
+          "expected": [
+            "A1",
+            "A1",
+            "a10",
+            "é3",
+            "2",
+            "2"
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              "2",
+              "a2"
+            ]
+          ],
+          "expected": [
+            "a2",
+            "2"
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              "",
+              "A1",
+              "",
+              "2",
+              "é3",
+              "a2",
+              "é3"
+            ]
+          ],
+          "expected": [
+            "",
+            "",
+            "A1",
+            "a2",
+            "é3",
+            "é3",
+            "2"
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            []
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              "é2",
+              "é10",
+              "é02",
+              "x٢"
+            ]
+          ],
+          "expected": [
+            "x٢",
+            "é2",
+            "é02",
+            "é10"
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              "é3",
+              "",
+              "A1",
+              "a02",
+              "a2",
+              "A1"
+            ]
+          ],
+          "expected": [
+            "",
+            "A1",
+            "A1",
+            "a02",
+            "a2",
+            "é3"
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              "",
+              "a2",
+              "a2"
+            ]
+          ],
+          "expected": [
+            "",
+            "a2",
+            "a2"
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              "a10",
+              "a10",
+              "",
+              "é3",
+              ""
+            ]
+          ],
+          "expected": [
+            "",
+            "",
+            "a10",
+            "a10",
+            "é3"
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              "é3",
+              "é3",
+              "A1"
+            ]
+          ],
+          "expected": [
+            "A1",
+            "é3",
+            "é3"
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def natural_sort_strings(strings):\n    def key(text):\n        return [(1, int(part)) if re.fullmatch(\"[0-9]+\", part) else (0, part)\n                for part in re.split(\"([0-9]+)\", text) if part]\n    return sorted(strings, key=key)\n",
+      "trusted_reference_sha256": "17c754857f6ca476c927f99cec5ccc3f711839b67a7e2c82c1b8033968340225"
+    },
+    "eva-zip_longest_sum": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              6,
+              1,
+              6,
+              2,
+              3,
+              3
+            ],
+            [
+              3,
+              4,
+              5
+            ]
+          ],
+          "expected": [
+            9,
+            5,
+            11,
+            2,
+            3,
+            3
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              5
+            ],
+            [
+              3,
+              5,
+              -1,
+              4,
+              -2,
+              1,
+              -2,
+              0
+            ]
+          ],
+          "expected": [
+            8,
+            5,
+            -1,
+            4,
+            -2,
+            1,
+            -2,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [],
+            [
+              5,
+              -4
+            ]
+          ],
+          "expected": [
+            5,
+            -4
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              0
+            ],
+            [
+              -3,
+              2
+            ]
+          ],
+          "expected": [
+            -3,
+            2
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -3
+            ],
+            [
+              0,
+              6,
+              -3
+            ]
+          ],
+          "expected": [
+            -3,
+            6,
+            -3
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              0
+            ],
+            []
+          ],
+          "expected": [
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2
+            ],
+            []
+          ],
+          "expected": [
+            -2
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              5,
+              -1,
+              0,
+              4,
+              3,
+              1,
+              -3,
+              5
+            ],
+            [
+              1,
+              0,
+              -2,
+              6,
+              -4,
+              2,
+              5,
+              6
+            ]
+          ],
+          "expected": [
+            6,
+            -1,
+            -2,
+            10,
+            -1,
+            3,
+            2,
+            11
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              3,
+              2,
+              4,
+              2,
+              -2
+            ],
+            [
+              4,
+              4,
+              6,
+              3
+            ]
+          ],
+          "expected": [
+            6,
+            7,
+            8,
+            7,
+            2,
+            -2
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              -3
+            ],
+            []
+          ],
+          "expected": [
+            -3
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              -3,
+              -2,
+              0,
+              5,
+              0,
+              6
+            ],
+            [
+              -3,
+              -1,
+              -3,
+              4,
+              3,
+              -1,
+              2
+            ]
+          ],
+          "expected": [
+            -2,
+            -4,
+            -5,
+            4,
+            8,
+            -1,
+            8
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              6,
+              -1
+            ],
+            []
+          ],
+          "expected": [
+            6,
+            -1
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              3,
+              -2,
+              6,
+              -2,
+              4,
+              -4,
+              0
+            ],
+            [
+              2,
+              5,
+              4,
+              2,
+              4,
+              6
+            ]
+          ],
+          "expected": [
+            5,
+            3,
+            10,
+            0,
+            8,
+            2,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [],
+            [
+              -1,
+              2
+            ]
+          ],
+          "expected": [
+            -1,
+            2
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              6,
+              6,
+              0,
+              2,
+              -2,
+              0,
+              0
+            ],
+            [
+              -4,
+              -1
+            ]
+          ],
+          "expected": [
+            2,
+            5,
+            0,
+            2,
+            -2,
+            0,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              -4,
+              -1,
+              1,
+              5
+            ],
+            [
+              -1,
+              2
+            ]
+          ],
+          "expected": [
+            1,
+            -2,
+            -1,
+            1,
+            5
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [],
+            [
+              -2,
+              4,
+              0,
+              2,
+              5
+            ]
+          ],
+          "expected": [
+            -2,
+            4,
+            0,
+            2,
+            5
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              -4,
+              4,
+              1,
+              -1,
+              0,
+              3
+            ],
+            [
+              3,
+              1,
+              0,
+              2,
+              -3,
+              -2
+            ]
+          ],
+          "expected": [
+            5,
+            -3,
+            4,
+            3,
+            -4,
+            -2,
+            3
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def zip_longest_sum(left, right):\n    return [(left[i] if i < len(left) else 0)+(right[i] if i < len(right) else 0) for i in range(max(len(left), len(right)))]\n",
+      "trusted_reference_sha256": "20ece9b974ff972445d91087d5fae7471c413facf700e5a7fbb6a96ee9963a98"
+    },
+    "eva-invert_index": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              [
+                "a",
+                [
+                  "x",
+                  "é"
+                ]
+              ],
+              [
+                "b",
+                [
+                  "x",
+                  "x"
+                ]
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "x",
+              [
+                "a",
+                "b"
+              ]
+            ],
+            [
+              "é",
+              [
+                "a"
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                [
+                  "x",
+                  "🙂",
+                  "é"
+                ]
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "x",
+              [
+                "a"
+              ]
+            ],
+            [
+              "🙂",
+              [
+                "a"
+              ]
+            ],
+            [
+              "é",
+              [
+                "a"
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                [
+                  "x"
+                ]
+              ],
+              [
+                "b",
+                [
+                  "é",
+                  "x"
+                ]
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "x",
+              [
+                "a",
+                "b"
+              ]
+            ],
+            [
+              "é",
+              [
+                "b"
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                [
+                  "é",
+                  "🙂"
+                ]
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "é",
+              [
+                "a"
+              ]
+            ],
+            [
+              "🙂",
+              [
+                "a"
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                [
+                  "é"
+                ]
+              ],
+              [
+                "b",
+                [
+                  "🙂",
+                  "é",
+                  "x",
+                  "é"
+                ]
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "é",
+              [
+                "a",
+                "b"
+              ]
+            ],
+            [
+              "🙂",
+              [
+                "b"
+              ]
+            ],
+            [
+              "x",
+              [
+                "b"
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                [
+                  "🙂"
+                ]
+              ],
+              [
+                "b",
+                []
+              ],
+              [
+                "é",
+                [
+                  "🙂",
+                  "é",
+                  "é",
+                  "é"
+                ]
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "🙂",
+              [
+                "a",
+                "é"
+              ]
+            ],
+            [
+              "é",
+              [
+                "é"
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              [
+                "a",
+                []
+              ]
+            ]
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "é",
+                []
+              ],
+              [
+                "b",
+                [
+                  "🙂",
+                  "🙂"
+                ]
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "🙂",
+              [
+                "b"
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                [
+                  "🙂",
+                  "x"
+                ]
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "🙂",
+              [
+                "a"
+              ]
+            ],
+            [
+              "x",
+              [
+                "a"
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                []
+              ],
+              [
+                "b",
+                [
+                  "🙂",
+                  "é",
+                  "x"
+                ]
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "🙂",
+              [
+                "b"
+              ]
+            ],
+            [
+              "é",
+              [
+                "b"
+              ]
+            ],
+            [
+              "x",
+              [
+                "b"
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                [
+                  "🙂"
+                ]
+              ],
+              [
+                "b",
+                []
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "🙂",
+              [
+                "a"
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                "a",
+                [
+                  "🙂"
+                ]
+              ],
+              [
+                "b",
+                []
+              ],
+              [
+                "é",
+                [
+                  "x",
+                  "x"
+                ]
+              ]
+            ]
+          ],
+          "expected": [
+            [
+              "🙂",
+              [
+                "a"
+              ]
+            ],
+            [
+              "x",
+              [
+                "é"
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def invert_index(groups):\n    out = {}\n    for key, values in groups:\n        for value in values:\n            sources = out.setdefault(value, [])\n            if key not in sources: sources.append(key)\n    return [[value, sources] for value, sources in out.items()]\n",
+      "trusted_reference_sha256": "f5864fc8ebcb077aecddd494f0ff7305bbfa236b8bdf7891ce3bd2017687191a"
+    },
+    "eva-range_compress": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              -1
+            ]
+          ],
+          "expected": [
+            [
+              -1,
+              -1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              6,
+              -2,
+              2,
+              4,
+              4,
+              6,
+              -1,
+              0
+            ]
+          ],
+          "expected": [
+            [
+              -2,
+              0
+            ],
+            [
+              2,
+              2
+            ],
+            [
+              4,
+              4
+            ],
+            [
+              6,
+              6
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              0
+            ]
+          ],
+          "expected": [
+            [
+              0,
+              0
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2
+            ]
+          ],
+          "expected": [
+            [
+              -2,
+              -2
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              6
+            ]
+          ],
+          "expected": [
+            [
+              6,
+              6
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              0,
+              4,
+              1,
+              0,
+              1,
+              2
+            ]
+          ],
+          "expected": [
+            [
+              0,
+              2
+            ],
+            [
+              4,
+              4
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              -1,
+              -1,
+              1,
+              5,
+              4
+            ]
+          ],
+          "expected": [
+            [
+              -1,
+              -1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              4,
+              5
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -4,
+              -2,
+              5,
+              -2,
+              -2
+            ]
+          ],
+          "expected": [
+            [
+              -4,
+              -4
+            ],
+            [
+              -2,
+              -2
+            ],
+            [
+              5,
+              5
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -3,
+              0,
+              -4,
+              3
+            ]
+          ],
+          "expected": [
+            [
+              -4,
+              -3
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              3,
+              3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              6,
+              -4
+            ]
+          ],
+          "expected": [
+            [
+              -4,
+              -4
+            ],
+            [
+              6,
+              6
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              3,
+              5
+            ]
+          ],
+          "expected": [
+            [
+              1,
+              1
+            ],
+            [
+              3,
+              3
+            ],
+            [
+              5,
+              5
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -4,
+              -2
+            ]
+          ],
+          "expected": [
+            [
+              -4,
+              -4
+            ],
+            [
+              -2,
+              -2
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -3,
+              3,
+              6,
+              -3,
+              2,
+              2,
+              1
+            ]
+          ],
+          "expected": [
+            [
+              -3,
+              -3
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              6,
+              6
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              5,
+              -3,
+              0
+            ]
+          ],
+          "expected": [
+            [
+              -3,
+              -3
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              5,
+              5
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -3,
+              6,
+              1,
+              1,
+              -3,
+              3,
+              3
+            ]
+          ],
+          "expected": [
+            [
+              -3,
+              -3
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              3,
+              3
+            ],
+            [
+              6,
+              6
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              3,
+              1,
+              5,
+              6,
+              2,
+              -3,
+              -3
+            ]
+          ],
+          "expected": [
+            [
+              -3,
+              -3
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              5,
+              6
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -3,
+              -2,
+              -1
+            ]
+          ],
+          "expected": [
+            [
+              -3,
+              -1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -1,
+              3,
+              0,
+              1
+            ]
+          ],
+          "expected": [
+            [
+              -1,
+              1
+            ],
+            [
+              3,
+              3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def range_compress(values):\n    out = []\n    for value in sorted(set(values)):\n        if out and value == out[-1][1]+1: out[-1][1] = value\n        else: out.append([value, value])\n    return out\n",
+      "trusted_reference_sha256": "64d5a2bc76698bedc913ac3ea667139411592af1c5b90308749f4416775db5cc"
+    },
+    "eva-prefix_totals": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              4,
+              -1,
+              0,
+              4,
+              3,
+              0,
+              4,
+              3
+            ]
+          ],
+          "expected": [
+            0,
+            4,
+            3,
+            3,
+            7,
+            10,
+            10,
+            14,
+            17
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              -2,
+              3,
+              -4,
+              4,
+              -4
+            ]
+          ],
+          "expected": [
+            0,
+            1,
+            -1,
+            2,
+            -2,
+            2,
+            -2
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              3,
+              0,
+              5
+            ]
+          ],
+          "expected": [
+            0,
+            3,
+            3,
+            8
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              6,
+              -1
+            ]
+          ],
+          "expected": [
+            0,
+            1,
+            7,
+            6
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2,
+              3,
+              -2,
+              -1,
+              1,
+              -4,
+              6
+            ]
+          ],
+          "expected": [
+            0,
+            -2,
+            1,
+            -1,
+            -2,
+            -1,
+            -5,
+            1
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -1,
+              6
+            ]
+          ],
+          "expected": [
+            0,
+            -1,
+            5
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              6,
+              5,
+              -4,
+              -3,
+              -1,
+              6,
+              -4
+            ]
+          ],
+          "expected": [
+            0,
+            2,
+            8,
+            13,
+            9,
+            6,
+            5,
+            11,
+            7
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              0,
+              -4,
+              1,
+              -2
+            ]
+          ],
+          "expected": [
+            0,
+            0,
+            -4,
+            -3,
+            -5
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -1,
+              -2
+            ]
+          ],
+          "expected": [
+            0,
+            -1,
+            -3
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -4,
+              -3,
+              -1,
+              3,
+              5,
+              -2,
+              4
+            ]
+          ],
+          "expected": [
+            0,
+            -4,
+            -7,
+            -8,
+            -5,
+            0,
+            -2,
+            2
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              6
+            ]
+          ],
+          "expected": [
+            0,
+            6
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              -4,
+              3,
+              4,
+              -2,
+              -3,
+              2,
+              -3
+            ]
+          ],
+          "expected": [
+            0,
+            2,
+            -2,
+            1,
+            5,
+            3,
+            0,
+            2,
+            -1
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              0,
+              0
+            ]
+          ],
+          "expected": [
+            0,
+            0,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -1,
+              -3,
+              -2,
+              4,
+              6
+            ]
+          ],
+          "expected": [
+            0,
+            -1,
+            -4,
+            -6,
+            -2,
+            4
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -1,
+              2,
+              -1
+            ]
+          ],
+          "expected": [
+            0,
+            -1,
+            1,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def prefix_totals(values):\n    out = [0]\n    for value in values: out.append(out[-1]+value)\n    return out\n",
+      "trusted_reference_sha256": "71b84a8e626a47f4045e27ba2bc1504c3096e5ae8b31060f09a83aef72d08ded"
+    },
+    "eva-select_nth_distinct": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              1,
+              1
+            ],
+            9
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              0
+            ],
+            0
+          ],
+          "expected": 0,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              5,
+              5
+            ],
+            1
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -3,
+              0
+            ],
+            6
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              4,
+              -3,
+              -2,
+              6,
+              5
+            ],
+            0
+          ],
+          "expected": -3,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [],
+            4
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              -1,
+              -3,
+              -2,
+              -1,
+              0
+            ],
+            8
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              3,
+              5,
+              0,
+              4,
+              -2,
+              2
+            ],
+            6
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              4,
+              -4,
+              -2,
+              3,
+              6
+            ],
+            1
+          ],
+          "expected": -2,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2,
+              -3,
+              -4,
+              3,
+              -3
+            ],
+            8
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              3,
+              -1,
+              5,
+              0,
+              -1
+            ],
+            3
+          ],
+          "expected": 5,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              0,
+              1
+            ],
+            9
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [],
+            0
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2,
+              4,
+              5,
+              -3
+            ],
+            8
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2,
+              -2,
+              6,
+              4,
+              6,
+              6
+            ],
+            -2
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              4,
+              -4,
+              -1,
+              1
+            ],
+            9
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              0,
+              4,
+              3,
+              5,
+              -1,
+              4,
+              0
+            ],
+            6
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def select_nth_distinct(values, n):\n    ordered = sorted(set(values))\n    return ordered[n] if 0 <= n < len(ordered) else None\n",
+      "trusted_reference_sha256": "ef17abfd1e6076d30f5e0c5df532a4b399393b4c961b3d5e0da0d3f256f5a269"
+    },
+    "eva-word_count_ascii": {
+      "feedback_tests": [
+        {
+          "args": [
+            "A B a"
+          ],
+          "expected": [
+            [
+              "a",
+              2
+            ],
+            [
+              "b",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "ÉABC🙂abc"
+          ],
+          "expected": [
+            [
+              "abc",
+              2
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            ""
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            "123"
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "A-a_a"
+          ],
+          "expected": [
+            [
+              "a",
+              3
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "Hello🙂HELLO"
+          ],
+          "expected": [
+            [
+              "hello",
+              2
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "éabc Éx"
+          ],
+          "expected": [
+            [
+              "abc",
+              1
+            ],
+            [
+              "x",
+              1
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def word_count_ascii(text):\n    counts = Counter(word.lower() for word in re.findall(\"[A-Za-z]+\", text, flags=re.ASCII))\n    return [[word, counts[word]] for word in sorted(counts)]\n",
+      "trusted_reference_sha256": "9265b8298a1fcbb1ff9ded59256cf865c147dd543b7fd0ffa545e3d2a2193668"
+    },
+    "eva-flatten_depth": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              3,
+              [
+                2,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            1
+          ],
+          "expected": [
+            3,
+            2,
+            [
+              null,
+              "é"
+            ],
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              [
+                2,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            1
+          ],
+          "expected": [
+            2,
+            2,
+            [
+              null,
+              "é"
+            ],
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              3,
+              [
+                2,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            3
+          ],
+          "expected": [
+            3,
+            2,
+            null,
+            "é",
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -3,
+              [
+                3,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            2
+          ],
+          "expected": [
+            -3,
+            3,
+            null,
+            "é",
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              [
+                0,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            2
+          ],
+          "expected": [
+            2,
+            0,
+            null,
+            "é",
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              [
+                2,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            -1
+          ],
+          "expected": [
+            2,
+            [
+              2,
+              [
+                null,
+                "é"
+              ]
+            ],
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              [
+                2,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            -1
+          ],
+          "expected": [
+            1,
+            [
+              2,
+              [
+                null,
+                "é"
+              ]
+            ],
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2,
+              [
+                3,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            3
+          ],
+          "expected": [
+            -2,
+            3,
+            null,
+            "é",
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2,
+              [
+                3,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            2
+          ],
+          "expected": [
+            -2,
+            3,
+            null,
+            "é",
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              [
+                []
+              ],
+              false
+            ],
+            2
+          ],
+          "expected": [
+            false
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              [
+                4,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            -1
+          ],
+          "expected": [
+            1,
+            [
+              4,
+              [
+                null,
+                "é"
+              ]
+            ],
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [],
+            3
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2,
+              [
+                1,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            0
+          ],
+          "expected": [
+            -2,
+            [
+              1,
+              [
+                null,
+                "é"
+              ]
+            ],
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2,
+              [
+                1,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            4
+          ],
+          "expected": [
+            -2,
+            1,
+            null,
+            "é",
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -3,
+              [
+                1,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            2
+          ],
+          "expected": [
+            -3,
+            1,
+            null,
+            "é",
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              0,
+              [
+                4,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            4
+          ],
+          "expected": [
+            0,
+            4,
+            null,
+            "é",
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              0,
+              [
+                4,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            -1
+          ],
+          "expected": [
+            0,
+            [
+              4,
+              [
+                null,
+                "é"
+              ]
+            ],
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              3,
+              [
+                1,
+                [
+                  null,
+                  "é"
+                ]
+              ],
+              true
+            ],
+            2
+          ],
+          "expected": [
+            3,
+            1,
+            null,
+            "é",
+            true
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def flatten_depth(values, depth):\n    out = list(values)\n    for _ in range(max(0, depth)):\n        out = [child for value in out for child in (value if isinstance(value, list) else [value])]\n    return out\n",
+      "trusted_reference_sha256": "f43c3df2adb8e657703b013fbfcfdd89239a6f90f203aacf7755a8d9aedb326c"
+    },
+    "eva-transpose_records": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              {
+                "a": 2,
+                "é": -1,
+                "b": -2
+              },
+              {
+                "é": 3,
+                "b": -2
+              },
+              {
+                "é": -2
+              }
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              [
+                2,
+                null,
+                null
+              ]
+            ],
+            [
+              "é",
+              [
+                -1,
+                3,
+                -2
+              ]
+            ],
+            [
+              "b",
+              [
+                -2,
+                -2,
+                null
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              {
+                "a": -3,
+                "é": 3
+              }
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              [
+                -3
+              ]
+            ],
+            [
+              "é",
+              [
+                3
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              {
+                "a": 1,
+                "b": 2
+              },
+              {
+                "b": -1
+              },
+              {},
+              {
+                "a": 3
+              }
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              [
+                1,
+                null,
+                null,
+                3
+              ]
+            ],
+            [
+              "b",
+              [
+                2,
+                -1,
+                null,
+                null
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              {
+                "é": null
+              },
+              {
+                "a": -1
+              }
+            ]
+          ],
+          "expected": [
+            [
+              "é",
+              [
+                null,
+                null
+              ]
+            ],
+            [
+              "a",
+              [
+                null,
+                -1
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              {
+                "a": -2,
+                "b": 3
+              },
+              {
+                "a": 1
+              }
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              [
+                -2,
+                1
+              ]
+            ],
+            [
+              "b",
+              [
+                3,
+                null
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              {
+                "a": -1
+              }
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              [
+                -1
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              {
+                "é": 3
+              },
+              {
+                "é": 2,
+                "b": -1
+              },
+              {
+                "é": -3,
+                "b": -1
+              },
+              {}
+            ]
+          ],
+          "expected": [
+            [
+              "é",
+              [
+                3,
+                2,
+                -3,
+                null
+              ]
+            ],
+            [
+              "b",
+              [
+                null,
+                -1,
+                -1,
+                null
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              {
+                "é": 0
+              }
+            ]
+          ],
+          "expected": [
+            [
+              "é",
+              [
+                0
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              {
+                "a": -3,
+                "é": 1,
+                "b": -3
+              }
+            ]
+          ],
+          "expected": [
+            [
+              "a",
+              [
+                -3
+              ]
+            ],
+            [
+              "é",
+              [
+                1
+              ]
+            ],
+            [
+              "b",
+              [
+                -3
+              ]
+            ]
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              {},
+              {}
+            ]
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def transpose_records(records):\n    keys = list(dict.fromkeys(key for record in records for key in record))\n    return [[key, [record.get(key) for record in records]] for key in keys]\n",
+      "trusted_reference_sha256": "6040024f7bd1fb6d4b58d6f772622fd56be6fd4fb1c70f78b4b23efd4ccd486b"
+    },
+    "eva-min_covering_window": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              -4,
+              -4
+            ],
+            []
+          ],
+          "expected": [
+            0,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -3,
+              5,
+              1,
+              -1,
+              -3,
+              1,
+              5,
+              5
+            ],
+            [
+              3,
+              3
+            ]
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              1,
+              2,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ],
+          "expected": [
+            1,
+            4
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -2
+            ],
+            [
+              1,
+              -2
+            ]
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [],
+            []
+          ],
+          "expected": [
+            0,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              2,
+              -4,
+              5
+            ],
+            [
+              -1,
+              0
+            ]
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              -3,
+              1,
+              -3,
+              2,
+              3,
+              2
+            ],
+            []
+          ],
+          "expected": [
+            0,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2
+            ],
+            [
+              3
+            ]
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              6,
+              0,
+              6,
+              -2
+            ],
+            [
+              2,
+              -1,
+              3
+            ]
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              -4,
+              1
+            ],
+            [
+              0,
+              -2
+            ]
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              5,
+              2,
+              -1,
+              -3,
+              -3,
+              4,
+              5,
+              5
+            ],
+            [
+              1
+            ]
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              2,
+              2,
+              -4,
+              -3,
+              -3,
+              -1
+            ],
+            []
+          ],
+          "expected": [
+            0,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [],
+            [
+              1
+            ]
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              5
+            ],
+            [
+              1
+            ]
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              -2,
+              -2,
+              4
+            ],
+            []
+          ],
+          "expected": [
+            0,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              2,
+              -3,
+              -4,
+              -1,
+              3,
+              4,
+              -2
+            ],
+            [
+              1,
+              -2,
+              0
+            ]
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              5,
+              1,
+              -4
+            ],
+            [
+              0,
+              0,
+              3
+            ]
+          ],
+          "expected": null,
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              1,
+              -4,
+              0
+            ],
+            []
+          ],
+          "expected": [
+            0,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def min_covering_window(values, required):\n    if not required: return [0, 0]\n    need, best = Counter(required), None\n    for start in range(len(values)):\n        counts = Counter()\n        for end in range(start, len(values)):\n            counts[values[end]] += 1\n            if all(counts[v] >= n for v, n in need.items()):\n                if best is None or end+1-start < best[1]-best[0]: best = [start, end+1]\n                break\n    return best\n",
+      "trusted_reference_sha256": "cc2f0f0e999606a7e32b20de40aa0ae27015c44ad102a4bca368cb76a06de506"
+    },
+    "eva-apply_edits": {
+      "feedback_tests": [
+        {
+          "args": [
+            "é🙂abc",
+            [
+              [
+                0,
+                1,
+                "X"
+              ],
+              [
+                3,
+                5,
+                "!"
+              ]
+            ]
+          ],
+          "expected": "X🙂a!",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "",
+            []
+          ],
+          "expected": "",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "é🙂abc",
+            [
+              [
+                0,
+                1,
+                "🙂"
+              ],
+              [
+                3,
+                5,
+                "!"
+              ]
+            ]
+          ],
+          "expected": "🙂🙂a!",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            "abc",
+            [
+              [
+                0,
+                1,
+                ""
+              ],
+              [
+                1,
+                3,
+                "Z"
+              ]
+            ]
+          ],
+          "expected": "Z",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "é🙂abc",
+            [
+              [
+                0,
+                1,
+                ""
+              ],
+              [
+                3,
+                5,
+                "!"
+              ]
+            ]
+          ],
+          "expected": "🙂a!",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            "abc",
+            [
+              [
+                0,
+                0,
+                "!"
+              ]
+            ]
+          ],
+          "expected": "!abc",
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def apply_edits(text, edits):\n    out, cursor = [], 0\n    for start, end, replacement in edits: out.extend([text[cursor:start], replacement]); cursor = end\n    return \"\".join(out)+text[cursor:]\n",
+      "trusted_reference_sha256": "ffaaa9d898dca9f7e405f3cb2e8611e70d08253f1fc885014feabaf1f304b149"
+    },
+    "eva-interleave_lists": {
+      "feedback_tests": [
+        {
+          "args": [
+            [
+              [
+                -2,
+                6,
+                5
+              ],
+              [
+                -4,
+                -1,
+                -3,
+                -4,
+                -4,
+                5,
+                -1
+              ],
+              [
+                2,
+                -2,
+                5,
+                5,
+                6,
+                6,
+                0
+              ]
+            ]
+          ],
+          "expected": [
+            -2,
+            -4,
+            2,
+            6,
+            -1,
+            -2,
+            5,
+            -3,
+            5,
+            -4,
+            5,
+            -4,
+            6,
+            5,
+            6,
+            -1,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [],
+              []
+            ]
+          ],
+          "expected": [],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                4,
+                -3,
+                2,
+                -4,
+                3,
+                -3,
+                4,
+                0
+              ],
+              [
+                2,
+                6,
+                6,
+                6
+              ]
+            ]
+          ],
+          "expected": [
+            4,
+            2,
+            -3,
+            6,
+            2,
+            6,
+            -4,
+            6,
+            3,
+            -3,
+            4,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [],
+              [
+                -4,
+                2,
+                -2,
+                1,
+                -3,
+                1,
+                -1
+              ],
+              [
+                1,
+                1,
+                2
+              ],
+              [
+                -4
+              ]
+            ]
+          ],
+          "expected": [
+            -4,
+            1,
+            -4,
+            2,
+            1,
+            -2,
+            2,
+            1,
+            -3,
+            1,
+            -1
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                4,
+                -1
+              ],
+              [
+                6,
+                2
+              ]
+            ]
+          ],
+          "expected": [
+            4,
+            6,
+            -1,
+            2
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                2,
+                3,
+                0,
+                6,
+                -1
+              ],
+              [
+                2,
+                4,
+                4,
+                2,
+                1,
+                -1,
+                3,
+                0
+              ],
+              [
+                5,
+                -2,
+                0,
+                -2,
+                1,
+                -3,
+                0,
+                2
+              ]
+            ]
+          ],
+          "expected": [
+            2,
+            2,
+            5,
+            3,
+            4,
+            -2,
+            0,
+            4,
+            0,
+            6,
+            2,
+            -2,
+            -1,
+            1,
+            1,
+            -1,
+            -3,
+            3,
+            0,
+            0,
+            2
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -2,
+                -3,
+                5,
+                0,
+                3,
+                6,
+                -4
+              ],
+              [
+                0,
+                -2,
+                -1
+              ],
+              [
+                -1,
+                -3,
+                -3,
+                0,
+                -1,
+                0,
+                6,
+                -2
+              ]
+            ]
+          ],
+          "expected": [
+            -2,
+            0,
+            -1,
+            -3,
+            -2,
+            -3,
+            5,
+            -1,
+            -3,
+            0,
+            0,
+            3,
+            -1,
+            6,
+            0,
+            -4,
+            6,
+            -2
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                4,
+                3,
+                1,
+                0,
+                -2,
+                4
+              ],
+              [
+                -4,
+                6
+              ],
+              [
+                1,
+                1
+              ]
+            ]
+          ],
+          "expected": [
+            4,
+            -4,
+            1,
+            3,
+            6,
+            1,
+            1,
+            0,
+            -2,
+            4
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "holdout_tests": [
+        {
+          "args": [
+            [
+              [
+                1,
+                0
+              ],
+              [
+                5,
+                5,
+                6
+              ],
+              [
+                4,
+                2
+              ],
+              [
+                6,
+                -4,
+                0,
+                -3,
+                0,
+                1,
+                4,
+                0
+              ]
+            ]
+          ],
+          "expected": [
+            1,
+            5,
+            4,
+            6,
+            0,
+            5,
+            2,
+            -4,
+            6,
+            0,
+            -3,
+            0,
+            1,
+            4,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -1
+              ],
+              [
+                0,
+                0
+              ],
+              []
+            ]
+          ],
+          "expected": [
+            -1,
+            0,
+            0
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -2,
+                4
+              ],
+              [
+                -3,
+                -1,
+                5
+              ],
+              [
+                0,
+                -4
+              ],
+              [
+                -2
+              ]
+            ]
+          ],
+          "expected": [
+            -2,
+            -3,
+            0,
+            -2,
+            4,
+            -1,
+            -4,
+            5
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -2,
+                -3,
+                -1,
+                6,
+                4,
+                4
+              ],
+              [
+                2
+              ]
+            ]
+          ],
+          "expected": [
+            -2,
+            2,
+            -3,
+            -1,
+            6,
+            4,
+            4
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                4,
+                -4,
+                5
+              ],
+              [
+                6,
+                0
+              ],
+              [],
+              []
+            ]
+          ],
+          "expected": [
+            4,
+            6,
+            -4,
+            0,
+            5
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -1,
+                6,
+                5
+              ],
+              []
+            ]
+          ],
+          "expected": [
+            -1,
+            6,
+            5
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [],
+              [],
+              [
+                2,
+                1,
+                2,
+                -1
+              ]
+            ]
+          ],
+          "expected": [
+            2,
+            1,
+            2,
+            -1
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        },
+        {
+          "args": [
+            [
+              [
+                -1,
+                4,
+                1,
+                5,
+                -4,
+                6,
+                0
+              ],
+              [
+                4,
+                0,
+                -3,
+                4,
+                5
+              ],
+              [
+                -1,
+                4,
+                -1,
+                -1,
+                -2,
+                2
+              ],
+              [
+                -1,
+                2,
+                1,
+                1,
+                -3,
+                3,
+                1
+              ]
+            ]
+          ],
+          "expected": [
+            -1,
+            4,
+            -1,
+            -1,
+            4,
+            0,
+            4,
+            2,
+            1,
+            -3,
+            -1,
+            1,
+            5,
+            4,
+            -1,
+            1,
+            -4,
+            5,
+            -2,
+            -3,
+            6,
+            2,
+            3,
+            0,
+            1
+          ],
+          "check_input_unchanged": true,
+          "ordered_dict": false
+        }
+      ],
+      "trusted_reference_source": "def interleave_lists(chunks):\n    return [chunk[i] for i in range(max(map(len, chunks), default=0)) for chunk in chunks if i < len(chunk)]\n",
+      "trusted_reference_sha256": "89767883e0148e99a89c57d168a5b7ca4f4d5e0aec8489336701c3437401ed45"
+    }
+  },
+  "note": "Only failed feedback_tests may be disclosed after testing. Never disclose holdout_tests or reference source. Freeze selection, grade holdout once, then no repairs. References use the imports in coding_tasks.py."
+}
