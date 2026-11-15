@@ -163,6 +163,50 @@ class ExperimentTests(unittest.TestCase):
     def args(self):
         return argparse.Namespace(agents=4, target=3, rounds=1, allow_fractions=False, seed=1)
 
+    def test_verified_terminal_guard_accepts_without_votes(self):
+        for method in ("democracy", "weighted"):
+            with self.subTest(method=method), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "events.jsonl"
+                events = h.Events(path, method)
+                args, client = self.args(), FakeClient()
+                args.accept_verified_solution = True
+                experiment = h.Experiment(args, client, events)
+                try:
+                    result = experiment.run((F(1), F(2)), "test", method)
+                finally:
+                    experiment.pool.shutdown()
+                    events.close()
+                self.assertTrue(result["solved"])
+                self.assertEqual([stage for stage, _ in client.calls], ["propose"] * 4)
+                rows = [json.loads(line) for line in path.read_text().splitlines()]
+                chosen = [r for r in rows if r["type"] == "chosen"]
+                self.assertEqual(len(chosen), 1)
+                self.assertEqual(chosen[0]["reason"], "exact_target_verified")
+                self.assertFalse(any(r["type"] == "vote" for r in rows))
+                self.assertEqual(sum(r.get("reason") == "verified_solution_found" for r in rows), 1)
+                self.assertEqual(rows[-1]["reward"], 1)
+
+    def test_guard_nonterminal_still_votes_like_baseline(self):
+        outcomes = []
+        for enabled in (False, True):
+            with self.subTest(enabled=enabled), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "events.jsonl"
+                events = h.Events(path, "democracy")
+                args, client = self.args(), FakeClient()
+                args.target, args.accept_verified_solution = 99, enabled
+                experiment = h.Experiment(args, client, events)
+                try:
+                    result = experiment.run((F(1), F(2)), "test", "democracy")
+                finally:
+                    experiment.pool.shutdown()
+                    events.close()
+                rows = [json.loads(line) for line in path.read_text().splitlines()]
+                self.assertEqual([stage for stage, _ in client.calls], ["propose"] * 4 + ["vote"] * 4)
+                self.assertFalse(any(r.get("reason") == "exact_target_verified" for r in rows))
+                self.assertEqual(sum(r.get("reason") == "vote_loser" for r in rows), 1)
+                outcomes.append((result["solved"], result["final_state"]))
+        self.assertEqual(outcomes[0], outcomes[1])
+
     def test_vote_stage_and_event_tree(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "events.jsonl"

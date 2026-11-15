@@ -294,6 +294,18 @@ class Experiment:
             if not candidates:
                 self.events.emit("halt", node_id=node_id, puzzle_id=puzzle_id, reason="no_legal_proposals")
                 break
+            if getattr(self.args, "accept_verified_solution", False):
+                winner = next((c for c in candidates if solved(c["state"], self.args.target)), None)
+                if winner is not None:
+                    self.events.emit("chosen", node_id=winner["node_id"], parent_id=node_id,
+                                     puzzle_id=puzzle_id, candidate_id=winner["candidate_id"],
+                                     reason="exact_target_verified")
+                    for candidate in candidates:
+                        if candidate is not winner:
+                            self.events.emit("pruned", node_id=candidate["node_id"], parent_id=node_id,
+                                             puzzle_id=puzzle_id, reason="verified_solution_found")
+                    state, node_id = winner["state"], winner["node_id"]
+                    break
             futures = [self.pool.submit(self.vote, a, state, candidates, node_id, puzzle_id,
                                        method == "weighted") for a in range(self.args.agents)]
             votes = [f.result() for f in futures]
@@ -372,6 +384,8 @@ def main(argv=None):
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--allow-fractions", action="store_true")
     parser.add_argument("--thinking", action="store_true", help="Enable model reasoning; default off, prompt unchanged")
+    parser.add_argument("--accept-verified-solution", action="store_true",
+                        help="Accept an already-proposed exact target before voting; default off")
     parser.add_argument("--events", required=True, help="New JSONL file; refuses overwrite")
     args = parser.parse_args(argv)
     if any(x <= 0 for x in (args.agents, args.per_endpoint_concurrency, args.rounds,

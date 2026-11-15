@@ -64,6 +64,8 @@ def main(argv=None):
     parser.add_argument("--run", action="store_true", help="Execute; default prints plan without creating files")
     parser.add_argument("--endpoint", action="append", help="Repeat base URLs; default localhost ports 18081–18084")
     parser.add_argument("--output", type=Path, help="New study directory; must not exist")
+    parser.add_argument("--method", choices=("independent", "democracy"), help="Run only this method")
+    parser.add_argument("--accept-verified-solution", action="store_true", help="Forward opt-in terminal-proposal guard")
     args = parser.parse_args(argv)
     verify_puzzles()
     endpoints = args.endpoint or [f"http://127.0.0.1:{port}/v1" for port in range(18081, 18085)]
@@ -72,6 +74,8 @@ def main(argv=None):
     for puzzle_index, (puzzle, _, _) in enumerate(PUZZLES):
         for seed in (1, 2):
             for method in (("independent", "democracy") if seed == 1 else ("democracy", "independent")):
+                if args.method and method != args.method:
+                    continue
                 name = f"p{puzzle_index + 1}-s{seed}-{method}"
                 events = directory / (name + ".jsonl")
                 command = [sys.executable, str(HERE / "harness.py"), "--method", method,
@@ -79,12 +83,15 @@ def main(argv=None):
                            "--per-endpoint-concurrency", "25", "--rounds", "5", "--max-tokens", "192",
                            "--max-calls", "500", "--max-completion-tokens", "96000", "--timeout", "90",
                            "--seed", str(seed), "--events", str(events)]
+                if args.accept_verified_solution:
+                    command.append("--accept-verified-solution")
                 for endpoint in endpoints:
                     command.extend(["--endpoint", endpoint])
                 runs.append(dict(name=name, puzzle=puzzle, seed=seed, method=method,
-                                 events=str(events), command=command))
+                                 events=str(events), accept_verified_solution=args.accept_verified_solution, command=command))
     if not args.run:
-        print(json.dumps(dict(mode="dry_run", puzzle_witnesses_verified=3, runs=runs), indent=2))
+        print(json.dumps(dict(mode="dry_run", puzzle_witnesses_verified=3,
+                              accept_verified_solution=args.accept_verified_solution, method_filter=args.method, runs=runs), indent=2))
         return 0
     directory.mkdir(parents=True, exist_ok=False)
     runtime = HERE / "runtime.json"
@@ -96,6 +103,7 @@ def main(argv=None):
                     runtime_evidence="Configuration snapshot only; attach live serving probe separately.",
                     budget_interpretation="Same ceilings, not matched actual cost; democracy spends calls on votes.",
                     thinking=False, agents=100, max_calls=500, max_completion_tokens=96000,
+                    accept_verified_solution=args.accept_verified_solution, method_filter=args.method,
                     puzzle_witnesses={p: expression for p, expression, _ in PUZZLES}, runs=runs)
     (directory / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
     results = []
@@ -110,6 +118,7 @@ def main(argv=None):
             except subprocess.TimeoutExpired:
                 controller_error = "600-second run timeout; subprocess killed"
         row = dict(name=run["name"], puzzle=run["puzzle"], seed=run["seed"], method=run["method"],
+                   accept_verified_solution=args.accept_verified_solution,
                    events=run["events"], wall_seconds=round(time.monotonic() - started, 6),
                    returncode=returncode, controller_error=controller_error, **summarize(Path(run["events"])))
         results.append(row)
