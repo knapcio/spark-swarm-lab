@@ -1,0 +1,343 @@
+{
+  "protocol_version": "runtime-v2",
+  "valid_for_aggregation": true,
+  "ledger_entry_verified": true,
+  "ledger_snapshot_sha256": "c16e0f2ca7b94c6a028fd0087b64810628dfd2e25ccef99d4dc1810e99f03edd",
+  "ledger_completed_entry_sha256": "c69e4e31ce9f7c14215574ac877dee903ca91ac8a867cec03129f529c04e8702",
+  "runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+  "runtime_snapshot": {
+    "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+    "model_weight_bytes": 21561882284,
+    "model_shards": 52,
+    "image": "vllm/vllm-openai:v0.32.0",
+    "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+    "served_model_name": "nemotron-lightning",
+    "deployment": "4 independent TP1 replicas on GB10",
+    "baseline": {
+      "max_model_len": 16384,
+      "max_num_seqs": 25,
+      "max_num_batched_tokens": 4096,
+      "gpu_memory_utilization": 0.7,
+      "moe_backend": "marlin",
+      "kv_cache_dtype": "fp8",
+      "mamba_backend": "flashinfer",
+      "mamba_cache_mode": "align",
+      "prefix_caching": true,
+      "speculative_decoding": false
+    },
+    "request_defaults": {
+      "temperature": 0.8,
+      "max_tokens": 192,
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      }
+    },
+    "active_recipe": "dspark3-runtime-v2",
+    "dspark": {
+      "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+      "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+      "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+      "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+      "draft_weight_bytes": 1349057504,
+      "draft_weight_files": 1,
+      "draft_mount": "~/swarm-lab/draft:/draft:ro",
+      "method": "dspark",
+      "num_speculative_tokens": 3
+    },
+    "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+    "cache_directory": "~/swarm-lab/cache-v032",
+    "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+    "cpu_grader_python": "3.12.16"
+  },
+  "runtime_amendment_sha256": "a64ac723b1755ac23cdb26d0799c1bd53f2404310d5ed50b423a91745428bcbb",
+  "cpu_grader_amendment_sha256": "91b246e5ca02691444edca06009b70a6121231d965615a5e03c8515c6107e331",
+  "protocol": "independent-supplemental-solo-audit-v1",
+  "control_selection_sha256": "c3752ce71e4491285c5031374cf1dcaaf86211bf7d59ab1ea50c4bd90036609b",
+  "split": "evaluation",
+  "seed": 1,
+  "status": "PASS",
+  "source_commit": "a8adff19f690e90aec5705c373a82005e869f1f2",
+  "source_hashes": {
+    "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+    "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+    "direct_solver.py": "c7e97bff83adf52cfb056ac2ab994d4854aa6ab4f703d07ab86e48111c5d83cb",
+    "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+    "ensemble_solver.py": "6e0f1c368d294780b3b2a6694c831d0d96694beaaa923879a4b8a8501bcd05c9",
+    "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+    "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+  },
+  "selection_sha256": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
+  "selection_frozen_utc": "2026-11-15T14:05:32.924894+00:00",
+  "cohort_started_utc": "2026-11-15T19:07:14.772952+00:00",
+  "dataset_sha256": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+  "metadata_sha256": "14f017d1ae336a193d3722e4767dafe1c3f43a7e2cdbcc51d2baef207a558578",
+  "summary_sha256": "ef889dfb6f0e067889dc4494dd9432b10db0ee8882572455bf23104398433f69",
+  "audit_script_sha256": "54567f540346e6a9be1d22535e3b01315963e19851f106c9d5d63005bd533a06",
+  "counts": {
+    "roots": 52,
+    "legal_transitions": 42,
+    "successful_rewards": 16,
+    "bounded_plan_responses": 17,
+    "cases": 24,
+    "request_starts": 52,
+    "request_ends": 44,
+    "controller_stops": 24,
+    "known_server_cases": 24,
+    "invalid_plan_responses": 27,
+    "illegal_proposals": 1
+  },
+  "response_error_categories": {
+    "ValueError": 26,
+    "JSONDecodeError": 1
+  },
+  "known_final_worker_infrastructure_total": 0,
+  "unknown_final_worker_infrastructure_counts": 8,
+  "checks": [
+    "Complete single-arm supplemental task/seed grid, development/evaluation kept distinct; verified fresh-v2 ledger receipt, source/git-blob/dataset/selection/runtime/grader pins and case commands",
+    "Independent Fraction replay of every legal proposal, positive integer intermediates, distinct indices, ordered state consumption",
+    "Every reward independently checks exact target presence; all successful ancestry edges replayed",
+    "No feedback from witnesses, other workers or holdout; at most four sequential own full-plan revisions, no retry after proof",
+    "Sequential own-root plan responses bounded, revision IDs and exact preceding own-plan feedback checked; responses, own-original-root checked, executed moves match response prefix",
+    "Unique global request IDs and request contexts; client usage/charge/errors/caps/denials exactly match traces",
+    "Every successful controller stop has prior producer reward proof; controller is not its own proof",
+    "Server counters independently recomputed; unknown cost remains null",
+    "Public task schema only; pinned runner/harness/source inspection, command/config has no witness/reputation inputs; private witness file not opened"
+  ],
+  "cases": [
+    {
+      "task_id": "eva-4a5b112b29e0",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-4a5b112b29e0-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "e9ce553e85a73243b9a02622738cb0fe79db6a99a67c77372945551a9b9fc28e",
+      "roots": 1,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-27c0dd95407a",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-27c0dd95407a-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "2d2a5415d2bbb4f87056d59147f43b752a70a0965d9d45b2d0914f978c74798e",
+      "roots": 1,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-c25dd13868a8",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-c25dd13868a8-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "bb8135a6092c69a64a704dc7e4f032c7a17fc6f380bfd4bbae18beca14469316",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-8955514173a5",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-8955514173a5-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "3fb0fc575639e5ac5d1de067c1aa76a4fb200baf97789aed4dd36bf91418407a",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-91cea8bac1fe",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-91cea8bac1fe-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "dd36edca64c96ec29a59ff2826216b2f7636dd537e300f0965f7af29d8e7a132",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-2894f3b286c6",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-2894f3b286c6-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "ae28efcbb9e85e3c55781fda466ffc2b1019f5427543b016540b5e7bda8ef5bf",
+      "roots": 1,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-17c359789b49",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-17c359789b49-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "d6b7e4cf602c5be595830d2e9d6fca4be2d819066f3a7113d27cf5821693c8ed",
+      "roots": 2,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-6b194524eb19",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-6b194524eb19-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "330b6a80b4fb887c0e4d635b7989d8c75df6422613f9bd3da76016694fc36b76",
+      "roots": 3,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 2,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-5f7e8610aa71",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-5f7e8610aa71-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "9c1ada667574edd53724aa4ff0eca21df55979ab0342fae9b1533a66c8292307",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-d75177564d41",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-d75177564d41-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "d2e0344e2c7275996041cc455847a82399c38cbfad4465dbc01f151339b5c62b",
+      "roots": 2,
+      "legal_transitions": 5,
+      "illegal_proposals": 1,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 2
+    },
+    {
+      "task_id": "eva-3b1047ffeb08",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-3b1047ffeb08-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "57e96fab35771316392b459984abb9cf7e8b8fb837210a01f28e570c42fc84c4",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-6ce1a0614ff5",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-6ce1a0614ff5-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "504f6fec1c20286f4a81c17c87e9abbee469c81a01be9e2d3fe7529347f13d18",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-8c04e7fa4008",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-8c04e7fa4008-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "2d256e94406416d8070c0f22dbd6d7d66f0953a97a9bf8fc735e3097b343e034",
+      "roots": 2,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-f087ad404500",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-f087ad404500-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "df6b373da1987c01b660a8ff639f0cb596543534564e3a43370a778ddd3ae1b2",
+      "roots": 3,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 2,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-66b495db2b77",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-66b495db2b77-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "f1f4656394375b8b3b0f647b2d2fb7298fb90c088836fc35c452163ba1dba276",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-f792236a99ed",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-f792236a99ed-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "d415de681625f8ae317ffc78fe6b3465c3c7b2757256558277b0c04a78cb6280",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-e40959c347a7",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-e40959c347a7-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "69449acab7638865c192d8692e5d4480f117424063e345c2b81818f1dd7d51db",
+      "roots": 2,
+      "legal_transitions": 4,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-3f863b95e0b7",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-3f863b95e0b7-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "e02ab0aed0afe7c555c6347792918a438c0c343e6f88a4dee4240fce71766f53",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-0fdf38eb4f8b",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-0fdf38eb4f8b-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "f65554e50036d3c0035ce3c5398393b842584d6cbfc3c10d87bd0220721d13a8",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-a890436f325f",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-a890436f325f-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "6365e8232f8f4c01d1dde573069505596f4b1d7b2ce078bfe2ecd999de4df734",
+      "roots": 1,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-eea066d2b2d7",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-eea066d2b2d7-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "44e2e5f23a3bef5429119a3944d537e82d413529afba427adfff1b98f9d35b6e",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-541797dfa346",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-541797dfa346-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "e25daf79d457c63cb258b3b774bdec2d81c6afc04f1118de8b055d44f96ba57a",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-eca4c7a9c432",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-eca4c7a9c432-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "9d3118214b8bd85058e4b8ce24d54c78267ebec121ef5f6d8ed9413782fdae42",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-ec6b2de6877c",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-ec6b2de6877c-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "7d2126d01dde8c2189d96e4bf86a2b414c36dc469a7686790fa10a04953d8995",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    }
+  ]
+}

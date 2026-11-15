@@ -54,6 +54,20 @@ Coding success means the selected frozen candidate passed its single final holdo
 
 The [complete primary ledger](results/evaluation-v2/primary-aggregate/verified-ledger.json), [source/configuration record](results/evaluation-v2/primary-aggregate/source-configurations.json), [24-artifact export manifest](results/evaluation-v2/primary-aggregate/manifest.json), [independent aggregate audit](results/evaluation-v2/primary-aggregate/aggregation-audit.json) and [audit script](results/evaluation-v2/primary-aggregate/audit.py) preserve dataset/source/runtime hashes and exact path/interpreter normalizations. Original ledger/input SHA references deliberately remain original hashes; the manifest maps them to normalized export hashes. CSVs, figures and captured model/source values are unchanged. Both accuracy PNGs received independent visual QA. No model API or active/frozen source change was used for analysis.
 
+## Supplementary sequential solo — seed 1 of 3
+
+The separate [supplemental control](EVALUATION_SOLO_CONTROL.json), frozen before primary outcomes, now has one independently audited evaluation cohort: **24/24 verified cases**, seed 1, source `a8adff19f690e90aec5705c373a82005e869f1f2`. It is not added to the original 900-case matrix or pooled with the eight-task [development smoke](results/solo-control-v2/development-s1/). The other two seeds and loaded-fleet comparison remain pending; this is an interim result, not an efficiency ranking.
+
+One agent may revise its own full plan up to four times, thinking ON/8192 per response, under the same 32768-completion-token / 1280-call ceiling and 180s controller deadline. Each revision starts from the original task and receives only its own preceding parsed plan, exact transition error and final state. The pinned source, protocol timing and feedback provenance were independently checked.
+
+| Control | Solved | Single-seed Wilson 95% | Calls | Unfinished | Server prompt | Server completion | Median / p95 occupied wall s |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Sequential own-plan refinement | 16/24  46.7–82.0%  52  8  10,709  347,511  131.260 / 181.887 |
+
+All eight unsolved cases reach the controller deadline. Their unfinished calls make completed-client usage **8789 prompt / 302782 completion tokens a lower bound**, while server counter costs are independently known for **24/24** cases. Eight final worker infrastructure counters remain unknown; no controller error, unexpected process failure or budget denial is recorded. There are 26 length finishes and 27 request-format errors (26 `ValueError`, one `JSONDecodeError`), retained as observed outcomes. Occupied wall includes controller/metrics/drain overhead, so its p95 can exceed the 180s worker cutoff. Whole queue wall is 876.060994s and is not an individual-arm fleet-throughput rate.
+
+The [audit](results/solo-control-v2/evaluation-s1/analysis/proof-cost-audit.json) and [script](results/solo-control-v2/evaluation-s1/analysis/proof-cost-audit.py) check 52 original roots, 42 legal Fraction transitions, one independently rejected illegal proposal, all 16 successful ancestries, own-feedback revision order, 52 starts/44 ends, usage/charges/caps and server deltas. The [82-artifact manifest](results/solo-control-v2/evaluation-s1/manifest.json) passes independent original/export SHA and parsed inverse checks, including the [verified ledger receipt](results/solo-control-v2/evaluation-s1/analysis/verified-ledger-entry.json). [24-case CSV](results/solo-control-v2/evaluation-s1/summary.csv) · [source/runtime metadata](results/solo-control-v2/evaluation-s1/metadata.json) · [derived interim analysis](results/solo-control-v2/evaluation-s1/analysis/summary-derived/analysis.json). No partial seed 2/3 outcomes, model API or active/frozen source changes were used.
+
 ## Runtime-v2 protocol and historical interim records
 
 
