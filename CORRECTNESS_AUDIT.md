@@ -76,3 +76,9 @@ python3 -m unittest test_confirm_coding test_independent_code_grader
 ```
 
 The [published plan](results/coding-confirmation-plan-20261115/plan.json) and [22-test offline receipt](results/coding-confirmation-plan-20261115/offline-tests.json) are preparation only. No confirmation container, model call or remote smoke was launched for this plan. JSON and CSV outputs will keep the four phases separately named, preserving candidate-resource errors, cleanup evidence and any incomplete jobs. Original benchmark artifacts are read only.
+
+## Subsequent live qualification and transport amendment
+
+At the idle boundary after the original throughput attempt stopped, the new outer-parent grader passed [live qualification](results/independent-grader-qualification-20261115/qualification.json) on the Sparks: six authored pass/wrong/frame-access/grade-forgery/timeout/kernel-OOM checks, plus all **405 trusted examples and private cases in 72 phase containers**. Every owned container was cleaned up on all four hosts. This executed trusted references and deliberately authored negative fixtures, with **zero model calls and no retained model-candidate execution**. The [publication manifest](results/independent-grader-qualification-20261115/manifest.json) preserves the exact receipt bytes. It validates this finite control set, not universal tamper resistance or functional correctness.
+
+The [transport-only amendment](TRANSPORT_TIMEOUT_AMENDMENT.json) separates HTTP waiting time from the unchanged task deadline. The [refreshed confirmation plan](results/coding-confirmation-timeoutguard-plan-20261115/plan.json) has the same 324 cases, 323 artifacts and 824 grading jobs; only its gate-module source pin changed. The historical preparation plan remains intact. Actual candidate confirmation still waits for all 45 fresh timeout-guarded throughput cohorts.

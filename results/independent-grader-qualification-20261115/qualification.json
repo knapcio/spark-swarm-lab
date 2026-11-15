@@ -1,0 +1,2411 @@
+{
+  "started_utc": "2026-11-15T20:23:29.720438+00:00",
+  "scope": "Authored negative smokes and trusted references only at idle diagnostic boundary; no model code or generation",
+  "grader_sha256": "c4324123bb75a8712150adb3e06e1da4e1e44a7d91516597d9a35caa372c2726",
+  "image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+  "model_calls": 0,
+  "smokes": [
+    {
+      "name": "pass",
+      "code_sha256": "fd7c8d50fb2b87dfe0dcd6a854239d2cdc310a06e522517b394301bd5532a831",
+      "tests": [
+        {
+          "args": [
+            40,
+            2
+          ],
+          "expected": 42
+        },
+        {
+          "args": [
+            2,
+            3
+          ],
+          "expected": 5
+        }
+      ],
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "7a9dc477b635b0dbfc885bdb1227ba471511817afb2b0f7763c5301438f5ac79",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "name": "wrong",
+      "code_sha256": "dd33682cb2599e6296e88b0acf6090605ab082185956efeadd6ff9cc565c28cc",
+      "tests": [
+        {
+          "args": [],
+          "expected": 42
+        }
+      ],
+      "report": {
+        "status": "failed",
+        "passed": 0,
+        "failed": 1,
+        "total": 1,
+        "tests_run": 1,
+        "first_failure": {
+          "test_index": 0,
+          "input": {
+            "args": [],
+            "kwargs": {}
+          },
+          "expected": 42,
+          "actual": 0,
+          "error": null,
+          "failure_kind": "wrong_result",
+          "input_unchanged": true
+        },
+        "failure_kind": "candidate_test_failure",
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "98e8fa3e40f78587a2f1bc2da82a3f04a36c8990f5a0d5290be1aa6c1264179a",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "name": "frame_peek",
+      "code_sha256": "748550d0cb14135a0c81b03bd0519a77b23286df664f130b164e2b7b958b4e8b",
+      "tests": [
+        {
+          "args": [],
+          "expected": 42
+        }
+      ],
+      "report": {
+        "status": "failed",
+        "passed": 0,
+        "failed": 1,
+        "total": 1,
+        "tests_run": 1,
+        "first_failure": {
+          "test_index": 0,
+          "input": {
+            "args": [],
+            "kwargs": {}
+          },
+          "expected": 42,
+          "actual": null,
+          "error": "'case'",
+          "failure_kind": "wrong_result",
+          "input_unchanged": true
+        },
+        "failure_kind": "candidate_test_failure",
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "ec8602d6c5892e5df4dd340c9264b4d1f0ba706ddd8c8dbecb496752b4b423ca",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "name": "grade_forgery",
+      "code_sha256": "1087b52dbdc59aeb327045174219b3fa7d2921ed5201f94d9a184c1bab333813",
+      "tests": [
+        {
+          "args": [],
+          "expected": 42
+        }
+      ],
+      "report": {
+        "status": "error",
+        "passed": 0,
+        "failed": 0,
+        "total": 1,
+        "tests_run": 0,
+        "failure_kind": "candidate_protocol",
+        "error": "Invalid candidate observation protocol",
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "50e64e21e36dc8b8027797339e1346ca9cb98a033dc4d716994e7a932165dca0",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "name": "timeout",
+      "code_sha256": "fbf1587db63ff10267785dc6a26fc0c0864adbd21c1cf337435572db883195b4",
+      "tests": [
+        {
+          "args": [],
+          "expected": 42
+        }
+      ],
+      "report": {
+        "status": "timeout",
+        "passed": 0,
+        "failed": 0,
+        "total": 1,
+        "tests_run": 0,
+        "first_failure": null,
+        "failure_kind": "candidate_timeout",
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "b2ef43b8d4e4f6f8a78f898846c97b1e6e0e13bef2d96eeb8a7078c4c425fa5c",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "name": "oom",
+      "code_sha256": "c471ad88d57028917ced1544fe0d1cfe2d7a8838b0f4eb3e890e153317b03acd",
+      "tests": [
+        {
+          "args": [],
+          "expected": 0
+        }
+      ],
+      "report": {
+        "status": "error",
+        "passed": 0,
+        "failed": 0,
+        "total": 1,
+        "tests_run": 0,
+        "failure_kind": "candidate_oom",
+        "error": "Candidate exceeded container memory",
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": true,
+          "ExitCode": 137,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "86fb7a39f7ac0fc0392f1f4cb1f908f1bcca1130d36fa179b89601f81595ea4e",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    }
+  ],
+  "references": [
+    {
+      "index": 3,
+      "task_id": "dev-run_length",
+      "function_name": "run_length",
+      "phase": "feedback",
+      "tests": 8,
+      "code_sha256": "8b5bb80c1d32d638deeeb4b6cd902a3a381b0a0331af90d6a5ae74ee6cbc834f",
+      "report": {
+        "status": "passed",
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "tests_run": 8,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "59f7506cfa2d1bd9b000cd9926246bf3dd1c4cb6d706412107ab6eab44c872d2",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 1,
+      "task_id": "dev-stable_unique",
+      "function_name": "stable_unique",
+      "phase": "holdout",
+      "tests": 8,
+      "code_sha256": "37d0e786b5afe15c4379ea514aeca4202717bbb4c067003ac172ad0beaed7825",
+      "report": {
+        "status": "passed",
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "tests_run": 8,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "cd4f99936e64d40b9bfd821aa63c5e7b2e64e33c0d6112f8007e3f8fac695565",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 0,
+      "task_id": "dev-stable_unique",
+      "function_name": "stable_unique",
+      "phase": "feedback",
+      "tests": 8,
+      "code_sha256": "37d0e786b5afe15c4379ea514aeca4202717bbb4c067003ac172ad0beaed7825",
+      "report": {
+        "status": "passed",
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "tests_run": 8,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "d368a5c9ed68d363803771e3b492a6b4769823ff1b3b8d1ad16c48d3f8ed7c23",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 2,
+      "task_id": "dev-stable_unique",
+      "function_name": "stable_unique",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "37d0e786b5afe15c4379ea514aeca4202717bbb4c067003ac172ad0beaed7825",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "fa163e0ceeaf4b52a9df16f90d2c646db5b939255416d9e7939dbacee4443c7e",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 7,
+      "task_id": "dev-merge_intervals",
+      "function_name": "merge_intervals",
+      "phase": "holdout",
+      "tests": 7,
+      "code_sha256": "a0e72759941c0f812778b5368c3ce8fcd1022a500581c2f5a651001ef893f39d",
+      "report": {
+        "status": "passed",
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "tests_run": 7,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "74baba95e5a890196ac2905fbcadf6f5187381ef99541cd41879870367e03e63",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 5,
+      "task_id": "dev-run_length",
+      "function_name": "run_length",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "8b5bb80c1d32d638deeeb4b6cd902a3a381b0a0331af90d6a5ae74ee6cbc834f",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "3f0dd8952a3363cec9d34930cdeb3ef9097cbd49a04bb64e63347a706bc6b54a",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 4,
+      "task_id": "dev-run_length",
+      "function_name": "run_length",
+      "phase": "holdout",
+      "tests": 8,
+      "code_sha256": "8b5bb80c1d32d638deeeb4b6cd902a3a381b0a0331af90d6a5ae74ee6cbc834f",
+      "report": {
+        "status": "passed",
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "tests_run": 8,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "b6cbdc863b962c3020d88f5686e512e6ca6f6733fce83b35a68ee95ec9e3e2b9",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 6,
+      "task_id": "dev-merge_intervals",
+      "function_name": "merge_intervals",
+      "phase": "feedback",
+      "tests": 7,
+      "code_sha256": "a0e72759941c0f812778b5368c3ce8fcd1022a500581c2f5a651001ef893f39d",
+      "report": {
+        "status": "passed",
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "tests_run": 7,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "fecba95787708391c811ffab07f0903fb8b6dbf5c3f0380e48b159c0fbde74d8",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 9,
+      "task_id": "dev-top_k_frequent",
+      "function_name": "top_k_frequent",
+      "phase": "feedback",
+      "tests": 9,
+      "code_sha256": "c9421232b13af0071e5e4bdbbad2c9e3659fab203010b203408ea0646ee9869e",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "d435aac3522e1c55020f866c8b7575ff26c3887f76ea7dc7928f2040dda9d0f0",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 11,
+      "task_id": "dev-top_k_frequent",
+      "function_name": "top_k_frequent",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "c9421232b13af0071e5e4bdbbad2c9e3659fab203010b203408ea0646ee9869e",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "6885d1a3c8e6ef58ae0d0ed65031737981232cc49b32c8797b786624d09cbe9f",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 8,
+      "task_id": "dev-merge_intervals",
+      "function_name": "merge_intervals",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "a0e72759941c0f812778b5368c3ce8fcd1022a500581c2f5a651001ef893f39d",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "dfe466e53df97a63916d8efdec2f725f505efe384269766931379acf54420d4a",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 10,
+      "task_id": "dev-top_k_frequent",
+      "function_name": "top_k_frequent",
+      "phase": "holdout",
+      "tests": 9,
+      "code_sha256": "c9421232b13af0071e5e4bdbbad2c9e3659fab203010b203408ea0646ee9869e",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "a658f4f4b9f81d243054c85e5e7df9b73ffad742ec89398b5b56782d3ba467a1",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 13,
+      "task_id": "dev-moving_sums",
+      "function_name": "moving_sums",
+      "phase": "holdout",
+      "tests": 9,
+      "code_sha256": "c9b9e7cb7d005bd4dc4ec2342526c87404b6dd28066cc5bbae91b6ea6caad176",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "2d73e5c862d6e03575df0c255b30f89b0a5f3255928a22075169d456bd7fc8e1",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 15,
+      "task_id": "dev-parse_version",
+      "function_name": "parse_version",
+      "phase": "feedback",
+      "tests": 6,
+      "code_sha256": "1cd88e03a4c982016534132db5c9b2b0005a37bb4104aab2d7f9bb82f0fc28c1",
+      "report": {
+        "status": "passed",
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "tests_run": 6,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "c84c7da599ac7b7d50c88b1391771126e655c29682a50fb2529ca89a5e3b5a4d",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 12,
+      "task_id": "dev-moving_sums",
+      "function_name": "moving_sums",
+      "phase": "feedback",
+      "tests": 9,
+      "code_sha256": "c9b9e7cb7d005bd4dc4ec2342526c87404b6dd28066cc5bbae91b6ea6caad176",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "87ae057f8e8cb0a377d05d9148b5d154e729bd2b820d410ba9fa630d4c78a48d",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 14,
+      "task_id": "dev-moving_sums",
+      "function_name": "moving_sums",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "c9b9e7cb7d005bd4dc4ec2342526c87404b6dd28066cc5bbae91b6ea6caad176",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "465b26f0ec08bce090f9042a7c1caf9d2682d209775fa54403d778349669bf47",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 17,
+      "task_id": "dev-parse_version",
+      "function_name": "parse_version",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "1cd88e03a4c982016534132db5c9b2b0005a37bb4104aab2d7f9bb82f0fc28c1",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "d825ad8fd9b208f914df670c64a24b072b1eb538473218ee2f075ee8dab37e2f",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 19,
+      "task_id": "eva-stable_group_pairs",
+      "function_name": "stable_group_pairs",
+      "phase": "holdout",
+      "tests": 6,
+      "code_sha256": "91c1a154af36134ef501de94aa2fde6f7e18259bcfb611e2faf868e96dd027c8",
+      "report": {
+        "status": "passed",
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "tests_run": 6,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "bee52738ff89918358d3c52b11eecce9929789cb5d1063705eccdd4783783f93",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 16,
+      "task_id": "dev-parse_version",
+      "function_name": "parse_version",
+      "phase": "holdout",
+      "tests": 6,
+      "code_sha256": "1cd88e03a4c982016534132db5c9b2b0005a37bb4104aab2d7f9bb82f0fc28c1",
+      "report": {
+        "status": "passed",
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "tests_run": 6,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "4903d475e15fbd822889d0a28507cb00b57134b1df61adca4d1d79b758480da3",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 18,
+      "task_id": "eva-stable_group_pairs",
+      "function_name": "stable_group_pairs",
+      "phase": "feedback",
+      "tests": 6,
+      "code_sha256": "91c1a154af36134ef501de94aa2fde6f7e18259bcfb611e2faf868e96dd027c8",
+      "report": {
+        "status": "passed",
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "tests_run": 6,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "8aeb2e25844a61a56d468c874df4544901e948fa08eed6ed6c8f85183973371a",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 21,
+      "task_id": "eva-rotate_matrix",
+      "function_name": "rotate_matrix",
+      "phase": "feedback",
+      "tests": 7,
+      "code_sha256": "00dc404fa2276cfaa993475ce5b439e4b18c98a7f2f2d3c6fb3af999731fdbe3",
+      "report": {
+        "status": "passed",
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "tests_run": 7,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "abb620ee8a5a17178abc8ae4350c3642f798be964ca03ad5cf8e31b9d408dc14",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 23,
+      "task_id": "eva-rotate_matrix",
+      "function_name": "rotate_matrix",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "00dc404fa2276cfaa993475ce5b439e4b18c98a7f2f2d3c6fb3af999731fdbe3",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "c2f3235a9714d27d7dca12d065d13bfc2975c656e92f794d9011aa715ae9f3b7",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 20,
+      "task_id": "eva-stable_group_pairs",
+      "function_name": "stable_group_pairs",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "91c1a154af36134ef501de94aa2fde6f7e18259bcfb611e2faf868e96dd027c8",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "f7f03d87f4a83a38209fecd08930c4eb3708b6e223353baa39cc9f10661dac66",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 22,
+      "task_id": "eva-rotate_matrix",
+      "function_name": "rotate_matrix",
+      "phase": "holdout",
+      "tests": 7,
+      "code_sha256": "00dc404fa2276cfaa993475ce5b439e4b18c98a7f2f2d3c6fb3af999731fdbe3",
+      "report": {
+        "status": "passed",
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "tests_run": 7,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "cfff8803f889b7569911c7fb43a7c8f7a969f7a80e382566eb5aa994cffa5e54",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 25,
+      "task_id": "eva-longest_unique_span",
+      "function_name": "longest_unique_span",
+      "phase": "holdout",
+      "tests": 9,
+      "code_sha256": "9f54696ce3203c05f5e679498e0a3dc5ab75fc7bbc003463347cf1a6b5925d8d",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "e8bb21739e5b19320bdf33fe41351937904225d790a8fcef133d039edd10f06d",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 27,
+      "task_id": "eva-balanced_brackets",
+      "function_name": "balanced_brackets",
+      "phase": "feedback",
+      "tests": 9,
+      "code_sha256": "74ea9bb686c50fbaf9313cca6b91da245e8645b1f2f5d37129ce418812b36c5c",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "c186b3626c77885e46229b6f6142c0fb7c631eedc08b8823acf79468bfb4175d",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 24,
+      "task_id": "eva-longest_unique_span",
+      "function_name": "longest_unique_span",
+      "phase": "feedback",
+      "tests": 9,
+      "code_sha256": "9f54696ce3203c05f5e679498e0a3dc5ab75fc7bbc003463347cf1a6b5925d8d",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "251ea73d46939cf85365ea298e38591eceeb921de6fa7dc74d332b8626f0a080",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 26,
+      "task_id": "eva-longest_unique_span",
+      "function_name": "longest_unique_span",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "9f54696ce3203c05f5e679498e0a3dc5ab75fc7bbc003463347cf1a6b5925d8d",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "028ff2ea509c95ae47d39927ee30a839f0b5fa035d8cb5475b367a8c8095f6d7",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 29,
+      "task_id": "eva-balanced_brackets",
+      "function_name": "balanced_brackets",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "74ea9bb686c50fbaf9313cca6b91da245e8645b1f2f5d37129ce418812b36c5c",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "94f67bc9081dd5c8034e96d41478dd1f1c547f7210eb5143d8f393792d51dad1",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 31,
+      "task_id": "eva-dedupe_by_last",
+      "function_name": "dedupe_by_last",
+      "phase": "holdout",
+      "tests": 7,
+      "code_sha256": "737cfceffbbcbfd8222ed7fcda81a5048869b7e2af53fb466ebfe440fda7356f",
+      "report": {
+        "status": "passed",
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "tests_run": 7,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "823e2f74f9c38b99c3c7281b22708affe0459b8f0ff2e852ca1bcce76b74d364",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 28,
+      "task_id": "eva-balanced_brackets",
+      "function_name": "balanced_brackets",
+      "phase": "holdout",
+      "tests": 9,
+      "code_sha256": "74ea9bb686c50fbaf9313cca6b91da245e8645b1f2f5d37129ce418812b36c5c",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "4f5f892ef52a53adac253b296e7e6bd89ded0c87a9bada2431a5493ae9e5c6da",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 30,
+      "task_id": "eva-dedupe_by_last",
+      "function_name": "dedupe_by_last",
+      "phase": "feedback",
+      "tests": 7,
+      "code_sha256": "737cfceffbbcbfd8222ed7fcda81a5048869b7e2af53fb466ebfe440fda7356f",
+      "report": {
+        "status": "passed",
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "tests_run": 7,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "b392a55485682fd04dbd0d91d107926cb411ca52717e2b0007e837425a163397",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 33,
+      "task_id": "eva-collapse_whitespace",
+      "function_name": "collapse_whitespace",
+      "phase": "feedback",
+      "tests": 9,
+      "code_sha256": "7b0a1b510a13822c02269c1e96d7bb5ee5cdd4cd2e3631965e90bfbfaabf4d1e",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "012e2e6061df0ff6c183bbec18eed833064345305499ea1b1b671649e56a4d5f",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 35,
+      "task_id": "eva-collapse_whitespace",
+      "function_name": "collapse_whitespace",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "7b0a1b510a13822c02269c1e96d7bb5ee5cdd4cd2e3631965e90bfbfaabf4d1e",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "d4c6765d4939cdcf5c9ece754cc7982d52ceb99d8c7cca78271a0f5cb0316755",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 32,
+      "task_id": "eva-dedupe_by_last",
+      "function_name": "dedupe_by_last",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "737cfceffbbcbfd8222ed7fcda81a5048869b7e2af53fb466ebfe440fda7356f",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "e1376bf1005f951ef80754bede0f56aae4f9fe45593f7ecccd4d2fa074bc4ba7",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 37,
+      "task_id": "eva-natural_sort_strings",
+      "function_name": "natural_sort_strings",
+      "phase": "holdout",
+      "tests": 7,
+      "code_sha256": "abebfc9543a95d60664b3f85ca7f1395a3507684c7ab44415db458f3bbee07fd",
+      "report": {
+        "status": "passed",
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "tests_run": 7,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "85afeb26c54b7099bceb688b945b56645a917e5e4481a53b9c84519af95c8a5e",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 34,
+      "task_id": "eva-collapse_whitespace",
+      "function_name": "collapse_whitespace",
+      "phase": "holdout",
+      "tests": 9,
+      "code_sha256": "7b0a1b510a13822c02269c1e96d7bb5ee5cdd4cd2e3631965e90bfbfaabf4d1e",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "275c422b801d5cd3e4795a965517ef35e7fa4b5b5266bdc4ddd3695a670ad1cc",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 39,
+      "task_id": "eva-zip_longest_sum",
+      "function_name": "zip_longest_sum",
+      "phase": "feedback",
+      "tests": 9,
+      "code_sha256": "54bc965ed3072dc3cb09da7b1e28a5497a6d6a8d4594649eb96f60a0c087daba",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "287e1116ec1c6b560052443b98e2d1dc360a9be48b7dcfa3ab07ed16c7140910",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 41,
+      "task_id": "eva-zip_longest_sum",
+      "function_name": "zip_longest_sum",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "54bc965ed3072dc3cb09da7b1e28a5497a6d6a8d4594649eb96f60a0c087daba",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "5da84437bd80097578fe60887912ce2a9dccfd748f1a12dad68f271d78c9730b",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 36,
+      "task_id": "eva-natural_sort_strings",
+      "function_name": "natural_sort_strings",
+      "phase": "feedback",
+      "tests": 7,
+      "code_sha256": "abebfc9543a95d60664b3f85ca7f1395a3507684c7ab44415db458f3bbee07fd",
+      "report": {
+        "status": "passed",
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "tests_run": 7,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "04142c41442a3d149b4acc68f9931ea34ce61a3a13d9f70d5fbd420328baa9cd",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 38,
+      "task_id": "eva-natural_sort_strings",
+      "function_name": "natural_sort_strings",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "abebfc9543a95d60664b3f85ca7f1395a3507684c7ab44415db458f3bbee07fd",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "830b23e6f1c5be4f3631f994e4e8a3317b742ac093ff8c3ab85bd23562cc6b7e",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 43,
+      "task_id": "eva-invert_index",
+      "function_name": "invert_index",
+      "phase": "holdout",
+      "tests": 6,
+      "code_sha256": "d982faf506fac853f0507b2af1f8c516d3edd0ba189c3b4f14a8f53cd7c7ed4a",
+      "report": {
+        "status": "passed",
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "tests_run": 6,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "f48d302ffef8c453a0d9a015e64fc5bf3528d5e5d580c5ff479f58d0b322708e",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 45,
+      "task_id": "eva-range_compress",
+      "function_name": "range_compress",
+      "phase": "feedback",
+      "tests": 9,
+      "code_sha256": "4bd1b5643e3c9fc625a508b93b192244fef904aa16c97b11b4344dd49163de1d",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "f1d70fb600f384805201ba0317347d2951da3c3a017c9e2e9196cd16f058be26",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 40,
+      "task_id": "eva-zip_longest_sum",
+      "function_name": "zip_longest_sum",
+      "phase": "holdout",
+      "tests": 9,
+      "code_sha256": "54bc965ed3072dc3cb09da7b1e28a5497a6d6a8d4594649eb96f60a0c087daba",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "0aa046405a0af2d4dfca47e997d000e231cec2793ed4e71a091968c95e8e34b3",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 42,
+      "task_id": "eva-invert_index",
+      "function_name": "invert_index",
+      "phase": "feedback",
+      "tests": 6,
+      "code_sha256": "d982faf506fac853f0507b2af1f8c516d3edd0ba189c3b4f14a8f53cd7c7ed4a",
+      "report": {
+        "status": "passed",
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "tests_run": 6,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "48c14b0b8b8e955554b93cd5b77d97dc3f60dca95eb3896ab37c35fa166d74f7",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 47,
+      "task_id": "eva-range_compress",
+      "function_name": "range_compress",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "4bd1b5643e3c9fc625a508b93b192244fef904aa16c97b11b4344dd49163de1d",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "c31f7371498c15d32fc11f902ae057ca1340eb207c1161274a32826a00bf9ce3",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 49,
+      "task_id": "eva-prefix_totals",
+      "function_name": "prefix_totals",
+      "phase": "holdout",
+      "tests": 8,
+      "code_sha256": "2b4237171c9579536f3ba8c5132c4e8465ab5afab6bffce474c03858b6d798ae",
+      "report": {
+        "status": "passed",
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "tests_run": 8,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "34ae74e67dffcbaf08471e26a88f93424950a29d5fdbcd8aa9c8bdf625ff7708",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 46,
+      "task_id": "eva-range_compress",
+      "function_name": "range_compress",
+      "phase": "holdout",
+      "tests": 9,
+      "code_sha256": "4bd1b5643e3c9fc625a508b93b192244fef904aa16c97b11b4344dd49163de1d",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "3f5167b2994f07caca170e44bda35d144baddb64c21467d65711350c78ef3524",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 44,
+      "task_id": "eva-invert_index",
+      "function_name": "invert_index",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "d982faf506fac853f0507b2af1f8c516d3edd0ba189c3b4f14a8f53cd7c7ed4a",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "57826e83c86b8096e73618edb8c7e8688729612728575fed883ebf2c03334d92",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 51,
+      "task_id": "eva-select_nth_distinct",
+      "function_name": "select_nth_distinct",
+      "phase": "feedback",
+      "tests": 8,
+      "code_sha256": "98e1857a31c4498c1140214548170f655720582ce15e708fb67472d368f4adf9",
+      "report": {
+        "status": "passed",
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "tests_run": 8,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "1c615fff9ee1d72531a7898569e6a5bc54ab0caf0aa67e6230672325c86aa9fe",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 53,
+      "task_id": "eva-select_nth_distinct",
+      "function_name": "select_nth_distinct",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "98e1857a31c4498c1140214548170f655720582ce15e708fb67472d368f4adf9",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "1749de9b8ba6a71333ae9d5c9044673692a0af12102dd8b44a499d81aa986637",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 50,
+      "task_id": "eva-prefix_totals",
+      "function_name": "prefix_totals",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "2b4237171c9579536f3ba8c5132c4e8465ab5afab6bffce474c03858b6d798ae",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "743588146c590a2d49ff2634adde3645cf66b18fc5d2fff0751842ce6d3c0e97",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 48,
+      "task_id": "eva-prefix_totals",
+      "function_name": "prefix_totals",
+      "phase": "feedback",
+      "tests": 7,
+      "code_sha256": "2b4237171c9579536f3ba8c5132c4e8465ab5afab6bffce474c03858b6d798ae",
+      "report": {
+        "status": "passed",
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "tests_run": 7,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "6d2c73cc82d6aaa192637731d00dc9969d3ac0f8bb17281db83c12e093f3f526",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 57,
+      "task_id": "eva-flatten_depth",
+      "function_name": "flatten_depth",
+      "phase": "feedback",
+      "tests": 9,
+      "code_sha256": "689aa78baa0eb39525cf4a518dc6e5e955e930defddca7d64687661de169afcf",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "2378d78a85241f71e2f40ab942f28c258e4b76f9cde6cb17847f9466fb202879",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 55,
+      "task_id": "eva-word_count_ascii",
+      "function_name": "word_count_ascii",
+      "phase": "holdout",
+      "tests": 4,
+      "code_sha256": "20c6b0830ea802ffb5d6c8c8d38cd110359454e8bdfc3bb84d95d99cd1164b57",
+      "report": {
+        "status": "passed",
+        "passed": 4,
+        "failed": 0,
+        "total": 4,
+        "tests_run": 4,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "fd0f338cb051d296cc45bb7d3851cd45cda5fe2def4321621268c29a928ba77c",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 54,
+      "task_id": "eva-word_count_ascii",
+      "function_name": "word_count_ascii",
+      "phase": "feedback",
+      "tests": 3,
+      "code_sha256": "20c6b0830ea802ffb5d6c8c8d38cd110359454e8bdfc3bb84d95d99cd1164b57",
+      "report": {
+        "status": "passed",
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "tests_run": 3,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "bdf40e7e8ad5fcb02d10f395d1feb5d2ec0a6e6e2a9674f283818dad34da4eb2",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 52,
+      "task_id": "eva-select_nth_distinct",
+      "function_name": "select_nth_distinct",
+      "phase": "holdout",
+      "tests": 9,
+      "code_sha256": "98e1857a31c4498c1140214548170f655720582ce15e708fb67472d368f4adf9",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "f3f3aad55f20dbaf1b10d3f8dfb84f9b6f44fd45343aec482daeb25be6cb77f6",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 61,
+      "task_id": "eva-transpose_records",
+      "function_name": "transpose_records",
+      "phase": "holdout",
+      "tests": 5,
+      "code_sha256": "305e18e20a1e3fcdb3c54eaf1466eb0aac2bb37eeda539a311e6580a84f772ca",
+      "report": {
+        "status": "passed",
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "tests_run": 5,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "a4341dd2381a57a15f3dee01a4d8270c4111d1efe242d1cbf39d359fe21e4c0f",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 59,
+      "task_id": "eva-flatten_depth",
+      "function_name": "flatten_depth",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "689aa78baa0eb39525cf4a518dc6e5e955e930defddca7d64687661de169afcf",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "a1e1e85fd17fbe3c75828cf1427233b8ae36cb38d5c40232a9a4a9a0ec693c3a",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 58,
+      "task_id": "eva-flatten_depth",
+      "function_name": "flatten_depth",
+      "phase": "holdout",
+      "tests": 9,
+      "code_sha256": "689aa78baa0eb39525cf4a518dc6e5e955e930defddca7d64687661de169afcf",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "cd541ea97c340043f1954414feb5545e23cea152058ff35be96b9e5cebf36191",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 56,
+      "task_id": "eva-word_count_ascii",
+      "function_name": "word_count_ascii",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "20c6b0830ea802ffb5d6c8c8d38cd110359454e8bdfc3bb84d95d99cd1164b57",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "cbc561fee9dc5eec6f80d00f7b0bfd2aff5fb1a828049c4ff6b5866c1541f864",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 65,
+      "task_id": "eva-min_covering_window",
+      "function_name": "min_covering_window",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "edfa8f647e1e86fa3f71afbed738bb6a7058823581b4363c02fd51ef5e0f561b",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "0a590168a464ee1d1f69e08fb6a66631bb4f20aee34d161910710d952c01d41a",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 63,
+      "task_id": "eva-min_covering_window",
+      "function_name": "min_covering_window",
+      "phase": "feedback",
+      "tests": 9,
+      "code_sha256": "edfa8f647e1e86fa3f71afbed738bb6a7058823581b4363c02fd51ef5e0f561b",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "1af7fdd00adf1660339b6fa05261d7c8125bcbf81764d29be794a9bd547dee4e",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 62,
+      "task_id": "eva-transpose_records",
+      "function_name": "transpose_records",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "305e18e20a1e3fcdb3c54eaf1466eb0aac2bb37eeda539a311e6580a84f772ca",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "8fb041c79536fea3acfddc1e0303602a0d25224fc13e87144ccd70d7edc11c46",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 60,
+      "task_id": "eva-transpose_records",
+      "function_name": "transpose_records",
+      "phase": "feedback",
+      "tests": 5,
+      "code_sha256": "305e18e20a1e3fcdb3c54eaf1466eb0aac2bb37eeda539a311e6580a84f772ca",
+      "report": {
+        "status": "passed",
+        "passed": 5,
+        "failed": 0,
+        "total": 5,
+        "tests_run": 5,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "e1ccce890ac39e357e3c3b4ccce704de91580240a30956b3eaee868d8468dda9",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 69,
+      "task_id": "eva-interleave_lists",
+      "function_name": "interleave_lists",
+      "phase": "feedback",
+      "tests": 8,
+      "code_sha256": "bd056223bfa2401d8f880c0dee1d45c48e2566da141e2129d9c9662d3ccfe5fc",
+      "report": {
+        "status": "passed",
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "tests_run": 8,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "6b8a0bf6c23e9cc5f20ce72f594ce2910ca7328fab992dd3b7a3dbb409722028",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 67,
+      "task_id": "eva-apply_edits",
+      "function_name": "apply_edits",
+      "phase": "holdout",
+      "tests": 3,
+      "code_sha256": "5a386bed362edb2de906da7236f6bf4a0bcb971324a0c49b6be0b3d48da76045",
+      "report": {
+        "status": "passed",
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "tests_run": 3,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "69928c1e5434635229a0a091650e08ab5db129e29b364fbe395edca44f0e65c0",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 66,
+      "task_id": "eva-apply_edits",
+      "function_name": "apply_edits",
+      "phase": "feedback",
+      "tests": 3,
+      "code_sha256": "5a386bed362edb2de906da7236f6bf4a0bcb971324a0c49b6be0b3d48da76045",
+      "report": {
+        "status": "passed",
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "tests_run": 3,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "cc3f4f8b4e766c7ba6950de12dc2320490214f6df148139d337816d5c3cf443d",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 64,
+      "task_id": "eva-min_covering_window",
+      "function_name": "min_covering_window",
+      "phase": "holdout",
+      "tests": 9,
+      "code_sha256": "edfa8f647e1e86fa3f71afbed738bb6a7058823581b4363c02fd51ef5e0f561b",
+      "report": {
+        "status": "passed",
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "tests_run": 9,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "75e33e56411214b3d0d728dbc09591e9c9b98bc4035661ac7ab80d6e74d1b122",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 71,
+      "task_id": "eva-interleave_lists",
+      "function_name": "interleave_lists",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "bd056223bfa2401d8f880c0dee1d45c48e2566da141e2129d9c9662d3ccfe5fc",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "0f718689ee477f023488a60a907e477f9b21cadc070a4675eeead90e18243c42",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 70,
+      "task_id": "eva-interleave_lists",
+      "function_name": "interleave_lists",
+      "phase": "holdout",
+      "tests": 8,
+      "code_sha256": "bd056223bfa2401d8f880c0dee1d45c48e2566da141e2129d9c9662d3ccfe5fc",
+      "report": {
+        "status": "passed",
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "tests_run": 8,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "5a8b5ba22a5a09109bfe65db4c7d1f3e46886554d187ea66e379abe1f43c205a",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    },
+    {
+      "index": 68,
+      "task_id": "eva-apply_edits",
+      "function_name": "apply_edits",
+      "phase": "examples",
+      "tests": 2,
+      "code_sha256": "5a386bed362edb2de906da7236f6bf4a0bcb971324a0c49b6be0b3d48da76045",
+      "report": {
+        "status": "passed",
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "tests_run": 2,
+        "first_failure": null,
+        "failure_kind": null,
+        "cleanup_ok": true,
+        "container_state": {
+          "OOMKilled": false,
+          "ExitCode": 0,
+          "Error": "",
+          "Running": false
+        },
+        "provenance": "candidate",
+        "grading_authority": "outer_parent",
+        "oracle_sent_to_child": false,
+        "child_payload_sha256": "fff3ba3bbc8c8a6013c441eb8c7116ef21b76f41a19547aed58fb5c231caff39",
+        "observation_scope": "Child values, exception names and input-after snapshots are observations, not authenticated interpreter provenance"
+      },
+      "verified": true
+    }
+  ],
+  "verified": true,
+  "corpus_sha256": {
+    "datasets/coding-v1/tasks.json": "42dbc85ee3f87f476460ce9bb5448b65e1bceb551cbc9ebd48134644e7b9bdc3",
+    "datasets/coding-v1/hidden-tests.json": "2a097aca427cd9d3449e2965d59668bc6c9ed131fd9c84ceb812796e80c13e5c",
+    "coding_tasks.py": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6"
+  },
+  "completed_utc": "2026-11-15T20:24:07.037226+00:00",
+  "reference_containers": 72,
+  "reference_cases": 405,
+  "owned_containers_remaining": {
+    "Spark_01": [],
+    "Spark_02": [],
+    "Spark_03": [],
+    "Spark_04": []
+  },
+  "cleanup_verified_utc": "2026-11-15T20:25:20.944110+00:00"
+}
