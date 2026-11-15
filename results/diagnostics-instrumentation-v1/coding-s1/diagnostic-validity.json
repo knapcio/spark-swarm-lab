@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "cohort": "evaluation-v1-coding-s1",
+  "domain": "coding",
+  "seed": 1,
+  "scope": "Entire original108-case cohort, diagnostic preservation only",
+  "valid_for_aggregation": false,
+  "primary_aggregation": "Excluded: rerun every original case uniformly; do not select successful or failed cases",
+  "source_commit": "736ee1e9ab4a1b1ef534be587fe967c307c485e6",
+  "captured_source_hashes": {
+    "run_coding_benchmark.py": "a5db3962a67c64f762a95a9e6b2b7539035b2f11185c9ec56d028e6326fea493",
+    "run_benchmark.py": "76c3f816085f2e8d9f2d578a8bbdfb36eab9a7192003ed662ab26af40fa57104",
+    "coding_harness.py": "68e7cd0579dd157f9821468da73d950564ea71a60f395f6b292eca1f7e0f12f9",
+    "sandbox_code.py": "119c25faaf83b15ac12f2c6ceaa65c63fffddf02e4eb96a55931bef8006837cd",
+    "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+    "coding_tasks.py": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6",
+    "runtime.json": "5ba312b8d45b2146f39d4d3762f82d9e60d3a5d40e5dbbadcae8b741dd1a897e"
+  },
+  "captured_final_source_hashes": {
+    "run_coding_benchmark.py": "a5db3962a67c64f762a95a9e6b2b7539035b2f11185c9ec56d028e6326fea493",
+    "run_benchmark.py": "76c3f816085f2e8d9f2d578a8bbdfb36eab9a7192003ed662ab26af40fa57104",
+    "coding_harness.py": "68e7cd0579dd157f9821468da73d950564ea71a60f395f6b292eca1f7e0f12f9",
+    "sandbox_code.py": "119c25faaf83b15ac12f2c6ceaa65c63fffddf02e4eb96a55931bef8006837cd",
+    "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+    "coding_tasks.py": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6",
+    "runtime.json": "5ba312b8d45b2146f39d4d3762f82d9e60d3a5d40e5dbbadcae8b741dd1a897e"
+  },
+  "captured_source_changed_during_run": false,
+  "dataset_sha256": "42dbc85ee3f87f476460ce9bb5448b65e1bceb551cbc9ebd48134644e7b9bdc3",
+  "original_metadata_sha256": "b6b58d11490832e16d507b06c80ad4090ac4f6016746068ade3bd6bf45fae53d",
+  "original_summary_sha256": "90f00014acca7a50d00bdfa27decba0116cd5079329c853b4d577b25d512fee0",
+  "export_manifest_sha256": "2900462ac7abe746ca587c6545710fddad01091b05b9567a40862021f252d85a",
+  "retention": "All327 original metadata/summary/CSV/JSONL/stdout/stderr artifacts exported, with only manifest-listed path/interpreter normalizations; raw files unchanged",
+  "diagnostic_audit": {
+    "cases": 108,
+    "request_starts": 650,
+    "request_ends": 645,
+    "unfinished_calls": 5,
+    "controller_exit_race_cases": 1,
+    "candidate_exit137_misclassified_events": 2
+  },
+  "faults": [
+    {
+      "type": "candidate_nonadvancing_loop_resource_exit137_misclassified_as_infrastructure",
+      "task_id": "eva-natural_sort_strings",
+      "arm": "direct_off",
+      "trace": "eva-natural_sort_strings-direct_off-s1.jsonl",
+      "event_id": 9,
+      "phase": "feedback",
+      "recorded_exit_code": 137,
+      "recorded_cleanup_ok": true,
+      "diagnosis_basis": "Main researcher's inspection of generated function shows non-advancing loop i=j with j=i; trace independently confirms exit137. No kernel OOM flag was retained by the old --rm grader. Consistent with candidate memory exhaustion, not kernel-proven historical OOM."
+    },
+    {
+      "type": "candidate_nonadvancing_loop_resource_exit137_misclassified_as_infrastructure",
+      "task_id": "eva-natural_sort_strings",
+      "arm": "democracy8",
+      "trace": "eva-natural_sort_strings-democracy8-s1.jsonl",
+      "event_id": 26,
+      "phase": "feedback",
+      "recorded_exit_code": 137,
+      "recorded_cleanup_ok": true,
+      "diagnosis_basis": "Main researcher's inspection of generated function shows non-advancing loop i=j with j=i; trace independently confirms exit137. No kernel OOM flag was retained by the old --rm grader. Consistent with candidate memory exhaustion, not kernel-proven historical OOM."
+    },
+    {
+      "type": "controller_owned_process_exit_race",
+      "task_id": "eva-interleave_lists",
+      "arm": "direct_off",
+      "trace": "eva-interleave_lists-direct_off-s1.jsonl",
+      "error": "PermissionError: [Errno 1] Operation not permitted",
+      "recorded_returncode": null,
+      "worker_run_end_present": true,
+      "usage_complete": true,
+      "server_cost_known": true,
+      "server_idle_after": true
+    }
+  ],
+  "repair": {
+    "source": "6c9dfe8",
+    "uniform_rerun": "All108 coding cases for each of three seeds",
+    "algorithm_policy": "No model policy, dataset, prompt or budget change",
+    "tags": [
+      "evaluation-infra-v1",
+      "solo-control-infra-v1",
+      "throughput-infra-v1"
+    ]
+  },
+  "notes": [
+    "No accuracy table, arm ranking or score aggregation was produced for this diagnostic export.",
+    "Controller race and grader candidate-resource classification are distinct defects.",
+    "Captured source provenance retained without replacing historical source hashes with current root files.",
+    "Old external ledger remains unchanged; future valid-cohort ledger is separate."
+  ]
+}

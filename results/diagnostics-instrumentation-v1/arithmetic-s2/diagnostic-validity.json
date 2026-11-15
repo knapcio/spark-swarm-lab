@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "cohort": "evaluation-v1-arithmetic-s2",
+  "domain": "arithmetic",
+  "seed": 2,
+  "scope": "Entire original192-case cohort, diagnostic preservation only",
+  "valid_for_aggregation": false,
+  "primary_aggregation": "Excluded: rerun every original case uniformly; do not select successful or failed cases",
+  "source_commit": "736ee1e9ab4a1b1ef534be587fe967c307c485e6",
+  "captured_source_hashes": {
+    "run_benchmark.py": "76c3f816085f2e8d9f2d578a8bbdfb36eab9a7192003ed662ab26af40fa57104",
+    "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+    "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+    "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+    "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+    "runtime.json": "5ba312b8d45b2146f39d4d3762f82d9e60d3a5d40e5dbbadcae8b741dd1a897e",
+    "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+  },
+  "captured_final_source_hashes": {
+    "run_benchmark.py": "76c3f816085f2e8d9f2d578a8bbdfb36eab9a7192003ed662ab26af40fa57104",
+    "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+    "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+    "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+    "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+    "runtime.json": "5ba312b8d45b2146f39d4d3762f82d9e60d3a5d40e5dbbadcae8b741dd1a897e",
+    "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+  },
+  "captured_source_changed_during_run": false,
+  "dataset_sha256": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+  "original_metadata_sha256": "bfaaec830bdafc30d03b589259cc99352fa8c5bb3f9bcebe17ec8d032c8a330c",
+  "original_summary_sha256": "1826982468d8c34271be715eee46d1f3cd2457fff7abce13fd8cbe9aac6355c5",
+  "export_manifest_sha256": "68156bed7b491db54e2db45f851c9d4eb13298d59097aaf395b9321e34bd3986",
+  "proof_cost_audit_sha256": "b26eb33d32c66323313273715fda72336ec37676cd6ee76ec19311fc5c53b9b3",
+  "retention": "All579 original metadata/summary/CSV/JSONL/stdout/stderr artifacts exported, with only manifest-listed path/interpreter normalizations; raw files unchanged",
+  "cohort_completion": {
+    "completed_cases": 192,
+    "source_unchanged": true,
+    "no_slot_failures": true,
+    "cohort_returncode": 1,
+    "returncode_basis": "Original external receipt confirmed by main researcher; one retained controller PermissionError independently observed"
+  },
+  "faults": [
+    {
+      "type": "controller_owned_process_exit_race",
+      "task_id": "eva-6ce1a0614ff5",
+      "arm": "cascade32",
+      "trace": "eva-6ce1a0614ff5-cascade32-s2.jsonl",
+      "error": "PermissionError: [Errno 1] Operation not permitted",
+      "recorded_returncode": null,
+      "worker_run_end_present": true,
+      "worker_run_end_status": "complete",
+      "usage_complete": true,
+      "server_cost_known": true,
+      "server_idle_after": true
+    }
+  ],
+  "repair": {
+    "source": "6c9dfe8",
+    "uniform_rerun": "All192 original arithmetic seed2 cases",
+    "algorithm_policy": "No model policy, dataset, prompt or budget change",
+    "tags": [
+      "evaluation-infra-v1",
+      "solo-control-infra-v1",
+      "throughput-infra-v1"
+    ]
+  },
+  "notes": [
+    "No accuracy table, arm ranking or primary score aggregation was produced for this diagnostic export.",
+    "Fraction replay and cost-accounting PASS do not override whole-cohort exclusion.",
+    "Old external ledger remains unchanged; future valid-cohort ledger is separate.",
+    "All192 server costs independently verified known; unknown values would remain null."
+  ]
+}
