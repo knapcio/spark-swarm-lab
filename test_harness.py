@@ -163,6 +163,38 @@ class ExperimentTests(unittest.TestCase):
     def args(self):
         return argparse.Namespace(agents=4, target=3, rounds=1, allow_fractions=False, seed=1)
 
+    def test_proposal_ids_and_vote_inputs_are_context_deterministic(self):
+        def trial(seed=1, puzzle_id="test", state=(F(1), F(2))):
+            with tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "events.jsonl"
+                events = h.Events(path, "democracy")
+                args, client, prompts = self.args(), FakeClient(), []
+                args.seed = seed
+                original_call = client.call
+                def record(agent_id, stage, prompt, **context):
+                    with client.lock:
+                        prompts.append((agent_id, stage, prompt))
+                    return original_call(agent_id, stage, prompt, **context)
+                client.call = record
+                experiment = h.Experiment(args, client, events)
+                try:
+                    experiment.run(state, puzzle_id, "democracy")
+                finally:
+                    experiment.pool.shutdown()
+                    events.close()
+                rows = [json.loads(line) for line in path.read_text().splitlines()]
+                ids = {r["agent_id"]: r["proposal_id"] for r in rows if r["type"] == "proposal"}
+                votes = sorted(p for p in prompts if p[1] == "vote")
+                self.assertEqual(len(votes), args.agents)
+                return ids, votes
+        baseline = trial()
+        self.assertEqual(baseline, trial())
+        for changed in (dict(seed=2), dict(puzzle_id="other"), dict(state=(F(2), F(4)))):
+            with self.subTest(changed=changed):
+                different = trial(**changed)
+                self.assertNotEqual(baseline[0], different[0])
+                self.assertNotEqual(baseline[1], different[1])
+
     def test_verified_terminal_guard_accepts_without_votes(self):
         for method in ("democracy", "weighted"):
             with self.subTest(method=method), tempfile.TemporaryDirectory() as directory:

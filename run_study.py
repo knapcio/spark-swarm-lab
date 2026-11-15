@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Finite 12-run arithmetic study. Print a plan by default; --run starts requests."""
+"""Finite arithmetic method study. Print a plan by default; --run starts requests."""
 import argparse
 from datetime import datetime, timezone
 from fractions import Fraction
@@ -66,32 +66,41 @@ def main(argv=None):
     parser.add_argument("--output", type=Path, help="New study directory; must not exist")
     parser.add_argument("--method", choices=("independent", "democracy"), help="Run only this method")
     parser.add_argument("--accept-verified-solution", action="store_true", help="Forward opt-in terminal-proposal guard")
+    parser.add_argument("--include-guarded", action="store_true", help="Interleave independent, democracy and guarded democracy")
     args = parser.parse_args(argv)
+    if args.include_guarded and (args.method or args.accept_verified_solution):
+        parser.error("--include-guarded cannot combine with --method or --accept-verified-solution")
     verify_puzzles()
     endpoints = args.endpoint or [f"http://127.0.0.1:{port}/v1" for port in range(18081, 18085)]
     directory = args.output or HERE / "runs" / ("study-" + datetime.now().strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:6])
     runs = []
     for puzzle_index, (puzzle, _, _) in enumerate(PUZZLES):
         for seed in (1, 2):
-            for method in (("independent", "democracy") if seed == 1 else ("democracy", "independent")):
+            policies = ([("independent", False), ("democracy", False), ("democracy", True)]
+                        if args.include_guarded else [(m, args.accept_verified_solution) for m in ("independent", "democracy")])
+            for method, accept_verified in (policies if seed == 1 else reversed(policies)):
                 if args.method and method != args.method:
                     continue
                 name = f"p{puzzle_index + 1}-s{seed}-{method}"
+                if args.include_guarded and accept_verified:
+                    name += "-guarded"
                 events = directory / (name + ".jsonl")
                 command = [sys.executable, str(HERE / "harness.py"), "--method", method,
                            "--puzzle", puzzle, "--model", "nemotron-lightning", "--agents", "100",
                            "--per-endpoint-concurrency", "25", "--rounds", "5", "--max-tokens", "192",
                            "--max-calls", "500", "--max-completion-tokens", "96000", "--timeout", "90",
                            "--seed", str(seed), "--events", str(events)]
-                if args.accept_verified_solution:
+                if accept_verified:
                     command.append("--accept-verified-solution")
                 for endpoint in endpoints:
                     command.extend(["--endpoint", endpoint])
                 runs.append(dict(name=name, puzzle=puzzle, seed=seed, method=method,
-                                 events=str(events), accept_verified_solution=args.accept_verified_solution, command=command))
+                                 events=str(events), accept_verified_solution=accept_verified, command=command))
     if not args.run:
         print(json.dumps(dict(mode="dry_run", puzzle_witnesses_verified=3,
-                              accept_verified_solution=args.accept_verified_solution, method_filter=args.method, runs=runs), indent=2))
+                              include_guarded=args.include_guarded,
+                              accept_verified_solution=None if args.include_guarded else args.accept_verified_solution,
+                              method_filter=args.method, runs=runs), indent=2))
         return 0
     directory.mkdir(parents=True, exist_ok=False)
     runtime = HERE / "runtime.json"
@@ -103,7 +112,9 @@ def main(argv=None):
                     runtime_evidence="Configuration snapshot only; attach live serving probe separately.",
                     budget_interpretation="Same ceilings, not matched actual cost; democracy spends calls on votes.",
                     thinking=False, agents=100, max_calls=500, max_completion_tokens=96000,
-                    accept_verified_solution=args.accept_verified_solution, method_filter=args.method,
+                    include_guarded=args.include_guarded,
+                    accept_verified_solution=None if args.include_guarded else args.accept_verified_solution,
+                    method_filter=args.method,
                     puzzle_witnesses={p: expression for p, expression, _ in PUZZLES}, runs=runs)
     (directory / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
     results = []
@@ -118,7 +129,7 @@ def main(argv=None):
             except subprocess.TimeoutExpired:
                 controller_error = "600-second run timeout; subprocess killed"
         row = dict(name=run["name"], puzzle=run["puzzle"], seed=run["seed"], method=run["method"],
-                   accept_verified_solution=args.accept_verified_solution,
+                   accept_verified_solution=run["accept_verified_solution"],
                    events=run["events"], wall_seconds=round(time.monotonic() - started, 6),
                    returncode=returncode, controller_error=controller_error, **summarize(Path(run["events"])))
         results.append(row)

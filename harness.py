@@ -213,7 +213,9 @@ class Experiment:
                   f"All intermediate results must be {rule}. Reach the target using any subset of numbers. "
                   'Return {"i":0,"j":1,"op":"+"} with your chosen indices/operator.')
         action = self.client.call(agent_id, "propose", prompt, node_id=node_id, puzzle_id=puzzle_id)
-        proposal_id = uuid.uuid4().hex[:12]
+        proposal_id = hashlib.sha256(json.dumps([
+            self.args.seed, puzzle_id, depth, agent_id, canonical(state)
+        ]).encode()).hexdigest()[:12]
         fields = dict(agent_id=agent_id, node_id=node_id, parent_id=node_id,
                       proposal_id=proposal_id, action=action, puzzle_id=puzzle_id, depth=depth)
         try:
