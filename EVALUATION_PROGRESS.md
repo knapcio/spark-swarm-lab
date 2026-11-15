@@ -58,7 +58,7 @@ The [complete primary ledger](results/evaluation-v2/primary-aggregate/verified-l
 
 ## Supplementary sequential solo — seed 1 of 3
 
-The separate [supplemental control](EVALUATION_SOLO_CONTROL.json), frozen before primary outcomes, now has one independently audited evaluation cohort: **24/24 verified cases**, seed 1, source `a8adff19f690e90aec5705c373a82005e869f1f2`. It is not added to the original 900-case matrix or pooled with the eight-task [development smoke](results/solo-control-v2/development-s1/). The other two seeds and loaded-fleet comparison remain pending; this is an interim result, not an efficiency ranking.
+This first cohort of the separate [supplemental control](EVALUATION_SOLO_CONTROL.json), frozen before primary outcomes, contains **24/24 independently audited cases**, seed 1, source `a8adff19f690e90aec5705c373a82005e869f1f2`. It is not added to the original 900-case matrix or pooled with the eight-task [development smoke](results/solo-control-v2/development-s1/). All three completed seeds are documented below; the final clustered control aggregate and loaded-fleet comparison remain pending.
 
 One agent may revise its own full plan up to four times, thinking ON/8192 per response, under the same 32768-completion-token / 1280-call ceiling and 180s controller deadline. Each revision starts from the original task and receives only its own preceding parsed plan, exact transition error and final state. The pinned source, protocol timing and feedback provenance were independently checked.
 
