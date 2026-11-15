@@ -1,0 +1,26 @@
+{
+  "protocol": "supplemental-solo-refine-v1",
+  "frozen_utc": "2026-11-15T14:12:03.516790+00:00",
+  "primary_selection_sha256": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
+  "reason": "Methodological control identified before inspecting any primary evaluation outcomes: stepwise solo is not full-plan iterative refinement.",
+  "relationship": "Separate supplemental control; original primary matrix, raw outcomes and source snapshots remain unchanged.",
+  "arm": "solo_refine_thinking_8k",
+  "method": "refine",
+  "agents": 1,
+  "max_attempts": 4,
+  "per_call_output_cap": 8192,
+  "max_completion_tokens": 32768,
+  "max_calls": 1280,
+  "controller_deadline_seconds": 180,
+  "feedback": "Only its own preceding generated complete plan, exact transition validation error or final state; no reference witness, search oracle or other worker.",
+  "dataset": "datasets/arithmetic-v1/tasks.json",
+  "dataset_sha256": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+  "split": "evaluation",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "stop_on_verified_solution": true,
+  "scope": "Additional strong sequential baseline; not selected based on primary evaluation results. Implement/source-pin and development smoke before running this fixed control."
+}
