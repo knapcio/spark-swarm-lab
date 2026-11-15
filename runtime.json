@@ -1,0 +1,28 @@
+{
+  "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+  "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+  "model_weight_bytes": 21561882284,
+  "model_shards": 52,
+  "image": "vllm/vllm-openai:v0.27.1",
+  "arm64_manifest_digest": "sha256:1c8e60a0841b333c700488cb029d3664807249da0c071e862191b00fe34b228c",
+  "served_model_name": "nemotron-lightning",
+  "deployment": "4 independent TP1 replicas on GB10",
+  "baseline": {
+    "max_model_len": 16384,
+    "max_num_seqs": 25,
+    "max_num_batched_tokens": 4096,
+    "gpu_memory_utilization": 0.7,
+    "moe_backend": "marlin",
+    "kv_cache_dtype": "fp8",
+    "mamba_backend": "flashinfer",
+    "mamba_cache_mode": "align",
+    "prefix_caching": true,
+    "speculative_decoding": false
+  },
+  "request_defaults": {
+    "temperature": 0.8,
+    "max_tokens": 192,
+    "chat_template_kwargs": {"enable_thinking": false}
+  },
+  "note": "Pilot settings. Read the recorded run and serving probe for verified results."
+}
