@@ -146,6 +146,46 @@ The [manifest](results/evaluation-v2/arithmetic-s2/manifest.json) covers **592 o
 
 [192-case CSV](results/evaluation-v2/arithmetic-s2/summary.csv) · [metadata/source pins](results/evaluation-v2/arithmetic-s2/metadata.json) · [analysis](results/evaluation-v2/arithmetic-s2/analysis/analysis.json) · [paired task outcomes](results/evaluation-v2/arithmetic-s2/analysis/paired-results.csv) · [accuracy SVG](results/evaluation-v2/arithmetic-s2/analysis/accuracy-wilson95.svg) · [cost SVG](results/evaluation-v2/arithmetic-s2/analysis/success-vs-completion-cost.svg) · [latency SVG](results/evaluation-v2/arithmetic-s2/analysis/case-latency.svg).
 
+## Completed v2 coding — seed 2 of 3, aggregate pending
+
+This cohort adds **108 complete cases** (18 tasks × 6 arms), bringing the independently audited primary total to **600/900**. Its [ledger entry](results/evaluation-v2/coding-s2/analysis/verified-ledger-entry.json) is explicitly verified/admitted, with return code 0 and unchanged sources. Source remains `cbcde299716b7842536b008880a089590e9816f8`, runtime `072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5`, and the pinned Python CPU-grader image. All seven source hashes, grading-runner hash, public/private corpus hashes and case commands match the frozen configuration.
+
+The table follows the predeclared seed-2 reversed arm order, with task-local rotation. Budgets and prompts remain unchanged: 1024 calls / 131,072 completion tokens, a 180-second task deadline, OFF/1024 and ON/8192 response caps, T0.8, and one direct or up to three repair/search rounds. Fixed endpoint/grader slots own one Spark each. Whole mixed-arm queue wall is **382.610675s**; case wall includes model, grading, controller and drain work and does not determine per-arm fleet throughput. These remain single-seed results; no three-seed aggregate or final winner is reported.
+
+| Arm | Agents | Feedback pass cases | Final task successes | Wilson 95% final | Median wall s | p95 wall s |
+|---|---:|---:|---:|---:|---:|---:|
+| Democracy 8 | 8 | 18/18 | 17/18 | 74.2–99.0% | 17.699 | 22.714 |
+| Shared memory 8 | 8 | 18/18 | 18/18 | 82.4–100.0% | 6.024 | 11.691 |
+| Independent 8 | 8 | 18/18 | 18/18 | 82.4–100.0% | 5.784 | 9.303 |
+| Direct (thinking on) | 1 | 18/18 | 18/18 | 82.4–100.0% | 23.578 | 61.670 |
+| Iterative solo | 1 | 15/18 | 15/18 | 60.8–94.2% | 4.681 | 10.081 |
+| Direct (off) | 1 | 13/18 | 13/18 | 49.1–87.5% | 4.080 | 5.279 |
+
+There are **100/108 feedback-pass cases and 99/108 final task successes**. All 108 selected candidates receive exactly one holdout grade after selection freezes, with no later model start, repair or feedback retry. No candidate or holdout grade is missing in this seed. Repeated task outcomes across seeds are retained for the eventual task-clustered analysis rather than counted as new independent tasks.
+
+### Observed coding seed-2 costs and resource evidence
+
+| Arm | Calls | Client prompt | Client completion | Unfinished calls | Server prompt | Server completion |
+|---|---:|---:|---:|---:|---:|---:|
+| Democracy 8 | 288 | 180,736 | 24,673 | 0 | 180,736 | 24,673 |
+| Shared memory 8 | 144 | 35,944 | 15,332 | 0 | 35,944 | 15,332 |
+| Independent 8 | 144 | 35,650* | 15,162* | 1 | 35,944 | 15,615 |
+| Direct (thinking on) | 18 | 4,493 | 54,150 | 0 | 4,493 | 54,150 |
+| Iterative solo | 26 | 9,110 | 3,404 | 0 | 9,110 | 3,404 |
+| Direct (off) | 18 | 4,493 | 1,777 | 0 | 4,493 | 1,777 |
+
+Server costs are independently known for **108/108 cases**. Starred client totals are lower bounds due to one stopped response; input/output tokens are usage measurements rather than equal GPU-cost units. All 638 starts / 637 ends reconcile by request ID and context. Five model response-format `JSONDecodeError` events remain in the data; no response length finish, case deadline, budget denial, controller error or grader infrastructure error is recorded. All 108 worker `run_end` records exist, with one pending model response at selection.
+
+One **CPU candidate OOM** occurred during `eva-natural_sort_strings` / `democracy8` feedback evaluation 8. The [audit resource record](results/evaluation-v2/coding-s2/analysis/protocol-cost-audit.json) independently confirms retained `OOMKilled:true`, exit 137, `infrastructure_error:false`, successful cleanup and no cache reuse of this transient result. This is a candidate-resource event, distinct from the earlier model-serving crash; the final task result still comes solely from the selected implementation's holdout grade. No timeout grading event occurred.
+
+The [audit](results/evaluation-v2/coding-s2/analysis/protocol-cost-audit.json) and [script](results/evaluation-v2/coding-s2/analysis/protocol-cost-audit.py) check **261 source artifacts**, 232 feedback grades, 29 exact same-phase/code cache reuses, and 108 single holdout grades. They validate private case partitions/counts/failure fields, unchanged model source, private repair tracks, feedback-only memory, semantic shortlists/vote tallies, frozen selection, request budgets and server deltas. They inspect reported artifacts and pinned control flow without re-executing candidate code.
+
+The [owned-grader boundary](results/evaluation-v2/coding-s2/owned-grader-boundary.json) is verified empty at **18:19:14 UTC**, after **2.669s**. The [341-artifact manifest](results/evaluation-v2/coding-s2/manifest.json) and [ledger normalization audit](results/evaluation-v2/coding-s2/analysis/verified-ledger-entry-normalizations.json) preserve original/export hashes, raw failures, resource evidence, cache decisions and model outputs with audited path/interpreter normalization. No raw case, source, policy or active orchestration file was edited, and no model API or partial arithmetic seed-3 result was read for this curation.
+
+![Runtime-v2 coding seed 2 of 3 final holdout task success, aggregate pending](results/evaluation-v2/coding-s2/analysis/accuracy-wilson95.png)
+
+[108-case CSV](results/evaluation-v2/coding-s2/summary.csv) · [metadata/source pins](results/evaluation-v2/coding-s2/metadata.json) · [analysis](results/evaluation-v2/coding-s2/analysis/analysis.json) · [paired task outcomes](results/evaluation-v2/coding-s2/analysis/paired-results.csv) · [accuracy SVG](results/evaluation-v2/coding-s2/analysis/accuracy-wilson95.svg) · [cost SVG](results/evaluation-v2/coding-s2/analysis/success-vs-completion-cost.svg) · [latency SVG](results/evaluation-v2/coding-s2/analysis/case-latency.svg).
+
 ## Preserved runtime-v1 arithmetic seed 1
 
 This is an interim record for [spark-swarm-lab](https://github.com/knapcio/spark-swarm-lab). Only the first completed **arithmetic** cohort is reported here: **24 evaluation tasks × 8 frozen arms = 192 cases**, seed 1. The final three-seed, task-clustered aggregate is pending. These observations do not select or change a method, prompt, budget or configuration, and no winner is declared.
