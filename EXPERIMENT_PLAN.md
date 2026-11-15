@@ -1,5 +1,24 @@
 # Solo versus swarm: first controlled task batch
 
+**Current primary evaluation (runtime v2.1).** The setup and development sections
+below preserve the original development settings and interim reporting rules.
+The completed 900 method–task–seed attempts use frozen source `cbcde299` and
+vLLM 0.32.0. The [evaluation selection](EVALUATION_SELECTION.json),
+[serving runtime amendment](RUNTIME_V2_AMENDMENT.json),
+[CPU grader amendment](CPU_GRADER_AMENDMENT.json), and
+[aggregate source configurations](results/evaluation-v2/primary-aggregate/source-configurations.json)
+record the actual configuration and why the same tasks were rerun.
+
+Arithmetic has ceilings of 1,280 calls and 32,768 completion tokens per case,
+an 180-second task deadline, and per-call output caps of 8,192 with thinking on
+or 192 with thinking off. Coding has ceilings of 1,024 calls and 131,072 completion
+tokens per case, the same 180-second deadline, and output caps of 8,192 with
+thinking on or 1,024 with thinking off. Final intervals resample task clusters
+with all three seeds retained: 24 arithmetic tasks and 18 coding tasks. The
+Wilson intervals described below were an interim reporting rule; the final
+aggregate uses the recorded task-cluster bootstrap and paired comparisons.
+This note changes no method, prompt, budget, dataset or historical record.
+
 Research question: which use of a fixed Nemotron model produces the most
 verified solutions for its elapsed time and inference cost?
 
