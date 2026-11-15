@@ -104,6 +104,8 @@ Prototype containers use restart=no; start them explicitly after a reboot.
 
 ## Replay without GPUs
 
+See [REPRODUCING.md](REPRODUCING.md) for fresh-checkout analysis, plots and own-endpoint commands, including grading and study-gate limitations.
+
 ```sh
 python3 server.py --runs-dir results/traces --port 18777
 ```
