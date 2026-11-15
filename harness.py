@@ -269,6 +269,9 @@ class Experiment:
         return dict(agent_id=agent_id, solved=success, node_id=node_id, distance=str(distance))
 
     def run(self, initial, puzzle_id, method):
+        if method in ("ensemble", "cascade"):
+            from ensemble_solver import run_ensemble, run_cascade
+            return (run_ensemble if method == "ensemble" else run_cascade)(self, initial, puzzle_id)
         if method == "direct":
             from direct_solver import run_direct
             return run_direct(self, initial, puzzle_id)
@@ -376,7 +379,7 @@ def fingerprint(state, target):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--method", choices=["direct", "independent", "independent_rounds", "shared",
+    parser.add_argument("--method", choices=["direct", "ensemble", "cascade", "independent", "independent_rounds", "shared",
                                            "democracy", "weighted", "calibrate"], required=True)
     parser.add_argument("--endpoint", action="append", required=True, help="Repeat OpenAI base URLs ending /v1")
     parser.add_argument("--model", required=True)
