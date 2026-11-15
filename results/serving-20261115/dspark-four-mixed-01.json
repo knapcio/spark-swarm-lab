@@ -1,0 +1,2454 @@
+{
+  "run_id_utc": "20261115T122455.606392Z",
+  "endpoint": "http://127.0.0.1:18081/v1/chat/completions",
+  "model": "nemotron-lightning",
+  "configuration": {
+    "concurrency": 25,
+    "requests": 100,
+    "max_tokens": 256,
+    "temperature": 0,
+    "enable_thinking": false,
+    "timeout_seconds": 180,
+    "stream": false,
+    "warmup_requests": 4
+  },
+  "notes": [
+    "Measured wall time excludes warmup; completion-token throughput includes all measured scheduling, HTTP and prefill time.",
+    "Usage comes from the server. Missing completion usage is reported and makes output throughput incomplete.",
+    "The output cap is deliberate. A length finish is recorded, and is not an automatic code-task failure.",
+    "Only three constrained JSON arithmetic task types are graded; no general code or reasoning quality score is computed.",
+    "Latency covers each HTTP request; TTFT is not measured. Unique request markers are placed after the task."
+  ],
+  "warmup_summary": {
+    "requests": 4,
+    "successful_requests": 4,
+    "errors": 0,
+    "wall_seconds": 8.24649262521416,
+    "completion_tokens": 777,
+    "prompt_tokens": 460,
+    "requests_with_completion_usage": 4,
+    "requests_missing_completion_usage": 0,
+    "output_tokens_per_second": 94.22187532482289,
+    "latency_seconds_p50": 2.416764167137444,
+    "latency_seconds_p95": 2.539195084013045,
+    "finish_reasons": {
+      "stop": 1,
+      "length": 3
+    },
+    "json_arithmetic_checks": {
+      "checked": 1,
+      "passed": 1,
+      "failed": 0
+    }
+  },
+  "warmup_results": [
+    {
+      "index": 0,
+      "phase": "warmup",
+      "task": "json_multiply",
+      "marker": "20261115T122455.606392Z:warmup:000000",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer product of 37 and 19. No Markdown.",
+      "usage": {
+        "prompt_tokens": 102,
+        "total_tokens": 111,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 703}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": true,
+        "expected": {
+          "result": 703
+        },
+        "actual": {
+          "result": 703
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.9305381253361702
+    },
+    {
+      "index": 1,
+      "phase": "warmup",
+      "task": "code_group",
+      "marker": "20261115T122455.606392Z:warmup:000001",
+      "prompt": "Write a Python function group_by(items, key) returning a dict of lists. Preserve item order within each group, accept a callable key, and do not mutate items. Include three small examples.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 369,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef group_by(items, key):\n    \"\"\"\n    Group items into a dict of lists based on the result of key(item).\n\n    Parameters\n    ----------\n    items : iterable\n        The items to group. Must not be mutated.\n    key : callable or None\n        A function that takes an item and returns a hashable key.\n        If None, the items themselves are used as keys.\n\n    Returns\n    -------\n    dict\n        Mapping from each key to a list of items preserving the original order.\n    \"\"\"\n    if key is None:\n        key_func = lambda x: x\n    else:\n        key_func = key\n\n    groups = {}\n    for item in items:\n        k = key_func(item)\n        groups.setdefault(k, []).append(item)\n    return groups\n\n\n# ----------------------------------------------------------------------\n# Three small examples\n# ----------------------------------------------------------------------\n\n# 1. Group strings by their first character\nwords = [\"apple\", \"avocado\", \"banana\", \"apricot\", \"blueberry\"]\nprint(group_by(words, lambda w: w[0]))\n# {'a': ['apple', 'avocado', 'apricot'], 'b': ['banana', 'blueberry']}\n\n# ",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 2.359676000662148
+    },
+    {
+      "index": 2,
+      "phase": "warmup",
+      "task": "logic_order",
+      "marker": "20261115T122455.606392Z:warmup:000002",
+      "prompt": "Three jobs A, B and C run one at a time. A must precede C; B must immediately follow A. List every valid order and briefly explain why the list is complete.",
+      "usage": {
+        "prompt_tokens": 109,
+        "total_tokens": 365,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "Here is the list of valid orders and the explanation of why the list is complete.\n\n### Valid Orders\n1.  **A, B, C**\n2.  **A, C, B**\n\n### Explanation\nThe constraints provided are:\n*   **A must precede C:** This means A must appear somewhere before C in the sequence.\n*   **B must immediately follow A:** This means B must be the very next job after A (i.e., the sequence must contain the substring \"AB\").\n\nTo find all valid orders, we can treat the pair \"AB\" as a single block because B must immediately follow A. This reduces the problem to arranging two items: the block \"AB\" and the job \"C\".\n\nThere are two possible arrangements of these two items:\n1.  **Block \"AB\" followed by C:** This yields the order **A, B, C**.\n2.  **C followed by Block \"AB\":** This yields the order **A, C, B** (where A is immediately followed by B).\n\nThese are the only two possibilities. Any other arrangement would either violate the \"immediately follow\" rule (e.g., A, C, B would have C between A and B if not for the block constraint,",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 2.539195084013045
+    },
+    {
+      "index": 3,
+      "phase": "warmup",
+      "task": "review_mutation",
+      "marker": "20261115T122455.606392Z:warmup:000003",
+      "prompt": "Review this Python function for correctness, identify a failing input, then provide a corrected implementation: def remove_even(xs):\n    for x in xs:\n        if x % 2 == 0:\n            xs.remove(x)\n    return xs\nThe corrected function must return a new list and leave its input unchanged.",
+      "usage": {
+        "prompt_tokens": 136,
+        "total_tokens": 392,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### Analysis of the Original Function\n\nThe provided function `remove_even` has two critical flaws:\n\n1.  **Modifying a list while iterating over it:** In Python, iterating over a list using `for x in xs` creates an iterator over the list's current state. If you remove an element from the list during iteration, the iterator's internal index becomes desynchronized with the list's contents. This often results in elements being skipped or a `RuntimeError` if the list is modified in certain ways.\n2.  **Mutation of input:** The function modifies the input list `xs` in-place using `xs.remove(x)`. The task requires the function to return a new list and leave the input unchanged.\n\n### Failing Input\n\nConsider the input `[1, 2, 3, 4]`.\n\n*   **Expected Output:** `[1, 3]` (removing 2 and 4).\n*   **Actual Output:** `[1, 3, 4]`.\n\n**Why it fails:**\n1.  The iterator starts at index 0 (value `1`). `1` is not even, so the loop moves to index 1.\n2.  The iterator is now at index 1, which holds the value",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 2.416764167137444
+    }
+  ],
+  "summary": {
+    "requests": 100,
+    "successful_requests": 100,
+    "errors": 0,
+    "wall_seconds": 31.367711124941707,
+    "completion_tokens": 16503,
+    "prompt_tokens": 11484,
+    "requests_with_completion_usage": 100,
+    "requests_missing_completion_usage": 0,
+    "output_tokens_per_second": 526.1142559706185,
+    "latency_seconds_p50": 9.222400582395494,
+    "latency_seconds_p95": 13.048042832873762,
+    "finish_reasons": {
+      "stop": 37,
+      "length": 63
+    },
+    "json_arithmetic_checks": {
+      "checked": 37,
+      "passed": 13,
+      "failed": 24
+    }
+  },
+  "results": [
+    {
+      "index": 0,
+      "phase": "measured",
+      "task": "json_multiply",
+      "marker": "20261115T122455.606392Z:measured:000000",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer product of 37 and 19. No Markdown.",
+      "usage": {
+        "prompt_tokens": 101,
+        "total_tokens": 110,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 703}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": true,
+        "expected": {
+          "result": 703
+        },
+        "actual": {
+          "result": 703
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.7747655846178532
+    },
+    {
+      "index": 1,
+      "phase": "measured",
+      "task": "code_group",
+      "marker": "20261115T122455.606392Z:measured:000001",
+      "prompt": "Write a Python function group_by(items, key) returning a dict of lists. Preserve item order within each group, accept a callable key, and do not mutate items. Include three small examples.",
+      "usage": {
+        "prompt_tokens": 112,
+        "total_tokens": 368,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef group_by(items, key):\n    \"\"\"\n    Group items into a dict of lists based on the result of key(item).\n\n    Parameters\n    ----------\n    items : iterable\n        The items to group.  The original iterable is not mutated.\n    key : callable or None\n        A function that takes one item and returns a hashable key.\n        If None, the items themselves are used as keys.\n\n    Returns\n    -------\n    dict\n        Mapping from each key to a list of items that produced that key.\n        The order of items within each list preserves the original order.\n    \"\"\"\n    if key is None:\n        key_func = lambda x: x\n    else:\n        key_func = key\n\n    groups = {}\n    for item in items:\n        k = key_func(item)\n        groups.setdefault(k, []).append(item)\n    return groups\n\n\n# ----------------------------------------------------------------------\n# Three small examples\n# ----------------------------------------------------------------------\n\n# 1. Group strings by their first character\nwords = [\"apple\", \"avocado\", \"banana\", \"apricot\", \"blueberry\"]\nprint(group_by(words, lambda w: w[0]))\n# {'a': ['apple', 'avocado', 'ap",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 9.83687883336097
+    },
+    {
+      "index": 2,
+      "phase": "measured",
+      "task": "logic_order",
+      "marker": "20261115T122455.606392Z:measured:000002",
+      "prompt": "Three jobs A, B and C run one at a time. A must precede C; B must immediately follow A. List every valid order and briefly explain why the list is complete.",
+      "usage": {
+        "prompt_tokens": 108,
+        "total_tokens": 364,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "Here is the list of every valid order, followed by an explanation of why the list is complete.\n\n### Valid Orders\n\n1.  **A, B, C**\n2.  **B, A, C**\n\n### Explanation of Completeness\n\nThe constraints provided are:\n*   **Constraint 1:** A must precede C. This means A must appear somewhere before C in the sequence.\n*   **Constraint 2:** B must immediately follow A. This means the sequence must contain the substring \"AB\" (A immediately followed by B).\n\nTo find all valid orders, we can treat the pair \"AB\" as a single block because they must appear together in that specific order.\n\n1.  **If A and B are together as a block (AB):**\n    Since A must precede C, and A is already immediately followed by B, C must come after the block AB. The only way to arrange the block AB and the job C is to place C at the end. This yields the order **A, B, C**.\n\n2.  **If B is not immediately following A:**\n    The constraint \"B must immediately follow A\" is absolute. If B does not immediately follow A, the order violates the second rule. Therefore, no other",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 11.025807000696659
+    },
+    {
+      "index": 3,
+      "phase": "measured",
+      "task": "review_mutation",
+      "marker": "20261115T122455.606392Z:measured:000003",
+      "prompt": "Review this Python function for correctness, identify a failing input, then provide a corrected implementation: def remove_even(xs):\n    for x in xs:\n        if x % 2 == 0:\n            xs.remove(x)\n    return xs\nThe corrected function must return a new list and leave its input unchanged.",
+      "usage": {
+        "prompt_tokens": 135,
+        "total_tokens": 391,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### Analysis of the Original Function\n\nThe provided function `remove_even` has two critical flaws:\n\n1.  **Modifying a list while iterating over it:** The `for x in xs` loop iterates over the list `xs`. If an element is removed using `xs.remove(x)`, the internal index of the list shifts. This causes the loop to skip elements. For example, if the list is `[2, 4, 6]`, the loop might remove `2`, then skip `4` (because the indices have shifted) and only remove `6`, or behave unpredictably.\n2.  **Side effects:** The function modifies the input list `xs` in place. The task requires the function to return a new list and leave the input unchanged.\n\n### Failing Input\n\nConsider the input `[1, 2, 3, 4]`.\n\n*   **Expected Output:** `[1, 3]` (removing 2 and 4).\n*   **Actual Output:** `[1, 3]` (potentially correct for this specific case, but unreliable).\n*   **Unreliable Case:** Consider `[2, 1, 2, 3]`.\n    *   The loop starts at index 0",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 11.425530791282654
+    },
+    {
+      "index": 4,
+      "phase": "measured",
+      "task": "json_sum",
+      "marker": "20261115T122455.606392Z:measured:000004",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer sum of 128, 47, 305 and 20. No explanation or Markdown.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 125,
+        "completion_tokens": 12,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 480\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 500
+        },
+        "actual": {
+          "result": 480
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.994781999848783
+    },
+    {
+      "index": 5,
+      "phase": "measured",
+      "task": "code_intervals",
+      "marker": "20261115T122455.606392Z:measured:000005",
+      "prompt": "Implement a Python function merge_intervals(intervals) for closed integer intervals. Sort the output, merge overlaps, preserve the caller's input, and describe the behavior for an empty list. Include one edge-case example.",
+      "usage": {
+        "prompt_tokens": 116,
+        "total_tokens": 372,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge overlapping closed integer intervals.\n\n    The function:\n    - Does not modify the caller's input.\n    - Returns a new list of merged intervals sorted by their start point.\n    - Handles an empty input list by returning an empty list.\n    - Merges intervals that overlap or touch (i.e., [a, b] and [b, c] merge to [a, c]).\n\n    Parameters\n    ----------\n    intervals : list[tuple[int, int]]\n        A list of closed integer intervals [start, end] where start <= end.\n\n    Returns\n    -------\n    list[tuple[int, int]]\n        A new list of merged, non-overlapping intervals sorted by start.\n    \"\"\"\n    if not intervals:\n        return []\n\n    # Work on a sorted copy so the original input is preserved.\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n\n    merged = []\n    current_start, current_end = sorted_intervals[0]\n\n    for start, end in sorted_intervals[1:]:\n        # Intervals overlap or touch when start <= current_end + 1\n        # (for closed integer intervals that may share an endpoint",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 9.765056500211358
+    },
+    {
+      "index": 6,
+      "phase": "measured",
+      "task": "review_queue",
+      "marker": "20261115T122455.606392Z:measured:000006",
+      "prompt": "A worker reads a task from a queue, writes its result, then acknowledges it. The process may crash between these steps. Explain how duplicate processing can happen and give a minimal idempotent design using a task ID. Keep the explanation concrete.",
+      "usage": {
+        "prompt_tokens": 121,
+        "total_tokens": 377,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### How Duplicate Processing Happens\n\nThe sequence of operations creates a window where a crash can cause the task to be processed twice:\n\n1.  **Read:** The worker pulls a task (ID: `T123`) from the queue.\n2.  **Process:** The worker executes the logic for `T123`.\n3.  **Crash:** The worker crashes **before** it can write the result or send the acknowledgment.\n4.  **Redelivery:** The queue system, noticing the worker is gone, redelivers `T123` to a new worker (or the same worker after restart).\n5.  **Duplicate:** The new worker processes `T123` again, resulting in the logic running twice.\n\n### Minimal Idempotent Design\n\nTo prevent duplicate processing, make the task logic **idempotent** using a unique **Task ID**. The core idea is: *Check if the result already exists before performing the work.*\n\n**The Pattern:**\n\n1.  **Database Table:** Maintain a simple table (e.g., `task_status`) with columns `task_id` (Primary Key) and `result`.\n2.  **Atomic Check-and-Insert:** When a worker",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 13.460542249493301
+    },
+    {
+      "index": 7,
+      "phase": "measured",
+      "task": "json_arithmetic",
+      "marker": "20261115T122455.606392Z:measured:000007",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer value of (144 - 36) / 9 + 17. No Markdown or extra keys.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 124,
+        "completion_tokens": 11,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 21\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 29
+        },
+        "actual": {
+          "result": 21
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.8796272920444608
+    },
+    {
+      "index": 8,
+      "phase": "measured",
+      "task": "json_multiply",
+      "marker": "20261115T122455.606392Z:measured:000008",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer product of 37 and 19. No Markdown.",
+      "usage": {
+        "prompt_tokens": 101,
+        "total_tokens": 110,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 703}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": true,
+        "expected": {
+          "result": 703
+        },
+        "actual": {
+          "result": 703
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.8796899998560548
+    },
+    {
+      "index": 9,
+      "phase": "measured",
+      "task": "code_group",
+      "marker": "20261115T122455.606392Z:measured:000009",
+      "prompt": "Write a Python function group_by(items, key) returning a dict of lists. Preserve item order within each group, accept a callable key, and do not mutate items. Include three small examples.",
+      "usage": {
+        "prompt_tokens": 112,
+        "total_tokens": 368,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef group_by(items, key):\n    \"\"\"\n    Group items into a dict of lists based on the result of key(item).\n\n    - Preserves the original order of items within each group.\n    - Accepts any callable as the key function.\n    - Does not mutate the input items.\n    \"\"\"\n    groups = {}\n    for item in items:\n        k = key(item)\n        groups.setdefault(k, []).append(item)\n    return groups\n\n\n# Example 1: grouping strings by their first character\nresult1 = group_by([\"apple\", \"avocado\", \"banana\", \"blueberry\", \"cherry\"], lambda s: s[0])\nprint(result1)\n# Expected: {'a': ['apple', 'avocado'], 'b': ['banana', 'blueberry'], 'c': ['cherry']}\n\n# Example 2: grouping numbers by parity\nresult2 = group_by([1, 2, 3, 4, 5, 6], lambda n: n % 2)\nprint(result2)\n# Expected: {0: [2, 4, 6], 1: [1, 3, 5]}\n\n# Example 3: grouping objects by an attribute",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.401310541667044
+    },
+    {
+      "index": 10,
+      "phase": "measured",
+      "task": "logic_order",
+      "marker": "20261115T122455.606392Z:measured:000010",
+      "prompt": "Three jobs A, B and C run one at a time. A must precede C; B must immediately follow A. List every valid order and briefly explain why the list is complete.",
+      "usage": {
+        "prompt_tokens": 108,
+        "total_tokens": 364,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "Here is the list of every valid order, followed by an explanation of why the list is complete.\n\n### Valid Orders\n\n1.  **A, B, C**\n2.  **A, C, B**\n3.  **C, A, B**\n\n### Why the List is Complete\n\nTo determine the valid orders, we analyze the constraints provided:\n\n1.  **Constraint 1:** \"A must precede C.\" This means A must appear somewhere before C in the sequence. The only invalid arrangement regarding this rule is **C, A, ...** (where C comes first).\n2.  **Constraint 2:** \"B must immediately follow A.\" This means B must come directly after A, with no other job between them. The valid pair is **AB**.\n\nBy combining these two rules, we can deduce the possible positions for the block \"AB\" and the job C:\n\n*   **Case 1: The block AB is at the start.**\n    *   If AB is first, C must come after A (satisfying Constraint 1).\n    *   C can be placed immediately after B or at the very end.\n    *   This yields the orders: **A, B, C** and **A, C, B**.\n\n",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.84264750033617
+    },
+    {
+      "index": 11,
+      "phase": "measured",
+      "task": "review_mutation",
+      "marker": "20261115T122455.606392Z:measured:000011",
+      "prompt": "Review this Python function for correctness, identify a failing input, then provide a corrected implementation: def remove_even(xs):\n    for x in xs:\n        if x % 2 == 0:\n            xs.remove(x)\n    return xs\nThe corrected function must return a new list and leave its input unchanged.",
+      "usage": {
+        "prompt_tokens": 135,
+        "total_tokens": 391,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### Analysis of the Original Function\n\nThe provided function `remove_even` has two critical flaws:\n\n1.  **Modifying a list while iterating over it:** The `for x in xs` loop iterates over the list `xs`. If an element is removed using `xs.remove(x)`, the internal index of the list shifts. This causes the loop to skip elements. For example, if the list is `[2, 4, 6]`, the loop removes `2`, but the next element `4` shifts into the index where `2` was, and the loop moves to the next index, effectively skipping `4`.\n2.  **Mutating the input:** The function modifies the list `xs` in-place. The corrected function must leave the input unchanged and return a new list.\n\n### Failing Input\n\n**Input:** `[1, 2, 3, 4, 5, 6]`\n\n**Execution Trace:**\n1.  Iteration 1: `x = 1`. `1 % 2 != 0`. No removal.\n2.  Iteration 2: `x = 2`. `2 % 2 == 0`. `xs.remove(2)` removes the element at index ",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.805273457430303
+    },
+    {
+      "index": 12,
+      "phase": "measured",
+      "task": "json_sum",
+      "marker": "20261115T122455.606392Z:measured:000012",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer sum of 128, 47, 305 and 20. No explanation or Markdown.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 125,
+        "completion_tokens": 12,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 480\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 500
+        },
+        "actual": {
+          "result": 480
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.9927598340436816
+    },
+    {
+      "index": 13,
+      "phase": "measured",
+      "task": "code_intervals",
+      "marker": "20261115T122455.606392Z:measured:000013",
+      "prompt": "Implement a Python function merge_intervals(intervals) for closed integer intervals. Sort the output, merge overlaps, preserve the caller's input, and describe the behavior for an empty list. Include one edge-case example.",
+      "usage": {
+        "prompt_tokens": 116,
+        "total_tokens": 372,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge overlapping closed integer intervals.\n\n    The function:\n    - Does not modify the caller's input.\n    - Returns a new list of merged intervals sorted by their start value.\n    - Handles an empty input list by returning an empty list.\n    - Merges intervals that overlap or touch (i.e., [a, b] and [b, c] merge into [a, c]).\n\n    Parameters\n    ----------\n    intervals : list[tuple[int, int]]\n        A list of closed integer intervals [start, end] where start <= end.\n\n    Returns\n    -------\n    list[tuple[int, int]]\n        A new list of merged, non-overlapping intervals sorted by start.\n    \"\"\"\n    # Preserve the caller's input by working on a copy\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n\n    if not sorted_intervals:\n        return []\n\n    merged = []\n    current_start, current_end = sorted_intervals[0]\n\n    for start, end in sorted_intervals[1:]:\n        # Overlap or touch if the next start is <= current end\n        if start <= current_end:\n            # Extend",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 9.17342450004071
+    },
+    {
+      "index": 14,
+      "phase": "measured",
+      "task": "review_queue",
+      "marker": "20261115T122455.606392Z:measured:000014",
+      "prompt": "A worker reads a task from a queue, writes its result, then acknowledges it. The process may crash between these steps. Explain how duplicate processing can happen and give a minimal idempotent design using a task ID. Keep the explanation concrete.",
+      "usage": {
+        "prompt_tokens": 121,
+        "total_tokens": 377,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### How Duplicate Processing Happens\n\nThe sequence of operations creates a window where data loss or duplication can occur if the process crashes:\n\n1.  **Read:** The worker pulls a task (ID: `T123`) from the queue.\n2.  **Process:** The worker computes the result for `T123`.\n3.  **Crash:** The process dies before it can send the \"acknowledgement\" (ack) back to the queue system.\n4.  **Re-queue:** The queue system, not receiving the ack, assumes the task failed or was lost. It re-queues `T123` or makes it available for another worker.\n5.  **Re-process:** A new worker picks up `T123` from the queue and processes it again, resulting in a duplicate execution.\n\n### Minimal Idempotent Design\n\nTo prevent duplicate processing, we make the task processing **idempotent** using a unique **Task ID**. The core idea is: *The worker checks if the result for a given Task ID already exists before performing the work.*\n\n**The Flow:**\n\n1.  **Receive Task:** Worker receives Task ID `T123`.\n2.  **",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 12.89399291574955
+    },
+    {
+      "index": 15,
+      "phase": "measured",
+      "task": "json_arithmetic",
+      "marker": "20261115T122455.606392Z:measured:000015",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer value of (144 - 36) / 9 + 17. No Markdown or extra keys.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 124,
+        "completion_tokens": 11,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 21\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 29
+        },
+        "actual": {
+          "result": 21
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.8783517917618155
+    },
+    {
+      "index": 16,
+      "phase": "measured",
+      "task": "json_multiply",
+      "marker": "20261115T122455.606392Z:measured:000016",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer product of 37 and 19. No Markdown.",
+      "usage": {
+        "prompt_tokens": 101,
+        "total_tokens": 110,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 703}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": true,
+        "expected": {
+          "result": 703
+        },
+        "actual": {
+          "result": 703
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.8778700418770313
+    },
+    {
+      "index": 17,
+      "phase": "measured",
+      "task": "code_group",
+      "marker": "20261115T122455.606392Z:measured:000017",
+      "prompt": "Write a Python function group_by(items, key) returning a dict of lists. Preserve item order within each group, accept a callable key, and do not mutate items. Include three small examples.",
+      "usage": {
+        "prompt_tokens": 112,
+        "total_tokens": 368,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef group_by(items, key):\n    \"\"\"\n    Group items into a dict of lists based on the result of key(item).\n\n    - Preserves the original order of items within each group.\n    - Accepts any callable as the key function.\n    - Does not mutate the input items.\n    \"\"\"\n    groups = {}\n    for item in items:\n        k = key(item)\n        groups.setdefault(k, []).append(item)\n    return groups\n\n\n# Example 1: grouping strings by their first character\nresult1 = group_by([\"apple\", \"avocado\", \"banana\", \"cherry\", \"blueberry\"], lambda s: s[0])\nprint(result1)\n# {'a': ['apple', 'avocado'], 'b': ['banana', 'blueberry'], 'c': ['cherry']}\n\n# Example 2: grouping numbers by parity\nresult2 = group_by([1, 2, 3, 4, 5, 6], lambda n: n % 2)\nprint(result2)\n# {1: [1, 3, 5], 0: [2, 4, 6]}\n\n# Example 3: grouping custom objects by an attribute\nclass Point",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.401031833142042
+    },
+    {
+      "index": 18,
+      "phase": "measured",
+      "task": "logic_order",
+      "marker": "20261115T122455.606392Z:measured:000018",
+      "prompt": "Three jobs A, B and C run one at a time. A must precede C; B must immediately follow A. List every valid order and briefly explain why the list is complete.",
+      "usage": {
+        "prompt_tokens": 108,
+        "total_tokens": 364,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "Here is the list of valid orders and the explanation for why the list is complete.\n\n### Valid Orders\n\n1.  **A, B, C**\n2.  **A, C, B**\n3.  **C, A, B**\n\n### Explanation of Completeness\n\nThe constraints provided are:\n*   **Constraint 1:** A must precede C. This means A must appear somewhere before C in the sequence.\n*   **Constraint 2:** B must immediately follow A. This means the sequence must contain the substring \"AB\" (A immediately followed by B).\n\nTo find all valid orders, we treat the pair \"AB\" as a single block because B cannot be separated from A. This reduces the problem to arranging two items: the \"AB\" block and C.\n\nThere are two possible arrangements of these two items:\n1.  **AB, C** (The block comes first, followed by C).\n2.  **C, AB** (C comes first, followed by the block).\n\nExpanding these blocks back into individual jobs yields the three valid orders listed above.\n\nThe list is complete because there are no other ways to arrange the \"AB\" block and C while satisfying both constraints. If C were placed between A and B (e",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 11.021798917092383
+    },
+    {
+      "index": 19,
+      "phase": "measured",
+      "task": "review_mutation",
+      "marker": "20261115T122455.606392Z:measured:000019",
+      "prompt": "Review this Python function for correctness, identify a failing input, then provide a corrected implementation: def remove_even(xs):\n    for x in xs:\n        if x % 2 == 0:\n            xs.remove(x)\n    return xs\nThe corrected function must return a new list and leave its input unchanged.",
+      "usage": {
+        "prompt_tokens": 135,
+        "total_tokens": 391,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### Analysis of the Original Function\n\nThe provided function `remove_even` has two critical flaws:\n\n1.  **Modifying a list while iterating over it:** In Python, iterating over a list using `for x in xs` creates an iterator over the list's current state. If you remove an element from the list during iteration, the iterator's internal index becomes desynchronized with the list's contents. This often causes elements to be skipped or results in a `RuntimeError: list changed size during iteration`.\n2.  **Mutating the input:** The function modifies `xs` in place using `xs.remove(x)`. The task requires the function to leave its input unchanged and return a new list.\n\n### Failing Input\n\nConsider the input `[2, 4, 6]`.\n\n*   **Iteration 1:** `x = 2`. The condition `2 % 2 == 0` is true. `xs.remove(2)` is called. The list becomes `[4, 6]`.\n*   **Iteration 2:** The iterator moves to the next index. Because the list shrank, the element at the new index 1 is now `6`, but the iterator skips the element that shifted down to index ",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 11.607445541769266
+    },
+    {
+      "index": 20,
+      "phase": "measured",
+      "task": "json_sum",
+      "marker": "20261115T122455.606392Z:measured:000020",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer sum of 128, 47, 305 and 20. No explanation or Markdown.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 125,
+        "completion_tokens": 12,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 480\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 500
+        },
+        "actual": {
+          "result": 480
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.990324541926384
+    },
+    {
+      "index": 21,
+      "phase": "measured",
+      "task": "code_intervals",
+      "marker": "20261115T122455.606392Z:measured:000021",
+      "prompt": "Implement a Python function merge_intervals(intervals) for closed integer intervals. Sort the output, merge overlaps, preserve the caller's input, and describe the behavior for an empty list. Include one edge-case example.",
+      "usage": {
+        "prompt_tokens": 116,
+        "total_tokens": 372,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\nfrom typing import List, Tuple\n\ndef merge_intervals(intervals: List[Tuple[int, int]]) -> List[Tuple[int, int]]:\n    \"\"\"\n    Merge overlapping closed integer intervals.\n\n    The function:\n    - Does not modify the caller's input list or its contents.\n    - Returns a new list of merged intervals sorted by their start value.\n    - Handles an empty input list by returning an empty list.\n    - Merges intervals that overlap or touch (i.e., [1, 3] and [3, 5] become [1, 5]).\n\n    Parameters\n    ----------\n    intervals : List[Tuple[int, int]]\n        A list of closed integer intervals [start, end] where start <= end.\n\n    Returns\n    -------\n    List[Tuple[int, int]]\n        A new list of merged, non-overlapping intervals sorted by start.\n\n    Raises\n    ------\n    ValueError\n        If any interval has start > end.\n    \"\"\"\n    if not intervals:\n        return []\n\n    # Defensive copy so the caller's input is preserved\n    intervals_copy = [ (s, e) for s, e in intervals ]\n\n    # Validate intervals\n    for s, e in",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 9.832578958943486
+    },
+    {
+      "index": 22,
+      "phase": "measured",
+      "task": "review_queue",
+      "marker": "20261115T122455.606392Z:measured:000022",
+      "prompt": "A worker reads a task from a queue, writes its result, then acknowledges it. The process may crash between these steps. Explain how duplicate processing can happen and give a minimal idempotent design using a task ID. Keep the explanation concrete.",
+      "usage": {
+        "prompt_tokens": 121,
+        "total_tokens": 377,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### How Duplicate Processing Happens\n\nThe sequence of operations creates a window where data loss or duplication can occur if the process crashes (e.g., power failure, exception):\n\n1.  **Read:** The worker pulls a task (ID: `T1`) from the queue.\n2.  **Process:** The worker computes the result for `T1`.\n3.  **Crash:** The worker crashes *before* it can write the result or send the acknowledgment.\n4.  **Re-queue:** Because the acknowledgment was never sent, the queue system assumes the task failed and re-delivers `T1` to a new worker (or the same worker after restart).\n5.  **Duplicate:** The new worker processes `T1` again, resulting in the task being handled twice.\n\n### Minimal Idempotent Design Using a Task ID\n\nTo prevent duplicate processing, we make the processing **idempotent**. This means that no matter how many times a task with the same ID is processed, the final state remains correct.\n\n**The Design:**\n\n1.  **Database Table:** Create a table (e.g., `task_status`) with two columns: `task_id` (Primary Key) and `result`.\n2.  **",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 11.607842415571213
+    },
+    {
+      "index": 23,
+      "phase": "measured",
+      "task": "json_arithmetic",
+      "marker": "20261115T122455.606392Z:measured:000023",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer value of (144 - 36) / 9 + 17. No Markdown or extra keys.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 124,
+        "completion_tokens": 11,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 21\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 29
+        },
+        "actual": {
+          "result": 21
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.8771975841373205
+    },
+    {
+      "index": 24,
+      "phase": "measured",
+      "task": "json_multiply",
+      "marker": "20261115T122455.606392Z:measured:000024",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer product of 37 and 19. No Markdown.",
+      "usage": {
+        "prompt_tokens": 101,
+        "total_tokens": 110,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 703}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": true,
+        "expected": {
+          "result": 703
+        },
+        "actual": {
+          "result": 703
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.8765568332746625
+    },
+    {
+      "index": 25,
+      "phase": "measured",
+      "task": "code_group",
+      "marker": "20261115T122455.606392Z:measured:000025",
+      "prompt": "Write a Python function group_by(items, key) returning a dict of lists. Preserve item order within each group, accept a callable key, and do not mutate items. Include three small examples.",
+      "usage": {
+        "prompt_tokens": 112,
+        "total_tokens": 368,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef group_by(items, key):\n    \"\"\"\n    Group items into a dict of lists based on the result of key(item).\n\n    Parameters\n    ----------\n    items : iterable\n        The items to group.  The function does not mutate this collection.\n    key : callable or None\n        A function that takes one item and returns a hashable key.\n        If None, the items themselves are used as keys.\n\n    Returns\n    -------\n    dict\n        Mapping from each key to a list of items that produced that key.\n        The relative order of items within each list is the same as in the\n        original iterable.\n    \"\"\"\n    if key is None:\n        key_func = lambda x: x\n    else:\n        key_func = key\n\n    groups = {}\n    for item in items:\n        k = key_func(item)\n        groups.setdefault(k, []).append(item)\n    return groups\n\n\n# ----------------------------------------------------------------------\n# Three small examples\n# ----------------------------------------------------------------------\n\n# 1. Group words by their first letter\nwords = [\"apple\", \"banana\", \"avocado\", \"blueberry\", \"cherry\"]\nprint(group_by(words, lambda w: w[0]))\n# {'a': ['apple",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.075816583819687
+    },
+    {
+      "index": 26,
+      "phase": "measured",
+      "task": "logic_order",
+      "marker": "20261115T122455.606392Z:measured:000026",
+      "prompt": "Three jobs A, B and C run one at a time. A must precede C; B must immediately follow A. List every valid order and briefly explain why the list is complete.",
+      "usage": {
+        "prompt_tokens": 108,
+        "total_tokens": 364,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "Here is the list of valid orders and the explanation for why the list is complete.\n\n### Valid Orders\n\n1.  **A, B, C**\n2.  **A, C, B**\n\n### Explanation of Completeness\n\nTo determine the valid orders, we must apply the given constraints to the set of three jobs {A, B, C}.\n\n1.  **Constraint Analysis:**\n    *   **Constraint 1:** \"A must precede C.\" This means A must appear somewhere before C in the sequence. The only valid relative order for these two is A ... C.\n    *   **Constraint 2:** \"B must immediately follow A.\" This means B must come directly after A, with no other job between them. The only valid relative order for these two is A, B.\n\n2.  **Combining Constraints:**\n    *   Combining these two constraints, we know that A and B must be adjacent in the order A, B, and A must come before C.\n    *   Since there are only three jobs total, the block \"A, B\" occupies two of the three positions. The remaining position must be filled by C.\n\n3.  **Enumerating Possibilities:**\n    *   **Possibility 1:**",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.54448049981147
+    },
+    {
+      "index": 27,
+      "phase": "measured",
+      "task": "review_mutation",
+      "marker": "20261115T122455.606392Z:measured:000027",
+      "prompt": "Review this Python function for correctness, identify a failing input, then provide a corrected implementation: def remove_even(xs):\n    for x in xs:\n        if x % 2 == 0:\n            xs.remove(x)\n    return xs\nThe corrected function must return a new list and leave its input unchanged.",
+      "usage": {
+        "prompt_tokens": 135,
+        "total_tokens": 391,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### Analysis of the Original Function\n\nThe original function `remove_even` has two critical flaws:\n\n1.  **Modifying a list while iterating over it:** The `for x in xs` loop iterates over the list `xs`. When `xs.remove(x)` is called, the list shrinks, but the loop's internal index continues to increment. This causes elements to be skipped. For example, if the list is `[2, 4, 6]`, the loop might remove `2`, then skip `4` (because the indices shift) and only remove `6`, leaving `[4]` behind.\n2.  **Mutation of input:** The function modifies the input list `xs` in place using `.remove()`. The task requires the function to leave its input unchanged and return a new list.\n\n### Failing Input\n\nConsider the input `[1, 2, 3, 4]`.\n\n*   **Expected Output:** `[1, 3]` (all even numbers removed).\n*   **Actual Output:** `[1, 3]` (by coincidence, because the evens are at the end).\n\nHowever, consider the input `[2, 1, 4, 3]`.\n\n*   **Expected Output:** `[1",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.659480500034988
+    },
+    {
+      "index": 28,
+      "phase": "measured",
+      "task": "json_sum",
+      "marker": "20261115T122455.606392Z:measured:000028",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer sum of 128, 47, 305 and 20. No explanation or Markdown.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 125,
+        "completion_tokens": 12,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 481\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 500
+        },
+        "actual": {
+          "result": 481
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.0245378334075212
+    },
+    {
+      "index": 29,
+      "phase": "measured",
+      "task": "code_intervals",
+      "marker": "20261115T122455.606392Z:measured:000029",
+      "prompt": "Implement a Python function merge_intervals(intervals) for closed integer intervals. Sort the output, merge overlaps, preserve the caller's input, and describe the behavior for an empty list. Include one edge-case example.",
+      "usage": {
+        "prompt_tokens": 116,
+        "total_tokens": 372,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge closed integer intervals.\n\n    The function:\n    - Does not modify the caller's input.\n    - Sorts the resulting merged intervals by their start value.\n    - Merges any overlapping or adjacent intervals.\n    - Returns an empty list if the input is empty.\n\n    Parameters\n    ----------\n    intervals : list[tuple[int, int]]\n        A list of closed integer intervals [l, r] where l <= r.\n\n    Returns\n    -------\n    list[tuple[int, int]]\n        A new list of merged, sorted intervals.\n    \"\"\"\n    if not intervals:\n        return []\n\n    # Work on a copy so the caller's data is preserved\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n\n    merged = []\n    current_start, current_end = sorted_intervals[0]\n\n    for start, end in sorted_intervals[1:]:\n        # Overlap or touching (closed intervals) -> merge\n        if start <= current_end:\n            current_end = max(current_end, end)\n        else:\n            merged.append((current_start, current_end))\n            current_start, current_end = start, end\n\n    merged.append((current",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 9.639268584549427
+    },
+    {
+      "index": 30,
+      "phase": "measured",
+      "task": "review_queue",
+      "marker": "20261115T122455.606392Z:measured:000030",
+      "prompt": "A worker reads a task from a queue, writes its result, then acknowledges it. The process may crash between these steps. Explain how duplicate processing can happen and give a minimal idempotent design using a task ID. Keep the explanation concrete.",
+      "usage": {
+        "prompt_tokens": 121,
+        "total_tokens": 377,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### How Duplicate Processing Happens\n\nThe sequence of operations creates a window where data loss or duplication is possible if the process crashes (process termination, network partition, etc.) at specific moments.\n\n1.  **Read & Process:** The worker reads a task (ID: `T1`) from the queue and processes it.\n2.  **Crash before ACK:** The worker crashes after processing but **before** sending the acknowledgment (ACK).\n    *   The task `T1` remains visible in the queue.\n    *   The result is lost (unless persisted elsewhere).\n3.  **Redelivery:** A new worker picks up `T1` from the queue, believing it is a new task.\n4.  **Duplicate Processing:** The new worker processes `T1` again, resulting in the task being handled twice.\n\nAlternatively, if the worker crashes **after** sending the ACK but **before** the queue system confirms the ACK was received, the task is marked as done, but the side effects (e.g., database writes) might not have fully committed, leading to an inconsistent state that might be retried.\n\n### Minimal Idempotent Design using a Task ID\n\nTo prevent duplicate processing, we must ensure that processing",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 13.526204999536276
+    },
+    {
+      "index": 31,
+      "phase": "measured",
+      "task": "json_arithmetic",
+      "marker": "20261115T122455.606392Z:measured:000031",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer value of (144 - 36) / 9 + 17. No Markdown or extra keys.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 121,
+        "completion_tokens": 8,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 31}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 29
+        },
+        "actual": {
+          "result": 31
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.0246491245925426
+    },
+    {
+      "index": 32,
+      "phase": "measured",
+      "task": "json_multiply",
+      "marker": "20261115T122455.606392Z:measured:000032",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer product of 37 and 19. No Markdown.",
+      "usage": {
+        "prompt_tokens": 101,
+        "total_tokens": 110,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 703}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": true,
+        "expected": {
+          "result": 703
+        },
+        "actual": {
+          "result": 703
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.911568583920598
+    },
+    {
+      "index": 33,
+      "phase": "measured",
+      "task": "code_group",
+      "marker": "20261115T122455.606392Z:measured:000033",
+      "prompt": "Write a Python function group_by(items, key) returning a dict of lists. Preserve item order within each group, accept a callable key, and do not mutate items. Include three small examples.",
+      "usage": {
+        "prompt_tokens": 112,
+        "total_tokens": 368,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef group_by(items, key):\n    \"\"\"\n    Group items into a dict of lists based on the result of key(item).\n\n    Parameters\n    ----------\n    items : iterable\n        The items to group.  The function does not mutate this iterable.\n    key : callable or None\n        A function that takes one item and returns a hashable key.\n        If None, the items themselves are used as keys.\n\n    Returns\n    -------\n    dict\n        Mapping from each key to a list of items that produced that key.\n        The relative order of items within each list is the same as in the\n        original ``items`` iterable.\n    \"\"\"\n    if key is None:\n        # Use the item itself as the group key.\n        key_func = lambda x: x\n    else:\n        key_func = key\n\n    groups = {}\n    for item in items:\n        k = key_func(item)\n        # Create the list for a new key on demand, preserving insertion order.\n        if k not in groups:\n            groups[k] = []\n        groups[k].append(item)\n    return groups\n\n\n# ----------------------------------------------------------------------\n# Three small examples\n# ----------------------------------------------------------------------\n\n# 1. Group strings by their first character",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.958019165322185
+    },
+    {
+      "index": 34,
+      "phase": "measured",
+      "task": "logic_order",
+      "marker": "20261115T122455.606392Z:measured:000034",
+      "prompt": "Three jobs A, B and C run one at a time. A must precede C; B must immediately follow A. List every valid order and briefly explain why the list is complete.",
+      "usage": {
+        "prompt_tokens": 108,
+        "total_tokens": 364,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "Here is the list of valid orders and the explanation of why the list is complete.\n\n### Valid Orders\n1.  **A, B, C**\n2.  **A, C, B**\n\n### Explanation of Completeness\nTo determine the valid orders, we apply the given constraints to the three distinct jobs (A, B, and C).\n\n1.  **Constraint Analysis:**\n    *   **Constraint 1:** \"A must precede C.\" This means A must appear somewhere before C in the sequence. The only valid relative positions for A and C are A before C.\n    *   **Constraint 2:** \"B must immediately follow A.\" This creates a fixed block: A must be directly followed by B. Therefore, wherever A appears, B must occupy the very next position.\n\n2.  **Enumeration:**\n    Because B must immediately follow A, the sequence must contain the substring \"AB\". We then place C in the remaining slot while respecting Constraint 1 (A before C).\n\n    *   **Case 1:** C is placed after the \"AB\" block.\n        *   The sequence is A, B, then C.\n        *   Order: **A, B, C**.\n        *   Check: A precedes",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 11.537489084526896
+    },
+    {
+      "index": 35,
+      "phase": "measured",
+      "task": "review_mutation",
+      "marker": "20261115T122455.606392Z:measured:000035",
+      "prompt": "Review this Python function for correctness, identify a failing input, then provide a corrected implementation: def remove_even(xs):\n    for x in xs:\n        if x % 2 == 0:\n            xs.remove(x)\n    return xs\nThe corrected function must return a new list and leave its input unchanged.",
+      "usage": {
+        "prompt_tokens": 135,
+        "total_tokens": 391,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### Analysis of the Original Function\n\nThe provided function `remove_even` has two critical flaws:\n\n1.  **Modifying a list while iterating over it:** The loop `for x in xs:` iterates over the list. When `xs.remove(x)` is called, the list shrinks, but the loop counter continues based on the original indices. This causes elements to be skipped or processed incorrectly.\n2.  **Mutation of the input:** The function modifies the list `xs` in-place using `.remove()`. The task requires the function to return a new list and leave the input unchanged.\n\n### Failing Input\n\nConsider the input `[1, 2, 3, 4]`.\n\n*   **Iteration 1:** `x = 1`. `1 % 2 != 0`. No removal.\n*   **Iteration 2:** `x = 2`. `2 % 2 == 0`. `xs.remove(2)` is called. The list becomes `[1, 3, 4]`. The loop moves to the next index.\n*   **Iteration 3:** `x = 3` (the element currently at index 2). `3 % 2 != 0`. No removal.\n",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.55422995891422
+    },
+    {
+      "index": 36,
+      "phase": "measured",
+      "task": "json_sum",
+      "marker": "20261115T122455.606392Z:measured:000036",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer sum of 128, 47, 305 and 20. No explanation or Markdown.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 125,
+        "completion_tokens": 12,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 480\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 500
+        },
+        "actual": {
+          "result": 480
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.863708958029747
+    },
+    {
+      "index": 37,
+      "phase": "measured",
+      "task": "code_intervals",
+      "marker": "20261115T122455.606392Z:measured:000037",
+      "prompt": "Implement a Python function merge_intervals(intervals) for closed integer intervals. Sort the output, merge overlaps, preserve the caller's input, and describe the behavior for an empty list. Include one edge-case example.",
+      "usage": {
+        "prompt_tokens": 116,
+        "total_tokens": 372,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge overlapping closed integer intervals.\n\n    The function:\n    - Does not modify the caller's input.\n    - Returns a new list of merged intervals sorted by their start point.\n    - Handles an empty input list by returning an empty list.\n    - Merges intervals that intersect or touch (i.e., [a, b] and [b, c] merge to [a, c]).\n\n    Parameters\n    ----------\n    intervals : list[tuple[int, int]]\n        A list of closed integer intervals [start, end] where start <= end.\n\n    Returns\n    -------\n    list[tuple[int, int]]\n        A new list containing the merged, sorted intervals.\n\n    Examples\n    --------\n    >>> merge_intervals([(1, 3), (2, 6), (8, 10), (15, 18)])\n    [(1, 6), (8, 10), (15, 18)]\n    >>> merge_intervals([])\n    []\n    >>> merge_intervals([(1, 4), (4, 5)])\n    [(1, 5)]\n    \"\"\"\n    # Preserve the caller's input by",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 9.118749833665788
+    },
+    {
+      "index": 38,
+      "phase": "measured",
+      "task": "review_queue",
+      "marker": "20261115T122455.606392Z:measured:000038",
+      "prompt": "A worker reads a task from a queue, writes its result, then acknowledges it. The process may crash between these steps. Explain how duplicate processing can happen and give a minimal idempotent design using a task ID. Keep the explanation concrete.",
+      "usage": {
+        "prompt_tokens": 121,
+        "total_tokens": 377,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### How Duplicate Processing Happens\n\nThe sequence of operations creates a window where a crash can cause the task to be processed twice:\n\n1.  **Read:** The worker pulls a task (ID: `T123`) from the queue.\n2.  **Process:** The worker executes the logic for `T123` (e.g., charging a credit card, updating a database row).\n3.  **Crash:** The worker crashes **after** step 2 but **before** step 4.\n4.  **Ack/Nack:** The queue system, noticing the worker is gone, re-queues `T123` for another worker.\n5.  **Re-process:** A new worker picks up `T123` and executes step 2 again.\n\nBecause the original worker died before it could \"check off\" the task, the system assumes the work was never done and triggers a re-execution. If the original task was not atomic (e.g., it deducted money from an account but never recorded that it did so), the re-execution will deduct money again, resulting in an over-charge or data corruption.\n\n### Minimal Idempotent Design\n\nTo prevent this, the worker must",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 13.1729447087273
+    },
+    {
+      "index": 39,
+      "phase": "measured",
+      "task": "json_arithmetic",
+      "marker": "20261115T122455.606392Z:measured:000039",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer value of (144 - 36) / 9 + 17. No Markdown or extra keys.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 121,
+        "completion_tokens": 8,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 21}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 29
+        },
+        "actual": {
+          "result": 21
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.3517663339152932
+    },
+    {
+      "index": 40,
+      "phase": "measured",
+      "task": "json_multiply",
+      "marker": "20261115T122455.606392Z:measured:000040",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer product of 37 and 19. No Markdown.",
+      "usage": {
+        "prompt_tokens": 101,
+        "total_tokens": 110,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 703}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": true,
+        "expected": {
+          "result": 703
+        },
+        "actual": {
+          "result": 703
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.036227791570127
+    },
+    {
+      "index": 41,
+      "phase": "measured",
+      "task": "code_group",
+      "marker": "20261115T122455.606392Z:measured:000041",
+      "prompt": "Write a Python function group_by(items, key) returning a dict of lists. Preserve item order within each group, accept a callable key, and do not mutate items. Include three small examples.",
+      "usage": {
+        "prompt_tokens": 112,
+        "total_tokens": 368,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef group_by(items, key):\n    \"\"\"\n    Group items into a dict of lists based on the result of key(item).\n\n    Parameters\n    ----------\n    items : iterable\n        The items to group.  The original iterable is not mutated.\n    key : callable or None\n        A function that takes one item and returns a hashable key.\n        If None, the items themselves are used as keys.\n\n    Returns\n    -------\n    dict\n        Mapping from each key to a list of items that produced that key,\n        preserving the original order of items within each group.\n    \"\"\"\n    if key is None:\n        # Use the item itself as the key; preserve order of first appearance.\n        groups = {}\n        for item in items:\n            if item not in groups:\n                groups[item] = []\n            groups[item].append(item)\n        return groups\n\n    groups = {}\n    for item in items:\n        k = key(item)\n        if k not in groups:\n            groups[k] = []\n        groups[k].append(item)\n    return groups\n\n\n# ----------------------------------------------------------------------\n# Three small examples\n# ----------------------------------------------------------------------\n\n# 1. Group words by their first letter.\nwords = [\"apple\", \"banana\",",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.478812208399177
+    },
+    {
+      "index": 42,
+      "phase": "measured",
+      "task": "logic_order",
+      "marker": "20261115T122455.606392Z:measured:000042",
+      "prompt": "Three jobs A, B and C run one at a time. A must precede C; B must immediately follow A. List every valid order and briefly explain why the list is complete.",
+      "usage": {
+        "prompt_tokens": 108,
+        "total_tokens": 364,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "Here is the list of every valid order, followed by an explanation of why the list is complete.\n\n### Valid Orders\n1.  **A, B, C**\n2.  **B, A, C**\n\n### Explanation of Completeness\nThe constraints provided are:\n*   **A must precede C:** This means A must appear somewhere before C in the sequence.\n*   **B must immediately follow A:** This means B must be the very next job after A (the sequence \"A, B\" must exist as a contiguous block).\n\nBy combining these two rules, we can deduce that the sequence **A, B** must always appear, and C must appear after A. Since B immediately follows A, C cannot be placed between A and B.\n\nWe examine the possible positions for the block (A, B) and the job C:\n\n*   **Case 1: The block (A, B) is at the start.**\n    If A and B are first, C must come after them to satisfy the \"A precedes C\" rule. This yields the order: **A, B, C**.\n\n*   **Case 2: The block (A, B) is at the end.**\n    If A and B are last, C must",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 11.203138582408428
+    },
+    {
+      "index": 43,
+      "phase": "measured",
+      "task": "review_mutation",
+      "marker": "20261115T122455.606392Z:measured:000043",
+      "prompt": "Review this Python function for correctness, identify a failing input, then provide a corrected implementation: def remove_even(xs):\n    for x in xs:\n        if x % 2 == 0:\n            xs.remove(x)\n    return xs\nThe corrected function must return a new list and leave its input unchanged.",
+      "usage": {
+        "prompt_tokens": 135,
+        "total_tokens": 391,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### Analysis of the Original Function\n\nThe provided function `remove_even` has two critical flaws:\n\n1.  **Modifying a list while iterating over it:** The `for x in xs` loop iterates over the list `xs`. When `xs.remove(x)` is called, the list shrinks, but the loop counter continues based on the original indices. This causes elements to be skipped.\n2.  **Mutating the input:** The function modifies the list `xs` in-place using `.remove()`. The requirement specifies that the function must return a new list and leave the input unchanged.\n\n### Failing Input\n\nConsider the input `[1, 2, 3, 4]`.\n\n*   **Iteration 1:** `x = 1`. `1 % 2 != 0`. No removal.\n*   **Iteration 2:** `x = 2`. `2 % 2 == 0`. `xs.remove(2)` removes the element at index 1. The list becomes `[1, 3, 4]`. The loop counter moves to index 2.\n*   **Iteration 3:** `x = 4` (the element currently at index 2). `4 % 2 ==",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.433138375170529
+    },
+    {
+      "index": 44,
+      "phase": "measured",
+      "task": "json_sum",
+      "marker": "20261115T122455.606392Z:measured:000044",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer sum of 128, 47, 305 and 20. No explanation or Markdown.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 125,
+        "completion_tokens": 12,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 480\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 500
+        },
+        "actual": {
+          "result": 480
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.2077384581789374
+    },
+    {
+      "index": 45,
+      "phase": "measured",
+      "task": "code_intervals",
+      "marker": "20261115T122455.606392Z:measured:000045",
+      "prompt": "Implement a Python function merge_intervals(intervals) for closed integer intervals. Sort the output, merge overlaps, preserve the caller's input, and describe the behavior for an empty list. Include one edge-case example.",
+      "usage": {
+        "prompt_tokens": 116,
+        "total_tokens": 372,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge closed integer intervals.\n\n    The function:\n    - Does not modify the caller's input.\n    - Sorts the resulting merged intervals by their start value.\n    - Merges any overlapping or touching intervals (since intervals are closed integers,\n      [1, 3] and [3, 5] share the point 3 and are merged into [1, 5]).\n    - Returns an empty list if the input is empty.\n\n    Parameters\n    ----------\n    intervals : list[tuple[int, int]]\n        A list of closed integer intervals [start, end] where start <= end.\n\n    Returns\n    -------\n    list[tuple[int, int]]\n        A new list of merged, sorted intervals.\n    \"\"\"\n    if not intervals:\n        return []\n\n    # Work on a copy so the caller's input is preserved.\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n\n    merged = []\n    current_start, current_end = sorted_intervals[0]\n\n    for start, end in sorted_intervals[1:]:\n        # Overlap or touch: next start <= current end (closed integers)\n        if start <= current_end:\n",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.967048291116953
+    },
+    {
+      "index": 46,
+      "phase": "measured",
+      "task": "review_queue",
+      "marker": "20261115T122455.606392Z:measured:000046",
+      "prompt": "A worker reads a task from a queue, writes its result, then acknowledges it. The process may crash between these steps. Explain how duplicate processing can happen and give a minimal idempotent design using a task ID. Keep the explanation concrete.",
+      "usage": {
+        "prompt_tokens": 121,
+        "total_tokens": 377,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### How Duplicate Processing Happens\n\nThe worker follows a three-step sequence: **Read** $\\rightarrow$ **Process** $\\rightarrow$ **Acknowledge**. Crash scenarios can cause the result to be written twice:\n\n1.  **Crash after writing result, before ack**: The worker finishes processing and writes the result to storage (e.g., a database or file). It then crashes before sending the acknowledgment message. The queue system sees the message as \"unacked\" and re-delivers it to a (possibly new) worker. That new worker reads the task again, processes it, and writes the result again—overwriting the previous one or creating a duplicate entry.\n\n2.  **Crash during ack send**: The worker writes the result and attempts to send the acknowledgment. If the network fails or the broker crashes after receiving the ack but before confirming it, the queue may or may not mark the message as done. If the queue re-delivers the task, a duplicate processing cycle occurs.\n\nIn both cases, the task ID is re-encountered, and without safeguards, the system performs the same work twice.\n\n### Minimal Idempotent Design Using a Task ID\n\nTo prevent duplicate results, make the processing step",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 13.192421874962747
+    },
+    {
+      "index": 47,
+      "phase": "measured",
+      "task": "json_arithmetic",
+      "marker": "20261115T122455.606392Z:measured:000047",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer value of (144 - 36) / 9 + 17. No Markdown or extra keys.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 121,
+        "completion_tokens": 8,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 31}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 29
+        },
+        "actual": {
+          "result": 31
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.7383563332259655
+    },
+    {
+      "index": 48,
+      "phase": "measured",
+      "task": "json_multiply",
+      "marker": "20261115T122455.606392Z:measured:000048",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer product of 37 and 19. No Markdown.",
+      "usage": {
+        "prompt_tokens": 101,
+        "total_tokens": 110,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 703}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": true,
+        "expected": {
+          "result": 703
+        },
+        "actual": {
+          "result": 703
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.8045192081481218
+    },
+    {
+      "index": 49,
+      "phase": "measured",
+      "task": "code_group",
+      "marker": "20261115T122455.606392Z:measured:000049",
+      "prompt": "Write a Python function group_by(items, key) returning a dict of lists. Preserve item order within each group, accept a callable key, and do not mutate items. Include three small examples.",
+      "usage": {
+        "prompt_tokens": 112,
+        "total_tokens": 368,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef group_by(items, key):\n    \"\"\"\n    Group items into a dict of lists based on the result of key(item).\n\n    - Preserves the original order of items within each group.\n    - Accepts any callable as the key function.\n    - Does not mutate the input items.\n    \"\"\"\n    groups = {}\n    for item in items:\n        k = key(item)\n        groups.setdefault(k, []).append(item)\n    return groups\n\n\n# Example 1: grouping numbers by their parity\nnumbers = [1, 2, 3, 4, 5, 6]\nresult = group_by(numbers, lambda x: \"even\" if x % 2 == 0 else \"odd\")\nprint(result)\n# {'odd': [1, 3, 5], 'even': [2, 4, 6]}\n\n# Example 2: grouping strings by their first letter\nwords = [\"apple\", \"banana\", \"avocado\", \"blueberry\", \"cherry\"]\nresult = group_by(words, lambda w: w[0])\nprint(result)\n# {'a': ['apple', 'avocado'], 'b': ['banana', 'blueberry'], 'c': ['cherry",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.306625416502357
+    },
+    {
+      "index": 50,
+      "phase": "measured",
+      "task": "logic_order",
+      "marker": "20261115T122455.606392Z:measured:000050",
+      "prompt": "Three jobs A, B and C run one at a time. A must precede C; B must immediately follow A. List every valid order and briefly explain why the list is complete.",
+      "usage": {
+        "prompt_tokens": 108,
+        "total_tokens": 364,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "Here is the list of valid orders and the explanation for why the list is complete.\n\n### Valid Orders\n\n1.  **A, B, C**\n2.  **A, C, B**\n3.  **C, A, B**\n\n### Explanation of Completeness\n\nTo determine the valid orders, we analyze the given constraints:\n\n1.  **Constraint 1:** \"A must precede C.\" This means A must appear somewhere before C in the sequence. The valid arrangements for these two jobs alone are A-C or C-A (invalid). Thus, any valid sequence must have A before C.\n2.  **Constraint 2:** \"B must immediately follow A.\" This means B must come directly after A, with no other jobs in between. The only valid arrangement for these two jobs is A-B.\n\nCombining these constraints:\n*   Since B must immediately follow A, the sequence **A, B** is treated as a fixed block.\n*   Because A must precede C, C cannot come before the A-B block.\n\nWith the A-B block fixed in position relative to C, there are exactly three distinct positions the block can occupy in a sequence of three jobs:\n\n1.  **A, B, C**: The block is first,",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 12.042316291481256
+    },
+    {
+      "index": 51,
+      "phase": "measured",
+      "task": "review_mutation",
+      "marker": "20261115T122455.606392Z:measured:000051",
+      "prompt": "Review this Python function for correctness, identify a failing input, then provide a corrected implementation: def remove_even(xs):\n    for x in xs:\n        if x % 2 == 0:\n            xs.remove(x)\n    return xs\nThe corrected function must return a new list and leave its input unchanged.",
+      "usage": {
+        "prompt_tokens": 135,
+        "total_tokens": 391,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### Analysis of the Original Function\n\nThe original function `remove_even` has two critical flaws:\n\n1.  **Modifying a list while iterating over it:** In Python, iterating over a list using a `for` loop creates an iterator over the list's current state. If you remove an element, the indices shift, but the iterator does not automatically adjust, often causing elements to be skipped.\n2.  **Mutating the input:** The function modifies `xs` in place using `xs.remove(x)`. The task requires the function to return a new list and leave the input unchanged.\n\n### Failing Input\n\nConsider the input `[1, 2, 3, 4]`.\n\n*   **Execution trace:**\n    1.  Iterator starts at index 0 (`1`). `1 % 2 != 0`. No removal.\n    2.  Iterator moves to index 1 (`2`). `2 % 2 == 0`. `xs.remove(2)` is called. The list becomes `[1, 3, 4]`. The iterator's internal pointer moves to the next index (2).\n    3.  Iterator checks index 2. The element at index 2 is now `4` (the list",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 11.201376916840672
+    },
+    {
+      "index": 52,
+      "phase": "measured",
+      "task": "json_sum",
+      "marker": "20261115T122455.606392Z:measured:000052",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer sum of 128, 47, 305 and 20. No explanation or Markdown.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 125,
+        "completion_tokens": 12,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 480\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 500
+        },
+        "actual": {
+          "result": 480
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.4346451666206121
+    },
+    {
+      "index": 53,
+      "phase": "measured",
+      "task": "code_intervals",
+      "marker": "20261115T122455.606392Z:measured:000053",
+      "prompt": "Implement a Python function merge_intervals(intervals) for closed integer intervals. Sort the output, merge overlaps, preserve the caller's input, and describe the behavior for an empty list. Include one edge-case example.",
+      "usage": {
+        "prompt_tokens": 116,
+        "total_tokens": 372,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge overlapping closed integer intervals.\n\n    The function:\n    - Does not modify the caller's input.\n    - Returns a new list of intervals sorted by their start point.\n    - Merges any intervals that overlap or touch (i.e., [a, b] and [b, c] merge into [a, c]).\n    - Handles an empty input list by returning an empty list.\n\n    Parameters\n    ----------\n    intervals : list[tuple[int, int]]\n        A list of closed integer intervals [start, end] where start <= end.\n\n    Returns\n    -------\n    list[tuple[int, int]]\n        A new list of merged, sorted intervals.\n    \"\"\"\n    if not intervals:\n        return []\n\n    # Work on a sorted copy so the original input is preserved.\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n\n    merged = []\n    current_start, current_end = sorted_intervals[0]\n\n    for start, end in sorted_intervals[1:]:\n        # Intervals overlap or touch when start <= current_end + 1\n        # (touching merges [a, b] and [b, c",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.014642542228103
+    },
+    {
+      "index": 54,
+      "phase": "measured",
+      "task": "review_queue",
+      "marker": "20261115T122455.606392Z:measured:000054",
+      "prompt": "A worker reads a task from a queue, writes its result, then acknowledges it. The process may crash between these steps. Explain how duplicate processing can happen and give a minimal idempotent design using a task ID. Keep the explanation concrete.",
+      "usage": {
+        "prompt_tokens": 121,
+        "total_tokens": 377,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### How Duplicate Processing Happens\n\nThe sequence of operations creates a window where a crash can cause the task to be processed twice:\n\n1.  **Read:** The worker pulls a task (ID: `T123`) from the queue.\n2.  **Process:** The worker executes the logic for `T123`.\n3.  **Crash:** The worker crashes **before** it can write the result or send the acknowledgment.\n4.  **Redelivery:** Because the acknowledgment was never sent, the queue system assumes the task failed or was not completed. The task `T123` is put back onto the queue (or remains visible for re-consumption).\n5.  **Re-process:** A different worker (or the same worker after restart) pulls `T123` again from the queue.\n6.  **Duplicate Execution:** The logic for `T123` runs a second time, potentially creating a duplicate record, double-charging a customer, or sending duplicate emails.\n\n---\n\n### Minimal Idempotent Design\n\nTo prevent duplicate processing, we must make the task result **idempotent** based on the task ID. This means the system should check: *\"Have I already successfully",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 13.048042832873762
+    },
+    {
+      "index": 55,
+      "phase": "measured",
+      "task": "json_arithmetic",
+      "marker": "20261115T122455.606392Z:measured:000055",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer value of (144 - 36) / 9 + 17. No Markdown or extra keys.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 121,
+        "completion_tokens": 8,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 31}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 29
+        },
+        "actual": {
+          "result": 31
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.4406111249700189
+    },
+    {
+      "index": 56,
+      "phase": "measured",
+      "task": "json_multiply",
+      "marker": "20261115T122455.606392Z:measured:000056",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer product of 37 and 19. No Markdown.",
+      "usage": {
+        "prompt_tokens": 101,
+        "total_tokens": 110,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 703}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": true,
+        "expected": {
+          "result": 703
+        },
+        "actual": {
+          "result": 703
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.3360865842550993
+    },
+    {
+      "index": 57,
+      "phase": "measured",
+      "task": "code_group",
+      "marker": "20261115T122455.606392Z:measured:000057",
+      "prompt": "Write a Python function group_by(items, key) returning a dict of lists. Preserve item order within each group, accept a callable key, and do not mutate items. Include three small examples.",
+      "usage": {
+        "prompt_tokens": 112,
+        "total_tokens": 368,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef group_by(items, key):\n    \"\"\"\n    Group items into a dict of lists based on the result of key(item).\n\n    - Preserves the original order of items within each group.\n    - Accepts any callable as the key function.\n    - Does not mutate the input items.\n    \"\"\"\n    groups = {}\n    for item in items:\n        k = key(item)\n        groups.setdefault(k, []).append(item)\n    return groups\n\n\n# Example 1: grouping integers by their parity\nprint(group_by([1, 2, 3, 4, 5, 6], lambda x: x % 2))\n# Expected output: {1: [1, 3, 5], 0: [2, 4, 6]}\n\n# Example 2: grouping strings by their first letter\nprint(group_by([\"apple\", \"banana\", \"avocado\", \"blueberry\"], str.upper))\n# Expected output: {'A': ['apple', 'avocado'], 'B': ['banana', 'blueberry']}\n\n# Example 3: grouping by a custom attribute (using a class)\nclass Point:\n    def __init__(self, x, y):\n        self.x = x",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.663128540851176
+    },
+    {
+      "index": 58,
+      "phase": "measured",
+      "task": "logic_order",
+      "marker": "20261115T122455.606392Z:measured:000058",
+      "prompt": "Three jobs A, B and C run one at a time. A must precede C; B must immediately follow A. List every valid order and briefly explain why the list is complete.",
+      "usage": {
+        "prompt_tokens": 108,
+        "total_tokens": 364,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "Here is the list of valid orders and the explanation of why the list is complete.\n\n### Valid Orders\n1.  **A, B, C**\n2.  **A, C, B**\n\n### Explanation of Completeness\nTo determine the valid orders, we apply the given constraints to the three distinct jobs (A, B, and C).\n\n1.  **Constraint Analysis:**\n    *   **Constraint 1:** \"A must precede C.\" This means A must appear somewhere before C in the sequence. The only valid relative positions for A and C are A before C.\n    *   **Constraint 2:** \"B must immediately follow A.\" This means B must come directly after A, with no other job between them. Therefore, A and B must always appear as the block \"A, B\".\n\n2.  **Applying the Constraints:**\n    Because B must immediately follow A, the sequence must always contain the substring \"AB\". We can treat \"AB\" as a single unit for ordering purposes, while C remains a separate unit.\n\n    We now have two units to order: the \"AB\" block and the job \"C\".\n    *   **Option 1:** Place C after the \"AB\" block. This yields the order",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 11.705959958955646
+    },
+    {
+      "index": 59,
+      "phase": "measured",
+      "task": "review_mutation",
+      "marker": "20261115T122455.606392Z:measured:000059",
+      "prompt": "Review this Python function for correctness, identify a failing input, then provide a corrected implementation: def remove_even(xs):\n    for x in xs:\n        if x % 2 == 0:\n            xs.remove(x)\n    return xs\nThe corrected function must return a new list and leave its input unchanged.",
+      "usage": {
+        "prompt_tokens": 135,
+        "total_tokens": 391,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### Analysis of the Original Function\n\nThe provided function `remove_even` has two critical flaws:\n\n1.  **Modifying a list while iterating over it:** In Python, iterating over a list using `for x in xs` creates an iterator over the list's current state. If you remove an item from the list inside the loop, the iterator's internal index becomes desynchronized with the list's contents. This often results in skipping elements or causing an `IndexError`.\n2.  **Mutating the input:** The function modifies `xs` in place using `xs.remove(x)`. The task requires the function to leave its input unchanged and return a new list.\n\n### Failing Input\n\nConsider the input `[1, 2, 3, 4]`.\n\n*   **Iteration 1:** `x = 1`. `1 % 2 != 0`. No removal.\n*   **Iteration 2:** `x = 2`. `2 % 2 == 0`. `xs.remove(2)` is called. The list becomes `[1, 3, 4]`. The iterator moves to the next index.\n*   **Iteration 3:** The iterator expects the element at index 2, which is",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.750494583509862
+    },
+    {
+      "index": 60,
+      "phase": "measured",
+      "task": "json_sum",
+      "marker": "20261115T122455.606392Z:measured:000060",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer sum of 128, 47, 305 and 20. No explanation or Markdown.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 125,
+        "completion_tokens": 12,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 481\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 500
+        },
+        "actual": {
+          "result": 481
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.2541862083598971
+    },
+    {
+      "index": 61,
+      "phase": "measured",
+      "task": "code_intervals",
+      "marker": "20261115T122455.606392Z:measured:000061",
+      "prompt": "Implement a Python function merge_intervals(intervals) for closed integer intervals. Sort the output, merge overlaps, preserve the caller's input, and describe the behavior for an empty list. Include one edge-case example.",
+      "usage": {
+        "prompt_tokens": 116,
+        "total_tokens": 372,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge closed integer intervals.\n\n    The function:\n    - Does not modify the caller's input.\n    - Sorts the resulting merged intervals by their start value.\n    - Merges any overlapping or adjacent intervals.\n    - Returns an empty list if the input is empty.\n\n    Parameters\n    ----------\n    intervals : list[tuple[int, int]]\n        A list of closed integer intervals [l, r] where l <= r.\n\n    Returns\n    -------\n    list[tuple[int, int]]\n        A new list of merged, sorted intervals.\n    \"\"\"\n    if not intervals:\n        return []\n\n    # Work on a copy so the caller's data is preserved\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n\n    merged = []\n    current_start, current_end = sorted_intervals[0]\n\n    for start, end in sorted_intervals[1:]:\n        # Overlap or touching (closed intervals) -> merge\n        if start <= current_end:\n            current_end = max(current_end, end)\n        else:\n            merged.append((current_start, current_end))\n            current_start, current_end = start, end\n\n    merged.append((current",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 9.875045791268349
+    },
+    {
+      "index": 62,
+      "phase": "measured",
+      "task": "review_queue",
+      "marker": "20261115T122455.606392Z:measured:000062",
+      "prompt": "A worker reads a task from a queue, writes its result, then acknowledges it. The process may crash between these steps. Explain how duplicate processing can happen and give a minimal idempotent design using a task ID. Keep the explanation concrete.",
+      "usage": {
+        "prompt_tokens": 121,
+        "total_tokens": 377,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### How Duplicate Processing Happens\n\nThe sequence of operations creates a window where a crash can leave the system in an inconsistent state, resulting in the task being processed more than once.\n\n1.  **Write Result:** The worker writes the result to the output sink (e.g., a database or file).\n2.  **Crash:** The worker crashes immediately after writing the result but **before** sending the acknowledgment.\n3.  **Re-queue:** Because the acknowledgment was never received, the queue system assumes the task failed and re-delivers it to another worker (or the same worker after restart).\n4.  **Duplicate Processing:** The new worker reads the task, sees the result already exists (from step 1), and overwrites it or processes the logic again, effectively executing the task twice.\n\n### Minimal Idempotent Design using a Task ID\n\nTo prevent duplicate processing, we must make the \"write result\" step **idempotent**. This means that if the same task ID is processed multiple times, the final state of the system remains correct and unchanged.\n\nThe minimal design requires three components: a **Task ID** (unique identifier), a **Result Store** (database or cache), and a **Check-then-Write",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 12.520317667163908
+    },
+    {
+      "index": 63,
+      "phase": "measured",
+      "task": "json_arithmetic",
+      "marker": "20261115T122455.606392Z:measured:000063",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer value of (144 - 36) / 9 + 17. No Markdown or extra keys.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 121,
+        "completion_tokens": 8,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 21}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 29
+        },
+        "actual": {
+          "result": 21
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.2301098750904202
+    },
+    {
+      "index": 64,
+      "phase": "measured",
+      "task": "json_multiply",
+      "marker": "20261115T122455.606392Z:measured:000064",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer product of 37 and 19. No Markdown.",
+      "usage": {
+        "prompt_tokens": 101,
+        "total_tokens": 110,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 703}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": true,
+        "expected": {
+          "result": 703
+        },
+        "actual": {
+          "result": 703
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.3420134587213397
+    },
+    {
+      "index": 65,
+      "phase": "measured",
+      "task": "code_group",
+      "marker": "20261115T122455.606392Z:measured:000065",
+      "prompt": "Write a Python function group_by(items, key) returning a dict of lists. Preserve item order within each group, accept a callable key, and do not mutate items. Include three small examples.",
+      "usage": {
+        "prompt_tokens": 112,
+        "total_tokens": 368,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef group_by(items, key):\n    \"\"\"\n    Group items into a dict of lists based on the result of key(item).\n\n    - Preserves the original order of items within each group.\n    - Accepts any callable as the key function.\n    - Does not mutate the input items.\n    \"\"\"\n    groups = {}\n    for item in items:\n        k = key(item)\n        groups.setdefault(k, []).append(item)\n    return groups\n\n\n# Example 1: grouping integers by their parity\nprint(group_by([1, 2, 3, 4, 5, 6], lambda x: x % 2))\n# Expected output: {1: [1, 3, 5], 0: [2, 4, 6]}\n\n# Example 2: grouping strings by their first letter\nprint(group_by([\"apple\", \"banana\", \"avocado\", \"blueberry\"], str.upper))\n# Expected output: {'A': ['apple', 'avocado'], 'B': ['banana', 'blueberry']}\n\n# Example 3: grouping by a custom attribute (using a class)\nclass Point:\n    def __init__(self, x, y):\n        self.x = x",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 11.059156708419323
+    },
+    {
+      "index": 66,
+      "phase": "measured",
+      "task": "logic_order",
+      "marker": "20261115T122455.606392Z:measured:000066",
+      "prompt": "Three jobs A, B and C run one at a time. A must precede C; B must immediately follow A. List every valid order and briefly explain why the list is complete.",
+      "usage": {
+        "prompt_tokens": 108,
+        "total_tokens": 364,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "Here is the list of every valid order, followed by an explanation of why the list is complete.\n\n### Valid Orders\n1.  **A, B, C**\n2.  **A, C, B**\n\n### Explanation of Completeness\nTo determine the valid orders, we analyze the constraints provided:\n\n1.  **Constraint 1:** \"A must precede C.\" This means A must appear somewhere before C in the sequence. The only valid relative positions for A and C are A before C.\n2.  **Constraint 2:** \"B must immediately follow A.\" This means B must come directly after A, with no other job between them. Therefore, A and B must always appear as the block \"A, B\".\n\nGiven these two rules, we can construct the valid sequences:\n\n*   **Case 1:** If C comes after the block \"A, B\", the sequence is **A, B, C**. This satisfies both constraints: A precedes C, and B immediately follows A.\n*   **Case 2:** If C comes between A and B, the sequence is **A, C, B**. This satisfies the first constraint (A precedes C) and the second constraint (B immediately follows A, as there is nothing",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.451357250101864
+    },
+    {
+      "index": 67,
+      "phase": "measured",
+      "task": "review_mutation",
+      "marker": "20261115T122455.606392Z:measured:000067",
+      "prompt": "Review this Python function for correctness, identify a failing input, then provide a corrected implementation: def remove_even(xs):\n    for x in xs:\n        if x % 2 == 0:\n            xs.remove(x)\n    return xs\nThe corrected function must return a new list and leave its input unchanged.",
+      "usage": {
+        "prompt_tokens": 135,
+        "total_tokens": 391,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### Analysis of the Original Function\n\nThe provided function `remove_even` has two critical flaws:\n\n1.  **Modifying a list while iterating over it:** In Python, iterating over a list using a `for` loop creates an iterator. If you remove items from the list during iteration, the iterator's internal index becomes desynchronized with the list's contents. This often results in skipping elements or causing an `IndexError`.\n2.  **Mutating the input:** The function modifies `xs` in place using `xs.remove(x)`. The task requires the function to leave its input unchanged and return a new list.\n\n### Failing Input\n\nConsider the input list `[1, 2, 3, 4, 5, 6]`.\n\n*   **Expected Output:** `[1, 3, 5]` (removing all even numbers).\n*   **Actual Output:** `[1, 3, 5]` **or** `[1, 5]` **or** `[1, 2, 3, 5]` depending on the Python version and list state.\n\n**Why it fails:**\nWhen the loop processes `x=2`, it removes it. The list shrinks. The iterator moves to the next position,",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 11.571160041727126
+    },
+    {
+      "index": 68,
+      "phase": "measured",
+      "task": "json_sum",
+      "marker": "20261115T122455.606392Z:measured:000068",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer sum of 128, 47, 305 and 20. No explanation or Markdown.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 125,
+        "completion_tokens": 12,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 480\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 500
+        },
+        "actual": {
+          "result": 480
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.0419207494705915
+    },
+    {
+      "index": 69,
+      "phase": "measured",
+      "task": "code_intervals",
+      "marker": "20261115T122455.606392Z:measured:000069",
+      "prompt": "Implement a Python function merge_intervals(intervals) for closed integer intervals. Sort the output, merge overlaps, preserve the caller's input, and describe the behavior for an empty list. Include one edge-case example.",
+      "usage": {
+        "prompt_tokens": 116,
+        "total_tokens": 372,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge overlapping closed integer intervals.\n\n    The function:\n    - Does not modify the caller's input.\n    - Returns a new list of merged intervals sorted by their start point.\n    - Handles an empty input list by returning an empty list.\n    - Merges intervals that intersect or touch (i.e., [a, b] and [b, c] merge to [a, c]).\n\n    Parameters\n    ----------\n    intervals : list[tuple[int, int]]\n        A list of closed integer intervals [l, r] with l <= r.\n\n    Returns\n    -------\n    list[tuple[int, int]]\n        A new list containing the merged, sorted intervals.\n\n    Examples\n    --------\n    >>> merge_intervals([(1, 3), (2, 6), (8, 10), (15, 18)])\n    [(1, 6), (8, 10), (15, 18)]\n    >>> merge_intervals([])\n    []\n    >>> merge_intervals([(1, 4), (4, 5)])\n    [(1, 5)]\n    \"\"\"\n    # Preserve the caller's input by",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 9.465616582892835
+    },
+    {
+      "index": 70,
+      "phase": "measured",
+      "task": "review_queue",
+      "marker": "20261115T122455.606392Z:measured:000070",
+      "prompt": "A worker reads a task from a queue, writes its result, then acknowledges it. The process may crash between these steps. Explain how duplicate processing can happen and give a minimal idempotent design using a task ID. Keep the explanation concrete.",
+      "usage": {
+        "prompt_tokens": 121,
+        "total_tokens": 377,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### How Duplicate Processing Happens\n\nThe worker follows a three-step lifecycle that is not atomic. If the process crashes at any point, the state of the system can leave the task in a \"doubly processed\" or \"unprocessed\" limbo, depending on where the crash occurs:\n\n1.  **Write Result, then Crash:** The worker successfully writes the result to the database but crashes before sending the acknowledgment (ACK) to the queue. The queue sees the task as unacknowledged and re-delivers it to a (potentially new) worker. The second worker processes the same task ID, resulting in a duplicate result write (or an overwrite, depending on the DB logic).\n2.  **Crash Before Write:** The worker crashes after receiving the task but before writing the result. The queue re-delivers the task. A new worker picks it up and processes it from scratch. This is usually safe (re-processing), but if the \"write result\" step had side effects (like charging a credit card) that partially completed or logged data before the crash, it can lead to inconsistent state.\n3.  **Crash After ACK:** The worker processes the task, writes the result, and then crashes *after* sending the A",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 13.528143666684628
+    },
+    {
+      "index": 71,
+      "phase": "measured",
+      "task": "json_arithmetic",
+      "marker": "20261115T122455.606392Z:measured:000071",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer value of (144 - 36) / 9 + 17. No Markdown or extra keys.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 121,
+        "completion_tokens": 8,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 31}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 29
+        },
+        "actual": {
+          "result": 31
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.3442960418760777
+    },
+    {
+      "index": 72,
+      "phase": "measured",
+      "task": "json_multiply",
+      "marker": "20261115T122455.606392Z:measured:000072",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer product of 37 and 19. No Markdown.",
+      "usage": {
+        "prompt_tokens": 101,
+        "total_tokens": 110,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 703}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": true,
+        "expected": {
+          "result": 703
+        },
+        "actual": {
+          "result": 703
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.241596458479762
+    },
+    {
+      "index": 73,
+      "phase": "measured",
+      "task": "code_group",
+      "marker": "20261115T122455.606392Z:measured:000073",
+      "prompt": "Write a Python function group_by(items, key) returning a dict of lists. Preserve item order within each group, accept a callable key, and do not mutate items. Include three small examples.",
+      "usage": {
+        "prompt_tokens": 112,
+        "total_tokens": 368,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef group_by(items, key):\n    \"\"\"\n    Group items into a dict of lists based on the result of key(item).\n\n    - Preserves the original order of items within each group.\n    - Accepts any callable as the key function.\n    - Does not mutate the input items.\n    \"\"\"\n    groups = {}\n    for item in items:\n        k = key(item)\n        groups.setdefault(k, []).append(item)\n    return groups\n\n\n# Example 1: grouping integers by their parity\nprint(group_by([1, 2, 3, 4, 5, 6], lambda x: x % 2))\n# Expected output: {1: [1, 3, 5], 0: [2, 4, 6]}\n\n# Example 2: grouping strings by their first character\nprint(group_by([\"apple\", \"banana\", \"avocado\", \"blueberry\"], str.upper))\n# Expected output: {'A': ['apple', 'avocado'], 'B': ['banana', 'blueberry']}\n\n# Example 3: grouping by a custom attribute (using a class)\nclass Point:\n    def __init__(self, x, y):\n        self.x = x",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.753750583156943
+    },
+    {
+      "index": 74,
+      "phase": "measured",
+      "task": "logic_order",
+      "marker": "20261115T122455.606392Z:measured:000074",
+      "prompt": "Three jobs A, B and C run one at a time. A must precede C; B must immediately follow A. List every valid order and briefly explain why the list is complete.",
+      "usage": {
+        "prompt_tokens": 108,
+        "total_tokens": 364,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "Here is the list of valid orders and the explanation for why the list is complete.\n\n### Valid Orders\n\n1.  **A, B, C**\n2.  **A, C, B**\n3.  **B, A, C**\n\n### Explanation of Completeness\n\nThe constraints provided are:\n*   **A must precede C:** This means A must appear somewhere before C in the sequence.\n*   **B must immediately follow A:** This means the sequence must contain the substring \"AB\" (A directly followed by B).\n\nTo find all valid orders, we analyze the possible positions for the block \"AB\" and the element C:\n\n1.  **If A and B are first:** The sequence starts with A, B. Since A must precede C, C must follow. The only valid order is **A, B, C**.\n2.  **If A and B are last:** The sequence ends with A, B. For A to precede C, C must come before the AB block. The only valid order is **C, A, B**. However, this violates the constraint that B must immediately follow A if we consider the relative order of all elements in a three-job system where \"immediately follow\" implies a specific adjac",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 10.908679124899209
+    },
+    {
+      "index": 75,
+      "phase": "measured",
+      "task": "review_mutation",
+      "marker": "20261115T122455.606392Z:measured:000075",
+      "prompt": "Review this Python function for correctness, identify a failing input, then provide a corrected implementation: def remove_even(xs):\n    for x in xs:\n        if x % 2 == 0:\n            xs.remove(x)\n    return xs\nThe corrected function must return a new list and leave its input unchanged.",
+      "usage": {
+        "prompt_tokens": 135,
+        "total_tokens": 391,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### Analysis of the Original Function\n\nThe original function `remove_even` has two critical flaws:\n\n1.  **Modifying a list while iterating over it:** In Python, iterating over a list using `for x in xs` creates an iterator over the list's current state. If you remove an item from the list inside the loop, the iterator's index becomes desynchronized with the list's contents. This often causes elements to be skipped.\n2.  **Mutating the input:** The function modifies `xs` in place using `xs.remove(x)`. The task requires the function to return a new list and leave the input unchanged.\n\n### Failing Input\n\nConsider the input `[1, 2, 3, 4]`.\n\n*   **Iteration 1:** `x = 1`. `1 % 2 != 0`. No removal.\n*   **Iteration 2:** `x = 2`. `2 % 2 == 0`. `xs.remove(2)` is called. The list becomes `[1, 3, 4]`. The iterator moves to the next index.\n*   **Iteration 3:** The iterator expects the element at index 2, which is now `4`. It sk",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 9.835986291989684
+    },
+    {
+      "index": 76,
+      "phase": "measured",
+      "task": "json_sum",
+      "marker": "20261115T122455.606392Z:measured:000076",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer sum of 128, 47, 305 and 20. No explanation or Markdown.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 125,
+        "completion_tokens": 12,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 480\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 500
+        },
+        "actual": {
+          "result": 480
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.7861563339829445
+    },
+    {
+      "index": 77,
+      "phase": "measured",
+      "task": "code_intervals",
+      "marker": "20261115T122455.606392Z:measured:000077",
+      "prompt": "Implement a Python function merge_intervals(intervals) for closed integer intervals. Sort the output, merge overlaps, preserve the caller's input, and describe the behavior for an empty list. Include one edge-case example.",
+      "usage": {
+        "prompt_tokens": 116,
+        "total_tokens": 372,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge closed integer intervals.\n\n    The function:\n    - Does not modify the caller's input.\n    - Returns a new list of merged, sorted intervals.\n    - Handles an empty input list by returning an empty list.\n    - Merges overlapping or adjacent intervals (e.g., [1, 3] and [3, 5] become [1, 5]).\n\n    Parameters\n    ----------\n    intervals : list[list[int]]\n        A list of [start, end] pairs where start <= end.  Each interval is closed.\n\n    Returns\n    -------\n    list[list[int]]\n        A new list of merged, sorted intervals.  Returns [] if the input is empty.\n\n    Examples\n    --------\n    >>> merge_intervals([[1, 3], [2, 6], [8, 10], [15, 18]])\n    [[1, 6], [8, 10], [15, 18]]\n    >>> merge_intervals([[1, 4], [4, 5]])\n    [[1, 5]]\n    >>> merge_intervals([])\n    []\n    \"\"\"\n    # Preserve the caller",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 9.222400582395494
+    },
+    {
+      "index": 78,
+      "phase": "measured",
+      "task": "review_queue",
+      "marker": "20261115T122455.606392Z:measured:000078",
+      "prompt": "A worker reads a task from a queue, writes its result, then acknowledges it. The process may crash between these steps. Explain how duplicate processing can happen and give a minimal idempotent design using a task ID. Keep the explanation concrete.",
+      "usage": {
+        "prompt_tokens": 121,
+        "total_tokens": 377,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### How Duplicate Processing Happens\n\nThe worker follows a three-step sequence: **Read**, **Process**, **Acknowledge**. If the worker crashes at any point other than after the acknowledge step, the task becomes \"orphaned\" and will be re-queued for another worker.\n\n1.  **Crash after Read, before Process:** The worker reads the task and starts processing it. Before it can finish and send an acknowledge message, the process dies. The task remains in a \"processing\" state (or is re-queued). A second worker picks it up and processes it again.\n2.  **Crash after Process, before Acknowledge:** The worker successfully processes the task and updates any state, but crashes before it can send the \"I'm done\" signal to the queue. The queue marks the task as unacknowledged and re-queues it. A second worker processes the same task, resulting in a duplicate execution (e.g., double-charging a credit card, double-inserting a record).\n3.  **Crash during Acknowledge:** The worker sends the acknowledge signal but the network fails or the process dies immediately after sending the signal but before the queue confirms receipt. The queue may or may not",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 11.624056207947433
+    },
+    {
+      "index": 79,
+      "phase": "measured",
+      "task": "json_arithmetic",
+      "marker": "20261115T122455.606392Z:measured:000079",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer value of (144 - 36) / 9 + 17. No Markdown or extra keys.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 124,
+        "completion_tokens": 11,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 21\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 29
+        },
+        "actual": {
+          "result": 21
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.8351905411109328
+    },
+    {
+      "index": 80,
+      "phase": "measured",
+      "task": "json_multiply",
+      "marker": "20261115T122455.606392Z:measured:000080",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer product of 37 and 19. No Markdown.",
+      "usage": {
+        "prompt_tokens": 101,
+        "total_tokens": 110,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 703}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": true,
+        "expected": {
+          "result": 703
+        },
+        "actual": {
+          "result": 703
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.7424134165048599
+    },
+    {
+      "index": 81,
+      "phase": "measured",
+      "task": "code_group",
+      "marker": "20261115T122455.606392Z:measured:000081",
+      "prompt": "Write a Python function group_by(items, key) returning a dict of lists. Preserve item order within each group, accept a callable key, and do not mutate items. Include three small examples.",
+      "usage": {
+        "prompt_tokens": 112,
+        "total_tokens": 368,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef group_by(items, key):\n    \"\"\"\n    Group items into a dict of lists based on the result of key(item).\n\n    Parameters\n    ----------\n    items : iterable\n        The items to group. Must not be mutated.\n    key : callable or None\n        A function that takes an item and returns a hashable key.\n        If None, the items themselves are used as keys.\n\n    Returns\n    -------\n    dict\n        Mapping from each key to a list of items preserving the original\n        order within each group. The outer dict preserves insertion order\n        (Python 3.7+).\n    \"\"\"\n    if key is None:\n        key_func = lambda x: x\n    else:\n        key_func = key\n\n    groups = {}\n    for item in items:\n        k = key_func(item)\n        groups.setdefault(k, []).append(item)\n    return groups\n\n\n# ----------------------------------------------------------------------\n# Three small examples\n# ----------------------------------------------------------------------\n\n# 1. Group strings by their first character\nwords = [\"apple\", \"avocado\", \"banana\", \"apricot\", \"blueberry\"]\nprint(group_by(words, lambda w: w[0]))\n# Expected: {'a': ['apple',",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 8.39418787509203
+    },
+    {
+      "index": 82,
+      "phase": "measured",
+      "task": "logic_order",
+      "marker": "20261115T122455.606392Z:measured:000082",
+      "prompt": "Three jobs A, B and C run one at a time. A must precede C; B must immediately follow A. List every valid order and briefly explain why the list is complete.",
+      "usage": {
+        "prompt_tokens": 108,
+        "total_tokens": 364,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "Here is the list of every valid order, followed by an explanation of why the list is complete.\n\n### Valid Orders\n\n1.  **A, B, C**\n2.  **A, C, B**\n\n### Explanation of Completeness\n\nTo determine the valid orders, we must apply the two given constraints to the set of three distinct jobs (A, B, C).\n\n**Constraint 1:** *A must precede C.*\nThis means A must appear somewhere before C in the sequence. The only invalid arrangement regarding this rule is **C, A, ...** or any sequence where C comes before A.\n\n**Constraint 2:** *B must immediately follow A.*\nThis is a stricter constraint. It dictates that B cannot be separated from A by any other job. Therefore, the sequence must contain the substring \"AB\". The only valid arrangements regarding this rule are **A, B, ...** or **..., A, B**.\n\n**Synthesizing the Constraints:**\n\nWe examine all possible permutations of A, B, and C to see which satisfy both rules simultaneously.\n\n*   **A, B, C**:\n    *   Does A precede C? Yes (A is first, C is last).\n    *   Does B immediately follow A?",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 9.272030792199075
+    },
+    {
+      "index": 83,
+      "phase": "measured",
+      "task": "review_mutation",
+      "marker": "20261115T122455.606392Z:measured:000083",
+      "prompt": "Review this Python function for correctness, identify a failing input, then provide a corrected implementation: def remove_even(xs):\n    for x in xs:\n        if x % 2 == 0:\n            xs.remove(x)\n    return xs\nThe corrected function must return a new list and leave its input unchanged.",
+      "usage": {
+        "prompt_tokens": 135,
+        "total_tokens": 391,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### Analysis of the Original Function\n\nThe provided function `remove_even` has two critical flaws:\n\n1.  **Modifying a list while iterating over it:** In Python, iterating over a list using `for x in xs` creates an iterator over the list's current state. If you remove an item from the list inside the loop, the iterator's internal index becomes desynchronized with the list's contents. This often results in skipping elements or causing an `IndexError`.\n2.  **Mutating the input:** The function modifies `xs` in place using `xs.remove(x)`. The task requires the function to leave its input unchanged and return a new list.\n\n### Failing Input\n\nConsider the input `[1, 2, 3, 4]`.\n\n*   **Expected Output:** `[1, 3]` (removing 2 and 4).\n*   **Actual Output:** `[1, 3, 4]`.\n\n**Why it fails:**\n1.  The loop starts at index 0 (value `1`). `1` is odd, so nothing happens.\n2.  The loop moves to index 1 (value `2`). `2` is even, so `xs.remove(2)` is called. The",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 9.053212291561067
+    },
+    {
+      "index": 84,
+      "phase": "measured",
+      "task": "json_sum",
+      "marker": "20261115T122455.606392Z:measured:000084",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer sum of 128, 47, 305 and 20. No explanation or Markdown.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 125,
+        "completion_tokens": 12,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 480\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 500
+        },
+        "actual": {
+          "result": 480
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.0613474994897842
+    },
+    {
+      "index": 85,
+      "phase": "measured",
+      "task": "code_intervals",
+      "marker": "20261115T122455.606392Z:measured:000085",
+      "prompt": "Implement a Python function merge_intervals(intervals) for closed integer intervals. Sort the output, merge overlaps, preserve the caller's input, and describe the behavior for an empty list. Include one edge-case example.",
+      "usage": {
+        "prompt_tokens": 116,
+        "total_tokens": 372,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge overlapping closed integer intervals.\n\n    The function:\n    - Does not modify the caller's input.\n    - Returns a new list of merged intervals sorted by their start point.\n    - Handles an empty input list by returning an empty list.\n    - Works with intervals given as tuples or lists of two integers [start, end] where start <= end.\n\n    Parameters\n    ----------\n    intervals : list of (int, int) or list of [int, int]\n        A collection of closed integer intervals.\n\n    Returns\n    -------\n    list of (int, int)\n        A new list containing the merged, sorted intervals.\n\n    Examples\n    --------\n    >>> merge_intervals([[1, 3], [2, 6], [8, 10], [15, 18]])\n    [(1, 6), (8, 10), (15, 18)]\n    >>> merge_intervals([])\n    []\n    >>> merge_intervals([[1, 4], [4, 5]])\n    [(1, 5)]\n    \"\"\"\n    # Preserve the caller's input by working on a copy\n    sorted_intervals = sorted(",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 7.946712207980454
+    },
+    {
+      "index": 86,
+      "phase": "measured",
+      "task": "review_queue",
+      "marker": "20261115T122455.606392Z:measured:000086",
+      "prompt": "A worker reads a task from a queue, writes its result, then acknowledges it. The process may crash between these steps. Explain how duplicate processing can happen and give a minimal idempotent design using a task ID. Keep the explanation concrete.",
+      "usage": {
+        "prompt_tokens": 121,
+        "total_tokens": 377,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### How Duplicate Processing Happens\n\nThe sequence of operations creates a window where data loss or duplication can occur if the worker crashes (process termination, network partition, or power failure):\n\n1.  **Read:** The worker fetches a task (ID: `T123`) from the queue.\n2.  **Process:** The worker computes the result for `T123`.\n3.  **Crash:** The worker crashes **after** step 2 but **before** step 4.\n4.  **Restart:** The worker restarts and reads `T123` from the queue again.\n5.  **Process Again:** The worker processes `T123` a second time, potentially writing duplicate data or double-charging a customer.\n\nEven if the worker acknowledges (`ack`) the task immediately after writing the result, a crash between the write and the ack leaves the task visible in the queue. The broker assumes the worker didn't finish and re-delivers the task.\n\n### Minimal Idempotent Design Using a Task ID\n\nTo prevent duplicate processing, make the processing logic **idempotent** by using the task ID as a unique key. The core pattern is: **Check before you write.**\n\n####",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 9.862664167769253
+    },
+    {
+      "index": 87,
+      "phase": "measured",
+      "task": "json_arithmetic",
+      "marker": "20261115T122455.606392Z:measured:000087",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer value of (144 - 36) / 9 + 17. No Markdown or extra keys.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 124,
+        "completion_tokens": 11,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 21\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 29
+        },
+        "actual": {
+          "result": 21
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.7839734572917223
+    },
+    {
+      "index": 88,
+      "phase": "measured",
+      "task": "json_multiply",
+      "marker": "20261115T122455.606392Z:measured:000088",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer product of 37 and 19. No Markdown.",
+      "usage": {
+        "prompt_tokens": 101,
+        "total_tokens": 110,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 703}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": true,
+        "expected": {
+          "result": 703
+        },
+        "actual": {
+          "result": 703
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.9786148751154542
+    },
+    {
+      "index": 89,
+      "phase": "measured",
+      "task": "code_group",
+      "marker": "20261115T122455.606392Z:measured:000089",
+      "prompt": "Write a Python function group_by(items, key) returning a dict of lists. Preserve item order within each group, accept a callable key, and do not mutate items. Include three small examples.",
+      "usage": {
+        "prompt_tokens": 112,
+        "total_tokens": 368,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef group_by(items, key):\n    \"\"\"\n    Group items into a dict of lists based on the result of key(item).\n\n    Parameters\n    ----------\n    items : iterable\n        The items to group.  Must not be mutated.\n    key : callable or None\n        A function that takes one item and returns a hashable key.\n        If None, the items themselves are used as keys.\n\n    Returns\n    -------\n    dict\n        Mapping from each key to a list of items that produced that key.\n        The order of items within each list preserves the original order\n        of appearance in *items*.\n    \"\"\"\n    if key is None:\n        key_func = lambda x: x\n    else:\n        key_func = key\n\n    groups = {}\n    for item in items:\n        k = key_func(item)\n        groups.setdefault(k, []).append(item)\n    return groups\n\n\n# ----------------------------------------------------------------------\n# Three small examples\n# ----------------------------------------------------------------------\n\n# 1. Group strings by their first character\nwords = [\"apple\", \"avocado\", \"banana\", \"apricot\", \"blueberry\"]\nprint(group_by(words, lambda w: w[0]))\n# {'a': ['apple', 'av",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 8.515853292308748
+    },
+    {
+      "index": 90,
+      "phase": "measured",
+      "task": "logic_order",
+      "marker": "20261115T122455.606392Z:measured:000090",
+      "prompt": "Three jobs A, B and C run one at a time. A must precede C; B must immediately follow A. List every valid order and briefly explain why the list is complete.",
+      "usage": {
+        "prompt_tokens": 108,
+        "total_tokens": 364,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "Here is the list of valid orders and the explanation for why the list is complete.\n\n### Valid Orders\n\n1.  **A, B, C**\n2.  **A, C, B**\n\n### Explanation of Completeness\n\nTo determine the valid orders, we must satisfy the given constraints:\n\n1.  **A must precede C:** This means A must appear somewhere before C in the sequence. The valid sequences for these two jobs alone are A, C or A, B, C.\n2.  **B must immediately follow A:** This means B must be the very next job after A. The only valid sequence for these two jobs is A, B.\n\nBy combining these two rules:\n*   **Constraint 2** forces the pair \"A, B\" to stay together in that specific order.\n*   **Constraint 1** requires that C comes after A.\n\nSince \"A, B\" is a fixed block, C can either be placed immediately after the block (resulting in A, B, C) or later after A but not immediately after B (resulting in A, C, B). No other positions for C are possible without violating the \"immediately follow\" rule or the \"precede\" rule.\n\nTherefore, these",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 8.859158624894917
+    },
+    {
+      "index": 91,
+      "phase": "measured",
+      "task": "review_mutation",
+      "marker": "20261115T122455.606392Z:measured:000091",
+      "prompt": "Review this Python function for correctness, identify a failing input, then provide a corrected implementation: def remove_even(xs):\n    for x in xs:\n        if x % 2 == 0:\n            xs.remove(x)\n    return xs\nThe corrected function must return a new list and leave its input unchanged.",
+      "usage": {
+        "prompt_tokens": 135,
+        "total_tokens": 391,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### Analysis of the Original Function\n\nThe provided function `remove_even` has two critical flaws:\n\n1.  **Modifying a list while iterating over it:** In Python, iterating over a list using a `for` loop creates an iterator over the list's current state. If you remove an item from the list inside the loop, the iterator's index becomes misaligned with the remaining items. This often causes elements to be skipped.\n2.  **Mutating the input:** The function modifies `xs` in place using `xs.remove(x)`. The task requires the function to leave the input unchanged and return a new list.\n\n### Failing Input\n\nConsider the input `[1, 2, 3, 4, 5, 6]`.\n\n*   **Expected Output:** `[1, 3, 5]` (removing all even numbers).\n*   **Actual Output:** `[1, 3, 5]` is possible, but often **`[1, 3, 5]` is missing `6`**, or the function raises a `ValueError` if the iteration order causes the iterator to reference an index that no longer exists or has been shifted incorrectly. A more reliable failing case demonstrates the skipping behavior: `[2,",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 8.744665457867086
+    },
+    {
+      "index": 92,
+      "phase": "measured",
+      "task": "json_sum",
+      "marker": "20261115T122455.606392Z:measured:000092",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer sum of 128, 47, 305 and 20. No explanation or Markdown.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 125,
+        "completion_tokens": 12,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 480\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 500
+        },
+        "actual": {
+          "result": 480
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.9553635008633137
+    },
+    {
+      "index": 93,
+      "phase": "measured",
+      "task": "code_intervals",
+      "marker": "20261115T122455.606392Z:measured:000093",
+      "prompt": "Implement a Python function merge_intervals(intervals) for closed integer intervals. Sort the output, merge overlaps, preserve the caller's input, and describe the behavior for an empty list. Include one edge-case example.",
+      "usage": {
+        "prompt_tokens": 116,
+        "total_tokens": 372,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge overlapping closed integer intervals.\n\n    The function:\n    - Does not modify the caller's input.\n    - Returns a new list of merged intervals sorted by their start point.\n    - Handles empty input gracefully.\n\n    Parameters\n    ----------\n    intervals : list[tuple[int, int]]\n        A list of closed integer intervals [l, r] where l <= r.\n\n    Returns\n    -------\n    list[tuple[int, int]]\n        A new list containing the merged, sorted intervals.\n\n    Raises\n    ------\n    TypeError\n        If any interval is not a tuple of two integers, or if l > r.\n    \"\"\"\n    if not intervals:\n        return []\n\n    # Validate and copy to avoid mutating the caller's data\n    validated = []\n    for iv in intervals:\n        if not (isinstance(iv, (list, tuple)) and len(iv) == 2):\n            raise TypeError(f\"Invalid interval format: {iv!r}\")\n        l, r = iv\n        if not (isinstance(l, int) and isinstance(r, int)):\n            raise TypeError(f\"Interval bounds must be integers: {iv!r}\")\n       ",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 7.833377207629383
+    },
+    {
+      "index": 94,
+      "phase": "measured",
+      "task": "review_queue",
+      "marker": "20261115T122455.606392Z:measured:000094",
+      "prompt": "A worker reads a task from a queue, writes its result, then acknowledges it. The process may crash between these steps. Explain how duplicate processing can happen and give a minimal idempotent design using a task ID. Keep the explanation concrete.",
+      "usage": {
+        "prompt_tokens": 121,
+        "total_tokens": 377,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### How Duplicate Processing Happens\n\nThe worker follows a three-step sequence: **Read**, **Process**, **Acknowledge**. Crash scenarios can cause the result to be written twice or the task to be re-queued.\n\n1.  **Crash after writing result, before acknowledge:**\n    The worker finishes processing and writes the result to storage (e.g., a database or file). It then crashes before sending the acknowledgment message. The queue system sees no acknowledgment and re-delivers the same task to a new worker. The new worker reads the task, processes it again, and writes a second result, overwriting the first.\n\n2.  **Crash during acknowledge (partial send):**\n    The worker finishes processing, sends the acknowledgment, but the network fails or the process crashes mid-transmission. The queue system may not register the acknowledgment and re-deliver the task.\n\n3.  **Crash after acknowledge, result not fully persisted:**\n    The worker acknowledges the task, but the result write operation crashes. The task is marked as done in the queue, but the result is missing or incomplete. If the task is later re-processed for other reasons, the result is lost.\n\nIn all cases, the task is effectively processed twice,",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 8.472964083775878
+    },
+    {
+      "index": 95,
+      "phase": "measured",
+      "task": "json_arithmetic",
+      "marker": "20261115T122455.606392Z:measured:000095",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer value of (144 - 36) / 9 + 17. No Markdown or extra keys.",
+      "usage": {
+        "prompt_tokens": 113,
+        "total_tokens": 124,
+        "completion_tokens": 11,
+        "prompt_tokens_details": null
+      },
+      "content": "{\n  \"result\": 31\n}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": false,
+        "expected": {
+          "result": 29
+        },
+        "actual": {
+          "result": 31
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 1.2553889583796263
+    },
+    {
+      "index": 96,
+      "phase": "measured",
+      "task": "json_multiply",
+      "marker": "20261115T122455.606392Z:measured:000096",
+      "prompt": "Return only valid JSON with exactly one key, result, whose value is the integer product of 37 and 19. No Markdown.",
+      "usage": {
+        "prompt_tokens": 101,
+        "total_tokens": 110,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "content": "{\"result\": 703}",
+      "finish_reason": "stop",
+      "error": null,
+      "json_arithmetic_check": {
+        "passed": true,
+        "expected": {
+          "result": 703
+        },
+        "actual": {
+          "result": 703
+        }
+      },
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 0.9903242075815797
+    },
+    {
+      "index": 97,
+      "phase": "measured",
+      "task": "code_group",
+      "marker": "20261115T122455.606392Z:measured:000097",
+      "prompt": "Write a Python function group_by(items, key) returning a dict of lists. Preserve item order within each group, accept a callable key, and do not mutate items. Include three small examples.",
+      "usage": {
+        "prompt_tokens": 112,
+        "total_tokens": 368,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "```python\ndef group_by(items, key):\n    \"\"\"\n    Group items into a dict of lists based on the result of key(item).\n\n    Parameters\n    ----------\n    items : iterable\n        The items to group.  Must not be mutated.\n    key : callable or None\n        A function that takes one item and returns a hashable key.\n        If None, the items themselves are used as keys.\n\n    Returns\n    -------\n    dict\n        Mapping from each key to a list of items that produced that key.\n        The order of items within each list preserves the original order\n        of appearance in *items*.\n    \"\"\"\n    if key is None:\n        key_func = lambda x: x\n    else:\n        key_func = key\n\n    groups = {}\n    for item in items:\n        k = key_func(item)\n        groups.setdefault(k, []).append(item)\n    return groups\n\n\n# ----------------------------------------------------------------------\n# Three small examples\n# ----------------------------------------------------------------------\n\n# 1. Group strings by their first character\nwords = [\"apple\", \"avocado\", \"banana\", \"apricot\", \"blueberry\"]\nprint(group_by(words, lambda w: w[0]))\n# {'a': ['apple', 'av",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 7.5320698749274015
+    },
+    {
+      "index": 98,
+      "phase": "measured",
+      "task": "logic_order",
+      "marker": "20261115T122455.606392Z:measured:000098",
+      "prompt": "Three jobs A, B and C run one at a time. A must precede C; B must immediately follow A. List every valid order and briefly explain why the list is complete.",
+      "usage": {
+        "prompt_tokens": 108,
+        "total_tokens": 364,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "Here is the list of valid orders and the explanation of why the list is complete.\n\n### Valid Orders\n\n1.  **A, B, C**\n2.  **A, C, B**\n\n### Explanation of Completeness\n\nTo determine the valid orders, we must apply the two given constraints to the set of three distinct jobs (A, B, C):\n\n1.  **Constraint 1:** \"A must precede C.\" This means A must appear somewhere before C in the sequence. The only invalid arrangement regarding this rule is **C, A, ...** or any sequence where C comes first.\n2.  **Constraint 2:** \"B must immediately follow A.\" This means B must come directly after A, with no other job between them. The only valid block for this rule is the sequence **A, B**.\n\nBy combining these two rules, we analyze the possible positions for the **A, B** block within the three slots:\n\n*   **Case 1: The A, B block occupies the first two positions.**\n    *   The sequence starts with **A, B**.\n    *   The remaining job, C, must go in the third position.\n    *   This yields the order: **A, B, C**.\n   ",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 8.029638417065144
+    },
+    {
+      "index": 99,
+      "phase": "measured",
+      "task": "review_mutation",
+      "marker": "20261115T122455.606392Z:measured:000099",
+      "prompt": "Review this Python function for correctness, identify a failing input, then provide a corrected implementation: def remove_even(xs):\n    for x in xs:\n        if x % 2 == 0:\n            xs.remove(x)\n    return xs\nThe corrected function must return a new list and leave its input unchanged.",
+      "usage": {
+        "prompt_tokens": 135,
+        "total_tokens": 391,
+        "completion_tokens": 256,
+        "prompt_tokens_details": null
+      },
+      "content": "### Analysis of the Original Function\n\nThe provided function `remove_even` has two critical flaws:\n\n1.  **Modifying a list while iterating over it:** The `for x in xs` loop iterates over the list `xs`. When `xs.remove(x)` is called, the list shrinks and the indices shift. This causes Python to skip elements. For example, if the list is `[2, 4, 6]`, the loop might only remove `2` and `4`, leaving `6` behind.\n2.  **Mutation of input:** The function modifies the input list `xs` in-place using `.remove()`. The task requires the function to return a new list and leave the input unchanged.\n\n### Failing Input\n\nConsider the input `[1, 2, 3, 4]`.\n\n*   **Expected Output:** `[1, 3]` (removing 2 and 4).\n*   **Actual Output:** `[1, 3, 4]`.\n    *   *Why:* The loop iterates to index 0 (value 1, skipped), index 1 (value 2, removed). The list becomes `[1, 3, 4]`. The loop's internal counter moves",
+      "finish_reason": "length",
+      "error": null,
+      "json_arithmetic_check": null,
+      "http_status": 200,
+      "reasoning": null,
+      "latency_seconds": 7.390883541665971
+    }
+  ]
+}

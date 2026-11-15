@@ -1,0 +1,70 @@
+{
+  "task": "single next-action generation; no voting; positive integer arithmetic; subset permitted",
+  "results": [
+    {
+      "name": "baseline-thinking-off4096-proposals-4",
+      "backend": "target-only",
+      "source_commit": "f506ae2",
+      "puzzle": "2,3,7,8:24",
+      "agents": 4,
+      "rounds": 1,
+      "max_tokens": 4096,
+      "seed": 1,
+      "thinking": false,
+      "exact_target_proposals": 0,
+      "requests": 4,
+      "completion_tokens": 60,
+      "length_limited": 0,
+      "invalid_outputs": 0,
+      "wall_s": 0.761264,
+      "source_sha256": "b91644af9e7e3e25fb9a6fd31731a161c718694722a729d58c800c0cddb22724",
+      "included_trace": "results/traces/baseline-thinking-off4096-proposals-4.jsonl",
+      "included_sha256": "2b76ffc5f26af1004be723404d074b79aec4be5a62b6a546bb07905e9e248335"
+    },
+    {
+      "name": "baseline-thinking4096-proposals-4",
+      "backend": "target-only",
+      "source_commit": "f506ae2",
+      "puzzle": "2,3,7,8:24",
+      "agents": 4,
+      "rounds": 1,
+      "max_tokens": 4096,
+      "seed": 1,
+      "thinking": true,
+      "exact_target_proposals": 4,
+      "requests": 4,
+      "completion_tokens": 7051,
+      "length_limited": 0,
+      "invalid_outputs": 0,
+      "wall_s": 50.791838,
+      "source_sha256": "4bc32afa18c03a46c3d8344eed5a85316e066daa5e9507f0e1203a9901f7df06",
+      "included_trace": "results/traces/baseline-thinking4096-proposals-4.jsonl",
+      "included_sha256": "8cf40fdb4345616b39c03e5fba26cd44585df0040eb17519eb92867d1b635bbf"
+    },
+    {
+      "name": "dspark-thinking4096-proposals-4",
+      "backend": "dspark3",
+      "source_commit": "f506ae2",
+      "puzzle": "2,3,7,8:24",
+      "agents": 4,
+      "rounds": 1,
+      "max_tokens": 4096,
+      "seed": 1,
+      "thinking": true,
+      "exact_target_proposals": 2,
+      "requests": 4,
+      "completion_tokens": 16012,
+      "length_limited": 2,
+      "invalid_outputs": 2,
+      "wall_s": 66.096288,
+      "source_sha256": "9cdd213aefcca2b28c3adb7a3d304a60e6590836e6ee4a03c028ad46162dc255",
+      "included_trace": "results/traces/dspark-thinking4096-proposals-4.jsonl",
+      "included_sha256": "71d95cbba28c945c1412c1a4dc080a6423541373f3f4fbd14ffea625c7d08a25"
+    }
+  ],
+  "limits": [
+    "Target-only on/off use Spark_03,c4,same4096cap,sameprompt,seed1 and same model. Actual token use is not matched.",
+    "DSpark sample uses Spark_02,c4. Seeded sampling is not guaranteed to generate the same trajectory across serving methods. Four responses do not establish quality regression or parity.",
+    "Only output-path metadata is normalized in included traces; original and export hashes retained."
+  ]
+}

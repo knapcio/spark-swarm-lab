@@ -1,0 +1,62 @@
+{
+  "reputation_artifact": "results/traces/reputation-100-20261115.json",
+  "reputation_sha256": "c6552faa08ffbff4aef1808dc793ddb2eecf9c24e738f3d7cfcc9f1be3d08116",
+  "weights": {
+    "0.5": 96,
+    "0.25": 3,
+    "0.75": 1
+  },
+  "calibration_games": [
+    "1,2,3,4:10",
+    "2,3,7,8:24"
+  ],
+  "heldout_game": "3,5,7,9:24",
+  "seed": 1,
+  "agents": 100,
+  "thinking": false,
+  "results": [
+    {
+      "trace": "results/traces/dspark-calibration-100-20261115.jsonl",
+      "source_commit": "f551b56",
+      "original_sha256": "fabe67cd21d1334674695fb72bf005d6d57998820f6cbc7ffa03cb1eabb5b007",
+      "included_sha256": "8c7fa1efc0a2b4ad31d6a9d0c9c9196c054133737cdcca0da6a5e103320a8dab",
+      "method": "calibrate",
+      "requests": 597,
+      "prompt_tokens": 68226,
+      "completion_tokens": 8857,
+      "solved_games": 2,
+      "games": 2,
+      "individual_successful_paths": [
+        97,
+        1
+      ],
+      "status": "complete",
+      "infrastructure_failures": 0,
+      "budget_denials": 0
+    },
+    {
+      "trace": "results/traces/dspark-weighted-100-20261115.jsonl",
+      "source_commit": "f551b56",
+      "original_sha256": "0640544a9ff1ae951cdbc2ef374434dc2f8629e68d3ac4392805f7f41be64672",
+      "included_sha256": "48d82ed10a1055a80fb7de83f5fca2bcb9730a368d8205bad9d94a878a464289",
+      "method": "weighted",
+      "requests": 500,
+      "prompt_tokens": 119800,
+      "completion_tokens": 8260,
+      "solved_games": 0,
+      "games": 1,
+      "individual_successful_paths": [
+        0
+      ],
+      "status": "budget_limited",
+      "infrastructure_failures": 0,
+      "budget_denials": 100
+    }
+  ],
+  "limits": [
+    "One held-out weighted run; no claim of reputation benefit.",
+    "Calibration cost is additional to the 500-call evaluation ceiling.",
+    "Stable agent identity is a seeded sampling stream, not a learned specialist. Two games yield noisy weights.",
+    "Export changes only event output/reputation paths. Reputation artifact copied byte-for-byte."
+  ]
+}

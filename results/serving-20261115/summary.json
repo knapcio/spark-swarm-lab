@@ -319,7 +319,7 @@
     "Candidate 63/100 length finishes each repeat; baseline 62/62/63. Deliberate 256-token cap on long-form code/review/logic tasks, not a code-success benchmark.",
     "JSON arithmetic exact-answer checks passed 13/37 per repeat in both arms; 24/37 failed. This is a limited quality check, not broad quality parity.",
     "Outputs and token totals differ; no token-equivalence or distributional-equivalence claim from these results.",
-    "Single-node measurement only; other three replicas were starting during report preparation, with no four-node-health or scaling claim."
+    "The primary comparison is single-node. A separate dated four-node follow-up is recorded with a different timing scope; it does not change the primary six-report comparison."
   ],
   "server_common_except_speculation": {
     "max_model_len": 16384,
@@ -331,5 +331,670 @@
     "mamba_backend": "flashinfer",
     "mamba_cache_mode": "align",
     "prefix_caching": true
+  },
+  "follow_up": {
+    "verified_local_date": "2026-11-15",
+    "timezone": "Europe/Warsaw",
+    "source_commit": "cbd97524dc10dbd779d726b3307bb4e0399a7622",
+    "benchmark_sha256": "3ee55dead5c73a0c7d5b02d1fb14f15d010ec527abc7ac158e4b7aded5549527",
+    "readiness": {
+      "health_endpoints_passed": 4,
+      "health_endpoints_checked": 4,
+      "health_evidence_origin": "Owner command verification; full-fleet follow-up also returned valid responses on all four endpoints.",
+      "tool_round_trips": [
+        {
+          "node": "Spark_01",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-tool-01.json",
+          "sha256": "30f7a3c5d91982c58e3cbceced779e115421ba587d4a7ec67a1a3c0fc1ac2375",
+          "passed": true,
+          "function": "add",
+          "arguments": {
+            "a": 17,
+            "b": 25
+          },
+          "final_json": {
+            "result": 42
+          },
+          "included_in_performance_timing": false
+        },
+        {
+          "node": "Spark_02",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-tool-02.json",
+          "sha256": "1091a6926bcec839b6f3470c8379aba23683c1f4f1388d8561d0cc52ad802b3c",
+          "passed": true,
+          "function": "add",
+          "arguments": {
+            "a": 17,
+            "b": 25
+          },
+          "final_json": {
+            "result": 42
+          },
+          "included_in_performance_timing": false
+        },
+        {
+          "node": "Spark_03",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-tool-03.json",
+          "sha256": "fd9cfa647e995c6f69d4f75b494b5dc79dd5821f1da5f828fe696345a3b36daf",
+          "passed": true,
+          "function": "add",
+          "arguments": {
+            "a": 17,
+            "b": 25
+          },
+          "final_json": {
+            "result": 42
+          },
+          "included_in_performance_timing": false
+        },
+        {
+          "node": "Spark_04",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-tool-04.json",
+          "sha256": "1860aaf17e327b168894dc85f938f0e924066145651174d695ec9c7d113b1ba4",
+          "passed": true,
+          "function": "add",
+          "arguments": {
+            "a": 17,
+            "b": 25
+          },
+          "final_json": {
+            "result": 42
+          },
+          "included_in_performance_timing": false
+        }
+      ]
+    },
+    "four_node_mixed": {
+      "source_summary_report": {
+        "file": "dspark-four-mixed-summary.json",
+        "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-four-mixed-summary.json",
+        "sha256": "91faf01ea45bb4feda35d0c984fff54986b8c366cef4c07f710146e5c73e6d50"
+      },
+      "source_summary": {
+        "kind": "four_node_mixed_load",
+        "code_revision": "cbd97524dc10dbd779d726b3307bb4e0399a7622",
+        "nodes": 4,
+        "concurrency_per_node": 25,
+        "measured_requests": 400,
+        "warmup_requests": 16,
+        "wall_s_including_warmups": 40.02955324947834,
+        "completion_tokens_including_warmups": 69105,
+        "output_tokens_per_full_wall_s_including_warmups": 1726.349519049418,
+        "transport_errors": 0,
+        "node_reports": [
+          {
+            "node": 1,
+            "file": "dspark-four-mixed-01.json",
+            "sha256": "672e0d4b1e5a5278acaa1c26e1b3007dbfe8b86afb9e106fc9b1f9ba65490fb3",
+            "summary": {
+              "requests": 100,
+              "successful_requests": 100,
+              "errors": 0,
+              "wall_seconds": 31.367711124941707,
+              "completion_tokens": 16503,
+              "prompt_tokens": 11484,
+              "requests_with_completion_usage": 100,
+              "requests_missing_completion_usage": 0,
+              "output_tokens_per_second": 526.1142559706185,
+              "latency_seconds_p50": 9.222400582395494,
+              "latency_seconds_p95": 13.048042832873762,
+              "finish_reasons": {
+                "stop": 37,
+                "length": 63
+              },
+              "json_arithmetic_checks": {
+                "checked": 37,
+                "passed": 13,
+                "failed": 24
+              }
+            },
+            "warmup_summary": {
+              "requests": 4,
+              "successful_requests": 4,
+              "errors": 0,
+              "wall_seconds": 8.24649262521416,
+              "completion_tokens": 777,
+              "prompt_tokens": 460,
+              "requests_with_completion_usage": 4,
+              "requests_missing_completion_usage": 0,
+              "output_tokens_per_second": 94.22187532482289,
+              "latency_seconds_p50": 2.416764167137444,
+              "latency_seconds_p95": 2.539195084013045,
+              "finish_reasons": {
+                "stop": 1,
+                "length": 3
+              },
+              "json_arithmetic_checks": {
+                "checked": 1,
+                "passed": 1,
+                "failed": 0
+              }
+            }
+          },
+          {
+            "node": 2,
+            "file": "dspark-four-mixed-02.json",
+            "sha256": "1234310c8e4bb113036b35238e4b96c3d34ddb11f61a5f29f0baad090b0109eb",
+            "summary": {
+              "requests": 100,
+              "successful_requests": 100,
+              "errors": 0,
+              "wall_seconds": 31.504207458347082,
+              "completion_tokens": 16506,
+              "prompt_tokens": 11484,
+              "requests_with_completion_usage": 100,
+              "requests_missing_completion_usage": 0,
+              "output_tokens_per_second": 523.930018611743,
+              "latency_seconds_p50": 9.316285874694586,
+              "latency_seconds_p95": 12.15191120840609,
+              "finish_reasons": {
+                "stop": 37,
+                "length": 63
+              },
+              "json_arithmetic_checks": {
+                "checked": 37,
+                "passed": 13,
+                "failed": 24
+              }
+            },
+            "warmup_summary": {
+              "requests": 4,
+              "successful_requests": 4,
+              "errors": 0,
+              "wall_seconds": 8.463237582705915,
+              "completion_tokens": 777,
+              "prompt_tokens": 460,
+              "requests_with_completion_usage": 4,
+              "requests_missing_completion_usage": 0,
+              "output_tokens_per_second": 91.80883703273908,
+              "latency_seconds_p50": 2.375517625361681,
+              "latency_seconds_p95": 2.7972592497244477,
+              "finish_reasons": {
+                "stop": 1,
+                "length": 3
+              },
+              "json_arithmetic_checks": {
+                "checked": 1,
+                "passed": 1,
+                "failed": 0
+              }
+            }
+          },
+          {
+            "node": 3,
+            "file": "dspark-four-mixed-03.json",
+            "sha256": "3e8104b8f05b6770424ab82516073e1c1633f91b1254612324e7a1710202ff9b",
+            "summary": {
+              "requests": 100,
+              "successful_requests": 100,
+              "errors": 0,
+              "wall_seconds": 32.052629167214036,
+              "completion_tokens": 16491,
+              "prompt_tokens": 11484,
+              "requests_with_completion_usage": 100,
+              "requests_missing_completion_usage": 0,
+              "output_tokens_per_second": 514.4975756581085,
+              "latency_seconds_p50": 9.605858540162444,
+              "latency_seconds_p95": 12.803531208075583,
+              "finish_reasons": {
+                "stop": 37,
+                "length": 63
+              },
+              "json_arithmetic_checks": {
+                "checked": 37,
+                "passed": 13,
+                "failed": 24
+              }
+            },
+            "warmup_summary": {
+              "requests": 4,
+              "successful_requests": 4,
+              "errors": 0,
+              "wall_seconds": 7.554757957346737,
+              "completion_tokens": 777,
+              "prompt_tokens": 460,
+              "requests_with_completion_usage": 4,
+              "requests_missing_completion_usage": 0,
+              "output_tokens_per_second": 102.84909250393585,
+              "latency_seconds_p50": 2.339220625348389,
+              "latency_seconds_p95": 2.5153467915952206,
+              "finish_reasons": {
+                "stop": 1,
+                "length": 3
+              },
+              "json_arithmetic_checks": {
+                "checked": 1,
+                "passed": 1,
+                "failed": 0
+              }
+            }
+          },
+          {
+            "node": 4,
+            "file": "dspark-four-mixed-04.json",
+            "sha256": "c674a829b21b2db2f0e312bd41d9776212df2651d0e77b3d1ea44e543e085b03",
+            "summary": {
+              "requests": 100,
+              "successful_requests": 100,
+              "errors": 0,
+              "wall_seconds": 31.70546279195696,
+              "completion_tokens": 16497,
+              "prompt_tokens": 11484,
+              "requests_with_completion_usage": 100,
+              "requests_missing_completion_usage": 0,
+              "output_tokens_per_second": 520.320428950968,
+              "latency_seconds_p50": 9.346079832874238,
+              "latency_seconds_p95": 12.540683874860406,
+              "finish_reasons": {
+                "stop": 37,
+                "length": 63
+              },
+              "json_arithmetic_checks": {
+                "checked": 37,
+                "passed": 13,
+                "failed": 24
+              }
+            },
+            "warmup_summary": {
+              "requests": 4,
+              "successful_requests": 4,
+              "errors": 0,
+              "wall_seconds": 7.273186708800495,
+              "completion_tokens": 777,
+              "prompt_tokens": 460,
+              "requests_with_completion_usage": 4,
+              "requests_missing_completion_usage": 0,
+              "output_tokens_per_second": 106.83075123863334,
+              "latency_seconds_p50": 2.1707067918032408,
+              "latency_seconds_p95": 2.362777750007808,
+              "finish_reasons": {
+                "stop": 1,
+                "length": 3
+              },
+              "json_arithmetic_checks": {
+                "checked": 1,
+                "passed": 1,
+                "failed": 0
+              }
+            }
+          }
+        ],
+        "note": "One four-node batch, including 16 sequential-per-node warmups in both total tokens and full wall time. Not the same timing scope as the single-node warmed-repeat metric."
+      },
+      "node_reports": [
+        {
+          "file": "dspark-four-mixed-01.json",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-four-mixed-01.json",
+          "sha256": "672e0d4b1e5a5278acaa1c26e1b3007dbfe8b86afb9e106fc9b1f9ba65490fb3",
+          "node": "Spark_01",
+          "run_id_utc": "20261115T122455.606392Z",
+          "configuration": {
+            "concurrency": 25,
+            "requests": 100,
+            "max_tokens": 256,
+            "temperature": 0,
+            "enable_thinking": false,
+            "timeout_seconds": 180,
+            "stream": false,
+            "warmup_requests": 4
+          },
+          "summary": {
+            "requests": 100,
+            "successful_requests": 100,
+            "errors": 0,
+            "wall_seconds": 31.367711124941707,
+            "completion_tokens": 16503,
+            "prompt_tokens": 11484,
+            "requests_with_completion_usage": 100,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 526.1142559706185,
+            "latency_seconds_p50": 9.222400582395494,
+            "latency_seconds_p95": 13.048042832873762,
+            "finish_reasons": {
+              "stop": 37,
+              "length": 63
+            },
+            "json_arithmetic_checks": {
+              "checked": 37,
+              "passed": 13,
+              "failed": 24
+            }
+          },
+          "warmup_summary": {
+            "requests": 4,
+            "successful_requests": 4,
+            "errors": 0,
+            "wall_seconds": 8.24649262521416,
+            "completion_tokens": 777,
+            "prompt_tokens": 460,
+            "requests_with_completion_usage": 4,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 94.22187532482289,
+            "latency_seconds_p50": 2.416764167137444,
+            "latency_seconds_p95": 2.539195084013045,
+            "finish_reasons": {
+              "stop": 1,
+              "length": 3
+            },
+            "json_arithmetic_checks": {
+              "checked": 1,
+              "passed": 1,
+              "failed": 0
+            }
+          }
+        },
+        {
+          "file": "dspark-four-mixed-02.json",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-four-mixed-02.json",
+          "sha256": "1234310c8e4bb113036b35238e4b96c3d34ddb11f61a5f29f0baad090b0109eb",
+          "node": "Spark_02",
+          "run_id_utc": "20261115T122455.606419Z",
+          "configuration": {
+            "concurrency": 25,
+            "requests": 100,
+            "max_tokens": 256,
+            "temperature": 0,
+            "enable_thinking": false,
+            "timeout_seconds": 180,
+            "stream": false,
+            "warmup_requests": 4
+          },
+          "summary": {
+            "requests": 100,
+            "successful_requests": 100,
+            "errors": 0,
+            "wall_seconds": 31.504207458347082,
+            "completion_tokens": 16506,
+            "prompt_tokens": 11484,
+            "requests_with_completion_usage": 100,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 523.930018611743,
+            "latency_seconds_p50": 9.316285874694586,
+            "latency_seconds_p95": 12.15191120840609,
+            "finish_reasons": {
+              "stop": 37,
+              "length": 63
+            },
+            "json_arithmetic_checks": {
+              "checked": 37,
+              "passed": 13,
+              "failed": 24
+            }
+          },
+          "warmup_summary": {
+            "requests": 4,
+            "successful_requests": 4,
+            "errors": 0,
+            "wall_seconds": 8.463237582705915,
+            "completion_tokens": 777,
+            "prompt_tokens": 460,
+            "requests_with_completion_usage": 4,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 91.80883703273908,
+            "latency_seconds_p50": 2.375517625361681,
+            "latency_seconds_p95": 2.7972592497244477,
+            "finish_reasons": {
+              "stop": 1,
+              "length": 3
+            },
+            "json_arithmetic_checks": {
+              "checked": 1,
+              "passed": 1,
+              "failed": 0
+            }
+          }
+        },
+        {
+          "file": "dspark-four-mixed-03.json",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-four-mixed-03.json",
+          "sha256": "3e8104b8f05b6770424ab82516073e1c1633f91b1254612324e7a1710202ff9b",
+          "node": "Spark_03",
+          "run_id_utc": "20261115T122455.606406Z",
+          "configuration": {
+            "concurrency": 25,
+            "requests": 100,
+            "max_tokens": 256,
+            "temperature": 0,
+            "enable_thinking": false,
+            "timeout_seconds": 180,
+            "stream": false,
+            "warmup_requests": 4
+          },
+          "summary": {
+            "requests": 100,
+            "successful_requests": 100,
+            "errors": 0,
+            "wall_seconds": 32.052629167214036,
+            "completion_tokens": 16491,
+            "prompt_tokens": 11484,
+            "requests_with_completion_usage": 100,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 514.4975756581085,
+            "latency_seconds_p50": 9.605858540162444,
+            "latency_seconds_p95": 12.803531208075583,
+            "finish_reasons": {
+              "stop": 37,
+              "length": 63
+            },
+            "json_arithmetic_checks": {
+              "checked": 37,
+              "passed": 13,
+              "failed": 24
+            }
+          },
+          "warmup_summary": {
+            "requests": 4,
+            "successful_requests": 4,
+            "errors": 0,
+            "wall_seconds": 7.554757957346737,
+            "completion_tokens": 777,
+            "prompt_tokens": 460,
+            "requests_with_completion_usage": 4,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 102.84909250393585,
+            "latency_seconds_p50": 2.339220625348389,
+            "latency_seconds_p95": 2.5153467915952206,
+            "finish_reasons": {
+              "stop": 1,
+              "length": 3
+            },
+            "json_arithmetic_checks": {
+              "checked": 1,
+              "passed": 1,
+              "failed": 0
+            }
+          }
+        },
+        {
+          "file": "dspark-four-mixed-04.json",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-four-mixed-04.json",
+          "sha256": "c674a829b21b2db2f0e312bd41d9776212df2651d0e77b3d1ea44e543e085b03",
+          "node": "Spark_04",
+          "run_id_utc": "20261115T122455.606365Z",
+          "configuration": {
+            "concurrency": 25,
+            "requests": 100,
+            "max_tokens": 256,
+            "temperature": 0,
+            "enable_thinking": false,
+            "timeout_seconds": 180,
+            "stream": false,
+            "warmup_requests": 4
+          },
+          "summary": {
+            "requests": 100,
+            "successful_requests": 100,
+            "errors": 0,
+            "wall_seconds": 31.70546279195696,
+            "completion_tokens": 16497,
+            "prompt_tokens": 11484,
+            "requests_with_completion_usage": 100,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 520.320428950968,
+            "latency_seconds_p50": 9.346079832874238,
+            "latency_seconds_p95": 12.540683874860406,
+            "finish_reasons": {
+              "stop": 37,
+              "length": 63
+            },
+            "json_arithmetic_checks": {
+              "checked": 37,
+              "passed": 13,
+              "failed": 24
+            }
+          },
+          "warmup_summary": {
+            "requests": 4,
+            "successful_requests": 4,
+            "errors": 0,
+            "wall_seconds": 7.273186708800495,
+            "completion_tokens": 777,
+            "prompt_tokens": 460,
+            "requests_with_completion_usage": 4,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 106.83075123863334,
+            "latency_seconds_p50": 2.1707067918032408,
+            "latency_seconds_p95": 2.362777750007808,
+            "finish_reasons": {
+              "stop": 1,
+              "length": 3
+            },
+            "json_arithmetic_checks": {
+              "checked": 1,
+              "passed": 1,
+              "failed": 0
+            }
+          }
+        }
+      ],
+      "timing_scope": "One concurrent four-node batch, 400 measured requests plus 16 sequential-per-node warmups; both all 416 requests and all 69105 output tokens included in full wall duration. Not the primary six-report warmed timing scope.",
+      "quality": "13/37 exact JSON arithmetic checks per node in measured phase; 63/100 length finishes per node; no code-success score.",
+      "replicates": 1
+    },
+    "single_node_c1": {
+      "node": "Spark_03",
+      "source_commit": "f506ae28d17b933939b62782141d6ccf6e0857aa",
+      "arms": {
+        "target_only": {
+          "file": "dspark-baseline-mixed-c1-node03.json",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-baseline-mixed-c1-node03.json",
+          "sha256": "b15e6833a782b7084228e01a660527c22b8ced2e76cf31b27c685be1235c3103",
+          "configuration": {
+            "concurrency": 1,
+            "requests": 16,
+            "max_tokens": 256,
+            "temperature": 0,
+            "enable_thinking": false,
+            "timeout_seconds": 180,
+            "stream": false,
+            "warmup_requests": 4
+          },
+          "summary": {
+            "requests": 16,
+            "successful_requests": 16,
+            "errors": 0,
+            "wall_seconds": 36.60772491712123,
+            "completion_tokens": 2618,
+            "prompt_tokens": 1838,
+            "requests_with_completion_usage": 16,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 71.51496046058782,
+            "latency_seconds_p50": 3.3375513749197125,
+            "latency_seconds_p95": 3.580931916832924,
+            "finish_reasons": {
+              "stop": 6,
+              "length": 10
+            },
+            "json_arithmetic_checks": {
+              "checked": 6,
+              "passed": 2,
+              "failed": 4
+            }
+          },
+          "run_id_utc": "20261115T121234.175969Z"
+        },
+        "dspark3": {
+          "file": "dspark-mixed-c1-node03.json",
+          "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-mixed-c1-node03.json",
+          "sha256": "20788c8a1872cba68e78b0e9e64ba7e609c571673e35ed9ab21cf1cc36e1f005",
+          "configuration": {
+            "concurrency": 1,
+            "requests": 16,
+            "max_tokens": 256,
+            "temperature": 0,
+            "enable_thinking": false,
+            "timeout_seconds": 180,
+            "stream": false,
+            "warmup_requests": 4
+          },
+          "summary": {
+            "requests": 16,
+            "successful_requests": 16,
+            "errors": 0,
+            "wall_seconds": 26.545988167636096,
+            "completion_tokens": 2618,
+            "prompt_tokens": 1838,
+            "requests_with_completion_usage": 16,
+            "requests_missing_completion_usage": 0,
+            "output_tokens_per_second": 98.62130516549279,
+            "latency_seconds_p50": 2.3269528336822987,
+            "latency_seconds_p95": 2.7639566250145435,
+            "finish_reasons": {
+              "stop": 6,
+              "length": 10
+            },
+            "json_arithmetic_checks": {
+              "checked": 6,
+              "passed": 2,
+              "failed": 4
+            }
+          },
+          "run_id_utc": "20261115T122323.778053Z"
+        }
+      },
+      "observed_output_throughput_gain_percent": 37.90304088868703,
+      "replicates_per_arm": 1,
+      "timing_scope": "16 measured requests per arm at concurrency 1; four warmups excluded from each measured wall time. Single batch per arm; not a three-repeat study.",
+      "quality": "2/6 exact arithmetic checks passed in each arm; ten length finishes per arm. No broad quality- or token-equivalence claim."
+    },
+    "short_json_probes": [
+      {
+        "file": "dspark-short-100.json",
+        "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-short-100.json",
+        "sha256": "840e4428fbd6f600c3334883ccafc2b97ac9a042008b9867aa7ff8675dc52c7c",
+        "summary": {
+          "kind": "serving_json_probe",
+          "model": "nemotron-lightning",
+          "note": "Short JSON requests; not agent task throughput or a sustained decode benchmark.",
+          "requests": 100,
+          "client_concurrency": 100,
+          "per_node": 25,
+          "temperature": 0,
+          "correct": 100,
+          "wall_s": 1.614,
+          "completion_tokens": 1890,
+          "output_tokens_per_wall_s": 1171.25
+        }
+      },
+      {
+        "file": "dspark-sampling-warmup-100.json",
+        "source_path_from_workspace_root": "diagnostics/swarm-prototype-20261115/dspark-sampling-warmup-100.json",
+        "sha256": "9e06672bbb559c759df519ce33ed33a337bb1a220401f2e05cc08438a2b71ef2",
+        "summary": {
+          "kind": "serving_json_probe",
+          "model": "nemotron-lightning",
+          "note": "Short JSON requests; not agent task throughput or a sustained decode benchmark.",
+          "requests": 100,
+          "client_concurrency": 100,
+          "per_node": 25,
+          "temperature": 0.8,
+          "correct": 100,
+          "wall_s": 3.23,
+          "completion_tokens": 1826,
+          "output_tokens_per_wall_s": 565.41
+        }
+      }
+    ],
+    "scope": "Follow-up evidence is separate from the fixed primary Spark_02 three-repeat c25 comparison; its metrics are unchanged."
   }
 }

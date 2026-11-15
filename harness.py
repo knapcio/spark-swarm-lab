@@ -269,6 +269,12 @@ class Experiment:
         return dict(agent_id=agent_id, solved=success, node_id=node_id, distance=str(distance))
 
     def run(self, initial, puzzle_id, method):
+        if method == "direct":
+            from direct_solver import run_direct
+            return run_direct(self, initial, puzzle_id)
+        if method in ("independent_rounds", "shared"):
+            from shared_search import run_rounds
+            return run_rounds(self, initial, puzzle_id, shared=method == "shared")
         root = self.node(initial, None, 0, puzzle_id)
         if method in ("independent", "calibrate"):
             futures = [self.pool.submit(self.independent_agent, a, initial, root, puzzle_id)
@@ -370,7 +376,8 @@ def fingerprint(state, target):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--method", choices=["independent", "democracy", "weighted", "calibrate"], required=True)
+    parser.add_argument("--method", choices=["direct", "independent", "independent_rounds", "shared",
+                                           "democracy", "weighted", "calibrate"], required=True)
     parser.add_argument("--endpoint", action="append", required=True, help="Repeat OpenAI base URLs ending /v1")
     parser.add_argument("--model", required=True)
     parser.add_argument("--puzzle", default="25,50,75,100,3,6:952")
@@ -390,6 +397,8 @@ def main(argv=None):
                         help="Accept an already-proposed exact target before voting; default off")
     parser.add_argument("--events", required=True, help="New JSONL file; refuses overwrite")
     args = parser.parse_args(argv)
+    if args.method == "direct" and args.agents != 1:
+        parser.error("direct is the single-call baseline; use --agents 1")
     if any(x <= 0 for x in (args.agents, args.per_endpoint_concurrency, args.rounds,
                             args.max_tokens, args.max_calls, args.max_completion_tokens, args.timeout)):
         parser.error("counts, limits and timeout must be positive")

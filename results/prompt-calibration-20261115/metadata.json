@@ -1,0 +1,87 @@
+{
+  "order": [
+    "old",
+    "schema",
+    "schema",
+    "old"
+  ],
+  "endpoints": [
+    "http://127.0.0.1:18081/v1",
+    "http://127.0.0.1:18082/v1",
+    "http://127.0.0.1:18083/v1",
+    "http://127.0.0.1:18084/v1"
+  ],
+  "agents_per_batch": 100,
+  "per_endpoint_concurrency": 25,
+  "target": 24,
+  "state": [
+    "2",
+    "3",
+    "7",
+    "8"
+  ],
+  "seed": 1,
+  "stage": "propose",
+  "temperature": 0.8,
+  "max_tokens": 192,
+  "thinking": false,
+  "timeout": 90,
+  "max_calls": 400,
+  "max_completion_tokens": 76800,
+  "system": "Solve the precise arithmetic task. Return only the requested JSON object. Do not explain or use tools.",
+  "prompts": {
+    "old": "Target 24. Current indexed numbers: {0: '2', 1: '3', 2: '7', 3: '8'}. Combine two different indices with +,-,*,/. All intermediate results must be positive integer. Reach the target using any subset of numbers. Return {\"i\":0,\"j\":1,\"op\":\"+\"} with your chosen indices/operator.",
+    "schema": "Target 24. Current indexed numbers: {0: '2', 1: '3', 2: '7', 3: '8'}. Combine two different indices with +,-,*,/. All intermediate results must be positive integer. Reach the target using any subset of numbers. Return only a JSON object with integer indices in fields i and j and a single-character operator in field op. The operator must be one of +, -, *, /."
+  },
+  "seed_rule": "big-endian integer from first 4 bytes SHA256('1:{agent_id}:propose:{full_prompt}')",
+  "started_utc": "2026-11-15T12:41:49.853636+00:00",
+  "git_revision": "",
+  "runtime": {
+    "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+    "model_weight_bytes": 21561882284,
+    "model_shards": 52,
+    "image": "vllm/vllm-openai:v0.27.1",
+    "arm64_manifest_digest": "sha256:1c8e60a0841b333c700488cb029d3664807249da0c071e862191b00fe34b228c",
+    "served_model_name": "nemotron-lightning",
+    "deployment": "4 independent TP1 replicas on GB10",
+    "baseline": {
+      "max_model_len": 16384,
+      "max_num_seqs": 25,
+      "max_num_batched_tokens": 4096,
+      "gpu_memory_utilization": 0.7,
+      "moe_backend": "marlin",
+      "kv_cache_dtype": "fp8",
+      "mamba_backend": "flashinfer",
+      "mamba_cache_mode": "align",
+      "prefix_caching": true,
+      "speculative_decoding": false
+    },
+    "request_defaults": {
+      "temperature": 0.8,
+      "max_tokens": 192,
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      }
+    },
+    "active_recipe": "dspark3",
+    "dspark": {
+      "status": "Verified healthy on Spark_01\u201304; same-node c25 median throughput +51.40% over target-only",
+      "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+      "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+      "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+      "draft_weight_bytes": 1349057504,
+      "draft_weight_files": 1,
+      "draft_mount": "~/swarm-lab/draft:/draft:ro",
+      "method": "dspark",
+      "num_speculative_tokens": 3
+    },
+    "note": "The baseline records the original target-only configuration. Active serving uses DSpark3 with otherwise identical settings. See SERVING.md and recorded probes for measurement scope."
+  },
+  "source_sha256": {
+    "probe.py": "e02477b6587b274c9229d7318406e71e9aa0a085e03857babc0e064e11313aa7",
+    "harness.py": "008c68645abd26bc6ae6333a4fd0f2ca7f9b2f75383ce79cee3967842e155aca",
+    "runtime.json": "5ba312b8d45b2146f39d4d3762f82d9e60d3a5d40e5dbbadcae8b741dd1a897e"
+  },
+  "note": "Prompt variant also changes Client's prompt-derived random seed; a same-seed paired RNG experiment is not claimed."
+}

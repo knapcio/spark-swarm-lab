@@ -44,6 +44,14 @@ This is one thinking-off run; it establishes neither method superiority nor a
 thinking-on/off comparison. Comparative quality and the value of reputation
 remain unestablished. See [PILOT.md](PILOT.md) for the independent run, a solved easy case, output-budget failures and included traces.
 
+The separate [governance pilot](GOVERNANCE.md) includes an interleaved 18-run
+follow-up with stable candidate identifiers: independent paths solved 2/6 games,
+ordinary democracy 0/6, and democracy with verified-solution acceptance 1/6.
+The 500-call ceiling censored every ordinary-democracy trajectory; these small,
+stochastic experiments do not rank methods generally. Full prompts, costs and
+negative earlier cohorts are retained. [PILOT.md](PILOT.md) also records reasoning
+budget and reputation-pipeline checks.
+
 ## Quick start
 
 Run commands from this repository directory (`cd apps/swarm-lab` in the original workspace).
@@ -59,7 +67,7 @@ DeepSeek, not a Nemotron result.
 # Start the local viewer if it is not already running:
 python3 server.py --port 18777
 # In another terminal: method, puzzle, number of agents:
-./play.sh democracy '25,50,75,100,3,6:952' 100
+./play.sh democracy '1,2,3,4:10' 100
 ./play.sh independent '25,50,75,100,3,6:952' 100
 ```
 
@@ -147,6 +155,31 @@ there are no hidden retries.
   per-agent counts of exact binary successes for a later weighted run. A transport
   failure or exhausted budget prevents writing the reputation artifact; malformed
   model output is an unsuccessful path. No solver/oracle evaluates future moves.
+
+The opt-in `--accept-verified-solution` policy accepts any already proposed,
+exactly verified terminal candidate before voting. It applies to democracy and
+weighted votes; independent paths already stop on exact success. It performs no
+extra move generation or lookahead. The default keeps the original voting rule,
+so both policies can be compared. The tree records `exact_target_verified` as the
+selection reason and ends other branches without labeling them mathematically wrong.
+
+A finite three-puzzle, two-seed experiment uses 100 agents and the same ceilings
+of 500 calls and 96,000 completion tokens per run. Actual costs differ by method:
+
+```sh
+python3 run_study.py                 # Print the plan; no model calls
+python3 run_study.py --run           # 12 independent/democracy runs
+python3 run_study.py --run --include-guarded  # 18 interleaved policy runs
+python3 run_study.py --run --method democracy --accept-verified-solution
+```
+
+Proposal identifiers are deterministic functions of seed, puzzle, depth, agent and
+state, preventing random labels from changing voter inputs. Concurrent sampled
+model responses can still differ across runs with the same seed.
+
+Each invocation creates a new study directory with configuration hashes, commands,
+raw events and actual-cost summaries. The six-run opt-in experiment is separate
+from the original twelve-run experiment; inspect budget-limited outcomes explicitly.
 
 For calibration, repeat the same four endpoints and other desired runtime flags:
 
