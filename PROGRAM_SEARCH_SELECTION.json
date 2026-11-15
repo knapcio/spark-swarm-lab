@@ -77,7 +77,7 @@
   },
   "gates": {
     "throughput": "reference_worker.verify_gate(original gate root), full45 verified cohorts plus900+80.",
-    "postcontroller": "Original .runtime/post-throughput-overnight-v1/state.json must be complete, hash-linked ledger must contain all10 completed/explicit time-skipped stages.",
+    "postcontroller": "Original .runtime/post-throughput-overnight-v1/state.json must be complete and hash-linked to a ledger containing each of the exact10 expected stage names once. All6 mandatory stages require verified completion/returncode0; only4 declared optional stages may be time-skipped.",
     "source": "All source/data/protocol hashes pinned, clean tracked source required; later parent creates immutable tag/worktree. No edits to existing sealed sources.",
     "ownership": "One endpoint/node per pair. No simultaneous episodes per endpoint; four initial idle checks before qualification and per-episode idle checks/drains.",
     "launch": "Default plan-only; --run must be explicit. New output directory only; no overwrite/resume. No automatic launch after original phases."
@@ -91,8 +91,8 @@
     "claim": "100% means these finite12 graph instances (or96 program-instance outcomes) were exactly verified within the fixed execution limits. It is not a general solver correctness guarantee."
   },
   "source_sha256": {
-    "program_search.py": "8c2721cd0101f3470dc956c5d0a8be216f9d5e93b4480ed9d20af3611042297d",
-    "test_program_search.py": "26312bd3a060344791b664fc9b4ebdbeab609958b2de2d192a774515b252a298",
+    "program_search.py": "52bd9bda514c1a561763f7bedbb4a73de22987b71210ca37c2a38653200e7deb",
+    "test_program_search.py": "ad3aebbb7eef01d01454576e49335f7a5792d4cf27ff317ced5d716bdb652871",
     "csp_program_grader.py": "7fa45db50bfbef04c868b35ddb3aab67fceab4818ca5820bba2427f14ff6873a",
     "test_csp_program_grader.py": "1ab51b9ead1dde2b36c73dd51da6c6024f77bd6b1d4bf36539e196346f41daa3",
     "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
@@ -102,5 +102,25 @@
     "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
     "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
     "datasets/csp-v1/tasks.json": "29d659bbc7b4b819ea7d572db073459eb30d6c19f7fda2114e7c174c375de960"
+  },
+  "postcontroller_stage_gate_amendment": {
+    "status": "Prospective validation-only amendment before any program-search calls; parent will freeze reusable-program-search-v1.1.",
+    "supersedes_unused_program_revision": "0c562ec95321f9984445ee74e6cc13ab54dcc42d",
+    "reason": "The prior gate counted10 acceptable statuses without checking stage identities or skip eligibility. No malformed producer receipt was observed; the sealed producer already generates the correct matrix.",
+    "mandatory_completed_stages": [
+      "coding-confirmation-v1",
+      "csp-classical-v1",
+      "csp-core_off16-development-s1",
+      "csp-core_off16-evaluation-s1",
+      "csp-core_off16-evaluation-s2",
+      "csp-core_off16-evaluation-s3"
+    ],
+    "optional_completed_or_time_skipped_stages": [
+      "csp-extended_off64-evaluation-s1",
+      "csp-extended_off64-evaluation-s2",
+      "csp-extended_off64-evaluation-s3",
+      "csp-thinking_on16-evaluation-s1"
+    ],
+    "unchanged": "Model, prompts, grading, budgets, data, scheduling, selection and evaluation policies; no change to the running postcontroller or existing throughput/CSP gates."
   }
 }

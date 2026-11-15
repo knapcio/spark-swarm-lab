@@ -22,6 +22,11 @@ from run_benchmark import drain, read_trace, server_cost
 HERE = Path(__file__).resolve().parent
 ARMS = ("sequential16", "independent4")
 SEEDS = (1, 2, 3, 4)
+POST_REQUIRED_STAGES = frozenset(("coding-confirmation-v1", "csp-classical-v1",
+    "csp-core_off16-development-s1", "csp-core_off16-evaluation-s1",
+    "csp-core_off16-evaluation-s2", "csp-core_off16-evaluation-s3"))
+POST_OPTIONAL_STAGES = frozenset(("csp-extended_off64-evaluation-s1", "csp-extended_off64-evaluation-s2",
+    "csp-extended_off64-evaluation-s3", "csp-thinking_on16-evaluation-s1"))
 LIMITS = dict(max_model_calls=16, per_call_max_tokens=2048, max_completion_tokens=32768,
               request_timeout_seconds=210, graph_timeout_seconds=10, memory_limit_mib=256,
               cpu_limit_per_container=1, episode_deadline_seconds=None)
@@ -274,9 +279,12 @@ def followup_gate(root):
     require(state.get("status") == "complete" and state.get("ledger_sha256") == sha(base / "ledger.json"),
             "post-throughput controller must be completely verified before program search")
     entries = json.loads((base / "ledger.json").read_text())
-    require(len(entries) == 10 and all(e.get("status") == "skipped_time_cutoff" or
+    expected = POST_REQUIRED_STAGES | POST_OPTIONAL_STAGES
+    require(len(entries) == len(expected) and {e.get("name") for e in entries} == expected,
+            "post-throughput ledger must contain each expected stage exactly once")
+    require(all((e.get("status") == "skipped_time_cutoff" and e["name"] in POST_OPTIONAL_STAGES) or
             (e.get("status") == "complete" and e.get("verified") is True and e.get("returncode") == 0) for e in entries),
-            "post-throughput stage ledger incomplete")
+            "mandatory post-throughput stages must complete; only optional stages may be time-skipped")
     return dict(throughput=throughput, post_state_sha256=sha(base / "state.json"), post_ledger_sha256=sha(base / "ledger.json"))
 
 

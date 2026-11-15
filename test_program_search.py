@@ -175,13 +175,29 @@ class ProgramSearchTests(unittest.TestCase):
     def test_post_controller_gate_requires_complete_hash_linked_ledger(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(p, "verify_gate", return_value={"mock": True}):
             root = Path(directory); folder = root / ".runtime/post-throughput-overnight-v1"; folder.mkdir(parents=True)
-            entries = [dict(status="complete", verified=True, returncode=0)] * 10
+            entries = [dict(name=name, status="complete", verified=True, returncode=0) for name in sorted(p.POST_REQUIRED_STAGES)]
+            entries += [dict(name=name, status="skipped_time_cutoff") for name in sorted(p.POST_OPTIONAL_STAGES)]
             (folder / "ledger.json").write_text(json.dumps(entries))
             state = dict(status="complete", ledger_sha256=p.sha(folder / "ledger.json"))
             (folder / "state.json").write_text(json.dumps(state))
             self.assertIn("post_state_sha256", p.followup_gate(root))
             state["status"] = "running"; (folder / "state.json").write_text(json.dumps(state))
             with self.assertRaises(RuntimeError): p.followup_gate(root)
+
+    def test_post_gate_rejects_duplicate_missing_unknown_and_mandatory_skips(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(p, "verify_gate", return_value={"mock": True}):
+            root = Path(directory); folder = root / ".runtime/post-throughput-overnight-v1"; folder.mkdir(parents=True)
+            complete = [dict(name=name, status="complete", verified=True, returncode=0)
+                        for name in sorted(p.POST_REQUIRED_STAGES | p.POST_OPTIONAL_STAGES)]
+            duplicate = [dict(row) for row in complete]; duplicate[0]["name"] = duplicate[1]["name"]
+            unknown = [dict(row) for row in complete]; unknown[0]["name"] = "unknown-stage"
+            skipped = [dict(row) for row in complete]
+            next(row for row in skipped if row["name"] in p.POST_REQUIRED_STAGES)["status"] = "skipped_time_cutoff"
+            for label, entries in (("duplicate", duplicate), ("missing", complete[:-1]), ("unknown", unknown), ("mandatory_skip", skipped)):
+                with self.subTest(label=label):
+                    (folder / "ledger.json").write_text(json.dumps(entries))
+                    (folder / "state.json").write_text(json.dumps(dict(status="complete", ledger_sha256=p.sha(folder / "ledger.json"))))
+                    with self.assertRaises(RuntimeError): p.followup_gate(root)
 
     def test_master_assigns_one_pair_per_endpoint_and_alternates_arm_order(self):
         with tempfile.TemporaryDirectory() as directory:
