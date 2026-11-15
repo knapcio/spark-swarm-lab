@@ -192,6 +192,12 @@ class OpenAIRecorder:
                 output.write(json.dumps(evidence, ensure_ascii=False) + '\n')
 
 
+def optional_opus_preflight(root):
+    path = root / 'diagnostics/swarm-prototype-20261115/opus-access-preflight-20261115.json'
+    present = path.is_file()
+    return dict(opus_preflight_present=present, opus_preflight_sha256=sha(path) if present else None)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--provider', choices=['opus', 'deepseek'], required=True)
@@ -227,7 +233,7 @@ def main(argv=None):
         urllib.request.urlopen = OpenAIRecorder(endpoint, args.transport_record, urllib.request.urlopen)
     cli_version = subprocess.check_output([args.cli, '--version'], text=True, timeout=20).strip() if args.provider == 'opus' else None
     args.transport_record.with_suffix('.context.json').write_text(json.dumps(dict(source=pin, provider=args.provider, model=args.model, cli_version=cli_version,
-        worker_sha256=sha(__file__), argv=forwarded, opus_preflight_sha256=sha(HERE.parent.parent / 'diagnostics/swarm-prototype-20261115/opus-access-preflight-20261115.json') if args.provider == 'opus' else None, scope='Separate strong-model reference; never pool with Nemotron',
+        worker_sha256=sha(__file__), argv=forwarded, **(optional_opus_preflight(HERE.parent.parent) if args.provider == 'opus' else {}), scope='Separate strong-model reference; never pool with Nemotron',
         timing='Case controller wall includes CLI startup/auth/network or local endpoint time plus grading; not GPU decode throughput'), indent=2) + '\n')
     module = h if args.domain == 'arithmetic' else importlib.import_module('coding_harness')
     return module.main(forwarded)

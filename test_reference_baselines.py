@@ -250,6 +250,83 @@ with tempfile.TemporaryDirectory() as d:
             self.assertEqual(set(hashes), set(r.CURATED_METADATA.values()))
             self.assertFalse((root/'runs').exists())
 
+    @staticmethod
+    def attempt(deadline=False, completed=True, domain='arithmetic'):
+        row = dict(domain=domain, calls=1, completed_calls=int(completed), unfinished_calls=int(not completed),
+                   deadline=deadline, controller_stop=deadline, status='deadline' if deadline else 'complete',
+                   returncode=-15 if deadline else 0, controller_error=None, malformed_lines=0, solved=False,
+                   infrastructure_failures=None if deadline else 0, missing_prompt_usage=0, missing_completion_usage=0,
+                   length_finishes=0)
+        records = [dict(type='request_start', request_id='SYNTHETIC-request')]
+        if completed:
+            records.append(dict(type='request_end', request_id='SYNTHETIC-request', error=None, response='SYNTHETIC-model-text', finish_reason=None))
+        if deadline:
+            records.append(dict(type='controller_stop', deadline=True, returncode=row['returncode']))
+        return row, records
+
+    def test_controlled_deadline_is_budget_outcome_with_unknown_usage(self):
+        row, records = self.attempt(deadline=True, completed=False)
+        original = dict(row)
+        result = r.assess_attempt(row, records)
+        self.assertEqual(result['reference_attempt_status'], 'task_budget_exhausted')
+        self.assertIsNone(result['reference_operational_halt_reason'])
+        self.assertFalse(result['reference_usage_complete'])
+        self.assertIsNone(result['reference_output_cap_reached'])
+        self.assertTrue(result['reference_infrastructure_count_unknown'])
+        self.assertEqual(row, original)  # Preserve unsolved and unknown; never invent infrastructure zero.
+        row['solved'] = True
+        records.append(dict(type='reward', solved=True))
+        self.assertIsNone(r.assess_attempt(row, records)['reference_operational_halt_reason'])
+        self.assertTrue(row['solved'])
+
+    def test_completed_output_cap_parser_failure_is_quality_outcome(self):
+        row, records = self.attempt()
+        row['length_finishes'] = 1
+        records[-1].update(error='JSONDecodeError: SYNTHETIC-truncated', finish_reason='length')
+        result = r.assess_attempt(row, records)
+        self.assertEqual(result['reference_attempt_status'], 'completed')
+        self.assertTrue(result['reference_output_cap_reached'])
+        self.assertIsNone(result['reference_operational_halt_reason'])
+
+    def test_deadline_needs_dispatch_controlled_exit_and_no_transport_fault(self):
+        for fault in ['no_dispatch', 'wrong_request_id', 'crash', 'not_controlled', 'transport', 'known_infrastructure']:
+            with self.subTest(fault=fault):
+                row, records = self.attempt(deadline=True)
+                if fault == 'no_dispatch': records = []
+                elif fault == 'wrong_request_id': records[1]['request_id'] = 'different'
+                elif fault == 'crash': row['returncode'] = -11
+                elif fault == 'not_controlled': row['controller_stop'] = False
+                elif fault == 'transport': records[1].update(error='URLError: SYNTHETIC', response=None)
+                else: row['infrastructure_failures'] = 1
+                result = r.assess_attempt(row, records)
+                self.assertEqual(result['reference_attempt_status'], 'requires_review')
+                self.assertIsNotNone(result['reference_operational_halt_reason'])
+
+    def test_deadline_during_grade_retains_budget_outcome_but_halts_for_cleanup(self):
+        row, records = self.attempt(deadline=True, domain='coding')
+        records.append(dict(type='evaluation_start', evaluation_id='SYNTHETIC-grade'))
+        result = r.assess_attempt(row, records)
+        self.assertEqual(result['reference_attempt_status'], 'task_budget_exhausted')
+        self.assertEqual(result['reference_operational_halt_reason'], 'active_coding_grade_requires_exact_owner_cleanup_review')
+        records.append(dict(type='evaluation_end', evaluation_id='SYNTHETIC-grade', infrastructure_error=False))
+        self.assertIsNone(r.assess_attempt(row, records)['reference_operational_halt_reason'])
+        records[-1]['infrastructure_error'] = True
+        self.assertEqual(r.assess_attempt(row, records)['reference_attempt_status'], 'requires_review')
+
+    def test_unexplained_missing_completion_is_not_admitted_as_deadline(self):
+        row, records = self.attempt(completed=False)
+        result = r.assess_attempt(row, records)
+        self.assertEqual(result['reference_attempt_status'], 'requires_review')
+
+    def test_optional_private_preflight_records_presence_and_null_portably(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertEqual(w.optional_opus_preflight(root), {'opus_preflight_present': False, 'opus_preflight_sha256': None})
+            path = root/'diagnostics/swarm-prototype-20261115/opus-access-preflight-20261115.json'
+            path.parent.mkdir(parents=True)
+            path.write_text('{"scope":"SYNTHETIC"}')
+            self.assertEqual(w.optional_opus_preflight(root), {'opus_preflight_present': True, 'opus_preflight_sha256': w.sha(path)})
+
     def test_real_execution_gate_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaises(FileNotFoundError):

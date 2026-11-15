@@ -42,5 +42,15 @@
   ],
   "access": "Use existing authorized access; do not create subscriptions or invent/reference a model result that was not actually executed",
   "primary_declaration_sha256": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
-  "precedence": "Finish original frozen Nemotron900+80 and throughput2016attempts first. No policy/prompt/data tuning based on partial outcomes. Reference stage is a separate later calibration."
+  "precedence": "Finish original frozen Nemotron900+80 and throughput2016attempts first. No policy/prompt/data tuning based on partial outcomes. Reference stage is a separate later calibration.",
+  "pre_call_budget_accounting_clarification": {
+    "recorded_utc": "2026-11-15T18:51:47.736021+00:00",
+    "scope": "Reference-only protocol clarification before any live reference calls; prompted by controller semantics review, not observed reference outcomes. No frozen Nemotron code, prompts, methods, tasks or budgets changed.",
+    "task_deadline": "180s is the complete task budget including transport/startup and verification. A positively dispatched single-call attempt reaching a controlled deadline, without observed transport/controller/protocol faults, remains in the denominator as a budget-exhausted attempt. Keep verifier-confirmed success if already observed by the frozen controller; otherwise unsolved within budget.",
+    "unknowns": "Preserve partial traces, incomplete call/usage and missing infrastructure counts as unknown, never fabricate zero or classify an unfinished request as a proven infrastructure failure. Provider cancellation and residual server cost after a killed client are unmeasured; no global cost/throughput claim.",
+    "output_budget": "8192 output-token cap remains unchanged. A completed length finish or parser/test failure is an observed quality/output-budget outcome, not infrastructure; an actually verified solution remains valid. No automatic repair or extra model call.",
+    "operational_halts": "Observed transport/controller/protocol or grader-infrastructure faults still halt the cohort. A deadline during an active coding grade retains its budget outcome but halts for exact-owner cleanup review before reusing any grader; do not continue blindly.",
+    "dispatch_validation": "Exactly one trace request_start, matching completed request IDs/counts, and a controller-marked deadline with expected termination exit are required. A missing dispatch, arbitrary crash or ambiguous failed transport is not admitted as a clean budget result.",
+    "portable_context": "Local Opus preflight is optional contextual evidence: presence flag and SHA256 or null are recorded. Its absence neither invents auth/model proof nor changes the strict actual-response model/provider check."
+  }
 }
