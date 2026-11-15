@@ -62,7 +62,7 @@ One agent may revise its own full plan up to four times, thinking ON/8192 per re
 
 | Control | Solved | Single-seed Wilson 95% | Calls | Unfinished | Server prompt | Server completion | Median / p95 occupied wall s |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Sequential own-plan refinement | 16/24  46.7–82.0%  52  8  10,709  347,511  131.260 / 181.887 |
+| Sequential own-plan refinement | 16/24 | 46.7–82.0% | 52 | 8 | 10,709 | 347,511 | 131.260 / 181.887 |
 
 All eight unsolved cases reach the controller deadline. Their unfinished calls make completed-client usage **8789 prompt / 302782 completion tokens a lower bound**, while server counter costs are independently known for **24/24** cases. Eight final worker infrastructure counters remain unknown; no controller error, unexpected process failure or budget denial is recorded. There are 26 length finishes and 27 request-format errors (26 `ValueError`, one `JSONDecodeError`), retained as observed outcomes. Occupied wall includes controller/metrics/drain overhead, so its p95 can exceed the 180s worker cutoff. Whole queue wall is 876.060994s and is not an individual-arm fleet-throughput rate.
 
