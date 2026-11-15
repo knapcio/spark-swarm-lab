@@ -174,7 +174,8 @@ class Client:
                 finish_reason = choice.get("finish_reason")
                 reasoning = message.get("reasoning_content", message.get("reasoning"))
                 response_received = True
-                result = parse_json_response(content)
+                parser = getattr(self, "response_parser", None)
+                result = parser(content, stage) if parser else parse_json_response(content)
             except Exception as exc:
                 # No request headers, credentials or full HTTP bodies are recorded.
                 error = f"{type(exc).__name__}: {str(exc)[:300]}"

@@ -22,7 +22,7 @@ ARMS = {"direct_off": ("direct", 1, 1, False), "solo_iterative": ("iterative", 1
         "direct_thinking": ("direct", 1, 1, True),
         **{f"{method}{n}": (method, n, 3, False) for n in (8, 32, 100)
            for method in ("independent", "shared", "democracy")}}
-EXTRA_FIELDS = ["grader_host", "method", "agents", "rounds", "thinking", "feedback_final_status",
+EXTRA_FIELDS = ["grader_host", "method", "agents", "rounds", "thinking", "code_format", "feedback_final_status",
                 "feedback_final_passed", "feedback_final_total", "holdout_status", "holdout_passed",
                 "holdout_total", "feedback_eval_count", "holdout_eval_count", "grader_eval_count",
                 "grader_errors", "grader_infrastructure_errors", "selection_basis"]
@@ -44,7 +44,7 @@ def coding_metrics(case, row):
                                 if r.get("phase") == phase and r.get("candidate_id") == candidate), {})
     feedback = final.get("feedback") or report("feedback")
     holdout = final.get("holdout") or report("holdout")
-    row.update({k: case[k] for k in ("grader_host", "method", "agents", "rounds", "thinking")})
+    row.update({k: case[k] for k in ("grader_host", "method", "agents", "rounds", "thinking", "code_format")})
     row.update(feedback_final_status=feedback.get("status"), feedback_final_passed=feedback.get("passed"),
                feedback_final_total=feedback.get("total"), holdout_status=holdout.get("status"),
                holdout_passed=holdout.get("passed"), holdout_total=holdout.get("total"),
@@ -69,6 +69,7 @@ def main(argv=None):
     parser.add_argument("--host", action="append", help="Repeat grader SSH hosts, paired by endpoint position")
     parser.add_argument("--jobs", type=int, default=4)
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--code-format", choices=("json", "python"), default="json")
     parser.add_argument("--output", type=Path, help="New directory; refuses overwrite")
     parser.add_argument("--run", action="store_true")
     args = parser.parse_args(argv)
@@ -116,14 +117,14 @@ def main(argv=None):
                        "--agents", str(agents), "--rounds", str(rounds), "--endpoint", endpoints[slot],
                        "--host", hosts[slot], "--events", str(trace), "--max-tokens", "8192" if thinking else "1024",
                        "--max-calls", "1024", "--maxcompletion", "131072", "--seed", str(args.seed),
-                       "--thinking", "on" if thinking else "off"]
+                       "--thinking", "on" if thinking else "off", "--code-format", args.code_format]
             cases.append(dict(task_id=task["id"], split=split, arm=arm, seed=args.seed, slot=slot,
                               endpoint=endpoints[slot], grader_host=hosts[slot], method=method, agents=agents,
-                              rounds=rounds, thinking=thinking, events=str(trace), command=command,
+                              rounds=rounds, thinking=thinking, code_format=args.code_format, events=str(trace), command=command,
                               stop_on_solution=True, server_metrics=True,
                               stdout=str(directory / (name + ".stdout.log")), stderr=str(directory / (name + ".stderr.log"))))
     metadata = dict(schema_version=1, domain="coding", mode="run" if args.run else "dry_run",
-                    started_utc=datetime.now(timezone.utc).isoformat(), split=split, arms=arms, seed=args.seed,
+                    started_utc=datetime.now(timezone.utc).isoformat(), split=split, arms=arms, seed=args.seed, code_format=args.code_format,
                     dataset=str(args.dataset.resolve()), dataset_sha256=hashlib.sha256(public_raw).hexdigest(),
                     tests=str(args.tests.resolve()), tests_sha256=hashlib.sha256(private_raw).hexdigest(),
                     dataset_protocol=public["protocol"], jobs=args.jobs,

@@ -87,5 +87,23 @@ against parallel independent sampling, then test larger groups only if useful.
 
 Save raw JSONL, public tasks, configuration/source hashes and CSV/JSON summaries.
 Figures for the eventual X article must be generated from those summaries;
-label exploratory cohorts, task scope, costs and uncertainty. Publish the
-reproducible GitHub repository and X post only after checks and results are ready.
+label exploratory cohorts, task scope, costs and uncertainty. Keep the public
+GitHub repository updated. Prepare an X draft at the end; the owner will publish it.
+
+## Development amendments before evaluation
+
+The 4K reasoning allowance truncated six of eight direct answers and every
+stepwise-thinking development case. Additional development cohorts therefore
+calibrate 8K full plans, full-plan ensembles of two/four workers, and cascades
+that try cheap independent paths before one 8K full-plan fallback. Separate
+development sweeps compare group sizes 8, 32 and 100. Their common call ceiling
+is 1,280, permitting complete 100-worker proposal/vote rounds; actual calls and
+tokens remain the relevant costs. Earlier 128-call cohorts remain separate.
+
+An optional controller stops on a recorded exact-verifier success, cancels its
+owned process group and waits for the endpoint to become idle. Partial client
+usage is a lower bound; server counter deltas are used only with valid idle
+snapshots and counters consistent with completed client usage. Unknown costs
+remain unknown. Sources run in detached worktrees so ongoing implementation
+changes cannot silently change a cohort. Evaluation has not been used to tune
+these amendments.

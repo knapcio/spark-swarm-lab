@@ -34,6 +34,23 @@ def feedback(report):
     return {key: report[key] for key in ("status", "passed", "total", "error", "first_failure") if key in report}
 
 
+def parse_python_response(content, stage):
+    """Source-only proposals; strip an optional fence, never unescape source text."""
+    if stage != "code_propose":
+        return h.parse_json_response(content)
+    if not isinstance(content, str):
+        raise ValueError("Python response must be text")
+    source = content.strip()
+    if source.startswith("```"):
+        lines = source.splitlines(keepends=True)
+        if len(lines) < 3 or lines[0].strip().lower() not in ("```", "```python") or lines[-1].strip() != "```":
+            raise ValueError("Expected a complete Python code fence")
+        source = "".join(lines[1:-1]).strip()
+    if not source:
+        raise ValueError("Python response is empty")
+    return {"code": source}
+
+
 def infrastructure(report):
     return ("exit_code" in report or "cleanup_ok" in report
             or str(report.get("error", "")).startswith("Invalid runner protocol")
@@ -70,7 +87,10 @@ def run_experiment(args, task, private, client, events, evaluator=evaluate_code,
     events.emit("node", node_id=root, parent_id=None, state=[task["function_name"]], depth=0, puzzle_id=task["id"])
 
     def propose(agent, round_id, own_base, shared_facts):
-        prompt = context(task) + '\nReturn exactly a JSON object with one key "code", containing the complete implementation.'
+        instruction = ('\nReturn complete Python function source only. Do not wrap it in JSON or include explanations.'
+                       if getattr(args, "code_format", "json") == "python" else
+                       '\nReturn exactly a JSON object with one key "code", containing the complete implementation.')
+        prompt = context(task) + instruction
         if own_base:
             prompt += "\nPrevious implementation:\n" + own_base["code"] + "\nFeedback (not holdout): " + json.dumps(feedback(own_base["report"]), ensure_ascii=False)
         if shared_facts:
@@ -222,6 +242,7 @@ def main(argv=None):
     parser.add_argument("--maxcompletion", "--max-completion", type=int, default=131072)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--thinking", choices=("off", "on"), default="off")
+    parser.add_argument("--code-format", choices=("json", "python"), default="json")
     args = parser.parse_args(argv)
     if not all(value > 0 for value in (args.agents, args.rounds, args.max_tokens, args.max_calls, args.maxcompletion)) or args.agents > 100:
         parser.error("positive limits required; agents must be at most 100")
@@ -239,6 +260,9 @@ def main(argv=None):
     budget = h.Budget(args.max_calls, args.maxcompletion)
     client = h.Client([args.endpoint], "nemotron-lightning", args.agents, args.max_tokens, 180, budget, events, args.seed, thinking=args.thinking == "on")
     client.system_prompt = "Implement or review the specified pure Python function. Return only the requested JSON object. Do not explain or use tools."
+    if args.code_format == "python":
+        client.system_prompt = "Implement or review the specified pure Python function. Return complete Python source for code proposals and the requested JSON for voting. Do not explain or use tools."
+        client.response_parser = parse_python_response
     events.emit("run_start", config=dict(vars(args), model=client.model), task_id=args.task_id, domain="coding",
                 public_sha256=hashlib.sha256(public_file.read_bytes()).hexdigest(),
                 private_sha256=hashlib.sha256(private_file.read_bytes()).hexdigest(),

@@ -27,6 +27,7 @@ ARMS = {
     "independent_rounds8": ("independent_rounds", 8, False),
     "democracy8": ("democracy", 8, False), "shared8": ("shared", 8, False),
     "ensemble4_thinking_8k": ("ensemble", 4, True),
+    "ensemble2_thinking_8k": ("ensemble", 2, True),
     **{f"{arm}{n}": (method, n, False) for n in (32, 100)
        for arm, method in (("independent", "independent"), ("democracy", "democracy"), ("shared", "shared"))},
     **{f"cascade{n}": ("cascade", n, False) for n in (8, 32, 100)},
@@ -175,7 +176,7 @@ def execute(case, deadline_seconds=180):
     start = time.monotonic()
     deadline, early, error, returncode, proof_time = False, False, None, None, None
     trace = Path(case["events"])
-    before = server_metrics(case["endpoint"]) if case.get("server_metrics") or case.get("stop_on_solution") else None
+    before = server_metrics(case["endpoint"], timeout=3) if case.get("server_metrics") or case.get("stop_on_solution") else None
     process_start, proof_before_stop = time.monotonic(), False
     with Path(case["stdout"]).open("x") as stdout, Path(case["stderr"]).open("x") as stderr:
         try:
