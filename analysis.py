@@ -89,8 +89,15 @@ def aggregate(arm, rows, planned):
     if any("holdout_status" in r for r in rows):
         result.update(feedback_pass_cases=sum(r.get("feedback_final_status") == "passed" for r in rows),
                       final_holdout_pass_cases=sum(r.get("holdout_status") == "passed" for r in rows))
-        for field in ("feedback_eval_count", "holdout_eval_count", "holdout_passed", "holdout_total", "grader_errors", "grader_infrastructure_errors"):
-            result[field] = sum(r.get(field, 0) for r in rows)
+        for field in ("feedback_eval_count", "holdout_eval_count", "grader_errors", "grader_infrastructure_errors"):
+            result[field] = sum(r.get(field, 0) or 0 for r in rows)
+        for field in ("holdout_passed", "holdout_total"):
+            observed = [r[field] for r in rows if r.get(field) is not None]
+            result[field] = sum(observed) if observed else None
+        covered = sum((r.get("holdout_eval_count") or 0) > 0 for r in rows)
+        known_totals = sum(all(r.get(k) is not None for k in ("holdout_passed", "holdout_total")) for r in rows)
+        result.update(cases_with_holdout_grade=covered, cases_without_holdout_grade=sum(r.get("holdout_eval_count") == 0 for r in rows),
+                      holdout_test_totals_known_cases=known_totals, holdout_test_totals_unknown_cases=n-known_totals)
     return result
 
 

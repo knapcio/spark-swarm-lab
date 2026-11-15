@@ -64,6 +64,46 @@ The [manifest](results/evaluation-v2/arithmetic-s1/manifest.json) covers **592 o
 
 [192-case CSV](results/evaluation-v2/arithmetic-s1/summary.csv) · [metadata/source pins](results/evaluation-v2/arithmetic-s1/metadata.json) · [analysis](results/evaluation-v2/arithmetic-s1/analysis/analysis.json) · [paired task outcomes](results/evaluation-v2/arithmetic-s1/analysis/paired-results.csv) · [accuracy SVG](results/evaluation-v2/arithmetic-s1/analysis/accuracy-wilson95.svg) · [cost SVG](results/evaluation-v2/arithmetic-s1/analysis/success-vs-completion-cost.svg) · [latency SVG](results/evaluation-v2/arithmetic-s1/analysis/case-latency.svg).
 
+## Completed v2 coding — seed 1 of 3, aggregate pending
+
+The second reported v2 cohort contains **18 coding tasks × 6 frozen arms = 108 cases**, seed 1, with [verified complete ledger admission](results/evaluation-v2/coding-s1/analysis/verified-ledger-entry.json), return code 0 and unchanged sources. Together with arithmetic seed 1, this report covers **300 independently audited primary cases**; the full 900-case comparison and separate supplementary controls remain pending. This is a single-seed interim result, with no final winner declaration.
+
+Source is `cbcde299716b7842536b008880a089590e9816f8`, including the amended Python3.12 CPU image and exact static grading-runner hash. All seven source hashes match the frozen files, final hashes and commit blobs. Public/private corpus SHA-256 values match the predeclared selection. The audit verifies public-example, feedback and holdout inputs are disjoint, and checks grade case counts and first-failure input/expected values against the pinned private phase data. Model prompts use public specifications/examples and permitted feedback; the holdout is graded only after candidate selection freezes.
+
+Each case has at most 1024 calls, 131,072 completion tokens and a 180-second controller deadline. OFF calls allow 1024 tokens and the thinking baseline 8192, at temperature 0.8. Direct policies have one round; repair/search policies permit three. Each fixed endpoint/grader-host slot owns one Spark. Whole mixed-arm queue wall is **449.166428s**; per-case wall includes model work, grading and controller/drain overhead and is not per-arm fleet throughput.
+
+| Arm | Agents | Feedback pass cases | Final task successes | Wilson 95% final | Median wall s | p95 wall s |
+|---|---:|---:|---:|---:|---:|---:|
+| Direct (off) | 1 | 13/18 | 12/18 | 43.7–83.7% | 5.402 | 8.807 |
+| Iterative solo | 1 | 16/18 | 16/18 | 67.2–96.9% | 5.436 | 9.910 |
+| Direct (thinking on) | 1 | 17/18 | 17/18 | 74.2–99.0% | 21.609 | 61.763 |
+| Independent 8 | 8 | 18/18 | 18/18 | 82.4–100.0% | 8.567 | 23.225 |
+| Shared memory 8 | 8 | 17/18 | 17/18 | 74.2–99.0% | 6.280 | 23.887 |
+| Democracy 8 | 8 | 18/18 | 18/18 | 82.4–100.0% | 19.278 | 34.912 |
+
+Feedback and final results remain separate: **99/108 cases pass feedback and 98/108 are final task successes**. Exactly **107 candidates are selected and each receives one holdout grade**. One direct-thinking case selects no candidate and has no feedback/holdout grade; it remains unsolved in the 18-case arm denominator, with raw grade fields null. Coverage is explicitly 17/18 for that arm and 18/18 elsewhere. Reported holdout test totals cover only available grades; an entirely ungraded group retains null totals. The offline analyzer's null-handling fix has an edge-case test preserving this denominator and unknown-grade distinction. Frozen model/harness code and raw outcomes are unchanged.
+
+### Observed coding seed-1 costs and protocol audit
+
+| Arm | Calls | Client prompt | Client completion | Unfinished calls | Server prompt | Server completion |
+|---|---:|---:|---:|---:|---:|---:|
+| Direct (off) | 18 | 4,493 | 1,927 | 0 | 4,493 | 1,927 |
+| Iterative solo | 24 | 7,409 | 2,361 | 0 | 7,409 | 2,361 |
+| Direct (thinking on) | 18 | 4,493 | 49,395 | 0 | 4,493 | 49,395 |
+| Independent 8 | 152 | 42,006* | 18,285* | 1 | 42,243 | 18,556 |
+| Shared memory 8 | 160 | 53,944 | 20,408 | 0 | 53,944 | 20,408 |
+| Democracy 8 | 288 | 177,816 | 24,594 | 0 | 177,816 | 24,594 |
+
+Server costs are independently confirmed for **108/108 cases**. Starred client usage is a lower bound because one pending response was stopped after selection. Input/output counts are observed usage rather than equal GPU-cost units. There are 660 request starts and 659 ends, two retained response-format `ValueError` and two `JSONDecodeError` events, two length finishes, and no recorded deadline, budget denial, controller error or grader infrastructure error. All 108 worker `run_end` records are present; one reports pending model work at selection. No OOM or timeout grading event occurred in this cohort; the separate CPU qualification tests cover those resource classifications.
+
+The [independent protocol/cost audit](results/evaluation-v2/coding-s1/analysis/protocol-cost-audit.json) and [audit script](results/evaluation-v2/coding-s1/analysis/protocol-cost-audit.py) verify **295 source artifacts** against SHA-256 and their raw model responses, 247 feedback grades, 48 exact phase/code-cache reuses and 107 single holdout grades. They reconstruct private repair tracks, feedback-only shared facts, review shortlists and semantic vote tallies, and confirm no model start, repair or feedback retry after selection. The pinned grading control flow and report artifacts were audited without re-executing candidate code; adversarial grade-forgery resistance is outside this check.
+
+The [owned-grader boundary receipt](results/evaluation-v2/coding-s1/owned-grader-boundary.json) is verified at **17:32:53 UTC**, after 6.599s, with no owned containers or local coding children remaining. The [manifest](results/evaluation-v2/coding-s1/manifest.json) covers **341 original/derived artifacts**, retaining all negative outputs, parser/grade reports, cache events, source/data hashes and raw null fields, with audited path/interpreter normalization. The [completed ledger entry normalization record](results/evaluation-v2/coding-s1/analysis/verified-ledger-entry-normalizations.json) links its canonical original and exported values. No partial seed-2 outcomes or model APIs were used for this curation.
+
+![Runtime-v2 coding seed 1 of 3 final holdout task success, aggregate pending](results/evaluation-v2/coding-s1/analysis/accuracy-wilson95.png)
+
+[108-case CSV](results/evaluation-v2/coding-s1/summary.csv) · [metadata/source pins](results/evaluation-v2/coding-s1/metadata.json) · [analysis and grade coverage](results/evaluation-v2/coding-s1/analysis/analysis.json) · [paired tasks](results/evaluation-v2/coding-s1/analysis/paired-results.csv) · [accuracy SVG](results/evaluation-v2/coding-s1/analysis/accuracy-wilson95.svg) · [cost SVG](results/evaluation-v2/coding-s1/analysis/success-vs-completion-cost.svg) · [latency SVG](results/evaluation-v2/coding-s1/analysis/case-latency.svg).
+
 ## Preserved runtime-v1 arithmetic seed 1
 
 This is an interim record for [spark-swarm-lab](https://github.com/knapcio/spark-swarm-lab). Only the first completed **arithmetic** cohort is reported here: **24 evaluation tasks × 8 frozen arms = 192 cases**, seed 1. The final three-seed, task-clustered aggregate is pending. These observations do not select or change a method, prompt, budget or configuration, and no winner is declared.

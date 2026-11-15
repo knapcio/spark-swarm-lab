@@ -36,6 +36,24 @@ class AnalysisTests(unittest.TestCase):
         self.assertIsNone(summary["server_completion_tokens_known"])
         self.assertTrue(summary["observed_cost_is_lower_bound"])
 
+    def test_no_candidate_stays_unsolved_in_denominator_and_has_unknown_holdout_totals(self):
+        missing = dict(solved=False, wall_seconds=2, returncode=0, holdout_status=None,
+                       holdout_eval_count=0, holdout_passed=None, holdout_total=None,
+                       feedback_final_status=None, feedback_eval_count=0)
+        passed = dict(solved=True, wall_seconds=1, returncode=0, holdout_status="passed",
+                      holdout_eval_count=1, holdout_passed=6, holdout_total=6,
+                      feedback_final_status="passed", feedback_eval_count=1)
+        summary = analysis.aggregate("direct_thinking", [passed, missing], 2)
+        self.assertEqual((summary["observed_cases"], summary["solved"], summary["success_rate"]), (2, 1, .5))
+        self.assertEqual((summary["holdout_eval_count"], summary["cases_with_holdout_grade"], summary["cases_without_holdout_grade"]), (1, 1, 1))
+        self.assertEqual((summary["holdout_passed"], summary["holdout_total"], summary["holdout_test_totals_known_cases"], summary["holdout_test_totals_unknown_cases"]), (6, 6, 1, 1))
+        ungraded = analysis.aggregate("direct_thinking", [missing], 1)
+        self.assertEqual((ungraded["observed_cases"], ungraded["solved"], ungraded["success_rate"]), (1, 0, 0))
+        self.assertIsNone(ungraded["holdout_passed"])
+        self.assertIsNone(ungraded["holdout_total"])
+        self.assertEqual((ungraded["cases_without_holdout_grade"], ungraded["holdout_test_totals_known_cases"]), (1, 0))
+        self.assertIsNone(missing["holdout_total"])
+
 
 if __name__ == "__main__":
     unittest.main()
