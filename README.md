@@ -23,7 +23,7 @@ that API seeds do not guarantee identical GPU execution.
 
 ## Current evidence
 
-The saved [four-agent DeepSeek pipeline check](runs/pipeline-check-deepseek-4.jsonl)
+The saved four-agent DeepSeek pipeline check (`runs/pipeline-check-deepseek-4.jsonl`, local only)
 made **24 calls**, using **341 completion tokens** and **2,952 prompt tokens**.
 On `2,3,7,8:24`, democracy ended at **31**, so the exact target was not reached.
 This checks the request, voting, evaluator and event pipeline; it is not a
@@ -35,14 +35,16 @@ in **1.759 seconds**, with **1,890 completion tokens** and **1,074.43 completion
 tokens/second** aggregate. Server logs recorded a peak of **25 running requests
 per replica**. This measures short-output serving throughput, not puzzle quality.
 
-The [first 100-agent democracy pilot](runs/20261115-111919-democracy-100.jsonl)
+The [first 100-agent democracy pilot](results/traces/democracy-100-952.jsonl)
 on target 952 completed **1,000 calls**, **16,595 completion tokens** in
 **29.700536 seconds**, with **0 infrastructure failures** and **0 successes**.
 This is one thinking-off run; it establishes neither method superiority nor a
 thinking-on/off comparison. Comparative quality and the value of reputation
-remain unmeasured.
+remain unestablished. See [PILOT.md](PILOT.md) for the independent run, a solved easy case, output-budget failures and included traces.
 
-## Quick start on this workspace
+## Quick start
+
+Run commands from this repository directory (`cd apps/swarm-lab` in the original workspace).
 
 The read-only tree viewer is at http://127.0.0.1:18777 while `server.py` runs.
 Select a run, move the timeline, and click a node to inspect proposals and votes.
@@ -51,12 +53,12 @@ DeepSeek, not a Nemotron result.
 
 ```sh
 # Four loopback SSH forwards to the prototype model servers:
-apps/swarm-lab/connect.sh
+./connect.sh
 # Start the local viewer if it is not already running:
-python3 apps/swarm-lab/server.py --port 18777
+python3 server.py --port 18777
 # In another terminal: method, puzzle, number of agents:
-apps/swarm-lab/play.sh democracy '25,50,75,100,3,6:952' 100
-apps/swarm-lab/play.sh independent '25,50,75,100,3,6:952' 100
+./play.sh democracy '25,50,75,100,3,6:952' 100
+./play.sh independent '25,50,75,100,3,6:952' 100
 ```
 
 `SWARM_CONCURRENCY=8` lowers simultaneous requests per endpoint while keeping
@@ -69,6 +71,16 @@ restore stops only the prototype containers and restores the saved current
 DeepSeek via `~/dsgb10/window.sh prod`. NFS and Spark_05–06 are untouched.
 Prototype containers use restart=no; start them explicitly after a reboot.
 `connect.sh disconnect` closes only this prototype's four SSH forwards.
+
+## Replay without GPUs
+
+```sh
+python3 server.py --runs-dir results/traces --port 18777
+```
+
+This reads the included English pilot traces. Live experiments write to `runs/`.
+`fleet.sh` is the deployment adapter for this particular fleet; the experiment
+harness itself only needs compatible API endpoints.
 
 ## Run
 
@@ -85,18 +97,18 @@ no limit changes automatically. Model alias is `nemotron-lightning`.
 Eight-agent smoke against a single endpoint (replace the address):
 
 ```sh
-python3 apps/swarm-lab/harness.py --method democracy \
+python3 harness.py --method democracy \
   --endpoint http://127.0.0.1:18081/v1 --model nemotron-lightning \
   --agents 8 --per-endpoint-concurrency 4 --rounds 5 \
   --max-tokens 192 --max-calls 80 --max-completion-tokens 15360 \
-  --seed 1 --events apps/swarm-lab/runs/smoke-democracy-8.jsonl
+  --seed 1 --events runs/smoke-democracy-8.jsonl
 ```
 
 One hundred agents across four endpoints, at most eight requests in flight per
 endpoint (replace tunnel ports if needed):
 
 ```sh
-python3 apps/swarm-lab/harness.py --method democracy \
+python3 harness.py --method democracy \
   --endpoint http://127.0.0.1:18081/v1 \
   --endpoint http://127.0.0.1:18082/v1 \
   --endpoint http://127.0.0.1:18083/v1 \
@@ -104,7 +116,7 @@ python3 apps/swarm-lab/harness.py --method democracy \
   --model nemotron-lightning --agents 100 --per-endpoint-concurrency 8 \
   --rounds 5 --max-tokens 192 --max-calls 1000 \
   --max-completion-tokens 192000 --seed 1 \
-  --events apps/swarm-lab/runs/democracy-100.jsonl
+  --events runs/democracy-100.jsonl
 ```
 
 Use `--method independent` and a new events filename for the independent arm.
@@ -135,17 +147,17 @@ there are no hidden retries.
 For calibration, repeat the same four endpoints and other desired runtime flags:
 
 ```sh
-python3 apps/swarm-lab/harness.py --method calibrate \
+python3 harness.py --method calibrate \
   --endpoint http://127.0.0.1:18081/v1 --model nemotron-lightning \
   --agents 8 --rounds 5 --seed 1 \
   --calibration-puzzles '25,50,75,100,2,4:810;25,50,75,100,3,5:650;1,3,7,10,25,50:765' \
-  --reputation apps/swarm-lab/runs/reputation-8.json \
-  --events apps/swarm-lab/runs/calibration-8.jsonl
+  --reputation runs/reputation-8.json \
+  --events runs/calibration-8.jsonl
 
-python3 apps/swarm-lab/harness.py --method weighted \
+python3 harness.py --method weighted \
   --endpoint http://127.0.0.1:18081/v1 --model nemotron-lightning \
-  --agents 8 --seed 1 --reputation apps/swarm-lab/runs/reputation-8.json \
-  --events apps/swarm-lab/runs/weighted-8.jsonl
+  --agents 8 --seed 1 --reputation runs/reputation-8.json \
+  --events runs/weighted-8.jsonl
 ```
 
 A weighted run requires matching model alias, agent count, seed, thinking mode
@@ -201,7 +213,7 @@ endpoint URLs are deliberately omitted from event configuration.
 ## Offline verification
 
 ```sh
-python3 -m unittest discover -s apps/swarm-lab -p 'test_harness.py' -v
+python3 -m unittest discover -s . -p 'test_harness.py' -v
 ```
 
 Tests check exact fractional arithmetic and a known 952 solution, illegal moves,
