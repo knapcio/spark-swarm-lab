@@ -38,7 +38,7 @@ FIELDS = ["task_id", "split", "arm", "seed", "endpoint", "solved", "observed_sol
           "budget_denials", "infrastructure_failures", "response_errors", "length_finishes",
           "returncode", "controller_error", "malformed_lines", "events", "controller_stop",
           "time_to_verified_solution_seconds", "process_wall_seconds", "server_prompt_tokens",
-          "server_completion_tokens", "server_cost_known", "server_idle_after", "drain_seconds",
+          "server_completion_tokens", "server_cost_known", "server_cost_reason", "server_idle_after", "drain_seconds",
           "server_metrics_before", "server_metrics_after"]
 
 
@@ -83,13 +83,49 @@ def server_metrics(endpoint, timeout=.8):
 
 
 def drain(endpoint):
-    start, snapshot = time.monotonic(), {}
+    start, snapshot, first_idle = time.monotonic(), {}, None
     while time.monotonic() - start < 10:
         snapshot = server_metrics(endpoint, min(.8, max(.01, 10 - (time.monotonic() - start))))
         if not snapshot.get("error") and snapshot.get("running") == snapshot.get("waiting") == 0:
-            return snapshot, True, time.monotonic() - start
+            now = time.monotonic()
+            if first_idle is not None and now - first_idle >= .2:
+                return snapshot, True, now - start
+            first_idle = now if first_idle is None else first_idle
+        else:
+            first_idle = None
         time.sleep(min(.2, max(0, 10 - (time.monotonic() - start))))
     return snapshot, (False if "running" in snapshot and "waiting" in snapshot else None), time.monotonic() - start
+
+
+def server_cost(before, after, idle, client):
+    reason = "metrics_unavailable"
+    if before and after and not before.get("error") and not after.get("error"):
+        reason = "endpoint_not_confirmed_idle"
+        if idle and before.get("running") == before.get("waiting") == 0:
+            reason = "missing_or_reset_counters"
+            if all(k in before and k in after and after[k] >= before[k] for k in ("prompt", "completion")):
+                delta = {k: after[k] - before[k] for k in ("prompt", "completion")}
+                if all(delta[k] >= client[k + "_tokens"] for k in delta):
+                    return dict(server_cost_known=True, server_cost_reason="idle_counter_deltas",
+                                server_prompt_tokens=int(delta["prompt"]), server_completion_tokens=int(delta["completion"]))
+                reason = "server_delta_below_completed_client_usage"
+    return dict(server_cost_known=False, server_cost_reason=reason,
+                server_prompt_tokens=None, server_completion_tokens=None)
+
+
+def append_controller_stop(trace, records, row, case):
+    assert not row["solved"] or verified(records)
+    event = dict(event_id=next((r["event_id"] for r in reversed(records) if "event_id" in r), 0) + 1,
+                 timestamp=datetime.now(timezone.utc).isoformat(),
+                 run_id=next((r["run_id"] for r in reversed(records) if "run_id" in r), None),
+                 method=next((r["method"] for r in reversed(records) if "method" in r), None),
+                 type="controller_stop", source="controller", arm=case["arm"])
+    event.update({k: row[k] for k in ("status", "solved", "deadline", "unfinished_calls", "server_cost_known",
+                  "server_cost_reason", "server_prompt_tokens", "server_completion_tokens", "server_idle_after",
+                  "time_to_verified_solution_seconds", "wall_seconds", "returncode")})
+    raw = trace.read_bytes() if trace.exists() else b""
+    with trace.open("ab") as output:
+        output.write((b"\n" if raw and not raw.endswith(b"\n") else b"") + json.dumps(event).encode() + b"\n")
 
 
 def terminate(process):
@@ -169,21 +205,19 @@ def execute(case, deadline_seconds=180):
     if proof_time is None and verified(records):
         proof_time = process_wall
     after, idle, drain_time = drain(case["endpoint"]) if before is not None or early or deadline else (None, None, 0)
-    known = bool(before and after and not before.get("error") and not after.get("error") and idle
-                 and before.get("running") == before.get("waiting") == 0 and all(
-                 key in before and key in after and after[key] >= before[key] for key in ("prompt", "completion")))
     row = {k: case[k] for k in ("task_id", "split", "arm", "seed", "endpoint", "events")}
     row.update(metrics(records, deadline, early), wall_seconds=round(time.monotonic() - start, 6),
                returncode=returncode, controller_error=error, malformed_lines=malformed, controller_stop=early or deadline,
                time_to_verified_solution_seconds=proof_time, process_wall_seconds=round(process_wall, 6),
-               server_prompt_tokens=int(after["prompt"] - before["prompt"]) if known else None,
-               server_completion_tokens=int(after["completion"] - before["completion"]) if known else None,
-               server_cost_known=known, server_idle_after=idle, drain_seconds=round(drain_time, 6),
+               server_idle_after=idle, drain_seconds=round(drain_time, 6),
                server_metrics_before=before, server_metrics_after=after)
+    row.update(server_cost(before, after, idle, row))
     if deadline and not proof_before_stop:
         row["solved"] = False
     if not early and not deadline and (error or returncode != 0):
         row["status"] = "controller_error" if error else "process_error"
+    if row["controller_stop"]:
+        append_controller_stop(trace, records, row, case)
     return row
 
 

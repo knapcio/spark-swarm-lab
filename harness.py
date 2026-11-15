@@ -155,7 +155,7 @@ class Client:
                 material = f"{self.seed}:{agent_id}:{stage}:{prompt}"
                 request_seed = int.from_bytes(hashlib.sha256(material.encode()).digest()[:4], "big")
                 body = dict(model=self.model, messages=[
-                    {"role": "system", "content": "Solve the precise arithmetic task. Return only the requested JSON object. Do not explain or use tools."},
+                    {"role": "system", "content": getattr(self, "system_prompt", "Solve the precise arithmetic task. Return only the requested JSON object. Do not explain or use tools.")},
                     {"role": "user", "content": prompt}], max_tokens=self.max_tokens,
                     temperature=0.8, seed=request_seed, stream=False,
                     chat_template_kwargs={"enable_thinking": self.thinking})
