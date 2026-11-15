@@ -16,6 +16,54 @@ The separate [serving qualification](SERVING.md) completed 416 requests, includi
 
 Each primary cohort will be read for quality analysis only after completion and an explicit `verified:true` receipt in the v2 ledger. Completed-cohort reports will carry interim seed/scope labels. Final task-clustered comparisons await all 900 verified primary cases and the separate supplementary controls; no current winner is declared.
 
+## Completed v2 arithmetic — seed 1 of 3, aggregate pending
+
+This completed cohort contains **24 tasks × 8 frozen arms = 192 cases**, seed 1. Its [ledger receipt](results/evaluation-v2/arithmetic-s1/analysis/verified-ledger-entry.json) has `verified:true`, `valid_for_aggregation:true`, return code 0, complete case coverage and unchanged sources. Producer `cbcde299716b7842536b008880a089590e9816f8` and all seven captured source hashes match the final hashes, frozen files and commit blobs. Runtime SHA-256 is `072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5`, with vLLM v0.32.0, the pinned target/draft and the amended CPU-grader metadata. The public task dataset and predeclared arm list are unchanged; no witness/oracle input was supplied.
+
+Each case retains the 1280-call / 32,768-completion-token ceiling, five rounds and 180-second deadline. Full-plan calls use thinking ON/8192; cheap calls use OFF/192, at temperature 0.8. Four fixed slots own one endpoint each; arm order rotates per task. Whole mixed-arm queue wall is **2169.859601s**, separate from per-case wall and unsuitable for calculating per-arm fleet throughput.
+
+The table follows the predeclared arm order. Wilson intervals describe these 24 single-seed task outcomes only. Final comparisons will retain all seeds within task clusters after the full verified primary study and supplementary controls; this interim table declares no winner and is not pooled with v1.
+
+| Arm | Solved | Wilson 95% | Median wall s | p95 wall s | Length finishes |
+|---|---:|---:|---:|---:|---:|
+| Direct (thinking on, 8k) | 10/24 | 24.5–61.2% | 62.855 | 72.452 | 13 |
+| Full-plan ensemble 2 (on, 8k) | 16/24 | 46.7–82.0% | 78.928 | 95.094 | 17 |
+| Full-plan ensemble 4 (on, 8k) | 17/24 | 50.8–85.1% | 93.804 | 131.056 | 28 |
+| Independent 32 | 6/24 | 12.0–44.9% | 6.286 | 10.165 | 2 |
+| Independent 100 | 6/24 | 12.0–44.9% | 14.519 | 28.453 | 3 |
+| Democracy + guard 32 | 4/24 | 6.7–35.9% | 17.176 | 31.025 | 3 |
+| Shared memory 8 | 3/24 | 4.3–31.0% | 3.528 | 6.123 | 0 |
+| Cascade 32 then direct (on, 8k) | 14/24 | 38.8–75.5% | 67.927 | 83.726 | 12 |
+
+### Observed v2 seed-1 costs
+
+All **192/192 server costs** are independently confirmed from idle endpoint counter deltas, including stopped sibling work. Completed-client totals marked * are lower bounds because some responses were stopped. Tokens measure observed usage, not equal GPU-cost units; server totals cover 24/24 cases per arm.
+
+| Arm | Calls | Client prompt | Client completion | Unfinished calls | Server prompt | Server completion |
+|---|---:|---:|---:|---:|---:|---:|
+| Direct (on, 8k) | 24 | 3,970 | 157,198 | 0 | 3,970 | 157,198 |
+| Full-plan ensemble 2 | 48 | 5,452* | 227,325* | 15 | 7,940 | 307,774 |
+| Full-plan ensemble 4 | 96 | 7,426* | 305,085* | 51 | 15,880 | 530,381 |
+| Independent 32 | 2794 | 323,199* | 38,996* | 141 | 330,403 | 39,803 |
+| Independent 100 | 7976 | 953,469* | 114,734* | 150 | 955,443 | 114,968 |
+| Democracy + guard 32 | 5696 | 1,396,896 | 92,356 | 0 | 1,396,896 | 92,356 |
+| Shared memory 8 | 736 | 89,239 | 10,626 | 0 | 89,239 | 10,626 |
+| Cascade 32 | 2811 | 342,644 | 169,743 | 0 | 342,644 | 169,743 |
+
+No deadline, budget denial, controller error or unexpected process error was recorded. Retained request-format/parser errors comprise **96 `JSONDecodeError` and 68 `ValueError` events**; these are request events rather than case counts. Available final worker infrastructure counts sum to zero, while **44 early-stopped cases have an unknown final worker count**. Unknown counts stay null; expected negative controller-stop exits remain distinct from process failures.
+
+### Independent v2 seed-1 audit and files
+
+The [audit](results/evaluation-v2/arithmetic-s1/analysis/proof-cost-audit.json) and [replay script](results/evaluation-v2/arithmetic-s1/analysis/proof-cost-audit.py) independently checked **16,692 legal `Fraction` transitions**, 365 illegal proposal flags, 307 original-task roots, bounded full-plan response prefixes and all successful legal ancestries. The **131 successful path/reward events** can include several paths within one case. Every successful controller stop has an earlier producer proof. All **20,181 request starts / 19,824 ends** reconcile by unique ID, context, usage, reservation settlement, caps and case budgets. Case commands, selection/amendment timing and source/runtime/grader metadata pins were also checked.
+
+The [manifest](results/evaluation-v2/arithmetic-s1/manifest.json) covers **592 original/derived artifacts** with original/export SHA-256, exact path/interpreter edits and parsed inverse audits. Raw case files are unchanged. Model outputs, failed attempts, reasoning and incomplete-response costs remain present. The completed ledger entry is captured separately with its [normalization audit](results/evaluation-v2/arithmetic-s1/analysis/verified-ledger-entry-normalizations.json); no unfinished cohort's outcomes were read for this report. No model API or active/frozen source edit was performed during curation.
+
+![Runtime-v2 arithmetic seed 1 of 3, aggregate pending](results/evaluation-v2/arithmetic-s1/analysis/accuracy-wilson95.png)
+
+![Runtime-v2 seed-1 completed-client output costs; starred totals are lower bounds](results/evaluation-v2/arithmetic-s1/analysis/success-vs-completion-cost.png)
+
+[192-case CSV](results/evaluation-v2/arithmetic-s1/summary.csv) · [metadata/source pins](results/evaluation-v2/arithmetic-s1/metadata.json) · [analysis](results/evaluation-v2/arithmetic-s1/analysis/analysis.json) · [paired task outcomes](results/evaluation-v2/arithmetic-s1/analysis/paired-results.csv) · [accuracy SVG](results/evaluation-v2/arithmetic-s1/analysis/accuracy-wilson95.svg) · [cost SVG](results/evaluation-v2/arithmetic-s1/analysis/success-vs-completion-cost.svg) · [latency SVG](results/evaluation-v2/arithmetic-s1/analysis/case-latency.svg).
+
 ## Preserved runtime-v1 arithmetic seed 1
 
 This is an interim record for [spark-swarm-lab](https://github.com/knapcio/spark-swarm-lab). Only the first completed **arithmetic** cohort is reported here: **24 evaluation tasks × 8 frozen arms = 192 cases**, seed 1. The final three-seed, task-clustered aggregate is pending. These observations do not select or change a method, prompt, budget or configuration, and no winner is declared.

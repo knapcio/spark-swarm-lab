@@ -1,0 +1,1882 @@
+{
+  "protocol_version": "runtime-v2",
+  "valid_for_aggregation": true,
+  "ledger_entry_verified": true,
+  "ledger_snapshot_sha256": "d8f152bd8c71a98418123a0820d214407c7a19b5ed4b3e044ce3cdff55343b21",
+  "ledger_completed_entry_sha256": "8bab3be7688f21d7e181f2609d5c13c8aec742c29c1b105da3a01ac56c8ac3a5",
+  "runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+  "runtime_snapshot": {
+    "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+    "model_weight_bytes": 21561882284,
+    "model_shards": 52,
+    "image": "vllm/vllm-openai:v0.32.0",
+    "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+    "served_model_name": "nemotron-lightning",
+    "deployment": "4 independent TP1 replicas on GB10",
+    "baseline": {
+      "max_model_len": 16384,
+      "max_num_seqs": 25,
+      "max_num_batched_tokens": 4096,
+      "gpu_memory_utilization": 0.7,
+      "moe_backend": "marlin",
+      "kv_cache_dtype": "fp8",
+      "mamba_backend": "flashinfer",
+      "mamba_cache_mode": "align",
+      "prefix_caching": true,
+      "speculative_decoding": false
+    },
+    "request_defaults": {
+      "temperature": 0.8,
+      "max_tokens": 192,
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      }
+    },
+    "active_recipe": "dspark3-runtime-v2",
+    "dspark": {
+      "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+      "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+      "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+      "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+      "draft_weight_bytes": 1349057504,
+      "draft_weight_files": 1,
+      "draft_mount": "~/swarm-lab/draft:/draft:ro",
+      "method": "dspark",
+      "num_speculative_tokens": 3
+    },
+    "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+    "cache_directory": "~/swarm-lab/cache-v032",
+    "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+    "cpu_grader_python": "3.12.16"
+  },
+  "runtime_amendment_sha256": "a64ac723b1755ac23cdb26d0799c1bd53f2404310d5ed50b423a91745428bcbb",
+  "cpu_grader_amendment_sha256": "91b246e5ca02691444edca06009b70a6121231d965615a5e03c8515c6107e331",
+  "protocol": "independent-arithmetic-audit-v1",
+  "split": "evaluation",
+  "seed": 1,
+  "status": "PASS",
+  "source_commit": "cbcde299716b7842536b008880a089590e9816f8",
+  "source_hashes": {
+    "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+    "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+    "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+    "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+    "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+    "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+    "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+  },
+  "selection_sha256": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
+  "selection_frozen_utc": "2026-11-15T14:05:32.924894+00:00",
+  "cohort_started_utc": "2026-11-15T16:49:07.245083+00:00",
+  "dataset_sha256": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+  "metadata_sha256": "1a856256372a0ea9eda2d77f1b4775783dd20c4b38f9448f1fc62a5c6f7ed60c",
+  "summary_sha256": "17125de66ac40b496509fb9296835b42c4857d395e7efe6d0241bf0e3ef41ec3",
+  "audit_script_sha256": "8c7a1b9ad26184de25b45c27cfd09e3ad38d1e0fb3de3bdea8141e9c69de3a29",
+  "counts": {
+    "roots": 307,
+    "legal_transitions": 16692,
+    "illegal_proposals": 365,
+    "cases": 192,
+    "request_starts": 20181,
+    "request_ends": 19824,
+    "controller_stops": 76,
+    "known_server_cases": 192,
+    "successful_rewards": 131,
+    "bounded_plan_responses": 53,
+    "invalid_plan_responses": 68
+  },
+  "response_error_categories": {
+    "JSONDecodeError": 96,
+    "ValueError": 68
+  },
+  "known_final_worker_infrastructure_total": 0,
+  "unknown_final_worker_infrastructure_counts": 44,
+  "checks": [
+    "All192 planned cases,24tasks8arms seed1; verified fresh-v2 ledger receipt, source/git-blob/dataset/selection/runtime/grader pins and case commands",
+    "Independent Fraction replay of every legal proposal, positive integer intermediates, distinct indices, ordered state consumption",
+    "Every reward independently checks exact target presence; all successful ancestry edges replayed",
+    "Direct/ensemble/cascade plan responses bounded, own-original-root checked, executed moves match response prefix",
+    "Unique global request IDs and request contexts; client usage/charge/errors/caps/denials exactly match traces",
+    "Every successful controller stop has prior producer reward proof; controller is not its own proof",
+    "Server counters independently recomputed; unknown cost remains null",
+    "Public task schema only; pinned runner/harness/source inspection, command/config has no witness/reputation inputs; private witness file not opened"
+  ],
+  "cases": [
+    {
+      "task_id": "eva-8955514173a5",
+      "arm": "independent32",
+      "trace": "eva-8955514173a5-independent32-s1.jsonl",
+      "trace_sha256": "1b3647e14a787908368e9510e16c7796f49db8821bf2fc1c91ed36509280708d",
+      "roots": 1,
+      "legal_transitions": 155,
+      "illegal_proposals": 2
+    },
+    {
+      "task_id": "eva-91cea8bac1fe",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-91cea8bac1fe-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "48cad18c3829d785062cfe69f29abf88c39945c89e0dd5cafcfafad80538f603",
+      "roots": 4,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-8955514173a5",
+      "arm": "independent100",
+      "trace": "eva-8955514173a5-independent100-s1.jsonl",
+      "trace_sha256": "750bb23f96a6645fa51801bcd5dee3132a6fb607644c891fdbb3a479885a850d",
+      "roots": 1,
+      "legal_transitions": 488,
+      "illegal_proposals": 6
+    },
+    {
+      "task_id": "eva-91cea8bac1fe",
+      "arm": "independent32",
+      "trace": "eva-91cea8bac1fe-independent32-s1.jsonl",
+      "trace_sha256": "39b69ab70f25cd0d28489ab4e1c33cf48a7a6865bf8ff2cf8805c4d08540416b",
+      "roots": 1,
+      "legal_transitions": 46,
+      "illegal_proposals": 2,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-91cea8bac1fe",
+      "arm": "independent100",
+      "trace": "eva-91cea8bac1fe-independent100-s1.jsonl",
+      "trace_sha256": "819549f10997e2c20aec66a7d89a53e65037029372daac834a34a7f90736f225",
+      "roots": 1,
+      "legal_transitions": 122,
+      "illegal_proposals": 3,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-91cea8bac1fe",
+      "arm": "democracy32",
+      "trace": "eva-91cea8bac1fe-democracy32-s1.jsonl",
+      "trace_sha256": "9b1ea2b1d1bfae4d2b276bec9ef68f97362d4c6973000fcdee490801c752d801",
+      "roots": 1,
+      "legal_transitions": 62,
+      "illegal_proposals": 2,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-91cea8bac1fe",
+      "arm": "shared8",
+      "trace": "eva-91cea8bac1fe-shared8-s1.jsonl",
+      "trace_sha256": "06e36ea6c072945bc13fa2da8210364669fa8b6334ea0097373b28ba19840443",
+      "roots": 1,
+      "legal_transitions": 24
+    },
+    {
+      "task_id": "eva-8955514173a5",
+      "arm": "democracy32",
+      "trace": "eva-8955514173a5-democracy32-s1.jsonl",
+      "trace_sha256": "db341f78074134b2a4dc0ecc8d59b0d3897f06e5ef75521d1bbbd806c3f3b56a",
+      "roots": 1,
+      "legal_transitions": 157,
+      "illegal_proposals": 3
+    },
+    {
+      "task_id": "eva-c25dd13868a8",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-c25dd13868a8-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "c88e27dba06602d099893130cdb2d1290fee59bdfd77017e42407bbee69954d1",
+      "roots": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-8955514173a5",
+      "arm": "shared8",
+      "trace": "eva-8955514173a5-shared8-s1.jsonl",
+      "trace_sha256": "1cb91c088c4ed5ab6e57940cfb41ec418b1b810f7460454a9fbbc6ad1694ccb4",
+      "roots": 1,
+      "legal_transitions": 39,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-4a5b112b29e0",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-4a5b112b29e0-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "c36bcbb010d0b4b743914dec572c736a758a605e8d0ce4b22fc669b2b0881185",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-4a5b112b29e0",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-4a5b112b29e0-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "cd83997f0bc797a0522c6e27cae5099ea43fcf4eefc193b2b9ea71380e0e014b",
+      "roots": 4,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-91cea8bac1fe",
+      "arm": "cascade32",
+      "trace": "eva-91cea8bac1fe-cascade32-s1.jsonl",
+      "trace_sha256": "7d367cf82c7f594127141d43690277df070926364252e2b832834edbdb3f1265",
+      "roots": 2,
+      "legal_transitions": 84,
+      "illegal_proposals": 4,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-4a5b112b29e0",
+      "arm": "independent32",
+      "trace": "eva-4a5b112b29e0-independent32-s1.jsonl",
+      "trace_sha256": "67c324ddfd3294fc94d95edd3a063d49d9a56b1c43e6f8ac83cb5d227e6fd6d4",
+      "roots": 1,
+      "legal_transitions": 131,
+      "illegal_proposals": 7
+    },
+    {
+      "task_id": "eva-8955514173a5",
+      "arm": "cascade32",
+      "trace": "eva-8955514173a5-cascade32-s1.jsonl",
+      "trace_sha256": "b07e8ead142f9a100025610776e21ebaa7a6311777afc7a5b3c6f7ffdbb51c8b",
+      "roots": 2,
+      "legal_transitions": 156,
+      "illegal_proposals": 2,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-c25dd13868a8",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-c25dd13868a8-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "8a35099f1f49625f16567d20f048407f1ac42e4a24fc5ddea02731a90e7ca1c1",
+      "roots": 2,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-4a5b112b29e0",
+      "arm": "independent100",
+      "trace": "eva-4a5b112b29e0-independent100-s1.jsonl",
+      "trace_sha256": "2fc592c30638633323ea327ad0fa5cea14c6f9089b76e8dfaab9fa48523d10cb",
+      "roots": 1,
+      "legal_transitions": 439,
+      "illegal_proposals": 18
+    },
+    {
+      "task_id": "eva-4a5b112b29e0",
+      "arm": "democracy32",
+      "trace": "eva-4a5b112b29e0-democracy32-s1.jsonl",
+      "trace_sha256": "b65a51bbdd18ab15d18a202cbdf1e0bc67c0e0363b3144e43b978e4a5096d9da",
+      "roots": 1,
+      "legal_transitions": 154,
+      "illegal_proposals": 6
+    },
+    {
+      "task_id": "eva-4a5b112b29e0",
+      "arm": "shared8",
+      "trace": "eva-4a5b112b29e0-shared8-s1.jsonl",
+      "trace_sha256": "89ac34ae21687651f0a32b73f4fbd0eaf8fe115a41870473401e00934a6efcba",
+      "roots": 1,
+      "legal_transitions": 38,
+      "illegal_proposals": 2
+    },
+    {
+      "task_id": "eva-91cea8bac1fe",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-91cea8bac1fe-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "fc175b139ddbe4ab106674ef2bb1584ee7eb7a7b5cc6c5760e2651c6acae34c3",
+      "roots": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-8955514173a5",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-8955514173a5-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "b49eee7674b529ec3f1937b1a25670d3b0e53c0469e7efcb9685e0bd6ef90845",
+      "roots": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-4a5b112b29e0",
+      "arm": "cascade32",
+      "trace": "eva-4a5b112b29e0-cascade32-s1.jsonl",
+      "trace_sha256": "e034e8198c0533f90716dcdde5cdf5826626965779e6092ce1dceeb94374cefb",
+      "roots": 2,
+      "illegal_proposals": 11,
+      "legal_transitions": 129,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-c25dd13868a8",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-c25dd13868a8-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "9da56e2fac8e2e073b81b3252cef7dcaf25676a3cb1990bc78b4abefeba18961",
+      "roots": 4,
+      "invalid_plan_responses": 4
+    },
+    {
+      "task_id": "eva-8955514173a5",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-8955514173a5-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "8823cddc3cd5e0a452630af015ce26ceca3dd74fd2b01c90f84859dab2ad5d68",
+      "roots": 2,
+      "legal_transitions": 4,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-c25dd13868a8",
+      "arm": "independent32",
+      "trace": "eva-c25dd13868a8-independent32-s1.jsonl",
+      "trace_sha256": "0c0855efbf7efc10cfec34d460d2f99b70ed14c431f4a6d5cd469e4bd1bf689b",
+      "roots": 1,
+      "legal_transitions": 93,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-91cea8bac1fe",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-91cea8bac1fe-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "b9d2e90600f10344c7df6ca5fbb38924a18a127970da2886253200525daad06a",
+      "roots": 2,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-5f7e8610aa71",
+      "arm": "shared8",
+      "trace": "eva-5f7e8610aa71-shared8-s1.jsonl",
+      "trace_sha256": "39fce467c8e2d1518f7f863257754852061a68a53df9bb51e1c77c0fe7b8ffa5",
+      "roots": 1,
+      "legal_transitions": 23,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-4a5b112b29e0",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-4a5b112b29e0-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "34dc2276a2193b9167d81ab8d28ace6bcd904a4e7ff810b4a49ff3a37fcd3522",
+      "roots": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-c25dd13868a8",
+      "arm": "independent100",
+      "trace": "eva-c25dd13868a8-independent100-s1.jsonl",
+      "trace_sha256": "901cac1b05fb982534c47205dafdff72d199a3272e4b3b3b47a4a657fc0d879c",
+      "roots": 1,
+      "legal_transitions": 285,
+      "illegal_proposals": 5
+    },
+    {
+      "task_id": "eva-c25dd13868a8",
+      "arm": "democracy32",
+      "trace": "eva-c25dd13868a8-democracy32-s1.jsonl",
+      "trace_sha256": "daec7e491d77e68901bd9c82c99d5e0358116aee9ef185155e2874c87fba3b2e",
+      "roots": 1,
+      "legal_transitions": 94,
+      "illegal_proposals": 2
+    },
+    {
+      "task_id": "eva-c25dd13868a8",
+      "arm": "shared8",
+      "trace": "eva-c25dd13868a8-shared8-s1.jsonl",
+      "trace_sha256": "7a0a3580e703bc9de8ca7ae5c654e6a1e42eb358ecbae389a5ab9ac776363a2b",
+      "roots": 1,
+      "legal_transitions": 24
+    },
+    {
+      "task_id": "eva-27c0dd95407a",
+      "arm": "democracy32",
+      "trace": "eva-27c0dd95407a-democracy32-s1.jsonl",
+      "trace_sha256": "544f66badf421583e1681e0530304cfb9a6048134cd404cb245f9e8eb5e92dca",
+      "roots": 1,
+      "legal_transitions": 156,
+      "illegal_proposals": 4
+    },
+    {
+      "task_id": "eva-27c0dd95407a",
+      "arm": "shared8",
+      "trace": "eva-27c0dd95407a-shared8-s1.jsonl",
+      "trace_sha256": "14d67a15a261a7f945c689abc5abc4cfb53520b00b8551091f29a3f9b48c373f",
+      "roots": 1,
+      "legal_transitions": 40
+    },
+    {
+      "task_id": "eva-5f7e8610aa71",
+      "arm": "cascade32",
+      "trace": "eva-5f7e8610aa71-cascade32-s1.jsonl",
+      "trace_sha256": "92ab6db20bbdb53babfa08edab6764de1f73ea8a2f60db64d4c8060a21dcef52",
+      "roots": 2,
+      "legal_transitions": 81,
+      "illegal_proposals": 5,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-c25dd13868a8",
+      "arm": "cascade32",
+      "trace": "eva-c25dd13868a8-cascade32-s1.jsonl",
+      "trace_sha256": "5ba45981f551dafa9fd64fedad0e16fb03879527a31e38b0c143191e522b61c3",
+      "roots": 2,
+      "illegal_proposals": 3,
+      "legal_transitions": 89,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-6b194524eb19",
+      "arm": "independent100",
+      "trace": "eva-6b194524eb19-independent100-s1.jsonl",
+      "trace_sha256": "a52027d951c7bdfcef7a02bac45492b729d9079328a0736ab4cad8ccfe6708f2",
+      "roots": 1,
+      "legal_transitions": 43,
+      "successful_rewards": 2,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-6b194524eb19",
+      "arm": "democracy32",
+      "trace": "eva-6b194524eb19-democracy32-s1.jsonl",
+      "trace_sha256": "b23adda12c51b10f035c98e09ceb870aef69232f4203ab5bc29fb45541bcff87",
+      "roots": 1,
+      "legal_transitions": 63,
+      "illegal_proposals": 1,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-6b194524eb19",
+      "arm": "shared8",
+      "trace": "eva-6b194524eb19-shared8-s1.jsonl",
+      "trace_sha256": "6d8e318b5f55964dccc9c4832954f9295db0401ac28ca098169b62c662be2587",
+      "roots": 1,
+      "legal_transitions": 16,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-6b194524eb19",
+      "arm": "cascade32",
+      "trace": "eva-6b194524eb19-cascade32-s1.jsonl",
+      "trace_sha256": "2f0046bbf1fc8239be7a9baaa2b7ac64b15cc3bc8394bcad4bcab5e8ede98ae1",
+      "roots": 1,
+      "legal_transitions": 62,
+      "illegal_proposals": 1,
+      "successful_rewards": 11
+    },
+    {
+      "task_id": "eva-27c0dd95407a",
+      "arm": "cascade32",
+      "trace": "eva-27c0dd95407a-cascade32-s1.jsonl",
+      "trace_sha256": "ad6a3000420a8deb9abbbf747eb653b6c476329f7a29946b72126f056e9bb1d9",
+      "roots": 2,
+      "legal_transitions": 151,
+      "illegal_proposals": 5,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-8955514173a5",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-8955514173a5-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "e50b1f680c3e57bd5b464a8e587d9457eee2172bcccc4050a7e92d61e72ac645",
+      "roots": 4,
+      "invalid_plan_responses": 4
+    },
+    {
+      "task_id": "eva-5f7e8610aa71",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-5f7e8610aa71-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "14efdf9de375b5029f9d4bd96fcd5593694abb087959605898c45f343421ad3b",
+      "roots": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-6b194524eb19",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-6b194524eb19-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "1b93efa642b467647cd4e2bc378b1cde9edd9ad003204bd81fb0805e093558d8",
+      "roots": 1,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-27c0dd95407a",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-27c0dd95407a-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "38861c9725b5644559e693ecb9010de8e96b2f657c0c01a6dfa2ca4caa993158",
+      "roots": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-2894f3b286c6",
+      "arm": "cascade32",
+      "trace": "eva-2894f3b286c6-cascade32-s1.jsonl",
+      "trace_sha256": "3f3d2f8a2ec445e74a8c4d25b7098d83e0b5958cc57515ad92c5ed693be22b76",
+      "roots": 2,
+      "legal_transitions": 146,
+      "illegal_proposals": 4,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-5f7e8610aa71",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-5f7e8610aa71-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "5a8da2d85699e65e3d44f80ba50b4e7aae3889f126e8f5ac1b2a33f2a6ffe89a",
+      "roots": 2,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-27c0dd95407a",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-27c0dd95407a-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "d3536bf7ac6198787e57e3f5e177d319aac57943cb13409ec9de68e40ca8aa50",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-6b194524eb19",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-6b194524eb19-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "7549a2a69dcf33179faabe139ab181f47f8181dd5af6ddd038916b083e9dd549",
+      "roots": 2,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-2894f3b286c6",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-2894f3b286c6-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "b8046252090d98cb6e42659804289492aa00a46c32e8cc8bae761f85cb4acc56",
+      "roots": 1,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-5f7e8610aa71",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-5f7e8610aa71-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "66829b6e74e1b8753c78743a7d8c369b117228a8baf4a6efa912676762269820",
+      "roots": 4,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-5f7e8610aa71",
+      "arm": "independent32",
+      "trace": "eva-5f7e8610aa71-independent32-s1.jsonl",
+      "trace_sha256": "0deefee59f1c8ff2688b25388f64edfe7227b73a1eea0c5587b908c08715291a",
+      "roots": 1,
+      "legal_transitions": 84,
+      "illegal_proposals": 4
+    },
+    {
+      "task_id": "eva-27c0dd95407a",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-27c0dd95407a-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "5449e84a434cb6131461fc0962144b51fd5da603e96d0f6145b36ac0349c88af",
+      "roots": 4,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-5f7e8610aa71",
+      "arm": "independent100",
+      "trace": "eva-5f7e8610aa71-independent100-s1.jsonl",
+      "trace_sha256": "4f1c95024241c22b1ae62ab48176c5dadda0859fb4e94bb6c752d6156ead1d00",
+      "roots": 1,
+      "illegal_proposals": 12,
+      "legal_transitions": 268
+    },
+    {
+      "task_id": "eva-27c0dd95407a",
+      "arm": "independent32",
+      "trace": "eva-27c0dd95407a-independent32-s1.jsonl",
+      "trace_sha256": "10cde1f084ae302d63217139956b3c717c8b218c6e3ea73f6e74578e4d603804",
+      "roots": 1,
+      "legal_transitions": 152,
+      "illegal_proposals": 4
+    },
+    {
+      "task_id": "eva-2894f3b286c6",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-2894f3b286c6-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "ace0d4caa8d08e291929d003c2155490c4d822f3ecd77e4bd0135e42514d93bb",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-5f7e8610aa71",
+      "arm": "democracy32",
+      "trace": "eva-5f7e8610aa71-democracy32-s1.jsonl",
+      "trace_sha256": "577b867ec77f0cd59070cd43cb509e125abec1f22e721b666d62c19fccd496bc",
+      "roots": 1,
+      "legal_transitions": 89,
+      "illegal_proposals": 7
+    },
+    {
+      "task_id": "eva-27c0dd95407a",
+      "arm": "independent100",
+      "trace": "eva-27c0dd95407a-independent100-s1.jsonl",
+      "trace_sha256": "392a5a105052f01ea472ca4a1850332c6382cb516322acf315764e155dfecb94",
+      "roots": 1,
+      "legal_transitions": 458,
+      "illegal_proposals": 16
+    },
+    {
+      "task_id": "eva-6b194524eb19",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-6b194524eb19-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "a9bc9f28600113b75c191dc5fd5dbf0c2401c8b7f4599f4cc4bc7dbb7e76fdd2",
+      "roots": 4,
+      "invalid_plan_responses": 4
+    },
+    {
+      "task_id": "eva-6b194524eb19",
+      "arm": "independent32",
+      "trace": "eva-6b194524eb19-independent32-s1.jsonl",
+      "trace_sha256": "f6f83b92d19bf8f75a1955616f3802bdf0d84cadf0592bf5c889d6d0157b48e2",
+      "roots": 1,
+      "legal_transitions": 52,
+      "successful_rewards": 6
+    },
+    {
+      "task_id": "eva-d75177564d41",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-d75177564d41-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "19c8b09677ef9ff8a5bf4c6af4fe6627a2f24a1c4420c56aec43e242b15e856e",
+      "roots": 1,
+      "legal_transitions": 2,
+      "illegal_proposals": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-2894f3b286c6",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-2894f3b286c6-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "ad0861fe8340a7e6ee144a11caa7e984bd043423d3632203f6ee4d6f0c76cd4b",
+      "roots": 4,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-2894f3b286c6",
+      "arm": "independent32",
+      "trace": "eva-2894f3b286c6-independent32-s1.jsonl",
+      "trace_sha256": "f98a210ad73dd3f620987953d0283d75a1d8c11e4b0565810310e31cc0349795",
+      "roots": 1,
+      "legal_transitions": 143,
+      "illegal_proposals": 5
+    },
+    {
+      "task_id": "eva-f087ad404500",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-f087ad404500-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "77d88cb24f5594631b9c525d0ebfdfcb496fa3fa9fe37ed3b91052f86c50ebfe",
+      "roots": 4,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-d75177564d41",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-d75177564d41-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "296f42f00c29fc708488079df85439d0da1b77b4e108d2acffdb0c2f12c7c5c5",
+      "roots": 2,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-f087ad404500",
+      "arm": "independent32",
+      "trace": "eva-f087ad404500-independent32-s1.jsonl",
+      "trace_sha256": "d1b5227c89d5a4fd4619adb75837a59b2a28b508b62ada8a80aca7e196c85583",
+      "roots": 1,
+      "legal_transitions": 93,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-2894f3b286c6",
+      "arm": "independent100",
+      "trace": "eva-2894f3b286c6-independent100-s1.jsonl",
+      "trace_sha256": "c7c4ede4a127d27d03ae4d188fda8c0ac54da6236915f41b66ca299d3d326f25",
+      "roots": 1,
+      "legal_transitions": 452,
+      "illegal_proposals": 14
+    },
+    {
+      "task_id": "eva-f087ad404500",
+      "arm": "independent100",
+      "trace": "eva-f087ad404500-independent100-s1.jsonl",
+      "trace_sha256": "400c7c5b874de8f9868b3cd7e67a5740ad0ec6dfa6cdb00eaf869399b50a474d",
+      "roots": 1,
+      "legal_transitions": 292,
+      "illegal_proposals": 3
+    },
+    {
+      "task_id": "eva-17c359789b49",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-17c359789b49-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "afb2fbe263b8077885faa162453a4ad461e9e0a7f9d82020d96374efb640562a",
+      "roots": 2,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-f087ad404500",
+      "arm": "democracy32",
+      "trace": "eva-f087ad404500-democracy32-s1.jsonl",
+      "trace_sha256": "4a47f463a8481c2ab65f21e7c0688e6a3d41e97ae5c2ff5cc42084b190967b02",
+      "roots": 1,
+      "legal_transitions": 95,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-f087ad404500",
+      "arm": "shared8",
+      "trace": "eva-f087ad404500-shared8-s1.jsonl",
+      "trace_sha256": "cd61504740314c7ebb14072bdab8a7c834c80600b213c6e2dbca2bb97903faa9",
+      "roots": 1,
+      "legal_transitions": 24
+    },
+    {
+      "task_id": "eva-2894f3b286c6",
+      "arm": "democracy32",
+      "trace": "eva-2894f3b286c6-democracy32-s1.jsonl",
+      "trace_sha256": "4a1f443ba6f6274763e79d22d89c7bc7b438e89d4ba0e2f1f4bbe4ee08ec8b52",
+      "roots": 1,
+      "legal_transitions": 152,
+      "illegal_proposals": 8
+    },
+    {
+      "task_id": "eva-d75177564d41",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-d75177564d41-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "e8b7a40f8e32feaad9f135c8b23e86dc13fb0f95ed5f9baaff44054eb91917e9",
+      "roots": 4,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-2894f3b286c6",
+      "arm": "shared8",
+      "trace": "eva-2894f3b286c6-shared8-s1.jsonl",
+      "trace_sha256": "d3ce52052642f1b2e9e880578ebfd69d68ba87634804acac11eefddb1e59b216",
+      "roots": 1,
+      "legal_transitions": 39,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-d75177564d41",
+      "arm": "independent32",
+      "trace": "eva-d75177564d41-independent32-s1.jsonl",
+      "trace_sha256": "9a82f361c2c3f835e7377856afe73dc3a813d0a0243eee7e466d0a562bb201fa",
+      "roots": 1,
+      "legal_transitions": 67,
+      "illegal_proposals": 4,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-6ce1a0614ff5",
+      "arm": "independent32",
+      "trace": "eva-6ce1a0614ff5-independent32-s1.jsonl",
+      "trace_sha256": "178305611fd2291a9aaa3554fef779ac9c178f4c5e87c28bef5dde6f5f8329f8",
+      "roots": 1,
+      "legal_transitions": 29,
+      "illegal_proposals": 1,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-6ce1a0614ff5",
+      "arm": "independent100",
+      "trace": "eva-6ce1a0614ff5-independent100-s1.jsonl",
+      "trace_sha256": "bb9c0ed3034d30d6897f79ad168021379b922480c99956f382386adcbef17d1f",
+      "roots": 1,
+      "legal_transitions": 73,
+      "illegal_proposals": 2,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-d75177564d41",
+      "arm": "independent100",
+      "trace": "eva-d75177564d41-independent100-s1.jsonl",
+      "trace_sha256": "679a37d96beaa8e01d4f876450e7e3bd3dad0363ba00f8fd8ff34e5b4b168238",
+      "roots": 1,
+      "legal_transitions": 165,
+      "illegal_proposals": 10,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-6ce1a0614ff5",
+      "arm": "democracy32",
+      "trace": "eva-6ce1a0614ff5-democracy32-s1.jsonl",
+      "trace_sha256": "031e356d43769bd8cc5b4ccb5d4ec6a0d1e3a233dc3ca2f35b46d02dd3c7780b",
+      "roots": 1,
+      "legal_transitions": 63,
+      "illegal_proposals": 1,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-6ce1a0614ff5",
+      "arm": "shared8",
+      "trace": "eva-6ce1a0614ff5-shared8-s1.jsonl",
+      "trace_sha256": "8e4c49d9dc5e1cb64107e692f1d9c9336c76899d795f012f192a549e06bf25ba",
+      "roots": 1,
+      "legal_transitions": 15,
+      "illegal_proposals": 1,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-6ce1a0614ff5",
+      "arm": "cascade32",
+      "trace": "eva-6ce1a0614ff5-cascade32-s1.jsonl",
+      "trace_sha256": "1c41cd97ce8a719fbf8ac32b5cc11883a64914ee6ed0c64330c9010e83275392",
+      "roots": 1,
+      "legal_transitions": 64,
+      "successful_rewards": 3
+    },
+    {
+      "task_id": "eva-d75177564d41",
+      "arm": "democracy32",
+      "trace": "eva-d75177564d41-democracy32-s1.jsonl",
+      "trace_sha256": "fe63b3675755c74aaaf763ecf5dc11fedb58b665239d0c042f1324e556d65548",
+      "roots": 1,
+      "legal_transitions": 88,
+      "illegal_proposals": 8
+    },
+    {
+      "task_id": "eva-d75177564d41",
+      "arm": "shared8",
+      "trace": "eva-d75177564d41-shared8-s1.jsonl",
+      "trace_sha256": "4b348a52fe760796da2dab6109a518accbb2f2dfd62cd5fa657cecd0ea4987b3",
+      "roots": 1,
+      "legal_transitions": 24
+    },
+    {
+      "task_id": "eva-d75177564d41",
+      "arm": "cascade32",
+      "trace": "eva-d75177564d41-cascade32-s1.jsonl",
+      "trace_sha256": "eb87402b0dc54024a4447a3c6868e66169ee7e6a638e5611b526efa7a095c480",
+      "roots": 1,
+      "legal_transitions": 83,
+      "illegal_proposals": 6,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-8c04e7fa4008",
+      "arm": "independent100",
+      "trace": "eva-8c04e7fa4008-independent100-s1.jsonl",
+      "trace_sha256": "e404a68ef92e5b9470a6c2ce183dd170c5e6fc4c290db1b9991ee8b9551ece82",
+      "roots": 1,
+      "legal_transitions": 286,
+      "illegal_proposals": 5
+    },
+    {
+      "task_id": "eva-f087ad404500",
+      "arm": "cascade32",
+      "trace": "eva-f087ad404500-cascade32-s1.jsonl",
+      "trace_sha256": "2d45c250e84e9502a8e92bd803c5f6517174804354c0054632902ba9eeedea70",
+      "roots": 2,
+      "legal_transitions": 96,
+      "illegal_proposals": 1,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-8c04e7fa4008",
+      "arm": "democracy32",
+      "trace": "eva-8c04e7fa4008-democracy32-s1.jsonl",
+      "trace_sha256": "7f0cc176f393bdb9ea85433909f6c2dde511748720bed81dc64670add76da570",
+      "roots": 1,
+      "legal_transitions": 92,
+      "illegal_proposals": 4
+    },
+    {
+      "task_id": "eva-8c04e7fa4008",
+      "arm": "shared8",
+      "trace": "eva-8c04e7fa4008-shared8-s1.jsonl",
+      "trace_sha256": "bf1f88ce13dadaa380372860b4e5c4d6ce684b8b228692536baa9c3b7544f8a1",
+      "roots": 1,
+      "legal_transitions": 23,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-6ce1a0614ff5",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-6ce1a0614ff5-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "9e7cf88e4fbd460a7f933c2bbaef438fc6a612f0ab3e3da36bfd40c4aa120b8b",
+      "roots": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-17c359789b49",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-17c359789b49-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "5d8ba4e42a5e01e60e609b61340237710f1aa906382f2703c86bd5ee3a52fe62",
+      "roots": 4,
+      "legal_transitions": 5,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-f087ad404500",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-f087ad404500-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "f67e081ee468f9d6c061ebc9182876737b49f52fd716f5ccd6484da34205aba7",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-17c359789b49",
+      "arm": "independent32",
+      "trace": "eva-17c359789b49-independent32-s1.jsonl",
+      "trace_sha256": "455c0bb2984191602cd6a7d53f1b5e17cfb6135348527eef37e5fe06385b67dd",
+      "roots": 1,
+      "legal_transitions": 151,
+      "illegal_proposals": 2
+    },
+    {
+      "task_id": "eva-17c359789b49",
+      "arm": "independent100",
+      "trace": "eva-17c359789b49-independent100-s1.jsonl",
+      "trace_sha256": "036577c8033842564cb1bc95d955b0275db6bc16ae4955b4ac6ba42b8d0d4ebd",
+      "roots": 1,
+      "illegal_proposals": 5,
+      "legal_transitions": 485
+    },
+    {
+      "task_id": "eva-8c04e7fa4008",
+      "arm": "cascade32",
+      "trace": "eva-8c04e7fa4008-cascade32-s1.jsonl",
+      "trace_sha256": "f4942a879fe4855f4d17c3c0df80adfc6fa89b84078c60dda3a3bb7c1b9f8d99",
+      "roots": 2,
+      "legal_transitions": 91,
+      "illegal_proposals": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-6ce1a0614ff5",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-6ce1a0614ff5-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "659dc8b3063860bcaa5e6a705be2b73d1bdd80cd117b8e332064616bbdbcdba6",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-f087ad404500",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-f087ad404500-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "5e2412b0ab5e7b4061dc8b6d33601af0b6913628425ae885533cfe7d508de6d0",
+      "roots": 2,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-f792236a99ed",
+      "arm": "shared8",
+      "trace": "eva-f792236a99ed-shared8-s1.jsonl",
+      "trace_sha256": "363a0cafabac5e3ac71b05a3ffb38db8e91073eae88cc5dfe1694a3250f6e68b",
+      "roots": 1,
+      "legal_transitions": 24
+    },
+    {
+      "task_id": "eva-17c359789b49",
+      "arm": "democracy32",
+      "trace": "eva-17c359789b49-democracy32-s1.jsonl",
+      "trace_sha256": "f58d3076c929aada2d98b5ad765c5670b1b1fa7a6f0eb14842904ee47a260bbc",
+      "roots": 1,
+      "legal_transitions": 159,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-17c359789b49",
+      "arm": "shared8",
+      "trace": "eva-17c359789b49-shared8-s1.jsonl",
+      "trace_sha256": "0052186bc1aa1fa9dcf7d107852deb86a12bb49404d12a28264adfc84e22dc74",
+      "roots": 1,
+      "legal_transitions": 40
+    },
+    {
+      "task_id": "eva-8c04e7fa4008",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-8c04e7fa4008-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "07a01ee430eb63b7bc9f1011f092ebb1d162ce05c5e7cc957c9b4483e391b47c",
+      "roots": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-f792236a99ed",
+      "arm": "cascade32",
+      "trace": "eva-f792236a99ed-cascade32-s1.jsonl",
+      "trace_sha256": "749bd408a317893c8ba1070e49de2feefa7badc3d8daa15539def00747fe247e",
+      "roots": 2,
+      "legal_transitions": 96,
+      "illegal_proposals": 1,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-6ce1a0614ff5",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-6ce1a0614ff5-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "2a98e5b3fce783b0864bb8c1cff3a907b12916a18f2a551041835c5611ea57fd",
+      "roots": 4,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-17c359789b49",
+      "arm": "cascade32",
+      "trace": "eva-17c359789b49-cascade32-s1.jsonl",
+      "trace_sha256": "3a44171d0269ac4563c6afbd2135e6038462f0fae4ae553805df6b29ae26ecce",
+      "roots": 2,
+      "legal_transitions": 155,
+      "illegal_proposals": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-8c04e7fa4008",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-8c04e7fa4008-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "035f0887238c61d0cdd42ab6e20a53202d5fc620ac0f8fab685481ee466da33a",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-f792236a99ed",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-f792236a99ed-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "5e06b696af5829b5236b2f8032d160c82430da96e1d55272befad50d400e973c",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-f792236a99ed",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-f792236a99ed-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "ea430c1bd6ab7b166af59f30c39c9bc8825abc99f259a60ce60ea442fa88c52b",
+      "roots": 2,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-17c359789b49",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-17c359789b49-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "9db9908a180ffea076a09d5a9decaa47984ad8ecdf2b2b0c318ab7e0a9d00ac6",
+      "roots": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-e40959c347a7",
+      "arm": "cascade32",
+      "trace": "eva-e40959c347a7-cascade32-s1.jsonl",
+      "trace_sha256": "07f5a06fa94c23e17be3a8dd183ca5d86af8902f6e5cd92616f204fb647521b9",
+      "roots": 2,
+      "legal_transitions": 160,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-3b1047ffeb08",
+      "arm": "democracy32",
+      "trace": "eva-3b1047ffeb08-democracy32-s1.jsonl",
+      "trace_sha256": "cd557c64262696b8476b078478c01f1c3f88f4da6570edfc799924383906d2a2",
+      "roots": 1,
+      "legal_transitions": 159,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-3b1047ffeb08",
+      "arm": "shared8",
+      "trace": "eva-3b1047ffeb08-shared8-s1.jsonl",
+      "trace_sha256": "a3d10b26c5cf50e10a75e8fd63114c086b26c655555c3c5cb960ff5ab14c5975",
+      "roots": 1,
+      "legal_transitions": 40
+    },
+    {
+      "task_id": "eva-8c04e7fa4008",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-8c04e7fa4008-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "e46b0cc055f276a1798eb896a91c5ff89b820e5ff99f66fc2f56b98f492faffb",
+      "roots": 4,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-8c04e7fa4008",
+      "arm": "independent32",
+      "trace": "eva-8c04e7fa4008-independent32-s1.jsonl",
+      "trace_sha256": "2a68eebb5d5cdc9e93f4fe969a4cd8b89d39d18fd9fdf5035faca8dce1459e3e",
+      "roots": 1,
+      "illegal_proposals": 2,
+      "legal_transitions": 90
+    },
+    {
+      "task_id": "eva-f792236a99ed",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-f792236a99ed-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "337397e0a4c9c11a6f4e925f1b0e955b5eeba24edba766bdd380c153257ca4aa",
+      "roots": 4,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-f792236a99ed",
+      "arm": "independent32",
+      "trace": "eva-f792236a99ed-independent32-s1.jsonl",
+      "trace_sha256": "2c54c31e3f5d1a2e0d25ccedb1de80c7b7fe0995de9678a0058a6970378926d9",
+      "roots": 1,
+      "legal_transitions": 96
+    },
+    {
+      "task_id": "eva-66b495db2b77",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-66b495db2b77-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "cdfa64bb2a38c4dae721b0c0aae734d927946d93777ac38e7c6a5dd403676a79",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-f792236a99ed",
+      "arm": "independent100",
+      "trace": "eva-f792236a99ed-independent100-s1.jsonl",
+      "trace_sha256": "514d04665a1d5c2fac16a8daac1fa9b1c7fad599ac020a42ef3523571fcc32a4",
+      "roots": 1,
+      "legal_transitions": 289,
+      "illegal_proposals": 4
+    },
+    {
+      "task_id": "eva-e40959c347a7",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-e40959c347a7-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "4689921e30fc97ea147b16720968e2e0ab8023752c2ec3cae60942e874cbcdc3",
+      "roots": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-f792236a99ed",
+      "arm": "democracy32",
+      "trace": "eva-f792236a99ed-democracy32-s1.jsonl",
+      "trace_sha256": "42e20075ad631b799a764ba292af32bde026573c854760cdec9be8bc6cfbb392",
+      "roots": 1,
+      "legal_transitions": 93,
+      "illegal_proposals": 3
+    },
+    {
+      "task_id": "eva-66b495db2b77",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-66b495db2b77-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "4c40bdda8ccb1d0e3ba4438f183d69f716a71a6bd7a2e63686dc0c56ae5f6925",
+      "roots": 2,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-3b1047ffeb08",
+      "arm": "cascade32",
+      "trace": "eva-3b1047ffeb08-cascade32-s1.jsonl",
+      "trace_sha256": "c4ff046fc0988b3fb6b24157aec6447c800265397561095f30eed037f009d7f2",
+      "roots": 2,
+      "legal_transitions": 155,
+      "illegal_proposals": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-3b1047ffeb08",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-3b1047ffeb08-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "30ae9a0ecbb35b5410d88a78e2e4b71a5d5bd84cdb799a0f8cfeda05be15a530",
+      "roots": 1,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-66b495db2b77",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-66b495db2b77-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "2fe98b3be3b9c432e62396532d66036cff2e896b1fcc42e06bdb3db786f57da0",
+      "roots": 4,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-66b495db2b77",
+      "arm": "independent32",
+      "trace": "eva-66b495db2b77-independent32-s1.jsonl",
+      "trace_sha256": "bd6bdff85a40dd3ca44aed8e0d28c507ea160808785e5bdecdd9fc0f84903483",
+      "roots": 1,
+      "legal_transitions": 59,
+      "illegal_proposals": 3,
+      "successful_rewards": 5
+    },
+    {
+      "task_id": "eva-66b495db2b77",
+      "arm": "independent100",
+      "trace": "eva-66b495db2b77-independent100-s1.jsonl",
+      "trace_sha256": "e07ecd57f328e660d97df3a87902244ac438775be0da77e8383dc20720338847",
+      "roots": 1,
+      "legal_transitions": 66,
+      "illegal_proposals": 1,
+      "successful_rewards": 3
+    },
+    {
+      "task_id": "eva-66b495db2b77",
+      "arm": "democracy32",
+      "trace": "eva-66b495db2b77-democracy32-s1.jsonl",
+      "trace_sha256": "b12f480403229cdcc8dccb5c109e32776d6c669ed3678401b0dbf1adf4e1d597",
+      "roots": 1,
+      "legal_transitions": 94,
+      "illegal_proposals": 2,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-66b495db2b77",
+      "arm": "shared8",
+      "trace": "eva-66b495db2b77-shared8-s1.jsonl",
+      "trace_sha256": "43a01b605ca8788f183332e46dc2966462296cd23a9cd3ddd51b25c3f961fecd",
+      "roots": 1,
+      "legal_transitions": 23,
+      "illegal_proposals": 1,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-66b495db2b77",
+      "arm": "cascade32",
+      "trace": "eva-66b495db2b77-cascade32-s1.jsonl",
+      "trace_sha256": "d6b283074859602a341d348f57c8711d869ad67029fbde8dda737c9a876bccc3",
+      "roots": 1,
+      "legal_transitions": 93,
+      "illegal_proposals": 1,
+      "successful_rewards": 30
+    },
+    {
+      "task_id": "eva-e40959c347a7",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-e40959c347a7-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "d55141a971591c0a3446a977c5ffc2e69f790121cf48185e72d1f49332eac3ce",
+      "roots": 2,
+      "legal_transitions": 4,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-eea066d2b2d7",
+      "arm": "independent100",
+      "trace": "eva-eea066d2b2d7-independent100-s1.jsonl",
+      "trace_sha256": "eb7cfbe35ae6ff0336b5e25db440135319bc9b287d8b53330fa8455d21a66cea",
+      "roots": 1,
+      "legal_transitions": 290,
+      "illegal_proposals": 4
+    },
+    {
+      "task_id": "eva-eea066d2b2d7",
+      "arm": "democracy32",
+      "trace": "eva-eea066d2b2d7-democracy32-s1.jsonl",
+      "trace_sha256": "d10865c228845c83e85bcad2421353adc7f93389d284f409142327c4bf1d8dd3",
+      "roots": 1,
+      "legal_transitions": 96
+    },
+    {
+      "task_id": "eva-eea066d2b2d7",
+      "arm": "shared8",
+      "trace": "eva-eea066d2b2d7-shared8-s1.jsonl",
+      "trace_sha256": "c79c9bfb7b22a2490b66df7c27e91cebb0fab5c0df695375843fdc7e63cbdfe8",
+      "roots": 1,
+      "legal_transitions": 24
+    },
+    {
+      "task_id": "eva-541797dfa346",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-541797dfa346-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "53658ac8dc5dafd812929f0692468b8c297319e408933b5cc19f392f86810ba8",
+      "roots": 4,
+      "invalid_plan_responses": 4
+    },
+    {
+      "task_id": "eva-3b1047ffeb08",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-3b1047ffeb08-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "54afc9eb8207cb58a6cff81e23d69131ad1ceae28585cb901b263846ddd7c2ed",
+      "roots": 2,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-541797dfa346",
+      "arm": "independent32",
+      "trace": "eva-541797dfa346-independent32-s1.jsonl",
+      "trace_sha256": "b80c93fdce57fad4d21ef51732a0bce6d395edaddd142c3ee6234f64e6dd1865",
+      "roots": 1,
+      "legal_transitions": 85,
+      "illegal_proposals": 5
+    },
+    {
+      "task_id": "eva-541797dfa346",
+      "arm": "independent100",
+      "trace": "eva-541797dfa346-independent100-s1.jsonl",
+      "trace_sha256": "45ef6fd4bd505bc0c59f29b4b12c4e18b57ce5f61a5b85a5f3ecc044f929cbee",
+      "roots": 1,
+      "legal_transitions": 289,
+      "illegal_proposals": 5
+    },
+    {
+      "task_id": "eva-e40959c347a7",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-e40959c347a7-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "62caa567519b2d847281ec231198f75ad2ca1e0fadffd5e116d4dd9f6030f142",
+      "roots": 4,
+      "legal_transitions": 4,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-541797dfa346",
+      "arm": "democracy32",
+      "trace": "eva-541797dfa346-democracy32-s1.jsonl",
+      "trace_sha256": "17908c2f63110ef3487f3a0b800929b5adc4aaf59aacf1080308b2f2c919713d",
+      "roots": 1,
+      "legal_transitions": 90,
+      "illegal_proposals": 6
+    },
+    {
+      "task_id": "eva-eea066d2b2d7",
+      "arm": "cascade32",
+      "trace": "eva-eea066d2b2d7-cascade32-s1.jsonl",
+      "trace_sha256": "d33101432324838fba250715f4442960bb16ce74f2a240b3575d27e18cea24f1",
+      "roots": 2,
+      "legal_transitions": 95,
+      "illegal_proposals": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-541797dfa346",
+      "arm": "shared8",
+      "trace": "eva-541797dfa346-shared8-s1.jsonl",
+      "trace_sha256": "bb477e4a59c1a408b7057d7bed302c10976dc116aa6940c2933a30e54af20d49",
+      "roots": 1,
+      "legal_transitions": 21,
+      "illegal_proposals": 3
+    },
+    {
+      "task_id": "eva-3b1047ffeb08",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-3b1047ffeb08-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "a699d7dc8d0e0e816088ee039184a6a1155cea589846d76c9bd8bd05aac6d063",
+      "roots": 4,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-e40959c347a7",
+      "arm": "independent32",
+      "trace": "eva-e40959c347a7-independent32-s1.jsonl",
+      "trace_sha256": "b6f70e165b28ba32345f54e7964be5e4907707a9db7695b7990c460ce772495b",
+      "roots": 1,
+      "legal_transitions": 158,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-3b1047ffeb08",
+      "arm": "independent32",
+      "trace": "eva-3b1047ffeb08-independent32-s1.jsonl",
+      "trace_sha256": "b661fa76970cad2386ee5f83ddd58fc6347f2ee213982e4c2980102c655eaa64",
+      "roots": 1,
+      "legal_transitions": 158,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-e40959c347a7",
+      "arm": "independent100",
+      "trace": "eva-e40959c347a7-independent100-s1.jsonl",
+      "trace_sha256": "000ce4438c7ea61d3e0b94c9febb5c209dc4a303230484fbf11f7510e1d1936f",
+      "roots": 1,
+      "legal_transitions": 487,
+      "illegal_proposals": 3
+    },
+    {
+      "task_id": "eva-3b1047ffeb08",
+      "arm": "independent100",
+      "trace": "eva-3b1047ffeb08-independent100-s1.jsonl",
+      "trace_sha256": "910256a173a3601c28b4676f85291797ee4e0e816299c401080d2f97871d72c3",
+      "roots": 1,
+      "legal_transitions": 497,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-541797dfa346",
+      "arm": "cascade32",
+      "trace": "eva-541797dfa346-cascade32-s1.jsonl",
+      "trace_sha256": "76407c5f50181558401391d0c2cb771ba5a9bd7625059c3bbedd08b9a8956a28",
+      "roots": 2,
+      "legal_transitions": 91,
+      "illegal_proposals": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-eea066d2b2d7",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-eea066d2b2d7-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "8a1dba0f311d83a7bc8c2922c803aae6b75bb32264e91a9f2a2fa6c4754917c8",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-e40959c347a7",
+      "arm": "democracy32",
+      "trace": "eva-e40959c347a7-democracy32-s1.jsonl",
+      "trace_sha256": "7d3fbc6df6c41b97d78b1a1c9a89fc70c0a9e9c13b2232b7cc3dfdbc715d80f1",
+      "roots": 1,
+      "legal_transitions": 160
+    },
+    {
+      "task_id": "eva-e40959c347a7",
+      "arm": "shared8",
+      "trace": "eva-e40959c347a7-shared8-s1.jsonl",
+      "trace_sha256": "f30f0f452c69db7a7580b59ad09967277f41260134174515ee51facfd4eb64d8",
+      "roots": 1,
+      "legal_transitions": 39,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-541797dfa346",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-541797dfa346-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "e24b4ba134150e2a9b6dff767e9e6d9f89285adb700467806cfdab35b63a26bf",
+      "roots": 1,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-0fdf38eb4f8b",
+      "arm": "independent32",
+      "trace": "eva-0fdf38eb4f8b-independent32-s1.jsonl",
+      "trace_sha256": "cae9feb80a5a8fd772b46afaa63eaa5efe1a5298db52309a4bedcc0e26027fc7",
+      "roots": 1,
+      "legal_transitions": 158,
+      "illegal_proposals": 2
+    },
+    {
+      "task_id": "eva-0fdf38eb4f8b",
+      "arm": "independent100",
+      "trace": "eva-0fdf38eb4f8b-independent100-s1.jsonl",
+      "trace_sha256": "fd0e4cb266c6392f4c9c28a9b2f00edb510f9ff6efeb09ad6815b4b5a59f3344",
+      "roots": 1,
+      "legal_transitions": 474,
+      "illegal_proposals": 12
+    },
+    {
+      "task_id": "eva-eea066d2b2d7",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-eea066d2b2d7-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "78d23d2548b5264c281276bc5fcae982b9d1da3188864c9cf1e6eee8fa58e773",
+      "roots": 2,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-0fdf38eb4f8b",
+      "arm": "democracy32",
+      "trace": "eva-0fdf38eb4f8b-democracy32-s1.jsonl",
+      "trace_sha256": "bdcdfaae414b8dd77a71371e8945668b268883dc771c304c1301b195622a04c8",
+      "roots": 1,
+      "legal_transitions": 157,
+      "illegal_proposals": 3
+    },
+    {
+      "task_id": "eva-3f863b95e0b7",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-3f863b95e0b7-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "96041cec13252510219f942f2c02db520cd85b5ee5a5d4e50996deadb3358948",
+      "roots": 2,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-0fdf38eb4f8b",
+      "arm": "shared8",
+      "trace": "eva-0fdf38eb4f8b-shared8-s1.jsonl",
+      "trace_sha256": "5bba7e05837e1de0df95ad0ea24bc11ea15ed852cf9e121705f4d104a2515fbe",
+      "roots": 1,
+      "legal_transitions": 40
+    },
+    {
+      "task_id": "eva-541797dfa346",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-541797dfa346-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "5304b2ef7147320b36d0cf895dfa62adaffb5aefc06350bcb70cdc75bd6d6d8c",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-ec6b2de6877c",
+      "arm": "shared8",
+      "trace": "eva-ec6b2de6877c-shared8-s1.jsonl",
+      "trace_sha256": "a8bdf00386915164d52ed6cf2ea1ed597a7169b20f7cee86ed53d7b9edf164c6",
+      "roots": 1,
+      "legal_transitions": 24
+    },
+    {
+      "task_id": "eva-ec6b2de6877c",
+      "arm": "cascade32",
+      "trace": "eva-ec6b2de6877c-cascade32-s1.jsonl",
+      "trace_sha256": "320642ac8475a983f1558e8d0e58a009922ad93408cf565cd5394adad4bad85a",
+      "roots": 2,
+      "legal_transitions": 96,
+      "illegal_proposals": 1,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-0fdf38eb4f8b",
+      "arm": "cascade32",
+      "trace": "eva-0fdf38eb4f8b-cascade32-s1.jsonl",
+      "trace_sha256": "e832e92e41f984ca3dc254390f5bf9115973b65dda5c1072270fef584b727586",
+      "roots": 2,
+      "legal_transitions": 153,
+      "illegal_proposals": 3,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-ec6b2de6877c",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-ec6b2de6877c-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "9864256872703afe8cf4c26ad0c6e045cd6c1f45575a5cc0d1655776b1d7981f",
+      "roots": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-eea066d2b2d7",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-eea066d2b2d7-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "610679854cf164141e6cb08c029708713b949065a981b35a15cc8a946d928818",
+      "roots": 4,
+      "invalid_plan_responses": 4
+    },
+    {
+      "task_id": "eva-0fdf38eb4f8b",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-0fdf38eb4f8b-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "4efa066bf8b740af3e79fd02d54e7458a1975e9a32a0ad00ff1422831f51e2e6",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-eea066d2b2d7",
+      "arm": "independent32",
+      "trace": "eva-eea066d2b2d7-independent32-s1.jsonl",
+      "trace_sha256": "eff6ea2b9296ccbbd806c575a79b52067fdce1f1204e4e6e7e08d5d0d1ae43b0",
+      "roots": 1,
+      "legal_transitions": 96
+    },
+    {
+      "task_id": "eva-3f863b95e0b7",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-3f863b95e0b7-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "d2d66317df29efc14dbe34f3d1ee56a24bb6e8feb6a2ae924bb103478ed53dde",
+      "roots": 4,
+      "invalid_plan_responses": 4
+    },
+    {
+      "task_id": "eva-3f863b95e0b7",
+      "arm": "independent32",
+      "trace": "eva-3f863b95e0b7-independent32-s1.jsonl",
+      "trace_sha256": "e75c498d5c4db1d3a73625ef7a9525f5ce8ab93942ebf1a2f2455552498139cc",
+      "roots": 1,
+      "legal_transitions": 104,
+      "illegal_proposals": 2,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-0fdf38eb4f8b",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-0fdf38eb4f8b-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "97432c8ff3aa439af628d47db046cddd6215d76f688799c68595b3a64550b063",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-3f863b95e0b7",
+      "arm": "independent100",
+      "trace": "eva-3f863b95e0b7-independent100-s1.jsonl",
+      "trace_sha256": "31499f8518433ad991f0eb3156c0e022df9aba339073f0721d12e8b2375537cb",
+      "roots": 1,
+      "legal_transitions": 193,
+      "illegal_proposals": 3,
+      "successful_rewards": 1
+    },
+    {
+      "task_id": "eva-ec6b2de6877c",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-ec6b2de6877c-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "701effe9eb94d480bba1504c4a2895887aa3864231f751c7e8a90af4d1231fe9",
+      "roots": 2,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-3f863b95e0b7",
+      "arm": "democracy32",
+      "trace": "eva-3f863b95e0b7-democracy32-s1.jsonl",
+      "trace_sha256": "1e8a3db9a0ff70bd692bb9f21c6f9776165af8a29e5222529b776e91f7bd5786",
+      "roots": 1,
+      "legal_transitions": 155,
+      "illegal_proposals": 5
+    },
+    {
+      "task_id": "eva-3f863b95e0b7",
+      "arm": "shared8",
+      "trace": "eva-3f863b95e0b7-shared8-s1.jsonl",
+      "trace_sha256": "bca904394bdeff96b1dd704c71fddc915603519f230de943fd8d73c6c2ff5547",
+      "roots": 1,
+      "legal_transitions": 40
+    },
+    {
+      "task_id": "eva-3f863b95e0b7",
+      "arm": "cascade32",
+      "trace": "eva-3f863b95e0b7-cascade32-s1.jsonl",
+      "trace_sha256": "0f609d1f7bc2be892b26e5e5b5a89f744c3b859fb79d490182a764a7677e0b0c",
+      "roots": 1,
+      "legal_transitions": 119,
+      "illegal_proposals": 4,
+      "successful_rewards": 3
+    },
+    {
+      "task_id": "eva-ec6b2de6877c",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-ec6b2de6877c-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "3e8d69dd5ae10475f111473ad0f05c4a20271e0a0a0892ab90a82b14f5e53a3b",
+      "roots": 4,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-ec6b2de6877c",
+      "arm": "independent32",
+      "trace": "eva-ec6b2de6877c-independent32-s1.jsonl",
+      "trace_sha256": "be0f6be500393dc7f1aade008c0ac64b28415b10f367f0687eefc7ec0aae473d",
+      "roots": 1,
+      "legal_transitions": 93,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-ec6b2de6877c",
+      "arm": "independent100",
+      "trace": "eva-ec6b2de6877c-independent100-s1.jsonl",
+      "trace_sha256": "9b076e654aff88ed3bd52ff5dc6a8658ad3fc6023e9fb8140e133495de71047d",
+      "roots": 1,
+      "legal_transitions": 300
+    },
+    {
+      "task_id": "eva-ec6b2de6877c",
+      "arm": "democracy32",
+      "trace": "eva-ec6b2de6877c-democracy32-s1.jsonl",
+      "trace_sha256": "278d251569386bf508613445db33e191f01a7e0db750cb8e471173675677bfa9",
+      "roots": 1,
+      "legal_transitions": 92,
+      "illegal_proposals": 4
+    },
+    {
+      "task_id": "eva-0fdf38eb4f8b",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-0fdf38eb4f8b-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "0bc7ca7d470bf9b767ea0bfa2a11ab80774f1274140a4a13e5bc6b216892859f",
+      "roots": 4,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-3f863b95e0b7",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-3f863b95e0b7-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "4e0b34fdcfea1381afbf3a712d29cd7bb09c07425fa6e4719079600f6c0f3857",
+      "roots": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-a890436f325f",
+      "arm": "democracy32",
+      "trace": "eva-a890436f325f-democracy32-s1.jsonl",
+      "trace_sha256": "ff018f41d42bd14969203c5b9e1b571d9f3d5e9b13795f126d2a61366f38135e",
+      "roots": 1,
+      "legal_transitions": 157,
+      "illegal_proposals": 3
+    },
+    {
+      "task_id": "eva-a890436f325f",
+      "arm": "shared8",
+      "trace": "eva-a890436f325f-shared8-s1.jsonl",
+      "trace_sha256": "55207c5abc3a5df90cff264733b6f072eb15da5df68bade3d980fe7e459fe0d6",
+      "roots": 1,
+      "legal_transitions": 38,
+      "illegal_proposals": 2
+    },
+    {
+      "task_id": "eva-a890436f325f",
+      "arm": "cascade32",
+      "trace": "eva-a890436f325f-cascade32-s1.jsonl",
+      "trace_sha256": "f8893a00ce621958a279f88364b2b5091ef27dfa4e839f539de97fd9a9d1806f",
+      "roots": 2,
+      "legal_transitions": 146,
+      "illegal_proposals": 4,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-eca4c7a9c432",
+      "arm": "cascade32",
+      "trace": "eva-eca4c7a9c432-cascade32-s1.jsonl",
+      "trace_sha256": "4e2f9aadb4faaa2744ee8dc9170931cd80591a0711d102bbbd9c9c9bae716882",
+      "roots": 2,
+      "legal_transitions": 156,
+      "illegal_proposals": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-a890436f325f",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-a890436f325f-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "972e76693e763a3b4f4b49c6762b8c98283c5d1c0d964710a571adbcec0ec337",
+      "roots": 1,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-eca4c7a9c432",
+      "arm": "direct_thinking_8k",
+      "trace": "eva-eca4c7a9c432-direct_thinking_8k-s1.jsonl",
+      "trace_sha256": "726f5353fa7fba98ffe4c2f118b52136b4f17c8ef2a02d834baef2926038ea4a",
+      "roots": 1,
+      "invalid_plan_responses": 1
+    },
+    {
+      "task_id": "eva-a890436f325f",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-a890436f325f-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "ba2eb3f5be5e4d014156b6d12c0be2a5706e30993e9260df16c84c279661d6a8",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-eca4c7a9c432",
+      "arm": "ensemble2_thinking_8k",
+      "trace": "eva-eca4c7a9c432-ensemble2_thinking_8k-s1.jsonl",
+      "trace_sha256": "af3dc0b61e62be6b0480e161a299336ff6764835d54f8350030856df049c9c49",
+      "roots": 2,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-a890436f325f",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-a890436f325f-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "f85f02a4f75f41b3c0f8b577e74e2cbee90ea14845c20f3d5a19cce0e995e121",
+      "roots": 4,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-a890436f325f",
+      "arm": "independent32",
+      "trace": "eva-a890436f325f-independent32-s1.jsonl",
+      "trace_sha256": "7c111708a97be26509a9f927ecd70dc2ad7b28072ca2e2e227c51416903b1719",
+      "roots": 1,
+      "legal_transitions": 150,
+      "illegal_proposals": 3
+    },
+    {
+      "task_id": "eva-a890436f325f",
+      "arm": "independent100",
+      "trace": "eva-a890436f325f-independent100-s1.jsonl",
+      "trace_sha256": "211a6bf3c0ccc4d788622c81f9240fd368050ed44cfc890552f4c3e7bddef7f4",
+      "roots": 1,
+      "illegal_proposals": 11,
+      "legal_transitions": 460
+    },
+    {
+      "task_id": "eva-eca4c7a9c432",
+      "arm": "ensemble4_thinking_8k",
+      "trace": "eva-eca4c7a9c432-ensemble4_thinking_8k-s1.jsonl",
+      "trace_sha256": "624f90f5c631a9d9cbc33f8b558cab437deb590ba60b91691679fefa57d1f250",
+      "roots": 4,
+      "invalid_plan_responses": 4
+    },
+    {
+      "task_id": "eva-eca4c7a9c432",
+      "arm": "independent32",
+      "trace": "eva-eca4c7a9c432-independent32-s1.jsonl",
+      "trace_sha256": "f41efd96b68bd0b2d549f9bac6744a1f0dc5055dd1595b0db4854d8d9e96fab4",
+      "roots": 1,
+      "legal_transitions": 156,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-eca4c7a9c432",
+      "arm": "independent100",
+      "trace": "eva-eca4c7a9c432-independent100-s1.jsonl",
+      "trace_sha256": "4c6dadf6ecb567a1f265e4525b898906745e8aad44c482ed4daff9e211905cc8",
+      "roots": 1,
+      "legal_transitions": 473,
+      "illegal_proposals": 8
+    },
+    {
+      "task_id": "eva-eca4c7a9c432",
+      "arm": "democracy32",
+      "trace": "eva-eca4c7a9c432-democracy32-s1.jsonl",
+      "trace_sha256": "7da04f763baee60d4cf29828555331361039d339da5ec271ab511434b174d3d1",
+      "roots": 1,
+      "legal_transitions": 159,
+      "illegal_proposals": 1
+    },
+    {
+      "task_id": "eva-eca4c7a9c432",
+      "arm": "shared8",
+      "trace": "eva-eca4c7a9c432-shared8-s1.jsonl",
+      "trace_sha256": "babfd78c5b470a8efc49c9e183ba3bce56651a3817f90ac0e855452c2945b731",
+      "roots": 1,
+      "legal_transitions": 40
+    }
+  ]
+}
