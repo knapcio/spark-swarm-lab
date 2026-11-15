@@ -1,0 +1,60 @@
+{
+  "protocol": "frozen-evaluation-v1",
+  "frozen_utc": "2026-11-15T14:05:32.924894+00:00",
+  "stage": "Before any evaluation-model calls",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "arithmetic": {
+    "dataset": "datasets/arithmetic-v1/tasks.json",
+    "dataset_sha256": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+    "tasks": 24,
+    "arms": [
+      "direct_thinking_8k",
+      "ensemble2_thinking_8k",
+      "ensemble4_thinking_8k",
+      "independent32",
+      "independent100",
+      "democracy32",
+      "shared8",
+      "cascade32"
+    ],
+    "max_calls": 1280,
+    "max_completion_tokens": 32768,
+    "controller_deadline_seconds": 180,
+    "thinking_caps": "8192 for named thinking/ensemble arms and cascade fallback; 192 for cheap calls",
+    "stop_on_verified_solution": true
+  },
+  "coding": {
+    "dataset": "datasets/coding-v1/tasks.json",
+    "dataset_sha256": "42dbc85ee3f87f476460ce9bb5448b65e1bceb551cbc9ebd48134644e7b9bdc3",
+    "private_sha256": "2a097aca427cd9d3449e2965d59668bc6c9ed131fd9c84ceb812796e80c13e5c",
+    "tasks": 18,
+    "arms": [
+      "direct_off",
+      "solo_iterative",
+      "direct_thinking",
+      "independent8",
+      "shared8",
+      "democracy8"
+    ],
+    "format": "python",
+    "max_calls": 1024,
+    "max_completion_tokens": 131072,
+    "controller_deadline_seconds": 180,
+    "rounds": "1 direct, 3 repair/search",
+    "output_caps": "1024 off;8192 thinking",
+    "holdout": "Frozen selected candidate graded once; no private-driven retries"
+  },
+  "selection_rationale": [
+    "Retain strong 8K solo after 4K truncation, two/four whole-plan ensembles, and cheap independent search at32/100 as scale controls.",
+    "Keep democracy32, shared8 andcascade32 basedon development cost/accuracy; no claim of a proven development winner.",
+    "Keepboth coding solo interfaces including reasoning control; rawPython selected toremoveobservedJSONnewlineformatconfound.",
+    "No prompts,budgets,methods or dataset changes after evaluation outcomes; revisionsrequire newprotocol/data or explicitexploratorylabels."
+  ],
+  "scheduling": "4 task slots, one Spark each; rotate armorder bytask; seed2 reverses armorder, seed3 rotates byhalf. These cohorts measure latency/quality, not saturatedfleetthroughput.",
+  "uncertainty": "Task-clustered reporting across repeated seeds; do not treat72arithmetic/54coding repeats as distinct independent tasks.",
+  "throughput": "Separate single-arm queue experiments, tune concurrency on development only; global server counters for shared endpoints."
+}

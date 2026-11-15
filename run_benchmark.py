@@ -176,7 +176,8 @@ def execute(case, deadline_seconds=180):
     start = time.monotonic()
     deadline, early, error, returncode, proof_time = False, False, None, None, None
     trace = Path(case["events"])
-    before = server_metrics(case["endpoint"], timeout=3) if case.get("server_metrics") or case.get("stop_on_solution") else None
+    shared_endpoint = bool(case.get("shared_endpoint"))
+    before = server_metrics(case["endpoint"], timeout=3) if not shared_endpoint and (case.get("server_metrics") or case.get("stop_on_solution")) else None
     process_start, proof_before_stop = time.monotonic(), False
     with Path(case["stdout"]).open("x") as stdout, Path(case["stderr"]).open("x") as stderr:
         try:
@@ -205,7 +206,7 @@ def execute(case, deadline_seconds=180):
     records, malformed = read_trace(trace)
     if proof_time is None and verified(records):
         proof_time = process_wall
-    after, idle, drain_time = drain(case["endpoint"]) if before is not None or early or deadline else (None, None, 0)
+    after, idle, drain_time = drain(case["endpoint"]) if not shared_endpoint and (before is not None or early or deadline) else (None, None, 0)
     row = {k: case[k] for k in ("task_id", "split", "arm", "seed", "endpoint", "events")}
     row.update(metrics(records, deadline, early), wall_seconds=round(time.monotonic() - start, 6),
                returncode=returncode, controller_error=error, malformed_lines=malformed, controller_stop=early or deadline,
