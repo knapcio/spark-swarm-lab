@@ -114,6 +114,7 @@ def plots(report, directory):
     if not rows:
         return
     title = report["split"].capitalize() + " " + report.get("domain", "arithmetic") + (" — PROVISIONAL" if report["provisional"] else "")
+    if report.get("title_note"): title += " — " + report["title_note"]
     footer = "Fixed synthetic tasks; Wilson intervals are descriptive. Same tasks do not imply identical sampled trajectories."
     def save(fig, name):
         fig.text(.02, .015, footer, fontsize=8)
@@ -162,6 +163,7 @@ def main(argv=None):
     parser.add_argument("--output", type=Path, help="New derived-output directory; default BENCHMARK/analysis")
     parser.add_argument("--allow-partial", action="store_true", help="Explicitly label incomplete/unverified runs provisional")
     parser.add_argument("--plot", action="store_true", help="Write three standalone SVG and PNG figures")
+    parser.add_argument("--title-note", default="", help="Explicit interim scope shown on every figure")
     args = parser.parse_args(argv)
     meta_raw = (args.benchmark / "metadata.json").read_bytes()
     summary_raw = (args.benchmark / "summary.json").read_bytes()
@@ -199,7 +201,7 @@ def main(argv=None):
             pair[arm] = outcome(match)
         pairs.append(pair)
     report = dict(schema_version=1, benchmark=str(args.benchmark.resolve()), split=meta["split"], domain=meta.get("domain", "arithmetic"),
-                  provisional=bool(reasons), provisional_reasons=reasons, seed=meta["seed"],
+                  provisional=bool(reasons), provisional_reasons=reasons, seed=meta["seed"], title_note=args.title_note,
                   dataset_sha256=meta["dataset_sha256"], source_commit=meta.get("git_revision"),
                   source_hashes=meta["source_hashes"], final_source_hashes=meta.get("final_source_hashes"),
                   metadata_sha256=hashlib.sha256(meta_raw).hexdigest(), summary_sha256=hashlib.sha256(summary_raw).hexdigest(),
