@@ -1,0 +1,83 @@
+{
+  "purpose": "Same-node clean pre/post runtime comparison, separate from method-quality evaluation",
+  "started_utc": "2026-11-15T15:53:31.761840+00:00",
+  "baseline_image": "vllm/vllm-openai@sha256:1c8e60a0841b333c700488cb029d3664807249da0c071e862191b00fe34b228c",
+  "candidate_image": "vllm/vllm-openai@sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+  "reports": [
+    {
+      "path": "old-c25-1.json",
+      "summary": {
+        "requests": 100,
+        "successful_requests": 100,
+        "errors": 0,
+        "wall_seconds": 31.75413850042969,
+        "completion_tokens": 16491,
+        "prompt_tokens": 11484,
+        "requests_with_completion_usage": 100,
+        "requests_missing_completion_usage": 0,
+        "output_tokens_per_second": 519.3338814648316,
+        "latency_seconds_p50": 9.238879290409386,
+        "latency_seconds_p95": 12.919730625115335,
+        "finish_reasons": {
+          "stop": 37,
+          "length": 63
+        },
+        "json_arithmetic_checks": {
+          "checked": 37,
+          "passed": 13,
+          "failed": 24
+        }
+      }
+    },
+    {
+      "path": "old-c25-2.json",
+      "summary": {
+        "requests": 100,
+        "successful_requests": 100,
+        "errors": 0,
+        "wall_seconds": 30.831140332855284,
+        "completion_tokens": 16506,
+        "prompt_tokens": 11484,
+        "requests_with_completion_usage": 100,
+        "requests_missing_completion_usage": 0,
+        "output_tokens_per_second": 535.3678074115974,
+        "latency_seconds_p50": 9.146430666558444,
+        "latency_seconds_p95": 12.691313958726823,
+        "finish_reasons": {
+          "stop": 37,
+          "length": 63
+        },
+        "json_arithmetic_checks": {
+          "checked": 37,
+          "passed": 13,
+          "failed": 24
+        }
+      }
+    },
+    {
+      "path": "old-c25-3.json",
+      "summary": {
+        "requests": 100,
+        "successful_requests": 100,
+        "errors": 0,
+        "wall_seconds": 30.22674124967307,
+        "completion_tokens": 16475,
+        "prompt_tokens": 11484,
+        "requests_with_completion_usage": 100,
+        "requests_missing_completion_usage": 0,
+        "output_tokens_per_second": 545.0471773955518,
+        "latency_seconds_p50": 9.078886833041906,
+        "latency_seconds_p95": 12.012585915625095,
+        "finish_reasons": {
+          "stop": 38,
+          "length": 62
+        },
+        "json_arithmetic_checks": {
+          "checked": 37,
+          "passed": 13,
+          "failed": 24
+        }
+      }
+    }
+  ]
+}

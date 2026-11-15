@@ -1,0 +1,241 @@
+{
+  "schema_version": 1,
+  "scope": "Single-node finite serving qualification only; excluded from primary evaluation",
+  "valid_for_primary_aggregation": false,
+  "comparison": {
+    "old_median_output_tokens_per_full_wall_second": 535.3678074115974,
+    "new_median_output_tokens_per_full_wall_second": 543.948100333403,
+    "observed_change_percent": 1.602691234515885,
+    "measurements": [
+      {
+        "runtime": "old",
+        "repeat": 1,
+        "file": "old-c25-1.json",
+        "requests": 100,
+        "successful_requests": 100,
+        "errors": 0,
+        "wall_seconds": 31.75413850042969,
+        "completion_tokens": 16491,
+        "prompt_tokens": 11484,
+        "requests_with_completion_usage": 100,
+        "requests_missing_completion_usage": 0,
+        "output_tokens_per_second": 519.3338814648316,
+        "latency_seconds_p50": 9.238879290409386,
+        "latency_seconds_p95": 12.919730625115335,
+        "finish_reasons": {
+          "stop": 37,
+          "length": 63
+        },
+        "json_arithmetic_checks": {
+          "checked": 37,
+          "passed": 13,
+          "failed": 24
+        }
+      },
+      {
+        "runtime": "old",
+        "repeat": 2,
+        "file": "old-c25-2.json",
+        "requests": 100,
+        "successful_requests": 100,
+        "errors": 0,
+        "wall_seconds": 30.831140332855284,
+        "completion_tokens": 16506,
+        "prompt_tokens": 11484,
+        "requests_with_completion_usage": 100,
+        "requests_missing_completion_usage": 0,
+        "output_tokens_per_second": 535.3678074115974,
+        "latency_seconds_p50": 9.146430666558444,
+        "latency_seconds_p95": 12.691313958726823,
+        "finish_reasons": {
+          "stop": 37,
+          "length": 63
+        },
+        "json_arithmetic_checks": {
+          "checked": 37,
+          "passed": 13,
+          "failed": 24
+        }
+      },
+      {
+        "runtime": "old",
+        "repeat": 3,
+        "file": "old-c25-3.json",
+        "requests": 100,
+        "successful_requests": 100,
+        "errors": 0,
+        "wall_seconds": 30.22674124967307,
+        "completion_tokens": 16475,
+        "prompt_tokens": 11484,
+        "requests_with_completion_usage": 100,
+        "requests_missing_completion_usage": 0,
+        "output_tokens_per_second": 545.0471773955518,
+        "latency_seconds_p50": 9.078886833041906,
+        "latency_seconds_p95": 12.012585915625095,
+        "finish_reasons": {
+          "stop": 38,
+          "length": 62
+        },
+        "json_arithmetic_checks": {
+          "checked": 37,
+          "passed": 13,
+          "failed": 24
+        }
+      },
+      {
+        "runtime": "new",
+        "repeat": 1,
+        "file": "new-c25-1.json",
+        "requests": 100,
+        "successful_requests": 100,
+        "errors": 0,
+        "wall_seconds": 30.702322708442807,
+        "completion_tokens": 16524,
+        "prompt_tokens": 11484,
+        "requests_with_completion_usage": 100,
+        "requests_missing_completion_usage": 0,
+        "output_tokens_per_second": 538.2003230477438,
+        "latency_seconds_p50": 9.159622666426003,
+        "latency_seconds_p95": 12.377141916193068,
+        "finish_reasons": {
+          "stop": 37,
+          "length": 63
+        },
+        "json_arithmetic_checks": {
+          "checked": 37,
+          "passed": 13,
+          "failed": 24
+        }
+      },
+      {
+        "runtime": "new",
+        "repeat": 2,
+        "file": "new-c25-2.json",
+        "requests": 100,
+        "successful_requests": 100,
+        "errors": 0,
+        "wall_seconds": 30.034931166097522,
+        "completion_tokens": 16515,
+        "prompt_tokens": 11484,
+        "requests_with_completion_usage": 100,
+        "requests_missing_completion_usage": 0,
+        "output_tokens_per_second": 549.8597585814216,
+        "latency_seconds_p50": 9.055196749977767,
+        "latency_seconds_p95": 12.106894542463124,
+        "finish_reasons": {
+          "stop": 37,
+          "length": 63
+        },
+        "json_arithmetic_checks": {
+          "checked": 37,
+          "passed": 13,
+          "failed": 24
+        }
+      },
+      {
+        "runtime": "new",
+        "repeat": 3,
+        "file": "new-c25-3.json",
+        "requests": 100,
+        "successful_requests": 100,
+        "errors": 0,
+        "wall_seconds": 30.377898166887462,
+        "completion_tokens": 16524,
+        "prompt_tokens": 11484,
+        "requests_with_completion_usage": 100,
+        "requests_missing_completion_usage": 0,
+        "output_tokens_per_second": 543.948100333403,
+        "latency_seconds_p50": 9.004314250312746,
+        "latency_seconds_p95": 12.333219124935567,
+        "finish_reasons": {
+          "stop": 37,
+          "length": 63
+        },
+        "json_arithmetic_checks": {
+          "checked": 37,
+          "passed": 13,
+          "failed": 24
+        }
+      }
+    ],
+    "limitations": "All old repeats before new; three finite repeats, warmed c25 mixed100/cap256/T0. No robust speedup, sustained-decode, universal quality or proven crash-fix inference."
+  },
+  "diagnostic_replays": [
+    {
+      "directory": "serving-repro-v1-spark02",
+      "cases": 20,
+      "calls": 4303,
+      "controller_errors": 0,
+      "recorded_transport_errors": 0,
+      "model_parse_error_categories": {
+        "JSONDecodeError": 29
+      },
+      "known_final_worker_infrastructure_counts": 12,
+      "unknown_final_worker_infrastructure_counts": 8,
+      "server_cost_known_cases": 20,
+      "purpose": "Serving diagnostic; model parse errors are preserved, no task-quality ranking or crash-fix claim"
+    },
+    {
+      "directory": "serving-repro-v032-spark02",
+      "cases": 20,
+      "calls": 4512,
+      "controller_errors": 0,
+      "recorded_transport_errors": 0,
+      "model_parse_error_categories": {
+        "JSONDecodeError": 46
+      },
+      "known_final_worker_infrastructure_counts": 18,
+      "unknown_final_worker_infrastructure_counts": 2,
+      "server_cost_known_cases": 20,
+      "purpose": "Serving diagnostic; model parse errors are preserved, no task-quality ranking or crash-fix claim"
+    }
+  ],
+  "short_json_probes": [
+    {
+      "file": "new-short100-t0.json",
+      "correct": 100,
+      "requests": 100,
+      "distinct_endpoints": 1,
+      "http_clients": 100,
+      "engine_max_sequences": 25,
+      "temperature": 0.0
+    },
+    {
+      "file": "new-short100-t0.8.json",
+      "correct": 100,
+      "requests": 100,
+      "distinct_endpoints": 1,
+      "http_clients": 100,
+      "engine_max_sequences": 25,
+      "temperature": 0.8
+    }
+  ],
+  "tool_roundtrip": {
+    "passed": true,
+    "operation": "add17and25\u2192result42"
+  },
+  "thinking_smoke": {
+    "proof_verified_with_Fraction": true,
+    "wall_seconds": 128.58503,
+    "first_verified_proof_seconds": 127.2636538753286,
+    "calls": 4,
+    "completed_calls": 1,
+    "unfinished_calls": 3,
+    "completed_response_has_reasoning": true,
+    "client_prompt_tokens": 156,
+    "client_completion_tokens": 7931,
+    "client_cost_is_lower_bound": true,
+    "server_cost_known": true,
+    "server_prompt_tokens": 624,
+    "server_completion_tokens": 31752,
+    "final_worker_infrastructure_failures": null,
+    "notes": "Expected-15 controller stop after producer proof; final infrastructure count unknown, not zero. Known idle server deltas include stopped sibling work."
+  },
+  "launch": {
+    "image": "vllm/vllm-openai@sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+    "architecture": "arm64",
+    "scope": "Spark02 canary only; fleet deployment readiness not covered"
+  },
+  "manifest_sha256": "9db5a93aad8b59126252e49d3ab774a489bd7cb32d3d34765f5bdb82389c82e5",
+  "audit_script_sha256": "426e29fd437023d65b48f8a9b28a127db79b1337ad424284f8d7c5db29354896"
+}

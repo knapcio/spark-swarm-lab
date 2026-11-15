@@ -1,4 +1,38 @@
-# Single-Spark serving: target-only versus DSpark3
+# Serving qualification — v0.32.0 canary and historical v0.27.1 results
+
+## v0.32.0 single-node qualification — 2026-11-15
+
+The **Spark_02 canary** qualified for the next uniform runtime-v2 study: the old and new recipes each completed 20 bounded diagnostic replays, and v0.32.0 passed two short-JSON probes, a real tool round trip and one reasoning-on exact-plan smoke. **Four-node deployment/readiness is pending at this qualification stage.** This evidence does not certify sustained crash-free operation or identify the earlier CUDA crash's root cause.
+
+The [runtime-v2 amendment](RUNTIME_V2_AMENDMENT.json) selects v0.32.0 with upstream hybrid-state indexing fixes after the v0.27.1 serving failure. Model and draft weights/revisions, agent policies, prompts, tasks, budgets and serving flags stay fixed. The image change also changes dependency/kernel implementations and uses a separate compilation cache. All **900 primary cases plus 80 supplementary solo attempts will run fresh** under v2, without pooling the old first-seed arithmetic rows. Prior outcomes had already been inspected; the amendment records that exposure explicitly.
+
+### Matched c25 throughput comparison
+
+Three old-image repeats preceded three new-image repeats on the same Spark. Each sends 100 mixed requests, 25 workers, temperature 0, thinking OFF and a 256-token cap, with four untimed warmups. Throughput is completion tokens divided by full measured batch wall, including prefill/scheduling/HTTP; warmups are excluded. Prefix caching remains enabled. This is separate from the historical target-only versus DSpark comparison below.
+
+| Runtime, DSpark3 in both | Repeat 1 output tok/s | Repeat 2 | Repeat 3 | Median |
+|---|---:|---:|---:|---:|
+| v0.27.1 | 519.33 | 535.37 | 545.05 | **535.37** |
+| v0.32.0 | 538.20 | 549.86 | 543.95 | **543.95** |
+
+The observed median difference is **+1.60%**. Three sequential finite repeats, overlapping repeat ranges and different host/cache state do not establish a robust speedup. Both runtime arms have 100/100 measured responses per repeat, zero request errors and complete completion usage. All six repeats have the same limited exact-arithmetic result, **13/37**; output-cap finishes remain 62–63 per repeat. These checks do not establish general code quality or numerical/text equivalence.
+
+[Raw comparison, all six reports and individual outputs](results/serving-v032-20261115/serving-v032-comparison/) · [recomputed qualification audit](results/serving-v032-20261115/qualification-audit.json).
+
+### Replay, interface and reasoning checks
+
+- Each runtime completed **five repeats × four cheap-policy cases = 20 diagnostic cases** on one previously inspected pre-crash task. No controller or recorded transport error occurred. Model JSON parse errors remain in the traces: 29 old / 46 new. The final worker infrastructure count is unavailable for eight old and two new early stops; available final counts are zero. Those unknown counts are not zero-filled. Both old and new recipes passing this finite replay means the crash was not reproduced here, rather than proving the new image fixes it. [Old replay](results/serving-v032-20261115/serving-repro-v1-spark02/) · [new replay](results/serving-v032-20261115/serving-repro-v032-spark02/).
+- New-image short JSON returned **100/100 at T0 and 100/100 at T0.8**. Each probe used **100 HTTP clients queued to one Spark's 25-sequence engine cap**. Four identical endpoint entries in the report refer to the same canary, not four replicas. The raw [T0](results/serving-v032-20261115/serving-v032-comparison/new-short100-t0.json) and [T0.8](results/serving-v032-20261115/serving-v032-comparison/new-short100-t0.8.json) reports retain all responses.
+- The [tool probe](results/serving-v032-20261115/serving-v032-comparison/new-tool.json) passed a real `add(17,25)` tool call and returned `{"result":42}`.
+- The [reasoning-on ensemble-4 smoke](results/serving-v032-20261115/v032-thinking-smoke/) reached target 10 from `1,2,3,4`, independently checked with exact `Fraction` transitions. Wall was **128.585s**, first observed verifier proof **127.264s**. One completed response retains reasoning and uses **156 prompt / 7,931 completion tokens**; three sibling responses were stopped. Client totals are lower bounds. Confirmed idle server-counter deltas cover **624 prompt / 31,752 completion tokens**, including stopped work. The final worker infrastructure count is **unknown/null**, with an expected controller exit `-15`; it is not inferred to be zero from the single completed response.
+
+### Canary pins and export integrity
+
+The [normalized launch receipt](results/serving-v032-20261115/canary-launch.json) records ARM64 image `vllm/vllm-openai@sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc`, canary loopback port 18097 and a separate `~/swarm-lab/cache-v032`. Flags retain TP1, 16,384 context, 25 sequences, 4096 batched tokens, memory utilization 0.70, Marlin MoE, FP8 KV, FlashInfer Mamba/align, prefix caching, chunked prefill and DSpark3. Reasoning/tool parsers are `nemotron_v3` / `qwen3_coder`. Target/draft revisions remain those in the historical pins below.
+
+The [manifest](results/serving-v032-20261115/manifest.json) records **141 original artifacts**, original/export SHA-256 and exact path/interpreter substitutions, including custom replay source paths and the launch cache path. Parsed inverse checks preserve original values; model outputs and reasoning are retained, and unaffected files are byte copies. [Offline curation](results/serving-v032-20261115/curate.py) and [audit](results/serving-v032-20261115/audit.py) scripts are included. No model API was used for curation. These reports are serving qualification data and are excluded from primary task-quality aggregation.
+
+## Historical v0.27.1: target-only versus DSpark3
 
 On **Spark_02 (DGX Spark GB10, 128GB unified memory)**, DSpark3 produced a median
 **528.02 completion tokens per full wall second**, versus **348.76** for the
@@ -113,7 +147,7 @@ The observed throughput difference is +37.90%. Both arms had zero request errors
 and ten length finishes. This is **one batch per arm**, not the three-repeat c25
 study; 2/6 exact checks in each arm do not establish general quality parity.
 
-## Runtime pins
+## Historical v0.27.1 runtime pins
 
 Both arms use the same target and image:
 
