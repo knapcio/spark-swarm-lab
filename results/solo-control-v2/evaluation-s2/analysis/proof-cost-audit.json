@@ -1,0 +1,333 @@
+{
+  "protocol_version": "runtime-v2",
+  "valid_for_aggregation": true,
+  "ledger_entry_verified": true,
+  "ledger_snapshot_sha256": "0fae478603eeff050bc5b57c9d6b80f4bf82715619374bd6dc42141ed835ca7b",
+  "ledger_completed_entry_sha256": "1b2f25cc9bb2bc017275ca9a4bbeb3b3d35de3681c84992091ea4ad0971f43ea",
+  "runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+  "runtime_snapshot": {
+    "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+    "model_weight_bytes": 21561882284,
+    "model_shards": 52,
+    "image": "vllm/vllm-openai:v0.32.0",
+    "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+    "served_model_name": "nemotron-lightning",
+    "deployment": "4 independent TP1 replicas on GB10",
+    "baseline": {
+      "max_model_len": 16384,
+      "max_num_seqs": 25,
+      "max_num_batched_tokens": 4096,
+      "gpu_memory_utilization": 0.7,
+      "moe_backend": "marlin",
+      "kv_cache_dtype": "fp8",
+      "mamba_backend": "flashinfer",
+      "mamba_cache_mode": "align",
+      "prefix_caching": true,
+      "speculative_decoding": false
+    },
+    "request_defaults": {
+      "temperature": 0.8,
+      "max_tokens": 192,
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      }
+    },
+    "active_recipe": "dspark3-runtime-v2",
+    "dspark": {
+      "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+      "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+      "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+      "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+      "draft_weight_bytes": 1349057504,
+      "draft_weight_files": 1,
+      "draft_mount": "~/swarm-lab/draft:/draft:ro",
+      "method": "dspark",
+      "num_speculative_tokens": 3
+    },
+    "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+    "cache_directory": "~/swarm-lab/cache-v032",
+    "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+    "cpu_grader_python": "3.12.16"
+  },
+  "runtime_amendment_sha256": "a64ac723b1755ac23cdb26d0799c1bd53f2404310d5ed50b423a91745428bcbb",
+  "cpu_grader_amendment_sha256": "91b246e5ca02691444edca06009b70a6121231d965615a5e03c8515c6107e331",
+  "protocol": "independent-supplemental-solo-audit-v1",
+  "control_selection_sha256": "c3752ce71e4491285c5031374cf1dcaaf86211bf7d59ab1ea50c4bd90036609b",
+  "split": "evaluation",
+  "seed": 2,
+  "status": "PASS",
+  "source_commit": "a8adff19f690e90aec5705c373a82005e869f1f2",
+  "source_hashes": {
+    "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+    "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+    "direct_solver.py": "c7e97bff83adf52cfb056ac2ab994d4854aa6ab4f703d07ab86e48111c5d83cb",
+    "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+    "ensemble_solver.py": "6e0f1c368d294780b3b2a6694c831d0d96694beaaa923879a4b8a8501bcd05c9",
+    "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+    "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+  },
+  "selection_sha256": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
+  "selection_frozen_utc": "2026-11-15T14:05:32.924894+00:00",
+  "cohort_started_utc": "2026-11-15T19:21:51.087033+00:00",
+  "dataset_sha256": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+  "metadata_sha256": "971e924a1db9c1c1e9edeee14c6f99fb147ac1cffd6b8d6f9290f1e870fd4082",
+  "summary_sha256": "08448ddb16efb7088f2b24587201d72c722155d25d648ac08556d1a683c95a4e",
+  "audit_script_sha256": "54567f540346e6a9be1d22535e3b01315963e19851f106c9d5d63005bd533a06",
+  "counts": {
+    "roots": 51,
+    "legal_transitions": 36,
+    "successful_rewards": 14,
+    "bounded_plan_responses": 14,
+    "cases": 24,
+    "request_starts": 51,
+    "request_ends": 41,
+    "controller_stops": 24,
+    "known_server_cases": 24,
+    "invalid_plan_responses": 27
+  },
+  "response_error_categories": {
+    "ValueError": 27
+  },
+  "known_final_worker_infrastructure_total": 0,
+  "unknown_final_worker_infrastructure_counts": 10,
+  "checks": [
+    "Complete single-arm supplemental task/seed grid, development/evaluation kept distinct; verified fresh-v2 ledger receipt, source/git-blob/dataset/selection/runtime/grader pins and case commands",
+    "Independent Fraction replay of every legal proposal, positive integer intermediates, distinct indices, ordered state consumption",
+    "Every reward independently checks exact target presence; all successful ancestry edges replayed",
+    "No feedback from witnesses, other workers or holdout; at most four sequential own full-plan revisions, no retry after proof",
+    "Sequential own-root plan responses bounded, revision IDs and exact preceding own-plan feedback checked; responses, own-original-root checked, executed moves match response prefix",
+    "Unique global request IDs and request contexts; client usage/charge/errors/caps/denials exactly match traces",
+    "Every successful controller stop has prior producer reward proof; controller is not its own proof",
+    "Server counters independently recomputed; unknown cost remains null",
+    "Public task schema only; pinned runner/harness/source inspection, command/config has no witness/reputation inputs; private witness file not opened"
+  ],
+  "cases": [
+    {
+      "task_id": "eva-4a5b112b29e0",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-4a5b112b29e0-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "803a034c0fc73f1b16f6b7c465937935341b311e5024b3976167ef2f9513c113",
+      "roots": 1,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-91cea8bac1fe",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-91cea8bac1fe-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "0af849ef971910538e3ebebf5986cb7795281d61fa53715853ae7880a9e6f1e5",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-27c0dd95407a",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-27c0dd95407a-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "4aeb67737231529e199d922770354236e1a4c3e0a5bd72bea0f5da19e0573797",
+      "roots": 1,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-c25dd13868a8",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-c25dd13868a8-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "be56f309b1db63e95af4e36eb411c220e22bcdab36970596a9218f116196cbbe",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-8955514173a5",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-8955514173a5-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "e9a836b2d61f0757c084b72fdb87d23ebabd356b2f104b9c41c6edc1adc107b4",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-5f7e8610aa71",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-5f7e8610aa71-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "70a2612350152ed70171f64228be19c7abbb350effd27f43ae5220c6b4b5cbbe",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-6b194524eb19",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-6b194524eb19-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "d7b1b2406675fbef836f5cbac071cba9654a83ece06156290a6e5e3d8e7846a9",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-f087ad404500",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-f087ad404500-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "9263a850cc8cb66694a7d7e3ecc199296a588289f3ead022896f2211716c558f",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-17c359789b49",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-17c359789b49-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "99f7f3015f609a67a81151cd87c561bf8f95a29e8cffa6f3e0c9f39a4c4835d8",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-d75177564d41",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-d75177564d41-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "5e6de3b1c8417fb5d580d954634db7dc6d7677c3fe7630f0397105359169e198",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-f792236a99ed",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-f792236a99ed-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "c307aaed3072ef5337142d31d320f0263b3071820259bb91ba0a0b5d72ec3e71",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-8c04e7fa4008",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-8c04e7fa4008-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "ab6e4990a97944139554ff872dc1821091f3c402c0c42acfc38d71bd50315b99",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-2894f3b286c6",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-2894f3b286c6-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "2ca93cb04c597c5839f9460ab20c1e61b7f75680843d4457b127035a6b388dcd",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-66b495db2b77",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-66b495db2b77-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "dbe28d0038c90655517ce6b1494a9e7f8424952ece8e716e7a03e48f3421bbce",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-3b1047ffeb08",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-3b1047ffeb08-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "6f8386e9be9e61591aca7357bee8c7a523c8d3841a5877a3cb2689164dbf9db6",
+      "roots": 3,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 2,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-541797dfa346",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-541797dfa346-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "ae05a06e12962b3acb7cae3959a569c2b53fd41e784760866dcf3ee32a6765f1",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-6ce1a0614ff5",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-6ce1a0614ff5-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "0f7e058e33f51be6552a332f2d112d33a16f3a15b831b7e44907076456bcd191",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-eea066d2b2d7",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-eea066d2b2d7-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "d31bce036b0a846940179cd89fd6cdb324b8f2b9ee4058feb2eea9a09063793f",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-3f863b95e0b7",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-3f863b95e0b7-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "e3b406715d3e7016d09e9be589499935cd588bc608ae95a941cb07e8d6dc0239",
+      "roots": 2,
+      "legal_transitions": 4,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-ec6b2de6877c",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-ec6b2de6877c-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "1d0916499674cbed4ea909407965c2e663ec57beae6297556052c2ee2d75eebd",
+      "roots": 2,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-a890436f325f",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-a890436f325f-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "c5a2e8206c8e58006e5547fc40adc07fa797d11e417ae02d4a015a263b0287df",
+      "roots": 1,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-e40959c347a7",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-e40959c347a7-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "710e9c128648ffee8afe8da26467890f5bcf477b0012ab5a2e504485a50206a9",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "eva-0fdf38eb4f8b",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-0fdf38eb4f8b-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "60bffbf45a991c746c599d486fb75db9c3c99680b08af5c0ce4751d152b340ba",
+      "roots": 2,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "eva-eca4c7a9c432",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "eva-eca4c7a9c432-solo_refine_thinking_8k-s2.jsonl",
+      "trace_sha256": "d2b305c14ba383e7d342080fd74d43a6f3c107480bc8c7c07bbdf10124a2a036",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    }
+  ]
+}

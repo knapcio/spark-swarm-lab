@@ -1,0 +1,281 @@
+{
+  "schema_version": 1,
+  "benchmark": "results/solo-control-v2/evaluation-s2",
+  "split": "evaluation",
+  "domain": "arithmetic",
+  "provisional": false,
+  "provisional_reasons": [],
+  "seed": 2,
+  "title_note": "Supplemental solo control; seed 2 of 3",
+  "dataset_sha256": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+  "source_commit": "a8adff19f690e90aec5705c373a82005e869f1f2",
+  "source_hashes": {
+    "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+    "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+    "direct_solver.py": "c7e97bff83adf52cfb056ac2ab994d4854aa6ab4f703d07ab86e48111c5d83cb",
+    "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+    "ensemble_solver.py": "6e0f1c368d294780b3b2a6694c831d0d96694beaaa923879a4b8a8501bcd05c9",
+    "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+    "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+  },
+  "final_source_hashes": {
+    "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+    "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+    "direct_solver.py": "c7e97bff83adf52cfb056ac2ab994d4854aa6ab4f703d07ab86e48111c5d83cb",
+    "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+    "ensemble_solver.py": "6e0f1c368d294780b3b2a6694c831d0d96694beaaa923879a4b8a8501bcd05c9",
+    "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+    "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+  },
+  "metadata_sha256": "971e924a1db9c1c1e9edeee14c6f99fb147ac1cffd6b8d6f9290f1e870fd4082",
+  "summary_sha256": "08448ddb16efb7088f2b24587201d72c722155d25d648ac08556d1a683c95a4e",
+  "analysis_script_sha256": "f51824141459dc6716c991b1fc915c3878b9843fd7d8a30259da0fe18f5c6002",
+  "scope": "Latency/quality calibration with four job slots; NOT a saturated fleet-throughput measurement",
+  "scheduling": "Fixed endpoint per persistent slot; each task's rotated arms run sequentially on its assigned slot",
+  "runtime": {
+    "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+    "model_weight_bytes": 21561882284,
+    "model_shards": 52,
+    "image": "vllm/vllm-openai:v0.32.0",
+    "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+    "served_model_name": "nemotron-lightning",
+    "deployment": "4 independent TP1 replicas on GB10",
+    "baseline": {
+      "max_model_len": 16384,
+      "max_num_seqs": 25,
+      "max_num_batched_tokens": 4096,
+      "gpu_memory_utilization": 0.7,
+      "moe_backend": "marlin",
+      "kv_cache_dtype": "fp8",
+      "mamba_backend": "flashinfer",
+      "mamba_cache_mode": "align",
+      "prefix_caching": true,
+      "speculative_decoding": false
+    },
+    "request_defaults": {
+      "temperature": 0.8,
+      "max_tokens": 192,
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      }
+    },
+    "active_recipe": "dspark3-runtime-v2",
+    "dspark": {
+      "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+      "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+      "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+      "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+      "draft_weight_bytes": 1349057504,
+      "draft_weight_files": 1,
+      "draft_mount": "~/swarm-lab/draft:/draft:ro",
+      "method": "dspark",
+      "num_speculative_tokens": 3
+    },
+    "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+    "cache_directory": "~/swarm-lab/cache-v032",
+    "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+    "cpu_grader_python": "3.12.16"
+  },
+  "whole_mixed_arm_queue_wall_seconds": 1010.7083358326927,
+  "observed_cost_is_lower_bound": true,
+  "arms": [
+    {
+      "arm": "solo_refine_thinking_8k",
+      "label": "solo_refine_thinking_8k",
+      "observed_cases": 24,
+      "planned_cases": 24,
+      "solved": 14,
+      "success_rate": 0.5833333333333334,
+      "wilson95_low": 0.3883466586522876,
+      "wilson95_high": 0.7553239739018824,
+      "median_case_wall_seconds": 111.284617,
+      "p95_case_wall_seconds": 181.225067,
+      "sum_case_wall_seconds": 2807.332107,
+      "successful_paths": 14,
+      "calls": 51,
+      "completed_calls": 41,
+      "unfinished_calls": 10,
+      "prompt_tokens": 8083,
+      "completion_tokens": 281967,
+      "charged_completion_tokens": 281967,
+      "budget_denials": 0,
+      "response_errors": 27,
+      "length_finishes": 27,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "malformed_lines": 0,
+      "deadline_cases": 10,
+      "infrastructure_failures": 0,
+      "cases_missing_infrastructure_count": 10,
+      "controller_error_cases": 0,
+      "mean_recorded_completion_tokens_per_case": 11748.625,
+      "observed_cost_is_lower_bound": true,
+      "server_cost_known_cases": 24,
+      "server_cost_unknown_cases": 0,
+      "server_counter_floor_failures": 0,
+      "server_prompt_tokens_known": 10503,
+      "server_completion_tokens_known": 334786,
+      "success_early_cases": 14,
+      "solved_with_deadline_cases": 0,
+      "unexpected_process_error_cases": 0
+    }
+  ],
+  "paired_task_results": [
+    {
+      "task_id": "eva-0fdf38eb4f8b",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "eva-17c359789b49",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "deadline"
+    },
+    {
+      "task_id": "eva-27c0dd95407a",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "eva-2894f3b286c6",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "deadline"
+    },
+    {
+      "task_id": "eva-3b1047ffeb08",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "eva-3f863b95e0b7",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "eva-4a5b112b29e0",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "eva-541797dfa346",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "deadline"
+    },
+    {
+      "task_id": "eva-5f7e8610aa71",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "deadline"
+    },
+    {
+      "task_id": "eva-66b495db2b77",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "eva-6b194524eb19",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "eva-6ce1a0614ff5",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "deadline"
+    },
+    {
+      "task_id": "eva-8955514173a5",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "deadline"
+    },
+    {
+      "task_id": "eva-8c04e7fa4008",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "eva-91cea8bac1fe",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "eva-a890436f325f",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "eva-c25dd13868a8",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "deadline"
+    },
+    {
+      "task_id": "eva-d75177564d41",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "eva-e40959c347a7",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "deadline"
+    },
+    {
+      "task_id": "eva-ec6b2de6877c",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "eva-eca4c7a9c432",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "deadline"
+    },
+    {
+      "task_id": "eva-eea066d2b2d7",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "deadline"
+    },
+    {
+      "task_id": "eva-f087ad404500",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "eva-f792236a99ed",
+      "split": "evaluation",
+      "seed": 2,
+      "solo_refine_thinking_8k": "solved_early"
+    }
+  ],
+  "notes": [
+    "Development and evaluation are analyzed separately; do not infer a held-out winner from development.",
+    "Wilson intervals describe observed binary task outcomes; tasks form a small synthetic construction sample.",
+    "p95 uses linear interpolation between ordered observed case times; it is not a confidence interval.",
+    "Sum of case wall seconds is NOT fleet wall time. Mixed-arm queue wall time is NOT per-arm throughput.",
+    "Input/output token counts are observed API usage, not equal GPU cost; output-cost plots omit input cost.",
+    "Deadline/incomplete-usage costs are lower bounds; reported successes preserve the runner's deadline rule.",
+    "Expected negative exit codes after controller stops are not process/infrastructure failures.",
+    "Server counter sums include only explicitly known deltas that cover completed client usage; unknowns remain null.",
+    "Paired table matches task/seed, not identical sampled trajectories. No paired causal effect is claimed."
+  ]
+}

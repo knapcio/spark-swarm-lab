@@ -1,0 +1,60 @@
+# Independent verifier and corpus audit
+
+The arithmetic verifier and stored coding expected values pass the checks below. The coding audit also reproduces **two ways an adversarial program can forge a passing grade**, plus an ordinary test-coverage gap. These findings do not rewrite any original result. Coding scores remain outcomes under the disclosed frozen grader; independent confirmation is pending.
+
+All work here is offline. No retained model-generated program was executed, no model API or Spark/container call was made, and no frozen method, grader, dataset or protocol was changed. The exact trusted source comes from `cbcde299716b7842536b008880a089590e9816f8`; the audit loader checks git blobs and also works without the private producer worktree.
+
+## Arithmetic
+
+An independent integer subset-DP solver finds an existence witness for **all 32 tasks**: eight development and 24 evaluation. It never reads saved reference witnesses. Each expression is independently replayed with `Fraction`, checking strictly positive integer intermediates, exact target equality and leaf multiplicities against the selected input indices. The largest search used 1997 operand-pair combinations; this does not prove minimum solution length or matched difficulty.
+
+Exhaustive small-state tests compare the actual frozen transition function against a separate evaluator for **13,952 actions**, over all ordered states of length 2–4 with entries 1–4. Tests also cover swapped commutative operands, consumed duplicates, remaining-value order, zero/negative/fractional intermediates, division by zero, bool/float/string/out-of-range indices, extra/missing fields, unsupported operators and malformed proposals. A raw success claim without target presence does not pass the verifier.
+
+## Coding expected values and negative tests
+
+Independent implementations written from the 24 task specifications agree with **405 cases: 48 public examples plus all 357 private feedback/holdout cases**. No stored expected value disagrees with these implementations. This is finite differential evidence, not a correctness proof over each function's entire domain.
+
+The audit checks wrong values, omitted/duplicated/reordered outputs, exact bool/int/float/list types, exceptions and input postconditions. Of 96 generic task/mutation combinations, 90 cause an effective wrong output and are rejected; six are inapplicable because the transformation does not change the relevant outputs. One plausible semantic mutant per task is also tested: **23/24 are rejected by at least one private phase**. The survivor is important:
+
+```python
+def balanced_brackets(text):
+    return all(text.count(a) == text.count(b)
+               for a, b in [('(', ')'), ('[', ']'), ('{', '}')])
+```
+
+This counts-only implementation passes **9/9 feedback and 9/9 holdout cases**, although `([)]` must be false and it returns true. That counterexample is already a public example. Public examples are provided to the model but are not included in the original grader's private test phases. The defect is missing nesting/order coverage in that finite private sample, not an incorrect stored expected value. The original corpus remains unchanged. Later confirmation must report original feedback, original holdout, public examples and new posthoc robustness probes in separate columns.
+
+Metamorphic tests additionally check idempotent deduplication, duplicate-insensitive range compression, prefix/window relations, four rotations, flatten-depth composition, Unicode/ASCII boundaries, multiplicity, earliest ties and simultaneous edit coordinates. Seven trusted reference implementations are compared with independent oracles on 100 additional generated inputs each. The [test receipt](results/correctness-audit-20261115/offline-tests.json) records **63 passing offline tests**, including 13 new audit tests. Some passing tests intentionally reproduce known vulnerabilities; they do not mean those vulnerabilities are fixed.
+
+## Grade-integrity boundary
+
+The old grader executes candidate source and trusted test comparison inside one Python interpreter. Container isolation protects the host but does not hide oracle values from that candidate. Two deliberately authored, tiny candidates reproduce false passes using the **exact frozen trusted RUNNER**:
+
+1. Reading `sys._getframe(1).f_locals['case']['expected']` returns each expected answer without implementing the requested function.
+2. Writing a forged `{"status":"passed",...}` document to inherited protocol file descriptor 3 and exiting bypasses function evaluation and comparison entirely.
+
+Both yield a nominal 3/3 pass locally. The [receipt and minimal source](results/correctness-audit-20261115/grader-risk-reproductions.json) record Python 3.14.6 and the pinned RUNNER hash. These are local reproductions, not a new remote container validation. A further check confirms input equality observes final state only: append-then-pop is not detected as temporary mutation. Side-effect/purity observations are not authenticated execution provenance.
+
+The separate [independent grader](independent_code_grader.py) keeps expected values in the trusted outer parent and supplies only source/function and call arguments to the candidate child. Its outer comparator alone assigns grades. It is a new confirmation tool, not a silent change to the frozen benchmark. Child-reported values, exception names and input-after snapshots remain observations; arbitrary interpreter tampering cannot establish a universal purity guarantee. Actual independent regrading must wait until the loaded-throughput phase finishes.
+
+## What was observed in retained programs
+
+Static triage covers **1008 retained coding trace files, 1107 distinct source texts**, including 30 syntax-invalid texts; model code is never executed by this scan. The [audit](results/correctness-audit-20261115/audit.json) includes every trace hash and source index. It checks imports, frame/global access, dynamic execution, file/protocol manipulation and sensitive strings. The only flag is a normal `__import__('re').findall(...)` expression in a natural-sort candidate, manually inspected as unrelated to grade forgery.
+
+The [selected-program index](results/correctness-audit-20261115/selected-primary-scan-index.json) covers all 324 primary coding cases: 323 selected source artifacts plus one no-candidate case. All 18 selected balanced-bracket sources were inspected statically; none calls `count`. **No obvious historical exploitation was observed.** Absence of these indicators does not rule out obfuscation or establish correctness outside the finite tests. Independent external comparison of the frozen selected programs is still necessary.
+
+## Oracle exposure and future experiments
+
+The now-public repository tracks hidden-test and reference-witness files. Prior completed-cohort prompt/selection audits found no such inputs supplied to the serving model, and the closed serving requests had no repository/tool access. Publication is nevertheless distinct from secrecy. Same-interpreter grading exposed its oracle during evaluation even without prompt leakage.
+
+Self-improvement or genetic selection must not optimize against an evaluation set and then describe that same set as untouched confirmation. Use new development/probe data for selection and a newly frozen, untouched evaluation set for later claims. Preserve this historical corpus, all negative outcomes and original scores.
+
+## Reproduction
+
+```sh
+python3 -m unittest test_correctness_audit test_harness test_sandbox_code test_coding_harness
+python3 reproduce_grader_risks.py --output /tmp/grader-risks-new.json
+python3 correctness_audit.py --output /tmp/correctness-audit-new
+```
+
+The full audit pauses if the local pipeline state has entered its automatic throughput window. Its output directory must be new. The [manifest](results/correctness-audit-20261115/manifest.json) binds final reports, scripts, tests and the manual flag assessment by SHA-256. No raw benchmark artifact is edited.
