@@ -9,6 +9,7 @@
 <header><h1>Swarm Lab</h1><p>Replay proposals, votes, and decisions from a local event log.</p></header>
 <main>
 <div class="controls"><label>Run <select id="run"><option value="">No saved runs</option></select></label><button id="refresh">Refresh</button><label><input type="checkbox" id="live" checked> Follow new events</label><label><input type="checkbox" id="collapse" checked> Collapse duplicate states</label><span id="method" class="tag">—</span></div>
+<div id="provenance" role="status" style="margin-top:10px;font-size:13px;color:var(--muted)"></div>
 <div id="status" role="status">Reading event logs…</div>
 <div class="playback"><button id="play" disabled>▶ Play</button><button id="start" disabled>Start</button><input id="seek" type="range" min="0" max="0" value="0" aria-label="Replay position"><span id="position">0 / 0 events</span><button id="end" disabled>End</button></div>
 <div class="stats" id="stats"></div>
@@ -47,7 +48,15 @@ if(type==='request_end'){calls++;if(e.error)errors++;const u=e.usage||{};input+=
 }
 for(const n of nodes.values()){if(n.parent!==null&&!nodes.has(n.parent))ensure(n.parent)}
 return{input,output,estimated,calls,errors,reputations,weights,evaluations,requests}}
-function render(){const stats=build();$('seek').max=events.length;$('seek').value=cursor;$('position').textContent=cursor+' / '+events.length+' events';for(const id of['play','start','end'])$(id).disabled=!events.length;const method=events[0]?.method??events[0]?.config?.method;const puzzle=events.slice(0,cursor).findLast(e=>e.type==='puzzle_start');$('method').textContent=(methods[method]??method??'—')+(puzzle?' · target '+puzzle.target:'');$('stats').replaceChildren();for(const[value,label]of[[nodes.size,'nodes'],[stats.calls,'requests'],[stats.output,'output tokens'+(stats.estimated?' ≈':'')],[stats.input,'input tokens'],[[...nodes.values()].filter(n=>n.status==='rejected').length,'not selected'],[stats.errors,'request errors']]){const s=element('span',undefined,'stat');s.append(element('b',String(value)),document.createTextNode(label));$('stats').append(s)}drawTree();inspect(stats);showScores(stats);drawEvents()}
+function showProvenance(stats){
+ const visible=events.slice(0,cursor),start=events.find(e=>e.type==='run_start'),end=visible.findLast(e=>e.type==='run_end');
+ const status=end?.status??'running',labels={complete:'Completed',complete_with_errors:'Completed with errors',budget_limited:'Budget limited',failed:'Failed',running:'Running'};
+ const incomplete=['complete_with_errors','budget_limited','failed'].includes(status)||stats.errors>0||Number(end?.infrastructure_failures??0)>0||Number(end?.budget_denials??0)>0;
+ const responses=visible.filter(e=>e.type==='request_end'&&!e.error&&e.response!=null).length;
+ $('provenance').textContent='Model: '+(start?.config?.model??'unknown')+' · Status: '+(labels[status]??status)+' · Successful model responses: '+responses+(incomplete?' · WARNING: outcomes are incomplete; do not treat them as a clean model-quality result.':!end?' · Results are provisional.':'');
+ $('provenance').style.color=incomplete?'var(--amber)':'var(--muted)';
+}
+function render(){const stats=build();showProvenance(stats);$('seek').max=events.length;$('seek').value=cursor;$('position').textContent=cursor+' / '+events.length+' events';for(const id of['play','start','end'])$(id).disabled=!events.length;const method=events[0]?.method??events[0]?.config?.method;const puzzle=events.slice(0,cursor).findLast(e=>e.type==='puzzle_start');$('method').textContent=(methods[method]??method??'—')+(puzzle?' · target '+puzzle.target:'');$('stats').replaceChildren();for(const[value,label]of[[nodes.size,'nodes'],[stats.calls,'requests'],[stats.output,'output tokens'+(stats.estimated?' ≈':'')],[stats.input,'input tokens'],[[...nodes.values()].filter(n=>n.status==='rejected').length,'not selected'],[stats.errors,'request errors']]){const s=element('span',undefined,'stat');s.append(element('b',String(value)),document.createTextNode(label));$('stats').append(s)}drawTree();inspect(stats);showScores(stats);drawEvents()}
 function displayTree(){
  displayGroups=new Map();displayAliases=new Map();const result=new Map();
  if(!$('collapse').checked){for(const n of nodes.values()){result.set(n.id,{...n});displayGroups.set(n.id,[n]);displayAliases.set(n.id,n.id)}return result}
