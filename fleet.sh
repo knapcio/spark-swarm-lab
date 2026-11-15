@@ -2,7 +2,7 @@
 set -euo pipefail
 
 OWNER=swarm-lab-20261115
-IMAGE=vllm/vllm-openai@sha256:1c8e60a0841b333c700488cb029d3664807249da0c071e862191b00fe34b228c
+IMAGE=vllm/vllm-openai@sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc
 MODEL_REPO=nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4
 MODEL_REV=bee7596271d1495f6992ae224aefde4410e816b8
 CONTAINER=swarm-lightning
@@ -83,6 +83,12 @@ require_ours() {
 check_running_speculation() {
   local current
   [[ "$(docker container inspect --format '{{.State.Running}}' "$container")" == true ]] || return 0
+  local current_image
+  current_image=$(docker container inspect --format '{{.Config.Image}}' "$container")
+  [[ "$current_image" == "$image" ]] || {
+    echo "$actual: running image differs from requested pinned image; stop the owned replica before changing runtime." >&2
+    return 1
+  }
   current=$(docker container inspect --format '{{index .Config.Labels "swarm-lab.speculation"}}' "$container")
   # The original target-only baseline predates the speculation label.
   if [[ -z "$current" || "$current" == '<no value>' ]]; then current=none; fi
@@ -199,7 +205,7 @@ case "$operation" in
       echo "$actual: need 90 GiB MemAvailable; found ${available:-unknown} KiB" >&2; exit 1;
     }
     if container_exists; then docker container rm "$container"; fi
-    mkdir -p "$root/cache"
+    mkdir -p "$root/cache-v032"
     extra_mounts=() extra_args=()
     if [[ "$speculation" == dspark ]]; then
       extra_mounts=(-v "$draft:/draft:ro")
@@ -209,7 +215,7 @@ case "$operation" in
       --label "swarm-lab.model=$model_repo" --label "swarm-lab.revision=$model_rev" \
       --label "swarm-lab.speculation=$speculation" \
       --gpus all --ipc=host --network=host --restart=no \
-      -v "$model:/model:ro" -v "$root/cache:/root/.cache" "${extra_mounts[@]}" \
+      -v "$model:/model:ro" -v "$root/cache-v032:/root/.cache" "${extra_mounts[@]}" \
       "$image" /model --served-model-name nemotron-lightning \
       --host 127.0.0.1 --port 18096 --max-model-len 16384 --max-num-seqs 25 \
       --max-num-batched-tokens 4096 --gpu-memory-utilization 0.70 \

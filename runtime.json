@@ -3,8 +3,8 @@
   "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
   "model_weight_bytes": 21561882284,
   "model_shards": 52,
-  "image": "vllm/vllm-openai:v0.27.1",
-  "arm64_manifest_digest": "sha256:1c8e60a0841b333c700488cb029d3664807249da0c071e862191b00fe34b228c",
+  "image": "vllm/vllm-openai:v0.32.0",
+  "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
   "served_model_name": "nemotron-lightning",
   "deployment": "4 independent TP1 replicas on GB10",
   "baseline": {
@@ -22,11 +22,13 @@
   "request_defaults": {
     "temperature": 0.8,
     "max_tokens": 192,
-    "chat_template_kwargs": {"enable_thinking": false}
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
   },
-  "active_recipe": "dspark3",
+  "active_recipe": "dspark3-runtime-v2",
   "dspark": {
-    "status": "Verified healthy on Spark_01–04; same-node c25 median throughput +51.40% over target-only",
+    "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
     "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
     "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
     "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
@@ -36,5 +38,6 @@
     "method": "dspark",
     "num_speculative_tokens": 3
   },
-  "note": "The baseline records the original target-only configuration. Active serving uses DSpark3 with otherwise identical settings. See SERVING.md and recorded probes for measurement scope."
+  "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU code grader remains its independently pinned0.27.1 image. See RUNTIME_V2_AMENDMENT.json and serving receipts.",
+  "cache_directory": "~/swarm-lab/cache-v032"
 }
