@@ -1,0 +1,466 @@
+{
+  "created_utc": "2026-11-15T19:05:37.189722+00:00",
+  "ledger_original_sha256": "d7646e6b868a631e5d8b71bc885a2556d34a4913da38ccaefc8d31866025d58d",
+  "aggregate_script_sha256": "4c552a40115b9eef23c48814bebaf900ba83646e41f41b1f03c13594855ebe84",
+  "cohorts": [
+    {
+      "domain": "arithmetic",
+      "seed": 1,
+      "directory": "results/evaluation-v2/arithmetic-s1",
+      "metadata_sha256": "bc5b6a2e1b12e15ab628c86d2e02bbff1b1edc4326606b3688f0a8ffa8d21d44",
+      "summary_sha256": "d3843a538f8cd98319dd4031e4e4a4f0bb713952ac7e62ffe2b9b66ca1bfaac3",
+      "cohort_export_manifest_sha256": "b9180a2908b0df38f2c7ca13f400552e26704f53ae05b51c29bd6df22de22da3",
+      "independent_audit_sha256": "d2b18ec67767c2778e025b0ee872e5720faa7c660aa9349f9003e93c62bb86cd",
+      "source_commit": "cbcde299716b7842536b008880a089590e9816f8",
+      "source_hashes": {
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "provided_configuration": {
+        "budget": "1280 calls/32768 completion tokens per case; prompt usage measured, no input-token cap",
+        "temperature": 0.8,
+        "controller_deadline_seconds": 180,
+        "scope": "Latency/quality calibration with four job slots; NOT a saturated fleet-throughput measurement",
+        "scheduling": "Fixed endpoint per persistent slot; each task's rotated arms run sequentially on its assigned slot",
+        "stop_on_solution": true,
+        "server_metrics": true
+      }
+    },
+    {
+      "domain": "arithmetic",
+      "seed": 2,
+      "directory": "results/evaluation-v2/arithmetic-s2",
+      "metadata_sha256": "4fb43a710a92ad651420285d06ab070da4dc5379b7a5d2edb8db5d98be06aaa8",
+      "summary_sha256": "0311c304adbd2a51936289d06f811e176d9b5fd97d2415279b18629be283d8c8",
+      "cohort_export_manifest_sha256": "460a556bb2014cb00dc99f969ef2fe5a00213f166994b1d0c77f4aa5c7060125",
+      "independent_audit_sha256": "a940ee73e5b07e19d7911e61c5de4ba7a43e4694634a0dc1c498c2f1d28968e2",
+      "source_commit": "cbcde299716b7842536b008880a089590e9816f8",
+      "source_hashes": {
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "provided_configuration": {
+        "budget": "1280 calls/32768 completion tokens per case; prompt usage measured, no input-token cap",
+        "temperature": 0.8,
+        "controller_deadline_seconds": 180,
+        "scope": "Latency/quality calibration with four job slots; NOT a saturated fleet-throughput measurement",
+        "scheduling": "Fixed endpoint per persistent slot; each task's rotated arms run sequentially on its assigned slot",
+        "stop_on_solution": true,
+        "server_metrics": true
+      }
+    },
+    {
+      "domain": "arithmetic",
+      "seed": 3,
+      "directory": "results/evaluation-v2/arithmetic-s3",
+      "metadata_sha256": "a83ca6bcd04dd1e915e9450956f21bc78283962f886845792c08861313c19e05",
+      "summary_sha256": "327f9b37bb1ba206fcc0898a20b20a62b33eb82e6e0c489487a95c4aff13f6fb",
+      "cohort_export_manifest_sha256": "c0d7077e64b5455e88eec5c50b4ff7d77bfb93030e62a5b32575021d91d3f600",
+      "independent_audit_sha256": "616b6d17ae1c513d2ddee1134e6f080502db74b6741784976e407bba7546e54a",
+      "source_commit": "cbcde299716b7842536b008880a089590e9816f8",
+      "source_hashes": {
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "provided_configuration": {
+        "budget": "1280 calls/32768 completion tokens per case; prompt usage measured, no input-token cap",
+        "temperature": 0.8,
+        "controller_deadline_seconds": 180,
+        "scope": "Latency/quality calibration with four job slots; NOT a saturated fleet-throughput measurement",
+        "scheduling": "Fixed endpoint per persistent slot; each task's rotated arms run sequentially on its assigned slot",
+        "stop_on_solution": true,
+        "server_metrics": true
+      }
+    },
+    {
+      "domain": "coding",
+      "seed": 1,
+      "directory": "results/evaluation-v2/coding-s1",
+      "metadata_sha256": "d7f7df5cf8820fe4cc3d03f15c2584bc5f5ad31cb79a334c6f8aabbdadfd4010",
+      "summary_sha256": "1e24f14f4efbb4a77b861f1608fd2bfe27f9fb47c5a0830e1522aaaeb80d8d60",
+      "cohort_export_manifest_sha256": "59b8469a83ff699d63b2e85f341b0d70af3ac142f0699fac74a61a817c8603bf",
+      "independent_audit_sha256": "38bde61c5ca55e277ec022709525b6ca4022b5141fbd1edc8efd57a83c150fc5",
+      "source_commit": "cbcde299716b7842536b008880a089590e9816f8",
+      "source_hashes": {
+        "run_coding_benchmark.py": "a5db3962a67c64f762a95a9e6b2b7539035b2f11185c9ec56d028e6326fea493",
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2",
+        "sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "coding_tasks.py": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "provided_configuration": {
+        "budgets": {
+          "max_calls": 1024,
+          "max_completion_tokens": 131072,
+          "off_max_tokens": 1024,
+          "thinking_max_tokens": 8192,
+          "http_timeout": 180,
+          "task_deadline": 180
+        },
+        "code_format": "python",
+        "selection": "Freeze on first feedback pass or feedback-only final ranking; holdout graded once after selection, never repaired or fed to model",
+        "scope": "Mixed four-slot batch wall is not arm-specific saturated throughput; report actual client/server cost and grading errors",
+        "scheduling": "Persistent slot pairs one model endpoint and CPU-grader host. Rotate task arms; all arms of a task use its same pair.",
+        "stop_on_solution": true,
+        "server_metrics": true
+      }
+    },
+    {
+      "domain": "coding",
+      "seed": 2,
+      "directory": "results/evaluation-v2/coding-s2",
+      "metadata_sha256": "7d82547009603b4a0ea954a82ccb3f4fd7c85c71e12db42e879f2e26d788a326",
+      "summary_sha256": "a1f1e26d80fa61de093dc15e5ffda05ced3e5cc09464c8a0117c9cb392396d4d",
+      "cohort_export_manifest_sha256": "a7ad3f3ef6d6f17f393b537f6dadaa81396e8c220fa78763ff1ef4bf9e6ce5cd",
+      "independent_audit_sha256": "0b604b8361740645b9b25a8a18812d2da89de0b967bdaf001fcf3ff433f98ff7",
+      "source_commit": "cbcde299716b7842536b008880a089590e9816f8",
+      "source_hashes": {
+        "run_coding_benchmark.py": "a5db3962a67c64f762a95a9e6b2b7539035b2f11185c9ec56d028e6326fea493",
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2",
+        "sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "coding_tasks.py": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "provided_configuration": {
+        "budgets": {
+          "max_calls": 1024,
+          "max_completion_tokens": 131072,
+          "off_max_tokens": 1024,
+          "thinking_max_tokens": 8192,
+          "http_timeout": 180,
+          "task_deadline": 180
+        },
+        "code_format": "python",
+        "selection": "Freeze on first feedback pass or feedback-only final ranking; holdout graded once after selection, never repaired or fed to model",
+        "scope": "Mixed four-slot batch wall is not arm-specific saturated throughput; report actual client/server cost and grading errors",
+        "scheduling": "Persistent slot pairs one model endpoint and CPU-grader host. Rotate task arms; all arms of a task use its same pair.",
+        "stop_on_solution": true,
+        "server_metrics": true
+      }
+    },
+    {
+      "domain": "coding",
+      "seed": 3,
+      "directory": "results/evaluation-v2/coding-s3",
+      "metadata_sha256": "90d06ab40f7ed731be36f01eee3a66bc18f2fbb76d37646f56eabde5bb358463",
+      "summary_sha256": "97cf44fc63ccde328664f9432a360f215fb5e5079859d9e40d63605febe33877",
+      "cohort_export_manifest_sha256": "9c2507b36f31062060e6cc53512c3a02a8e966f7e2dd2c9c2629055919a5dd3f",
+      "independent_audit_sha256": "88de514a6a1ecd0823d345c272dd5dedd541cfd37760900c91d471f8df0ebaa1",
+      "source_commit": "cbcde299716b7842536b008880a089590e9816f8",
+      "source_hashes": {
+        "run_coding_benchmark.py": "a5db3962a67c64f762a95a9e6b2b7539035b2f11185c9ec56d028e6326fea493",
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2",
+        "sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "coding_tasks.py": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "provided_configuration": {
+        "budgets": {
+          "max_calls": 1024,
+          "max_completion_tokens": 131072,
+          "off_max_tokens": 1024,
+          "thinking_max_tokens": 8192,
+          "http_timeout": 180,
+          "task_deadline": 180
+        },
+        "code_format": "python",
+        "selection": "Freeze on first feedback pass or feedback-only final ranking; holdout graded once after selection, never repaired or fed to model",
+        "scope": "Mixed four-slot batch wall is not arm-specific saturated throughput; report actual client/server cost and grading errors",
+        "scheduling": "Persistent slot pairs one model endpoint and CPU-grader host. Rotate task arms; all arms of a task use its same pair.",
+        "stop_on_solution": true,
+        "server_metrics": true
+      }
+    }
+  ]
+}

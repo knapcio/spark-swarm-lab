@@ -1,0 +1,1718 @@
+{
+  "schema_version": 1,
+  "domain": "coding",
+  "split": "evaluation",
+  "dataset_sha256": "42dbc85ee3f87f476460ce9bb5448b65e1bceb551cbc9ebd48134644e7b9bdc3",
+  "tasks": 18,
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "source_cohorts": [
+    {
+      "directory": "results/evaluation-v2/coding-s1",
+      "label": "",
+      "metadata_sha256": "d7f7df5cf8820fe4cc3d03f15c2584bc5f5ad31cb79a334c6f8aabbdadfd4010",
+      "summary_sha256": "1e24f14f4efbb4a77b861f1608fd2bfe27f9fb47c5a0830e1522aaaeb80d8d60",
+      "source_commit": "cbcde299716b7842536b008880a089590e9816f8",
+      "source_hashes": {
+        "run_coding_benchmark.py": "a5db3962a67c64f762a95a9e6b2b7539035b2f11185c9ec56d028e6326fea493",
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2",
+        "sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "coding_tasks.py": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5"
+      },
+      "final_source_hashes": {
+        "run_coding_benchmark.py": "a5db3962a67c64f762a95a9e6b2b7539035b2f11185c9ec56d028e6326fea493",
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2",
+        "sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "coding_tasks.py": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "configuration": {
+        "budget": null,
+        "temperature": null,
+        "controller_deadline_seconds": null,
+        "scheduling": "Persistent slot pairs one model endpoint and CPU-grader host. Rotate task arms; all arms of a task use its same pair.",
+        "scope": "Mixed four-slot batch wall is not arm-specific saturated throughput; report actual client/server cost and grading errors",
+        "stop_on_solution": true,
+        "server_metrics": true,
+        "code_format": "python",
+        "selection_policy": null
+      },
+      "mixed_arm_queue_wall_seconds": 449.1664275834337,
+      "ledger_verification": {
+        "entry": {
+          "name": "evaluation-v2-coding-s1",
+          "domain": "coding",
+          "seed": 1,
+          "split": "evaluation",
+          "dataset": "datasets/coding-v1/tasks.json",
+          "arms": [
+            "direct_off",
+            "solo_iterative",
+            "direct_thinking",
+            "independent8",
+            "shared8",
+            "democracy8"
+          ],
+          "selection_sha256": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
+          "serving_runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+          "fresh_v2": true,
+          "command": [
+            "python3",
+            "./run_coding_benchmark.py",
+            "--dataset",
+            "./datasets/coding-v1/tasks.json",
+            "--split",
+            "evaluation",
+            "--arms",
+            "direct_off,solo_iterative,direct_thinking,independent8,shared8,democracy8",
+            "--seed",
+            "1",
+            "--output",
+            "results/evaluation-v2/coding-s1",
+            "--run",
+            "--tests",
+            "./datasets/coding-v1/hidden-tests.json",
+            "--code-format",
+            "python"
+          ],
+          "source_revision": "cbcde299716b7842536b008880a089590e9816f8",
+          "source_path": ".",
+          "started_utc": "2026-11-15T17:25:17.322115+00:00",
+          "status": "verified",
+          "controller_pid": 74661,
+          "returncode": 0,
+          "completed_utc": "2026-11-15T17:32:46.573719+00:00",
+          "grader_boundary": {
+            "path": "results/evaluation-v2/coding-s1/owned-grader-boundary.json",
+            "verified": true,
+            "completed_utc": "2026-11-15T17:32:53.186004+00:00",
+            "wall_seconds": 6.599187333136797
+          },
+          "audit": {
+            "metadata_sha256": "d24075e1b33a9a9987173bab36d99b709b5af72e944f5c598b0adba49c634ffd",
+            "summary_sha256": "1a686885d098695923db7173a00e86b9ebf36ac3da208c21df854f0612316860",
+            "completed_cases": 108,
+            "incomplete": false,
+            "source_changed": false,
+            "known_diagnostic_races": [],
+            "null_infrastructure_trace_reviews": [],
+            "infrastructure_review": "passed"
+          },
+          "verified": true,
+          "valid_for_aggregation": true,
+          "completed_cases": 108,
+          "incomplete": false,
+          "source_changed": false
+        },
+        "identity_manifest_sha256": "59b8469a83ff699d63b2e85f341b0d70af3ac142f0699fac74a61a817c8603bf"
+      }
+    },
+    {
+      "directory": "results/evaluation-v2/coding-s2",
+      "label": "",
+      "metadata_sha256": "7d82547009603b4a0ea954a82ccb3f4fd7c85c71e12db42e879f2e26d788a326",
+      "summary_sha256": "a1f1e26d80fa61de093dc15e5ffda05ced3e5cc09464c8a0117c9cb392396d4d",
+      "source_commit": "cbcde299716b7842536b008880a089590e9816f8",
+      "source_hashes": {
+        "run_coding_benchmark.py": "a5db3962a67c64f762a95a9e6b2b7539035b2f11185c9ec56d028e6326fea493",
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2",
+        "sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "coding_tasks.py": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5"
+      },
+      "final_source_hashes": {
+        "run_coding_benchmark.py": "a5db3962a67c64f762a95a9e6b2b7539035b2f11185c9ec56d028e6326fea493",
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2",
+        "sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "coding_tasks.py": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "configuration": {
+        "budget": null,
+        "temperature": null,
+        "controller_deadline_seconds": null,
+        "scheduling": "Persistent slot pairs one model endpoint and CPU-grader host. Rotate task arms; all arms of a task use its same pair.",
+        "scope": "Mixed four-slot batch wall is not arm-specific saturated throughput; report actual client/server cost and grading errors",
+        "stop_on_solution": true,
+        "server_metrics": true,
+        "code_format": "python",
+        "selection_policy": null
+      },
+      "mixed_arm_queue_wall_seconds": 382.61067512538284,
+      "ledger_verification": {
+        "entry": {
+          "name": "evaluation-v2-coding-s2",
+          "domain": "coding",
+          "seed": 2,
+          "split": "evaluation",
+          "dataset": "datasets/coding-v1/tasks.json",
+          "arms": [
+            "democracy8",
+            "shared8",
+            "independent8",
+            "direct_thinking",
+            "solo_iterative",
+            "direct_off"
+          ],
+          "selection_sha256": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
+          "serving_runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+          "fresh_v2": true,
+          "command": [
+            "python3",
+            "./run_coding_benchmark.py",
+            "--dataset",
+            "./datasets/coding-v1/tasks.json",
+            "--split",
+            "evaluation",
+            "--arms",
+            "democracy8,shared8,independent8,direct_thinking,solo_iterative,direct_off",
+            "--seed",
+            "2",
+            "--output",
+            "results/evaluation-v2/coding-s2",
+            "--run",
+            "--tests",
+            "./datasets/coding-v1/hidden-tests.json",
+            "--code-format",
+            "python"
+          ],
+          "source_revision": "cbcde299716b7842536b008880a089590e9816f8",
+          "source_path": ".",
+          "started_utc": "2026-11-15T18:12:49.401835+00:00",
+          "status": "verified",
+          "controller_pid": 23776,
+          "returncode": 0,
+          "completed_utc": "2026-11-15T18:19:12.093407+00:00",
+          "grader_boundary": {
+            "path": "results/evaluation-v2/coding-s2/owned-grader-boundary.json",
+            "verified": true,
+            "completed_utc": "2026-11-15T18:19:14.763413+00:00",
+            "wall_seconds": 2.66920895781368
+          },
+          "audit": {
+            "metadata_sha256": "c9034291f548ed651c04876363aa00314f214621f2a5f88df6b2500cc096cc7d",
+            "summary_sha256": "a6ec8b5d7eea104b42949dc72c2e12b65be4a764a264d9afbbf8f44c2abbd667",
+            "completed_cases": 108,
+            "incomplete": false,
+            "source_changed": false,
+            "known_diagnostic_races": [],
+            "null_infrastructure_trace_reviews": [],
+            "infrastructure_review": "passed"
+          },
+          "verified": true,
+          "valid_for_aggregation": true,
+          "completed_cases": 108,
+          "incomplete": false,
+          "source_changed": false
+        },
+        "identity_manifest_sha256": "a7ad3f3ef6d6f17f393b537f6dadaa81396e8c220fa78763ff1ef4bf9e6ce5cd"
+      }
+    },
+    {
+      "directory": "results/evaluation-v2/coding-s3",
+      "label": "",
+      "metadata_sha256": "90d06ab40f7ed731be36f01eee3a66bc18f2fbb76d37646f56eabde5bb358463",
+      "summary_sha256": "97cf44fc63ccde328664f9432a360f215fb5e5079859d9e40d63605febe33877",
+      "source_commit": "cbcde299716b7842536b008880a089590e9816f8",
+      "source_hashes": {
+        "run_coding_benchmark.py": "a5db3962a67c64f762a95a9e6b2b7539035b2f11185c9ec56d028e6326fea493",
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2",
+        "sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "coding_tasks.py": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5"
+      },
+      "final_source_hashes": {
+        "run_coding_benchmark.py": "a5db3962a67c64f762a95a9e6b2b7539035b2f11185c9ec56d028e6326fea493",
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2",
+        "sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "coding_tasks.py": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "configuration": {
+        "budget": null,
+        "temperature": null,
+        "controller_deadline_seconds": null,
+        "scheduling": "Persistent slot pairs one model endpoint and CPU-grader host. Rotate task arms; all arms of a task use its same pair.",
+        "scope": "Mixed four-slot batch wall is not arm-specific saturated throughput; report actual client/server cost and grading errors",
+        "stop_on_solution": true,
+        "server_metrics": true,
+        "code_format": "python",
+        "selection_policy": null
+      },
+      "mixed_arm_queue_wall_seconds": 500.5128679163754,
+      "ledger_verification": {
+        "entry": {
+          "name": "evaluation-v2-coding-s3",
+          "domain": "coding",
+          "seed": 3,
+          "split": "evaluation",
+          "dataset": "datasets/coding-v1/tasks.json",
+          "arms": [
+            "independent8",
+            "shared8",
+            "democracy8",
+            "direct_off",
+            "solo_iterative",
+            "direct_thinking"
+          ],
+          "selection_sha256": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
+          "serving_runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+          "fresh_v2": true,
+          "command": [
+            "python3",
+            "./run_coding_benchmark.py",
+            "--dataset",
+            "./datasets/coding-v1/tasks.json",
+            "--split",
+            "evaluation",
+            "--arms",
+            "independent8,shared8,democracy8,direct_off,solo_iterative,direct_thinking",
+            "--seed",
+            "3",
+            "--output",
+            "results/evaluation-v2/coding-s3",
+            "--run",
+            "--tests",
+            "./datasets/coding-v1/hidden-tests.json",
+            "--code-format",
+            "python"
+          ],
+          "source_revision": "cbcde299716b7842536b008880a089590e9816f8",
+          "source_path": ".",
+          "started_utc": "2026-11-15T18:52:50.273312+00:00",
+          "status": "verified",
+          "controller_pid": 64790,
+          "returncode": 0,
+          "completed_utc": "2026-11-15T19:01:10.929650+00:00",
+          "grader_boundary": {
+            "path": "results/evaluation-v2/coding-s3/owned-grader-boundary.json",
+            "verified": true,
+            "completed_utc": "2026-11-15T19:01:11.826285+00:00",
+            "wall_seconds": 0.8956270003691316
+          },
+          "audit": {
+            "metadata_sha256": "fadea7ccdcb11b577dc57d6dcfc3c43d606b1a7fa2f1c3697c4f2040d1d1a962",
+            "summary_sha256": "d4e20a99a22041b6a82ff28c6dd2bbde4aa7dc06ef6fb23f7dc39a216a94c430",
+            "completed_cases": 108,
+            "incomplete": false,
+            "source_changed": false,
+            "known_diagnostic_races": [],
+            "null_infrastructure_trace_reviews": [],
+            "infrastructure_review": "passed"
+          },
+          "verified": true,
+          "valid_for_aggregation": true,
+          "completed_cases": 108,
+          "incomplete": false,
+          "source_changed": false
+        },
+        "identity_manifest_sha256": "9c2507b36f31062060e6cc53512c3a02a8e966f7e2dd2c9c2629055919a5dd3f"
+      }
+    }
+  ],
+  "script_sha256": "4c552a40115b9eef23c48814bebaf900ba83646e41f41b1f03c13594855ebe84",
+  "bootstrap": {
+    "unit": "task cluster, all seeds retained",
+    "repetitions": 5000,
+    "seed": 20261115,
+    "interval": "percentile 95%"
+  },
+  "scope": "Fixed synthetic task distribution; repeated seeds are not independent tasks; no winner or fleet-throughput inference.",
+  "notes": [
+    "Accuracy is the equally weighted mean of per-task seed success rates.",
+    "Paired deltas match task/seed and use task-cluster bootstrap; trajectories need not be identical.",
+    "Pairwise intervals are pointwise, unadjusted for multiple comparisons; no automatic winner labels.",
+    "Known server totals are subtotals over known cases only; unknowns remain null, never zero.",
+    "Client tokens with unfinished/missing usage or deadlines are lower bounds, not GPU-equivalent cost.",
+    "Time-success denominators include every case; missing proof timestamps make curves lower bounds.",
+    "Occupied case wall includes controller/metrics/drain overhead; first-proof latency is solved-only.",
+    "Mixed-arm queue wall is recorded separately per cohort, never per-arm fleet throughput."
+  ],
+  "arms": [
+    {
+      "arm": "democracy8",
+      "tasks": 18,
+      "cases": 54,
+      "solved": 52,
+      "accuracy": 0.9629629629629629,
+      "cluster95_low": 0.9074074074074073,
+      "cluster95_high": 1.0,
+      "median_occupied_case_wall_seconds": 20.2793055,
+      "p95_occupied_case_wall_seconds": 34.97610979999999,
+      "solved_only_first_proof_n": 52,
+      "solved_only_median_first_proof_seconds": 19.093679978512228,
+      "solved_only_p95_first_proof_seconds": 30.405483697913567,
+      "missing_solved_proof_times": 0,
+      "calls": 896,
+      "prompt_tokens": 586792,
+      "completion_tokens": 76408,
+      "unfinished_calls": 0,
+      "length_finishes": 0,
+      "budget_denials": 0,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "client_cost_is_lower_bound": false,
+      "deadline_cases": 0,
+      "infrastructure_failures": 0,
+      "missing_infrastructure_counts": 0,
+      "controller_error_cases": 0,
+      "unexpected_process_error_cases": 0,
+      "server_cost_known_cases": 54,
+      "server_cost_unknown_cases": 0,
+      "server_counter_floor_failures": 0,
+      "server_prompt_tokens_known": 586792,
+      "server_completion_tokens_known": 76408,
+      "source_variants": [
+        "results/evaluation-v2/coding-s1",
+        "results/evaluation-v2/coding-s2",
+        "results/evaluation-v2/coding-s3"
+      ],
+      "feedback_pass_cases": 53,
+      "final_holdout_pass_cases": 52
+    },
+    {
+      "arm": "direct_off",
+      "tasks": 18,
+      "cases": 54,
+      "solved": 38,
+      "accuracy": 0.7037037037037037,
+      "cluster95_low": 0.5185185185185185,
+      "cluster95_high": 0.8703703703703703,
+      "median_occupied_case_wall_seconds": 5.0380185,
+      "p95_occupied_case_wall_seconds": 9.628878699999998,
+      "solved_only_first_proof_n": 38,
+      "solved_only_median_first_proof_seconds": 4.628493479453027,
+      "solved_only_p95_first_proof_seconds": 8.295475954934954,
+      "missing_solved_proof_times": 0,
+      "calls": 54,
+      "prompt_tokens": 13479,
+      "completion_tokens": 5699,
+      "unfinished_calls": 0,
+      "length_finishes": 0,
+      "budget_denials": 0,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "client_cost_is_lower_bound": false,
+      "deadline_cases": 0,
+      "infrastructure_failures": 0,
+      "missing_infrastructure_counts": 0,
+      "controller_error_cases": 0,
+      "unexpected_process_error_cases": 0,
+      "server_cost_known_cases": 54,
+      "server_cost_unknown_cases": 0,
+      "server_counter_floor_failures": 0,
+      "server_prompt_tokens_known": 13479,
+      "server_completion_tokens_known": 5699,
+      "source_variants": [
+        "results/evaluation-v2/coding-s1",
+        "results/evaluation-v2/coding-s2",
+        "results/evaluation-v2/coding-s3"
+      ],
+      "feedback_pass_cases": 39,
+      "final_holdout_pass_cases": 38
+    },
+    {
+      "arm": "direct_thinking",
+      "tasks": 18,
+      "cases": 54,
+      "solved": 53,
+      "accuracy": 0.9814814814814815,
+      "cluster95_low": 0.9444444444444444,
+      "cluster95_high": 1.0,
+      "median_occupied_case_wall_seconds": 23.759248,
+      "p95_occupied_case_wall_seconds": 61.88439814999999,
+      "solved_only_first_proof_n": 53,
+      "solved_only_median_first_proof_seconds": 22.878927124664187,
+      "solved_only_p95_first_proof_seconds": 59.96259112525731,
+      "missing_solved_proof_times": 0,
+      "calls": 54,
+      "prompt_tokens": 13479,
+      "completion_tokens": 155364,
+      "unfinished_calls": 0,
+      "length_finishes": 1,
+      "budget_denials": 0,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "client_cost_is_lower_bound": false,
+      "deadline_cases": 0,
+      "infrastructure_failures": 0,
+      "missing_infrastructure_counts": 0,
+      "controller_error_cases": 0,
+      "unexpected_process_error_cases": 0,
+      "server_cost_known_cases": 54,
+      "server_cost_unknown_cases": 0,
+      "server_counter_floor_failures": 0,
+      "server_prompt_tokens_known": 13479,
+      "server_completion_tokens_known": 155364,
+      "source_variants": [
+        "results/evaluation-v2/coding-s1",
+        "results/evaluation-v2/coding-s2",
+        "results/evaluation-v2/coding-s3"
+      ],
+      "feedback_pass_cases": 53,
+      "final_holdout_pass_cases": 53
+    },
+    {
+      "arm": "independent8",
+      "tasks": 18,
+      "cases": 54,
+      "solved": 53,
+      "accuracy": 0.9814814814814815,
+      "cluster95_low": 0.9444444444444444,
+      "cluster95_high": 1.0,
+      "median_occupied_case_wall_seconds": 6.9865625,
+      "p95_occupied_case_wall_seconds": 16.955888599999973,
+      "solved_only_first_proof_n": 53,
+      "solved_only_median_first_proof_seconds": 6.348496541380882,
+      "solved_only_p95_first_proof_seconds": 13.536185133270918,
+      "missing_solved_proof_times": 0,
+      "calls": 456,
+      "prompt_tokens": 121058,
+      "completion_tokens": 49788,
+      "unfinished_calls": 2,
+      "length_finishes": 0,
+      "budget_denials": 0,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "client_cost_is_lower_bound": true,
+      "deadline_cases": 0,
+      "infrastructure_failures": 0,
+      "missing_infrastructure_counts": 0,
+      "controller_error_cases": 0,
+      "unexpected_process_error_cases": 0,
+      "server_cost_known_cases": 54,
+      "server_cost_unknown_cases": 0,
+      "server_counter_floor_failures": 0,
+      "server_prompt_tokens_known": 121589,
+      "server_completion_tokens_known": 50512,
+      "source_variants": [
+        "results/evaluation-v2/coding-s1",
+        "results/evaluation-v2/coding-s2",
+        "results/evaluation-v2/coding-s3"
+      ],
+      "feedback_pass_cases": 53,
+      "final_holdout_pass_cases": 53
+    },
+    {
+      "arm": "shared8",
+      "tasks": 18,
+      "cases": 54,
+      "solved": 53,
+      "accuracy": 0.9814814814814815,
+      "cluster95_low": 0.9444444444444444,
+      "cluster95_high": 1.0,
+      "median_occupied_case_wall_seconds": 6.7994845,
+      "p95_occupied_case_wall_seconds": 15.928465049999975,
+      "solved_only_first_proof_n": 53,
+      "solved_only_median_first_proof_seconds": 6.120921124704182,
+      "solved_only_p95_first_proof_seconds": 13.027563400007782,
+      "missing_solved_proof_times": 0,
+      "calls": 448,
+      "prompt_tokens": 125832,
+      "completion_tokens": 50963,
+      "unfinished_calls": 0,
+      "length_finishes": 1,
+      "budget_denials": 0,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "client_cost_is_lower_bound": false,
+      "deadline_cases": 0,
+      "infrastructure_failures": 0,
+      "missing_infrastructure_counts": 0,
+      "controller_error_cases": 0,
+      "unexpected_process_error_cases": 0,
+      "server_cost_known_cases": 54,
+      "server_cost_unknown_cases": 0,
+      "server_counter_floor_failures": 0,
+      "server_prompt_tokens_known": 125832,
+      "server_completion_tokens_known": 50963,
+      "source_variants": [
+        "results/evaluation-v2/coding-s1",
+        "results/evaluation-v2/coding-s2",
+        "results/evaluation-v2/coding-s3"
+      ],
+      "feedback_pass_cases": 53,
+      "final_holdout_pass_cases": 53
+    },
+    {
+      "arm": "solo_iterative",
+      "tasks": 18,
+      "cases": 54,
+      "solved": 46,
+      "accuracy": 0.8518518518518519,
+      "cluster95_low": 0.7222222222222222,
+      "cluster95_high": 0.9629629629629629,
+      "median_occupied_case_wall_seconds": 5.5534625,
+      "p95_occupied_case_wall_seconds": 10.33865959999999,
+      "solved_only_first_proof_n": 46,
+      "solved_only_median_first_proof_seconds": 4.458041312173009,
+      "solved_only_p95_first_proof_seconds": 7.691145583987236,
+      "missing_solved_proof_times": 0,
+      "calls": 75,
+      "prompt_tokens": 24433,
+      "completion_tokens": 8363,
+      "unfinished_calls": 0,
+      "length_finishes": 0,
+      "budget_denials": 0,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "client_cost_is_lower_bound": false,
+      "deadline_cases": 0,
+      "infrastructure_failures": 0,
+      "missing_infrastructure_counts": 0,
+      "controller_error_cases": 0,
+      "unexpected_process_error_cases": 0,
+      "server_cost_known_cases": 54,
+      "server_cost_unknown_cases": 0,
+      "server_counter_floor_failures": 0,
+      "server_prompt_tokens_known": 24433,
+      "server_completion_tokens_known": 8363,
+      "source_variants": [
+        "results/evaluation-v2/coding-s1",
+        "results/evaluation-v2/coding-s2",
+        "results/evaluation-v2/coding-s3"
+      ],
+      "feedback_pass_cases": 46,
+      "final_holdout_pass_cases": 46
+    }
+  ],
+  "paired_cases": [
+    {
+      "task_id": "eva-apply_edits",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-apply_edits",
+      "seed": 2,
+      "democracy8": false,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-apply_edits",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-balanced_brackets",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-balanced_brackets",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-balanced_brackets",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-collapse_whitespace",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-collapse_whitespace",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-collapse_whitespace",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-dedupe_by_last",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-dedupe_by_last",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-dedupe_by_last",
+      "seed": 3,
+      "democracy8": false,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": false,
+      "shared8": true,
+      "solo_iterative": false
+    },
+    {
+      "task_id": "eva-flatten_depth",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-flatten_depth",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-flatten_depth",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": false
+    },
+    {
+      "task_id": "eva-interleave_lists",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-interleave_lists",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-interleave_lists",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-invert_index",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": false
+    },
+    {
+      "task_id": "eva-invert_index",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": false
+    },
+    {
+      "task_id": "eva-invert_index",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": false
+    },
+    {
+      "task_id": "eva-longest_unique_span",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-longest_unique_span",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-longest_unique_span",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-min_covering_window",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-min_covering_window",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-min_covering_window",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-natural_sort_strings",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": false,
+      "independent8": true,
+      "shared8": false,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-natural_sort_strings",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": false
+    },
+    {
+      "task_id": "eva-natural_sort_strings",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-prefix_totals",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-prefix_totals",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-prefix_totals",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-range_compress",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": false
+    },
+    {
+      "task_id": "eva-range_compress",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-range_compress",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-rotate_matrix",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-rotate_matrix",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-rotate_matrix",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-select_nth_distinct",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-select_nth_distinct",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-select_nth_distinct",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-stable_group_pairs",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-stable_group_pairs",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-stable_group_pairs",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-transpose_records",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-transpose_records",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-transpose_records",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-word_count_ascii",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-word_count_ascii",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": false,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": false
+    },
+    {
+      "task_id": "eva-word_count_ascii",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-zip_longest_sum",
+      "seed": 1,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-zip_longest_sum",
+      "seed": 2,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    },
+    {
+      "task_id": "eva-zip_longest_sum",
+      "seed": 3,
+      "democracy8": true,
+      "direct_off": true,
+      "direct_thinking": true,
+      "independent8": true,
+      "shared8": true,
+      "solo_iterative": true
+    }
+  ],
+  "paired_deltas": [
+    {
+      "arm_a": "democracy8",
+      "arm_b": "direct_off",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": 0.25925925925925924,
+      "cluster95_low": 0.09259259259259259,
+      "cluster95_high": 0.4629629629629629
+    },
+    {
+      "arm_a": "democracy8",
+      "arm_b": "direct_thinking",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": -0.01851851851851852,
+      "cluster95_low": -0.07453703703703689,
+      "cluster95_high": 0.03703703703703704
+    },
+    {
+      "arm_a": "democracy8",
+      "arm_b": "independent8",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": -0.01851851851851852,
+      "cluster95_low": -0.05555555555555555,
+      "cluster95_high": 0.0
+    },
+    {
+      "arm_a": "democracy8",
+      "arm_b": "shared8",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": -0.01851851851851852,
+      "cluster95_low": -0.07453703703703689,
+      "cluster95_high": 0.03703703703703704
+    },
+    {
+      "arm_a": "democracy8",
+      "arm_b": "solo_iterative",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": 0.11111111111111112,
+      "cluster95_low": 0.0,
+      "cluster95_high": 0.25925925925925924
+    },
+    {
+      "arm_a": "direct_off",
+      "arm_b": "direct_thinking",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": -0.2777777777777778,
+      "cluster95_low": -0.4629629629629629,
+      "cluster95_high": -0.12962962962962965
+    },
+    {
+      "arm_a": "direct_off",
+      "arm_b": "independent8",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": -0.2777777777777778,
+      "cluster95_low": -0.462962962962963,
+      "cluster95_high": -0.1111111111111111
+    },
+    {
+      "arm_a": "direct_off",
+      "arm_b": "shared8",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": -0.2777777777777778,
+      "cluster95_low": -0.4629629629629629,
+      "cluster95_high": -0.12962962962962965
+    },
+    {
+      "arm_a": "direct_off",
+      "arm_b": "solo_iterative",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": -0.14814814814814814,
+      "cluster95_low": -0.2777777777777778,
+      "cluster95_high": -0.03703703703703704
+    },
+    {
+      "arm_a": "direct_thinking",
+      "arm_b": "independent8",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": 0.0,
+      "cluster95_low": -0.05555555555555555,
+      "cluster95_high": 0.05555555555555555
+    },
+    {
+      "arm_a": "direct_thinking",
+      "arm_b": "shared8",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": 0.0,
+      "cluster95_low": 0.0,
+      "cluster95_high": 0.0
+    },
+    {
+      "arm_a": "direct_thinking",
+      "arm_b": "solo_iterative",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": 0.12962962962962965,
+      "cluster95_low": 0.03703703703703704,
+      "cluster95_high": 0.2592592592592593
+    },
+    {
+      "arm_a": "independent8",
+      "arm_b": "shared8",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": 0.0,
+      "cluster95_low": -0.05555555555555555,
+      "cluster95_high": 0.05555555555555555
+    },
+    {
+      "arm_a": "independent8",
+      "arm_b": "solo_iterative",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": 0.12962962962962965,
+      "cluster95_low": 0.03703703703703704,
+      "cluster95_high": 0.2592592592592593
+    },
+    {
+      "arm_a": "shared8",
+      "arm_b": "solo_iterative",
+      "direction": "a_minus_b",
+      "tasks": 18,
+      "matched_task_seed_pairs": 54,
+      "accuracy_delta": 0.12962962962962965,
+      "cluster95_low": 0.03703703703703704,
+      "cluster95_high": 0.2592592592592593
+    }
+  ],
+  "success_by_time": [
+    {
+      "arm": "democracy8",
+      "seconds": 5,
+      "solved_by_time": 0,
+      "cases": 54,
+      "fraction": 0.0,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "democracy8",
+      "seconds": 10,
+      "solved_by_time": 6,
+      "cases": 54,
+      "fraction": 0.1111111111111111,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "democracy8",
+      "seconds": 30,
+      "solved_by_time": 49,
+      "cases": 54,
+      "fraction": 0.9074074074074074,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "democracy8",
+      "seconds": 60,
+      "solved_by_time": 52,
+      "cases": 54,
+      "fraction": 0.9629629629629629,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "democracy8",
+      "seconds": 120,
+      "solved_by_time": 52,
+      "cases": 54,
+      "fraction": 0.9629629629629629,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "democracy8",
+      "seconds": 180,
+      "solved_by_time": 52,
+      "cases": 54,
+      "fraction": 0.9629629629629629,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "direct_off",
+      "seconds": 5,
+      "solved_by_time": 22,
+      "cases": 54,
+      "fraction": 0.4074074074074074,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "direct_off",
+      "seconds": 10,
+      "solved_by_time": 38,
+      "cases": 54,
+      "fraction": 0.7037037037037037,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "direct_off",
+      "seconds": 30,
+      "solved_by_time": 38,
+      "cases": 54,
+      "fraction": 0.7037037037037037,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "direct_off",
+      "seconds": 60,
+      "solved_by_time": 38,
+      "cases": 54,
+      "fraction": 0.7037037037037037,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "direct_off",
+      "seconds": 120,
+      "solved_by_time": 38,
+      "cases": 54,
+      "fraction": 0.7037037037037037,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "direct_off",
+      "seconds": 180,
+      "solved_by_time": 38,
+      "cases": 54,
+      "fraction": 0.7037037037037037,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "direct_thinking",
+      "seconds": 5,
+      "solved_by_time": 0,
+      "cases": 54,
+      "fraction": 0.0,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "direct_thinking",
+      "seconds": 10,
+      "solved_by_time": 2,
+      "cases": 54,
+      "fraction": 0.037037037037037035,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "direct_thinking",
+      "seconds": 30,
+      "solved_by_time": 34,
+      "cases": 54,
+      "fraction": 0.6296296296296297,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "direct_thinking",
+      "seconds": 60,
+      "solved_by_time": 50,
+      "cases": 54,
+      "fraction": 0.9259259259259259,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "direct_thinking",
+      "seconds": 120,
+      "solved_by_time": 53,
+      "cases": 54,
+      "fraction": 0.9814814814814815,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "direct_thinking",
+      "seconds": 180,
+      "solved_by_time": 53,
+      "cases": 54,
+      "fraction": 0.9814814814814815,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "independent8",
+      "seconds": 5,
+      "solved_by_time": 16,
+      "cases": 54,
+      "fraction": 0.2962962962962963,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "independent8",
+      "seconds": 10,
+      "solved_by_time": 45,
+      "cases": 54,
+      "fraction": 0.8333333333333334,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "independent8",
+      "seconds": 30,
+      "solved_by_time": 52,
+      "cases": 54,
+      "fraction": 0.9629629629629629,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "independent8",
+      "seconds": 60,
+      "solved_by_time": 53,
+      "cases": 54,
+      "fraction": 0.9814814814814815,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "independent8",
+      "seconds": 120,
+      "solved_by_time": 53,
+      "cases": 54,
+      "fraction": 0.9814814814814815,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "independent8",
+      "seconds": 180,
+      "solved_by_time": 53,
+      "cases": 54,
+      "fraction": 0.9814814814814815,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "shared8",
+      "seconds": 5,
+      "solved_by_time": 13,
+      "cases": 54,
+      "fraction": 0.24074074074074073,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "shared8",
+      "seconds": 10,
+      "solved_by_time": 45,
+      "cases": 54,
+      "fraction": 0.8333333333333334,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "shared8",
+      "seconds": 30,
+      "solved_by_time": 53,
+      "cases": 54,
+      "fraction": 0.9814814814814815,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "shared8",
+      "seconds": 60,
+      "solved_by_time": 53,
+      "cases": 54,
+      "fraction": 0.9814814814814815,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "shared8",
+      "seconds": 120,
+      "solved_by_time": 53,
+      "cases": 54,
+      "fraction": 0.9814814814814815,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "shared8",
+      "seconds": 180,
+      "solved_by_time": 53,
+      "cases": 54,
+      "fraction": 0.9814814814814815,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "solo_iterative",
+      "seconds": 5,
+      "solved_by_time": 26,
+      "cases": 54,
+      "fraction": 0.48148148148148145,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "solo_iterative",
+      "seconds": 10,
+      "solved_by_time": 46,
+      "cases": 54,
+      "fraction": 0.8518518518518519,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "solo_iterative",
+      "seconds": 30,
+      "solved_by_time": 46,
+      "cases": 54,
+      "fraction": 0.8518518518518519,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "solo_iterative",
+      "seconds": 60,
+      "solved_by_time": 46,
+      "cases": 54,
+      "fraction": 0.8518518518518519,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "solo_iterative",
+      "seconds": 120,
+      "solved_by_time": 46,
+      "cases": 54,
+      "fraction": 0.8518518518518519,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "solo_iterative",
+      "seconds": 180,
+      "solved_by_time": 46,
+      "cases": 54,
+      "fraction": 0.8518518518518519,
+      "missing_solved_proof_times": 0
+    }
+  ],
+  "ledger_source": {
+    "path": "results/evaluation-v2/primary-aggregate/verified-ledger.json",
+    "sha256": "d7646e6b868a631e5d8b71bc885a2556d34a4913da38ccaefc8d31866025d58d"
+  }
+}
