@@ -17,5 +17,10 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m unittest -q
+      - name: Prepare immutable throughput validation
+        run: git worktree add --detach "${{ runner.temp }}/throughput-timeoutguard" 7bb965b073af8cdc211404186c15463d5cfc374e
+      - name: Verify frozen timeout margin and exact source delta
+        working-directory: ${{ runner.temp }}/throughput-timeoutguard
+        run: python -m unittest -q test_throughput_timeoutguard
       - run: python export_benchmark.py --self-test
       - run: python validate_frozen_corpora.py
