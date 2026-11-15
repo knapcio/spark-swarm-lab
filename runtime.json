@@ -38,6 +38,8 @@
     "method": "dspark",
     "num_speculative_tokens": 3
   },
-  "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU code grader remains its independently pinned0.27.1 image. See RUNTIME_V2_AMENDMENT.json and serving receipts.",
-  "cache_directory": "~/swarm-lab/cache-v032"
+  "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+  "cache_directory": "~/swarm-lab/cache-v032",
+  "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+  "cpu_grader_python": "3.12.16"
 }
