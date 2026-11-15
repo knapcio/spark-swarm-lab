@@ -1,0 +1,184 @@
+{
+  "protocol_version": "runtime-v2",
+  "valid_for_aggregation": true,
+  "ledger_entry_verified": true,
+  "ledger_snapshot_sha256": "6aba3be26e838f604f128c7dc273f93edfe8ab191927684e1aebb1260a1e7d4a",
+  "ledger_completed_entry_sha256": "b427e0fb2213f1cedf8959e29f68ea6cb38e55d392dad7b65a52c899cd7c7be9",
+  "runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+  "runtime_snapshot": {
+    "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+    "model_weight_bytes": 21561882284,
+    "model_shards": 52,
+    "image": "vllm/vllm-openai:v0.32.0",
+    "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+    "served_model_name": "nemotron-lightning",
+    "deployment": "4 independent TP1 replicas on GB10",
+    "baseline": {
+      "max_model_len": 16384,
+      "max_num_seqs": 25,
+      "max_num_batched_tokens": 4096,
+      "gpu_memory_utilization": 0.7,
+      "moe_backend": "marlin",
+      "kv_cache_dtype": "fp8",
+      "mamba_backend": "flashinfer",
+      "mamba_cache_mode": "align",
+      "prefix_caching": true,
+      "speculative_decoding": false
+    },
+    "request_defaults": {
+      "temperature": 0.8,
+      "max_tokens": 192,
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      }
+    },
+    "active_recipe": "dspark3-runtime-v2",
+    "dspark": {
+      "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+      "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+      "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+      "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+      "draft_weight_bytes": 1349057504,
+      "draft_weight_files": 1,
+      "draft_mount": "~/swarm-lab/draft:/draft:ro",
+      "method": "dspark",
+      "num_speculative_tokens": 3
+    },
+    "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+    "cache_directory": "~/swarm-lab/cache-v032",
+    "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+    "cpu_grader_python": "3.12.16"
+  },
+  "runtime_amendment_sha256": "a64ac723b1755ac23cdb26d0799c1bd53f2404310d5ed50b423a91745428bcbb",
+  "cpu_grader_amendment_sha256": "91b246e5ca02691444edca06009b70a6121231d965615a5e03c8515c6107e331",
+  "protocol": "independent-supplemental-solo-audit-v1",
+  "control_selection_sha256": "c3752ce71e4491285c5031374cf1dcaaf86211bf7d59ab1ea50c4bd90036609b",
+  "split": "development",
+  "seed": 1,
+  "status": "PASS",
+  "source_commit": "a8adff19f690e90aec5705c373a82005e869f1f2",
+  "source_hashes": {
+    "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+    "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+    "direct_solver.py": "c7e97bff83adf52cfb056ac2ab994d4854aa6ab4f703d07ab86e48111c5d83cb",
+    "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+    "ensemble_solver.py": "6e0f1c368d294780b3b2a6694c831d0d96694beaaa923879a4b8a8501bcd05c9",
+    "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+    "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+  },
+  "selection_sha256": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
+  "selection_frozen_utc": "2026-11-15T14:05:32.924894+00:00",
+  "cohort_started_utc": "2026-11-15T19:01:12.000648+00:00",
+  "dataset_sha256": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+  "metadata_sha256": "ab30990afccd05df3c7cbe0a0e44d7b341b27215351f73774aaba0ecf813a0aa",
+  "summary_sha256": "d95c66c2acfceac6f2bb6f4787f6ec5345d616777512d32d78b59d33fac11680",
+  "audit_script_sha256": "54567f540346e6a9be1d22535e3b01315963e19851f106c9d5d63005bd533a06",
+  "counts": {
+    "roots": 13,
+    "legal_transitions": 16,
+    "successful_rewards": 6,
+    "bounded_plan_responses": 6,
+    "cases": 8,
+    "request_starts": 13,
+    "request_ends": 11,
+    "controller_stops": 8,
+    "known_server_cases": 8,
+    "invalid_plan_responses": 5
+  },
+  "response_error_categories": {
+    "ValueError": 5
+  },
+  "known_final_worker_infrastructure_total": 0,
+  "unknown_final_worker_infrastructure_counts": 2,
+  "checks": [
+    "Complete single-arm supplemental task/seed grid, development/evaluation kept distinct; verified fresh-v2 ledger receipt, source/git-blob/dataset/selection/runtime/grader pins and case commands",
+    "Independent Fraction replay of every legal proposal, positive integer intermediates, distinct indices, ordered state consumption",
+    "Every reward independently checks exact target presence; all successful ancestry edges replayed",
+    "No feedback from witnesses, other workers or holdout; at most four sequential own full-plan revisions, no retry after proof",
+    "Sequential own-root plan responses bounded, revision IDs and exact preceding own-plan feedback checked; responses, own-original-root checked, executed moves match response prefix",
+    "Unique global request IDs and request contexts; client usage/charge/errors/caps/denials exactly match traces",
+    "Every successful controller stop has prior producer reward proof; controller is not its own proof",
+    "Server counters independently recomputed; unknown cost remains null",
+    "Public task schema only; pinned runner/harness/source inspection, command/config has no witness/reputation inputs; private witness file not opened"
+  ],
+  "cases": [
+    {
+      "task_id": "dev-33afb93cb351",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "dev-33afb93cb351-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "3e2acc2243c1738ab290d1e33993fd4d4f6cedeeb4a0d006a655c3e82bbda4ff",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "dev-a333e0dae70f",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "dev-a333e0dae70f-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "e158910951ceed639fd71ed93831cf5a3538a715e6247172065d03adb33867f9",
+      "roots": 1,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "dev-82ea75b5370a",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "dev-82ea75b5370a-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "a40ab06082fc9b8a9993c8c21c53c8f80797795c34aa12792dc77d1a89260d09",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "dev-7880a6de7cc2",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "dev-7880a6de7cc2-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "c59c907cdd43f753bdf501409f49c87ee6b03f2e4b2e880bb2e69e2968b91a7a",
+      "roots": 1,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "dev-53da8851d38e",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "dev-53da8851d38e-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "dd05f5d0d6a8036387a1997897c4b9cbf87794b2714e4fbe13dc2803da39cf90",
+      "roots": 2,
+      "legal_transitions": 3,
+      "successful_rewards": 1,
+      "invalid_plan_responses": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "dev-705fbd047ebe",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "dev-705fbd047ebe-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "22dbe71794b9e8857f7b5797758773b23c3369f50ac6098fe1d6a61fa516f73f",
+      "roots": 1,
+      "legal_transitions": 2,
+      "successful_rewards": 1,
+      "bounded_plan_responses": 1
+    },
+    {
+      "task_id": "dev-c5f3655022a0",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "dev-c5f3655022a0-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "ee36c2dd10c31b3bcec0464fffa36940bea045148c5b73a492101414e6cac740",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    },
+    {
+      "task_id": "dev-98afa92166b7",
+      "arm": "solo_refine_thinking_8k",
+      "trace": "dev-98afa92166b7-solo_refine_thinking_8k-s1.jsonl",
+      "trace_sha256": "a23b0fbe6aab3232fa2447fc6c9e85f84642f550530f367d2faaffc1a984f618",
+      "roots": 3,
+      "invalid_plan_responses": 2
+    }
+  ]
+}

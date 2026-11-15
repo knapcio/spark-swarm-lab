@@ -1,0 +1,59 @@
+{
+  "name": "solo-control-v2-development-s1",
+  "domain": "arithmetic",
+  "seed": 1,
+  "split": "development",
+  "dataset": "datasets/arithmetic-v1/tasks.json",
+  "arms": [
+    "solo_refine_thinking_8k"
+  ],
+  "serving_runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+  "fresh_v2": true,
+  "command": [
+    "python3",
+    "./run_benchmark.py",
+    "--dataset",
+    "./datasets/arithmetic-v1/tasks.json",
+    "--split",
+    "development",
+    "--arms",
+    "solo_refine_thinking_8k",
+    "--seed",
+    "1",
+    "--stop-on-solution",
+    "--output",
+    "results/solo-control-v2/development-s1",
+    "--run"
+  ],
+  "source_revision": "a8adff19f690e90aec5705c373a82005e869f1f2",
+  "source_path": ".",
+  "started_utc": "2026-11-15T19:01:11.945824+00:00",
+  "status": "verified",
+  "controller_pid": 75200,
+  "returncode": 0,
+  "completed_utc": "2026-11-15T19:07:14.614917+00:00",
+  "audit": {
+    "metadata_sha256": "ab30990afccd05df3c7cbe0a0e44d7b341b27215351f73774aaba0ecf813a0aa",
+    "summary_sha256": "d95c66c2acfceac6f2bb6f4787f6ec5345d616777512d32d78b59d33fac11680",
+    "completed_cases": 8,
+    "incomplete": false,
+    "source_changed": false,
+    "known_diagnostic_races": [],
+    "null_infrastructure_trace_reviews": [
+      {
+        "trace_sha256": "ee36c2dd10c31b3bcec0464fffa36940bea045148c5b73a492101414e6cac740",
+        "unfinished_calls": 1
+      },
+      {
+        "trace_sha256": "a23b0fbe6aab3232fa2447fc6c9e85f84642f550530f367d2faaffc1a984f618",
+        "unfinished_calls": 1
+      }
+    ],
+    "infrastructure_review": "passed"
+  },
+  "verified": true,
+  "valid_for_aggregation": true,
+  "completed_cases": 8,
+  "incomplete": false,
+  "source_changed": false
+}
