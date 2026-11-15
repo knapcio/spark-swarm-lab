@@ -1,0 +1,87 @@
+{
+  "name": "solo-control-v2-evaluation-s3",
+  "domain": "arithmetic",
+  "seed": 3,
+  "split": "evaluation",
+  "dataset": "datasets/arithmetic-v1/tasks.json",
+  "arms": [
+    "solo_refine_thinking_8k"
+  ],
+  "serving_runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+  "fresh_v2": true,
+  "command": [
+    "python3",
+    "./run_benchmark.py",
+    "--dataset",
+    "./datasets/arithmetic-v1/tasks.json",
+    "--split",
+    "evaluation",
+    "--arms",
+    "solo_refine_thinking_8k",
+    "--seed",
+    "3",
+    "--stop-on-solution",
+    "--output",
+    "results/solo-control-v2/evaluation-s3",
+    "--run"
+  ],
+  "source_revision": "a8adff19f690e90aec5705c373a82005e869f1f2",
+  "source_path": ".",
+  "started_utc": "2026-11-15T19:38:41.980910+00:00",
+  "status": "verified",
+  "controller_pid": 12332,
+  "returncode": 0,
+  "completed_utc": "2026-11-15T19:52:46.486866+00:00",
+  "audit": {
+    "metadata_sha256": "b772880ea2b466f5de9891d73a5132805025dd9e645240b199c49716f080da56",
+    "summary_sha256": "87801e9bfe49c3acb1320746d37cdc8d8070bcbeb155f58f7e637ce00ae9ec8a",
+    "completed_cases": 24,
+    "incomplete": false,
+    "source_changed": false,
+    "known_diagnostic_races": [],
+    "null_infrastructure_trace_reviews": [
+      {
+        "trace_sha256": "123b57faff15d58a583fc85a48d4295d95d552a597adf5502c37ce6491b17964",
+        "unfinished_calls": 1
+      },
+      {
+        "trace_sha256": "ad07f1fb098182f8cf70036292a579d29eaa5944c737d431e726f0edd6c82226",
+        "unfinished_calls": 1
+      },
+      {
+        "trace_sha256": "1923956c4c4123433f5e7a6124ba421bb8614260e515b18c369eff09539a455e",
+        "unfinished_calls": 1
+      },
+      {
+        "trace_sha256": "28aa78453a4c724f5e498423335a3d9a152b3678f3190d969a4b65ba83a981c1",
+        "unfinished_calls": 1
+      },
+      {
+        "trace_sha256": "195b2c2d281f54c69300d3f384c851b930d0b2d3eccd8a250666b86459152f36",
+        "unfinished_calls": 1
+      },
+      {
+        "trace_sha256": "e6c404cdae36654a8d15a03b230a224fb640ebe335ac75860c81e4461fe70951",
+        "unfinished_calls": 1
+      },
+      {
+        "trace_sha256": "605198ebfc88391a398e5fcf95cd0bae686bd7cdba5871cb4a7c35cc3b72fd75",
+        "unfinished_calls": 1
+      },
+      {
+        "trace_sha256": "59aafd50dda74b60e4c551075dcaa413cd0da3449874822434246e068e8770e9",
+        "unfinished_calls": 1
+      },
+      {
+        "trace_sha256": "0970dedf12afdd2dd7c87278b331063ed3340804d4240f93dbae3a21128188bf",
+        "unfinished_calls": 1
+      }
+    ],
+    "infrastructure_review": "passed"
+  },
+  "verified": true,
+  "valid_for_aggregation": true,
+  "completed_cases": 24,
+  "incomplete": false,
+  "source_changed": false
+}

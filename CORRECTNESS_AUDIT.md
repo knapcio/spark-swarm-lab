@@ -58,3 +58,21 @@ python3 correctness_audit.py --output /tmp/correctness-audit-new
 ```
 
 The full audit pauses if the local pipeline state has entered its automatic throughput window. Its output directory must be new. The [manifest](results/correctness-audit-20261115/manifest.json) binds final reports, scripts, tests and the manual flag assessment by SHA-256. No raw benchmark artifact is edited.
+
+
+## Plan-first independent confirmation
+
+[confirm_coding.py](confirm_coding.py) prepares all **324 primary coding cases / 323 selected artifacts**. Exact source/function/phase/test-chunk/grader/image caching reduces 1292 logical phase references to **824 unique grading jobs** across 206 source/function pairs. Identical artifact reuse is explicit; it is not an independent seed replication or a method-latency experiment.
+
+The four named phases are `original_feedback`, `original_holdout`, `public_examples` and `posthoc_robustness`. The first two are new outer-parent grades of the original partitions, not replacements for historical grades. New probes are posthoc, derived from independent specification oracles, and include incorrect bracket order/nesting; they are not called a newly untouched holdout. One no-candidate row remains present with unobserved grade counts.
+
+Default invocation prints a plan and performs no remote work. `--run` first calls the shared `reference_worker.verify_gate(HERE)` and fails closed until the final 45-cohort throughput receipt, original 20-development-cohort receipt, primary+solo completion, ledger/source identities and all linked hashes verify. It then validates frozen task/private/index/trace/source hashes. Four persistent host slots each run one CPU grader at a time, with at most 128 tests per call, complete phase/report provenance, explicit cache references and a global halt on infrastructure failure. Expected values stay in the outer grader. Partial/unknown results stay distinct, and final source hashes are checked.
+
+```sh
+python3 confirm_coding.py
+# Only after the full throughput gate has passed; root supervises the actual run:
+python3 confirm_coding.py --run --output runs/independent-coding-confirmation-v1
+python3 -m unittest test_confirm_coding test_independent_code_grader
+```
+
+The [published plan](results/coding-confirmation-plan-20261115/plan.json) and [22-test offline receipt](results/coding-confirmation-plan-20261115/offline-tests.json) are preparation only. No confirmation container, model call or remote smoke was launched for this plan. JSON and CSV outputs will keep the four phases separately named, preserving candidate-resource errors, cleanup evidence and any incomplete jobs. Original benchmark artifacts are read only.

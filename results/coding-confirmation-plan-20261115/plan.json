@@ -1,0 +1,42 @@
+{
+  "protocol": "posthoc-independent-coding-confirmation-v1",
+  "mode": "plan",
+  "source_hashes": {
+    "confirm_coding.py": "aa09fe939a67ee25cd05fe4289d9100ca81925e5ce6049bc0d790c324638b0df",
+    "independent_code_grader.py": "c4324123bb75a8712150adb3e06e1da4e1e44a7d91516597d9a35caa372c2726",
+    "correctness_audit.py": "a7e437a87038cf41f3b383b33b59148a5c81968e76cf64d7c39ba73e805cfc4c",
+    "reference_worker.py": "72b71d05cfeb4ee7b9f79070ac14efea5de894759ee3ac07278acbeeb393d086",
+    "test_confirm_coding.py": "6b10f6793fe8dae1c3e905c5d341e0f5edef191522c1184f99e5b8fbd6dd7ef1",
+    "test_independent_code_grader.py": "a120d5d592942e6f40d97c0b6def936e50e7a70e93d66cbfbff8c58ecd5070e7",
+    "EVALUATION_SELECTION.json": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
+    "CPU_GRADER_AMENDMENT.json": "91b246e5ca02691444edca06009b70a6121231d965615a5e03c8515c6107e331",
+    "results/correctness-audit-20261115/manifest.json": "5bf23115259c3c3267e89778ba665d5a0597cafb998d393f65a84cd55063e5d8",
+    "results/correctness-audit-20261115/selected-primary-scan-index.json": "ab5ce789c103bb8137053a8aca503bef624e10694ea6a437bb3f609fba4cf202",
+    "datasets/coding-v1/tasks.json": "42dbc85ee3f87f476460ce9bb5448b65e1bceb551cbc9ebd48134644e7b9bdc3",
+    "datasets/coding-v1/hidden-tests.json": "2a097aca427cd9d3449e2965d59668bc6c9ed131fd9c84ceb812796e80c13e5c"
+  },
+  "selected_cases": 324,
+  "selected_artifacts": 323,
+  "frozen_selected_producer": "cbcde299716b7842536b008880a089590e9816f8",
+  "distinct_source_function_pairs": 206,
+  "planned_unique_grading_jobs": 824,
+  "phase_reference_counts": {
+    "original_feedback": 323,
+    "original_holdout": 323,
+    "public_examples": 323,
+    "posthoc_robustness": 323
+  },
+  "image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+  "hosts": [
+    "Spark_01",
+    "Spark_02",
+    "Spark_03",
+    "Spark_04"
+  ],
+  "timeout": 10,
+  "gate": null,
+  "posthoc_probe_sha256": "9191f6fc8d74119db2d4058f552141c72907b40ae675df1f0884b64599662b59",
+  "cache_policy": "Exact selected codeSHA+function+namedphase+testchunkSHA+graderSHA+image; cache outcomes only within this confirmation; no original grade reused.",
+  "scope": "New outer-parent confirmation of original feedback/holdout plus separate public examples/posthoc robustness. Exact-artifact cache reuse is not an independent seed replicate or method latency measurement. No original score replacement; no model or candidate optimization.",
+  "fixed_slots": "One serial grading worker per host; halt all new dispatch on infrastructure, finish owned in-flight cleanup."
+}
