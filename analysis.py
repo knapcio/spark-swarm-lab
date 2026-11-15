@@ -14,6 +14,7 @@ LABELS = {"direct_off": "Direct (thinking off)", "direct_thinking": "Direct (thi
           "democracy8": "Democracy + guard 8", "shared8": "Shared memory 8",
           "direct_thinking_8k": "Direct (thinking on, 8k cap)",
           "solo_steps_thinking_8k": "Iterative solo (on, 8k cap)",
+          "solo_iterative": "Iterative solo", "ensemble2_thinking_8k": "Full-plan ensemble 2 (on, 8k cap)",
           "ensemble4_thinking_8k": "Full-plan ensemble 4 (on, 8k cap)",
           **{f"{family}{n}": f"{label} {n}" for n in (32, 100)
              for family, label in (("independent", "Independent"), ("democracy", "Democracy + guard"), ("shared", "Shared memory"))},
@@ -85,6 +86,11 @@ def aggregate(arm, rows, planned):
                   success_early_cases=sum(r.get("status") == "success_early" for r in rows),
                   solved_with_deadline_cases=sum(bool(r.get("deadline") and r["solved"]) for r in rows),
                   unexpected_process_error_cases=sum(r.get("returncode") != 0 and not r.get("controller_stop") for r in rows))
+    if any("holdout_status" in r for r in rows):
+        result.update(feedback_pass_cases=sum(r.get("feedback_final_status") == "passed" for r in rows),
+                      final_holdout_pass_cases=sum(r.get("holdout_status") == "passed" for r in rows))
+        for field in ("feedback_eval_count", "holdout_eval_count", "holdout_passed", "holdout_total", "grader_errors", "grader_infrastructure_errors"):
+            result[field] = sum(r.get(field, 0) for r in rows)
     return result
 
 
@@ -107,7 +113,7 @@ def plots(report, directory):
     rows = [r for r in report["arms"] if r["observed_cases"]]
     if not rows:
         return
-    title = report["split"].capitalize() + (" — PROVISIONAL" if report["provisional"] else "")
+    title = report["split"].capitalize() + " " + report.get("domain", "arithmetic") + (" — PROVISIONAL" if report["provisional"] else "")
     footer = "Fixed synthetic tasks; Wilson intervals are descriptive. Same tasks do not imply identical sampled trajectories."
     def save(fig, name):
         fig.text(.02, .015, footer, fontsize=8)
@@ -122,7 +128,7 @@ def plots(report, directory):
                     [100 * row["wilson95_high"] - value]], fmt="o", color=COLORS[i % len(COLORS)], capsize=4)
         ax.text(102, i, f"{row['solved']}/{row['observed_cases']}", va="center")
     ax.set(yticks=range(len(rows)), yticklabels=[r["label"] for r in rows], xlim=(-2, 112),
-           xlabel="Solved tasks (%) with Wilson 95% interval", title=title + " — task success")
+           xlabel="Solved tasks (%) with Wilson 95% interval", title=title + (" — final holdout task success" if report.get("domain") == "coding" else " — task success"))
     ax.invert_yaxis(); ax.grid(axis="x", alpha=.25)
     save(fig, "accuracy-wilson95")
     fig, ax = plt.subplots(figsize=(11, 6.2))
@@ -182,6 +188,9 @@ def main(argv=None):
         parser.error("; ".join(reasons) + "; use --allow-partial only for a provisional report")
     arms = [aggregate(a, [r for r in rows if r["arm"] == a], sum(c["arm"] == a for c in meta["cases"]))
             for a in meta["arms"]]
+    if meta.get("domain") == "coding":
+        for arm in arms:
+            if arm["arm"] == "democracy8": arm["label"] = "Democracy 8"
     pairs = []
     for task, seed in sorted({(c["task_id"], c["seed"]) for c in meta["cases"]}):
         pair = dict(task_id=task, split=meta["split"], seed=seed)
@@ -189,7 +198,7 @@ def main(argv=None):
             match = next((r for r in rows if (r["task_id"], r["seed"], r["arm"]) == (task, seed, arm)), None)
             pair[arm] = outcome(match)
         pairs.append(pair)
-    report = dict(schema_version=1, benchmark=str(args.benchmark.resolve()), split=meta["split"],
+    report = dict(schema_version=1, benchmark=str(args.benchmark.resolve()), split=meta["split"], domain=meta.get("domain", "arithmetic"),
                   provisional=bool(reasons), provisional_reasons=reasons, seed=meta["seed"],
                   dataset_sha256=meta["dataset_sha256"], source_commit=meta.get("git_revision"),
                   source_hashes=meta["source_hashes"], final_source_hashes=meta.get("final_source_hashes"),

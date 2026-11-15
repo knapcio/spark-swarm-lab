@@ -109,7 +109,7 @@ def main(argv=None):
     if not producers or any(not Path(root).is_absolute() for root in producers): parser.error("absolute producer script paths required in cases.command[1]")
     def normalize(value):
         if not Path(value).is_absolute(): return value
-        for root, prefix in [(source, "results/" + export_root)] + [(Path(p), ".") for p in producers]:
+        for root, prefix in [(source, "results/" + export_root)] + [(Path(p), ".") for p in producers] + [(HERE, ".")]:
             try: suffix = Path(value).relative_to(root).as_posix()
             except ValueError: continue
             return prefix if suffix == "." else prefix + "/" + suffix
@@ -151,7 +151,7 @@ def self_test():
         HERE, source, producer = [Path(temporary).resolve()/part for part in ("app", "external/raw,cohort", "frozen/app")]
         source.mkdir(parents=True)
         target, trace = HERE/"results/fixture", str(source/"t-é.jsonl")
-        metadata = dict(output=str(source), dataset=str(producer/"datasets/tasks.json"), response=trace,
+        metadata = dict(output=str(source), dataset=str(HERE/"datasets/tasks.json"), tests=str(producer/"tests.json"), response=trace,
                         source_hashes={"harness.py":"a"*64}, cases=[dict(events=trace, command=["/env/bin/python3.12",str(producer/"harness.py"),"--events",trace,"--model",str(producer/"model")])])
         records = [dict(type="run_start",config=dict(events=trace,tasks=str(producer/"tasks.json"))), dict(type="request_end",response=trace,code="é "+trace),dict(type="run_end",events=trace)]
         originals = {"metadata.json":json.dumps(metadata,indent=4).encode()+b"\r\n", "t-é.jsonl":b"".join(json.dumps(r).encode()+b"\r\n" for r in records),
@@ -172,6 +172,7 @@ def self_test():
             for name in ("empty.stderr.log","analysis/plot.svg","analysis/plot.png","saved.py"): assert (target/name).read_bytes()==originals[name]
             exported=json.loads((target/"metadata.json").read_text()); command=exported["cases"][0]["command"]
             assert command[:2]==["python3","./harness.py"] and command[-1]==str(producer/"model") and exported["response"]==trace
+            assert exported["dataset"]=="./datasets/tasks.json" and exported["tests"]=="./tests.json"
             assert json.loads((target/"t-é.jsonl").read_text().splitlines()[1])==records[1]
             assert list(csv.reader(io.StringIO((target/"summary.csv").read_text())))[1][1]==trace
             assert all((source/name).read_bytes()==raw for name,raw in originals.items())

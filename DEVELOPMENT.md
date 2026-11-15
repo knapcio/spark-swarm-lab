@@ -183,3 +183,101 @@ Whole mixed-arm queue wall: **402.260115s**. All 72 cases finished without contr
 The two new exports contain 60 and 228 artifacts respectively, each with original/export SHA-256 and reverse-normalization byte identity. Normalizations are limited to the same event/metadata/CSV/log paths and command interpreter/HERE prefix as the initial cohort; isolated-worktree harness paths become `./harness.py`. DEVELOPMENT labels and all figure bytes are preserved. Derived analysis hashes retain provenance to original raw metadata/summary; manifests map those inputs to exports. No model API was called during this analysis or curation.
 
 The updated analyzer also supports subsequent controller-stopped cohorts: expected negative kill return codes remain successful early stops, verified deadline successes are preserved, and unfinished client-usage totals are explicitly lower bounds. Server deltas are aggregated only for cases flagged known and covering completed client usage. Unknown or stale server costs remain null; an unavailable pre-run metric snapshot, including a timeout, is never recovered as zero. These accounting capabilities do not add server measurements to the two historical cohorts above.
+
+## Separate cohort: full plans and cascades
+
+Source commit `df4b947fdfc41eeaa66ef5f2965df98086b4e7e5`; **40 completed development cases**, eight tasks × five arms, seed 1. Each case permits 1280 calls/32,768 completion tokens and has a 180-second deadline. Full plans use thinking ON with an 8192-token response cap. A cascade first runs cheap OFF/192-token independent rounds, then one ON/8192-token full plan if still unsolved. Stop-on-verified-solution and exclusive-endpoint server-counter capture are enabled. This changes the protocol from the earlier scaling cohort; results are not pooled.
+
+| Arm | Solved | Wilson 95% | Calls | Client prompt | Client completion | Unfinished calls | Median wall s | p95 wall s |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Direct (on, 8k) | 4/8 | 21.5–78.5% | 8 | 1,325 | 57,640 | 0 | 62.355 | 69.821 |
+| Full-plan ensemble 4 (on, 8k) | 8/8 | 67.6–100.0% | 32 | 1,827* | 56,982* | 21 | 69.801 | 115.911 |
+| Cascade 8 | 5/8 | 30.6–86.3% | 250 | 30,749 | 58,626 | 0 | 66.240 | 71.546 |
+| Cascade 32 | 5/8 | 30.6–86.3% | 928 | 113,418 | 48,712 | 0 | 47.494 | 78.579 |
+| Cascade 100 | 3/8 | 13.7–69.4% | 2788 | 341,205 | 89,249 | 0 | 80.447 | 93.705 |
+
+**The starred client totals are lower bounds.** After a verified solution, the controller cancels unfinished siblings; their HTTP responses and client usage may never arrive. Ensemble 4's 56,982 recorded completion tokens cannot establish that it is cheaper than solo's 57,640. Counter-derived usage includes cancelled work only when both snapshots and the idle/drain checks are valid:
+
+| Arm | Cases with known server cost | Server prompt subtotal | Server completion subtotal |
+|---|---:|---:|---:|
+| Direct (on, 8k) | 7/8 | 1,165 | 49,448 |
+| Full-plan ensemble 4 | 7/8 | 4,616 | 130,087 |
+| Cascade 8 | 7/8 | 27,763 | 50,848 |
+| Cascade 32 | 7/8 | 100,859 | 47,284 |
+| Cascade 100 | 8/8 | 341,205 | 89,249 |
+
+These are **known-case subtotals**, not full-arm cost estimates. Initial metric-read timeouts leave one unknown case in each of the first four arms; those cases are not assigned zero cost or imputed. Counter tokens are still not interchangeable GPU-cost units. No case deadline or controller/infrastructure failure was recorded. Length finishes remain: direct 4, ensemble 2, cascade 8/32/100 respectively 4/4/8.
+
+Ensemble 4 solved all eight development tasks here. All five Wilson intervals overlap; the repeated, selected development set and differing sampled trajectories do not establish a general winner or a paired causal effect. Whole mixed-arm queue wall was **833.417749s**; it is not per-arm fleet throughput.
+
+[40-case CSV](results/development-20261115/plans/summary.csv) · [metadata/source pins](results/development-20261115/plans/metadata.json) · [analysis and server coverage](results/development-20261115/plans/analysis/analysis.json) · [paired tasks](results/development-20261115/plans/analysis/paired-results.csv) · [manifest](results/development-20261115/plans/manifest.json).
+
+![Development full-plan and cascade success](results/development-20261115/plans/analysis/accuracy-wilson95.png)
+
+![Development full-plan cost with unfinished-call lower-bound marker](results/development-20261115/plans/analysis/success-vs-completion-cost.png)
+
+[Latency SVG](results/development-20261115/plans/analysis/case-latency.svg) · [Accuracy SVG](results/development-20261115/plans/analysis/accuracy-wilson95.svg).
+
+## Separate cohort: two full-plan agents
+
+Source commit `db55dda6b0a1f28813739af744624e1393e4bb0e`; **eight completed development cases**, one two-agent ON/8192 full-plan ensemble per task, seed 1. The same 1280-call/32,768-output ceilings, early-stop and metrics policy apply. This is a separate cohort, not an additional arm of the preceding run and not pooled with ensemble 4.
+
+| Arm | Solved | Wilson 95% | Calls | Client prompt | Client completion | Unfinished calls | Median wall s | p95 wall s |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Full-plan ensemble 2 (on, 8k) | 5/8 | 30.6–86.3% | 16 | 1,816* | 69,086* | 5 | 76.403 | 91.308 |
+
+Client totals marked * are lower bounds. Server cost is known for **8/8** cases: **2,650 prompt / 90,867 completion tokens**, including cancelled sibling work. There were five length finishes and no deadlines or infrastructure/controller failures. Whole queue wall: **175.948326s**. These eight reused development tasks do not establish the optimal ensemble size.
+
+[8-case CSV](results/development-20261115/ensemble2/summary.csv) · [metadata](results/development-20261115/ensemble2/metadata.json) · [analysis](results/development-20261115/ensemble2/analysis/analysis.json) · [manifest](results/development-20261115/ensemble2/manifest.json) · [accuracy SVG](results/development-20261115/ensemble2/analysis/accuracy-wilson95.svg) · [cost SVG](results/development-20261115/ensemble2/analysis/success-vs-completion-cost.svg) · [latency SVG](results/development-20261115/ensemble2/analysis/case-latency.svg).
+
+## Separate coding cohort: JSON response format
+
+Source commit `dd47570dd2b5cdf5ea1ee4364dd8f3d82253a23c`; **36 completed cases**, six development coding tasks × six arms. Solo arms have one agent; the other arms have eight. This uses JSON-wrapped code, a 1024-token OFF / 8192-token ON response cap, 1024-call/131,072-completion-token ceilings and a 180-second deadline. It is a different task domain and protocol from arithmetic.
+
+**Feedback success and final holdout success are distinct.** Selection uses partial feedback tests; the selected implementation is frozen before exactly one final holdout grade per case. Holdout results are not used to repair or select a new candidate. These are holdout tests inside development coding tasks, not results from the main evaluation cohort.
+
+| Arm | Agents | Feedback pass | Final holdout pass | Wilson 95% final | Calls | Client prompt | Client completion | Median wall s |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Direct (off) | 1 | 5/6 | 5/6 | 43.6–97.0% | 6 | 1,343 | 685 | 3.610 |
+| Iterative solo | 1 | 6/6 | 6/6 | 61.0–100.0% | 7 | 1,655 | 742 | 4.344 |
+| Direct (on) | 1 | 5/6 | 5/6 | 43.6–97.0% | 6 | 1,343 | 16,699 | 17.446 |
+| Independent 8 | 8 | 6/6 | 5/6 | 43.6–97.0% | 48 | 10,507* | 6,039* | 5.394 |
+| Shared memory 8 | 8 | 6/6 | 6/6 | 61.0–100.0% | 48 | 10,744 | 6,395 | 5.807 |
+| Democracy 8 | 8 | 6/6 | 6/6 | 61.0–100.0% | 96 | 64,696 | 9,570 | 11.596 |
+
+There were **34/36 feedback passes and 33/36 final passes**. Retained negatives: direct OFF `dev-stable_unique` has a syntax/escape failure; independent 8 `dev-top_k_frequent` passes feedback but fails one final test (8/9); direct ON `dev-merge_intervals` fails functionally (4/7 final tests). Grader-reported syntax/functionality failures are not infrastructure failures. No grader infrastructure failure, case deadline, budget denial or length finish was recorded.
+
+Independent 8 has one unfinished call, so its starred client usage is a lower bound. Server counters are known for all 36 cases. Per-arm server usage equals client usage above except independent 8, whose actual counter totals are **10,744 prompt / 6,411 completion**. Whole mixed-arm queue wall: **113.590594s**. The overlapping intervals on six tasks cannot support a winner claim.
+
+[36-case CSV](results/development-20261115/coding-json/summary.csv) · [metadata](results/development-20261115/coding-json/metadata.json) · [feedback/final analysis](results/development-20261115/coding-json/analysis/analysis.json) · [manifest](results/development-20261115/coding-json/manifest.json).
+
+![Development coding JSON final holdout task success](results/development-20261115/coding-json/analysis/accuracy-wilson95.png)
+
+[Cost SVG](results/development-20261115/coding-json/analysis/success-vs-completion-cost.svg) · [Latency SVG](results/development-20261115/coding-json/analysis/case-latency.svg).
+
+## Separate coding cohort: Python response format
+
+Source commit `db55dda6b0a1f28813739af744624e1393e4bb0e`; **36 completed development cases**, the same six task specifications and arm sizes, with plain Python output in place of JSON-wrapped code. Budgets and final-grade separation match the coding cohort above. The response-format protocol and sampled trajectories differ; these observations are not pooled or treated as an isolated causal estimate of formatting.
+
+| Arm | Agents | Feedback pass | Final holdout pass | Wilson 95% final | Calls | Prompt | Completion | Median wall s |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Direct (off) | 1 | 6/6 | 6/6 | 61.0–100.0% | 6 | 1,391 | 471 | 3.253 |
+| Iterative solo | 1 | 6/6 | 6/6 | 61.0–100.0% | 6 | 1,391 | 471 | 4.271 |
+| Direct (on) | 1 | 6/6 | 6/6 | 61.0–100.0% | 6 | 1,391 | 13,962 | 14.485 |
+| Independent 8 | 8 | 6/6 | 5/6 | 43.6–97.0% | 48 | 11,128 | 3,876 | 4.526 |
+| Shared memory 8 | 8 | 6/6 | 5/6 | 43.6–97.0% | 48 | 11,128 | 3,849 | 4.558 |
+| Democracy 8 | 8 | 6/6 | 5/6 | 43.6–97.0% | 96 | 60,584 | 7,698 | 11.773 |
+
+All **36/36** cases pass feedback; **33/36** pass their final holdout. All three eight-agent arms fail `dev-parse_version` after a feedback pass, passing 4/6 final tests. This records a shared generalization failure on this development task; it is not evidence of universal multi-agent harm. Exactly one final grade is retained per case, with no model request after candidate selection. No unfinished calls, missing usage, length finishes, deadlines, budget denials or grader infrastructure failures were recorded. Server costs are known for all cases and equal the prompt/completion totals above. Whole mixed-arm queue wall: **93.815854s**.
+
+[36-case CSV](results/development-20261115/coding-python/summary.csv) · [metadata](results/development-20261115/coding-python/metadata.json) · [feedback/final analysis](results/development-20261115/coding-python/analysis/analysis.json) · [manifest](results/development-20261115/coding-python/manifest.json).
+
+![Development coding Python final holdout task success](results/development-20261115/coding-python/analysis/accuracy-wilson95.png)
+
+[Cost SVG](results/development-20261115/coding-python/analysis/success-vs-completion-cost.svg) · [Latency SVG](results/development-20261115/coding-python/analysis/case-latency.svg).
+
+### Export audit for these four cohorts
+
+The four new exports contain **132 + 36 + 120 + 120 = 408 artifacts**. Their schema-2 manifests record original/export SHA-256 and exact whitelisted path/interpreter edits, with an inverse audit of parsed values/order/types. JSON/CSV serialization may change; this is a **semantic inverse audit**, distinct from the older byte-inverse manifests above. Model/source values, captured source hashes and all script/PNG/SVG bytes are preserved. Every exported file was rehashed against its manifest and independently reproduced from its original plus the recorded normalizations. Captured start/end source hashes match in all four cohorts; analysis input hashes retain their original raw provenance. All figures remain labelled DEVELOPMENT.
+
+The frozen coding selection code and all 72 coding traces were checked for grade separation: exactly one final holdout grade per case, and no model request after candidate selection. No raw run was edited, no model API was called, and no main evaluation outcome was inspected for this curation. Each cohort retains controls, unsuccessful outputs, early controller stops and unknown-cost cases. The offline analyzer tests also cover expected negative kill codes, verified deadline success, unfinished-client lower bounds and unknown/stale server counters.

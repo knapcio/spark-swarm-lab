@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "benchmark": "results/development-20261115/ensemble2",
+  "split": "development",
+  "domain": "arithmetic",
+  "provisional": false,
+  "provisional_reasons": [],
+  "seed": 1,
+  "dataset_sha256": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+  "source_commit": "db55dda6b0a1f28813739af744624e1393e4bb0e",
+  "source_hashes": {
+    "run_benchmark.py": "eafa8fc4ded8528a6f119a44ab9d1c000fae1110fad88b673223b87565f80a85",
+    "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+    "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+    "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+    "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+    "runtime.json": "5ba312b8d45b2146f39d4d3762f82d9e60d3a5d40e5dbbadcae8b741dd1a897e",
+    "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+  },
+  "final_source_hashes": {
+    "run_benchmark.py": "eafa8fc4ded8528a6f119a44ab9d1c000fae1110fad88b673223b87565f80a85",
+    "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+    "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+    "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+    "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+    "runtime.json": "5ba312b8d45b2146f39d4d3762f82d9e60d3a5d40e5dbbadcae8b741dd1a897e",
+    "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+  },
+  "metadata_sha256": "1e83e057ccccafc32f0d44dd149e27acc15e058767633cd1e9c3c5706c67b109",
+  "summary_sha256": "e7900c8c88ae799ad749bfa91873baf668a2c64a4653bbc4d41d4512365788f7",
+  "analysis_script_sha256": "c7878353700ab84c0bef59ff62ce71e61e1753899cb87d226156b5298ecb3bde",
+  "scope": "Latency/quality calibration with four job slots; NOT a saturated fleet-throughput measurement",
+  "scheduling": "Fixed endpoint per persistent slot; each task's rotated arms run sequentially on its assigned slot",
+  "runtime": {
+    "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+    "model_weight_bytes": 21561882284,
+    "model_shards": 52,
+    "image": "vllm/vllm-openai:v0.27.1",
+    "arm64_manifest_digest": "sha256:1c8e60a0841b333c700488cb029d3664807249da0c071e862191b00fe34b228c",
+    "served_model_name": "nemotron-lightning",
+    "deployment": "4 independent TP1 replicas on GB10",
+    "baseline": {
+      "max_model_len": 16384,
+      "max_num_seqs": 25,
+      "max_num_batched_tokens": 4096,
+      "gpu_memory_utilization": 0.7,
+      "moe_backend": "marlin",
+      "kv_cache_dtype": "fp8",
+      "mamba_backend": "flashinfer",
+      "mamba_cache_mode": "align",
+      "prefix_caching": true,
+      "speculative_decoding": false
+    },
+    "request_defaults": {
+      "temperature": 0.8,
+      "max_tokens": 192,
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      }
+    },
+    "active_recipe": "dspark3",
+    "dspark": {
+      "status": "Verified healthy on Spark_01–04; same-node c25 median throughput +51.40% over target-only",
+      "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+      "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+      "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+      "draft_weight_bytes": 1349057504,
+      "draft_weight_files": 1,
+      "draft_mount": "~/swarm-lab/draft:/draft:ro",
+      "method": "dspark",
+      "num_speculative_tokens": 3
+    },
+    "note": "The baseline records the original target-only configuration. Active serving uses DSpark3 with otherwise identical settings. See SERVING.md and recorded probes for measurement scope."
+  },
+  "whole_mixed_arm_queue_wall_seconds": 175.94832595903426,
+  "observed_cost_is_lower_bound": true,
+  "arms": [
+    {
+      "arm": "ensemble2_thinking_8k",
+      "label": "Full-plan ensemble 2 (on, 8k cap)",
+      "observed_cases": 8,
+      "planned_cases": 8,
+      "solved": 5,
+      "success_rate": 0.625,
+      "wilson95_low": 0.30574239460262737,
+      "wilson95_high": 0.8631557141764026,
+      "median_case_wall_seconds": 76.403238,
+      "p95_case_wall_seconds": 91.30770505,
+      "sum_case_wall_seconds": 518.493243,
+      "successful_paths": 5,
+      "calls": 16,
+      "completed_calls": 11,
+      "unfinished_calls": 5,
+      "prompt_tokens": 1816,
+      "completion_tokens": 69086,
+      "charged_completion_tokens": 69086,
+      "budget_denials": 0,
+      "response_errors": 5,
+      "length_finishes": 5,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "malformed_lines": 0,
+      "deadline_cases": 0,
+      "infrastructure_failures": 0,
+      "cases_missing_infrastructure_count": 5,
+      "controller_error_cases": 0,
+      "mean_recorded_completion_tokens_per_case": 8635.75,
+      "observed_cost_is_lower_bound": true,
+      "server_cost_known_cases": 8,
+      "server_cost_unknown_cases": 0,
+      "server_counter_floor_failures": 0,
+      "server_prompt_tokens_known": 2650,
+      "server_completion_tokens_known": 90867,
+      "success_early_cases": 5,
+      "solved_with_deadline_cases": 0,
+      "unexpected_process_error_cases": 0
+    }
+  ],
+  "paired_task_results": [
+    {
+      "task_id": "dev-33afb93cb351",
+      "split": "development",
+      "seed": 1,
+      "ensemble2_thinking_8k": "not_solved"
+    },
+    {
+      "task_id": "dev-53da8851d38e",
+      "split": "development",
+      "seed": 1,
+      "ensemble2_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "dev-705fbd047ebe",
+      "split": "development",
+      "seed": 1,
+      "ensemble2_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "dev-7880a6de7cc2",
+      "split": "development",
+      "seed": 1,
+      "ensemble2_thinking_8k": "not_solved"
+    },
+    {
+      "task_id": "dev-82ea75b5370a",
+      "split": "development",
+      "seed": 1,
+      "ensemble2_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "dev-98afa92166b7",
+      "split": "development",
+      "seed": 1,
+      "ensemble2_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "dev-a333e0dae70f",
+      "split": "development",
+      "seed": 1,
+      "ensemble2_thinking_8k": "solved_early"
+    },
+    {
+      "task_id": "dev-c5f3655022a0",
+      "split": "development",
+      "seed": 1,
+      "ensemble2_thinking_8k": "not_solved"
+    }
+  ],
+  "notes": [
+    "Development and evaluation are analyzed separately; do not infer a held-out winner from development.",
+    "Wilson intervals describe observed binary task outcomes; tasks form a small synthetic construction sample.",
+    "p95 uses linear interpolation between ordered observed case times; it is not a confidence interval.",
+    "Sum of case wall seconds is NOT fleet wall time. Mixed-arm queue wall time is NOT per-arm throughput.",
+    "Input/output token counts are observed API usage, not equal GPU cost; output-cost plots omit input cost.",
+    "Deadline/incomplete-usage costs are lower bounds; reported successes preserve the runner's deadline rule.",
+    "Expected negative exit codes after controller stops are not process/infrastructure failures.",
+    "Server counter sums include only explicitly known deltas that cover completed client usage; unknowns remain null.",
+    "Paired table matches task/seed, not identical sampled trajectories. No paired causal effect is claimed."
+  ]
+}
