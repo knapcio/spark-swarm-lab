@@ -1,0 +1,106 @@
+{
+  "protocol": "reusable-coloring-program-search-v1",
+  "prepared_utc": "2026-11-15T21:15:52.072668+00:00",
+  "status": "Optional separate experiment prepared before any program-search outcomes; parent review, source tag/worktree and explicit --run required. No inference or graph-program execution has occurred during preparation.",
+  "scope": "Reusable artifact construction with development-verifier feedback. Separate from assignment-sampling experiments. Twelve graphs are held out from program search but reused from the existing CSP suite; not a newly untouched benchmark. CPU search is part of the resulting solver, not free model reasoning.",
+  "arms": [
+    "sequential16",
+    "independent4"
+  ],
+  "seeds": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "limits": {
+    "max_model_calls": 16,
+    "per_call_max_tokens": 2048,
+    "max_completion_tokens": 32768,
+    "request_timeout_seconds": 210,
+    "graph_timeout_seconds": 10,
+    "memory_limit_mib": 256,
+    "cpu_limit_per_container": 1,
+    "episode_deadline_seconds": null
+  },
+  "model": {
+    "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "runtime": "Same pinned DSpark3/vLLM0.32 ARM64 runtime.json",
+    "thinking": false,
+    "temperature": 0.8,
+    "external_runtime_advisor": false
+  },
+  "allocation": {
+    "sequential16": "One chain of16 proposals, own immediately previous source and development feedback only.",
+    "independent4": "Four isolated chains of4 proposals each; no cross-chain messages.",
+    "fixed_spend": "All16 model calls are required even after4/4 development success. Stop only for infrastructure/integrity faults. Token caps are matched; realized input/output usage is measured separately.",
+    "node_pairs": "Seed1..4 own Spark_01..04 and localhost18081..18084/v1 respectively; both arms sequential on each node. Sequential first for odd seeds, independent first for even seeds. Four pairs may run concurrently.",
+    "training_batches": "Complete every dispatched model batch, then grade candidate programs serially on their pair host. CPU grading concurrency is1 per host in both arms.",
+    "programs": 8,
+    "evaluation_graph_results": 96,
+    "maximum_training_graph_grades": 512,
+    "evaluation_graph_grades": 96,
+    "qualification_graph_grades": 3
+  },
+  "author_information": {
+    "api": "solve(n,k,edges)->{'assignment':[integer colors]}",
+    "contract": "Colorable undirected graphs n<=64, k in{3,4}; standard library, no files/network/tools; do not mutate input edges.",
+    "development_graphs": 4,
+    "evaluation_graphs": 12,
+    "public_tasks": "datasets/csp-v1/tasks.json",
+    "forbidden_inputs": [
+      "reference witnesses",
+      "evaluation graph inputs or outcomes during writing",
+      "CPU baseline algorithm source",
+      "stronger model advice",
+      "other chains source or feedback"
+    ],
+    "development_feedback": "Own last source, solved/status/schema/conflict count, first16 conflicting public-edge indices, and at most300 characters of error per graph. No suggested repair move.",
+    "source_parsing": "AST parsing only on administration host. Optional code fence stripped; one top-level solve with three positional parameters required. Never execute generated source locally. Invalid source remains retained and receives error penalty; selected invalid source, if all proposals fail, remains a negative program evaluated in the sandbox.",
+    "randomness": "Model request seeds use existing Client derivation. Program-internal randomness is whatever the generated program implements; no hidden seed injection or post-evaluation retry."
+  },
+  "selection": {
+    "fitness": "Development graphs solved descending; remaining conflict/error penalty ascending; earliest candidate index as final tie.",
+    "penalty": "Solved graph0; valid unsolved assignment on unmutated input uses exact conflict count; parse/runtime/timeout/OOM/protocol/mutation failure uses edge_count+1. Sum over the four fixed development graphs.",
+    "retention": "Keep all16 proposals, raw responses, source files and complete development feedback, including worse candidates and duplicate programs.",
+    "freeze": "Write selected.py and selection.json with sourceSHA and evaluation_seen=false, emit program_selected before any evaluation graph grading. Verify selected file SHA before each evaluation and afterward.",
+    "evaluation": "Evaluate all12 graphs once in fresh containers; no evaluation model calls, repair, candidate reselection or task filtering. Candidate failures remain in the12-graph denominator. True infrastructure faults halt and preserve partial results."
+  },
+  "grader": {
+    "implementation": "csp_program_grader.evaluate_program(code,task,host,timeout=10)",
+    "qualified_transport": "Private function-global clone of independent_code_grader.evaluate_code; original module unchanged.",
+    "authority": "New outer comparator checks exact assignment against original outer graph; expected=None is only an adapter placeholder, never a success oracle.",
+    "proofs": "Persist candidate_output plus full exact proof, graph/input/source hashes; independently replay every returned proof in program_search. Reject unproven successes.",
+    "isolation": "One fresh pinned CPU-only256MiB/1CPU container per graph; no GPU, network or host mounts. Existing qualified10second child alarm and bounded transport/cleanup guards unchanged.",
+    "qualification": "After final45 and completed postcontroller gate, all4 endpoints must be idle. OnSpark04 run three authored tiny-graph valid/wrong/forged-grade CPU smokes, verify classification/proof/cleanup and persist receipt before any writing calls. No qualifier source or outputs go to authors.",
+    "wall_and_cpu": "Wall includes SSH/container startup and cleanup. Actual remote solver CPU time is not instrumented and remains null. Parent process CPU reports are local and can overlap across concurrent threads; they are not remote solver cost."
+  },
+  "gates": {
+    "throughput": "reference_worker.verify_gate(original gate root), full45 verified cohorts plus900+80.",
+    "postcontroller": "Original .runtime/post-throughput-overnight-v1/state.json must be complete, hash-linked ledger must contain all10 completed/explicit time-skipped stages.",
+    "source": "All source/data/protocol hashes pinned, clean tracked source required; later parent creates immutable tag/worktree. No edits to existing sealed sources.",
+    "ownership": "One endpoint/node per pair. No simultaneous episodes per endpoint; four initial idle checks before qualification and per-episode idle checks/drains.",
+    "launch": "Default plan-only; --run must be explicit. New output directory only; no overwrite/resume. No automatic launch after original phases."
+  },
+  "accounting": {
+    "model": "128 model calls if all8 episodes finish, including every development success.32768 completion-token ceiling per episode; input and output separate; unknown usage retained as lower bounds.",
+    "serving": "Per-episode idle-delimited endpoint counter deltas; server costs null when unknown, no zero substitution.",
+    "compute": "Record every fresh-container grade, wall time, constraints checked, candidate resource failures and separately named local parent CPU observations. CPU evaluation is not equivalent to one model call.",
+    "partial": "Stop dispatch after true infrastructure/integrity failures, finish already dispatched model batches and owned cleanup; retain raw events/code/results and missing evaluation counts.",
+    "reporting": "Paired seed/node contrasts; task-clustered evaluation across the same12 graph instances. Four seed episodes are replications, not48new tasks per arm. Report development training cost and evaluation CPU/wall costs separately.",
+    "claim": "100% means these finite12 graph instances (or96 program-instance outcomes) were exactly verified within the fixed execution limits. It is not a general solver correctness guarantee."
+  },
+  "source_sha256": {
+    "program_search.py": "8c2721cd0101f3470dc956c5d0a8be216f9d5e93b4480ed9d20af3611042297d",
+    "test_program_search.py": "26312bd3a060344791b664fc9b4ebdbeab609958b2de2d192a774515b252a298",
+    "csp_program_grader.py": "7fa45db50bfbef04c868b35ddb3aab67fceab4818ca5820bba2427f14ff6873a",
+    "test_csp_program_grader.py": "1ab51b9ead1dde2b36c73dd51da6c6024f77bd6b1d4bf36539e196346f41daa3",
+    "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+    "csp_tasks.py": "4a49d387687eb15c98cf226980b63b5a786c67a60ec94fa489ad58855b08373e",
+    "independent_code_grader.py": "c4324123bb75a8712150adb3e06e1da4e1e44a7d91516597d9a35caa372c2726",
+    "reference_worker.py": "17f83d857a820a0dfc8665cd8330a94836d60dbc4b16ea73d4f05433dc49cbe9",
+    "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+    "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+    "datasets/csp-v1/tasks.json": "29d659bbc7b4b819ea7d572db073459eb30d6c19f7fda2114e7c174c375de960"
+  }
+}
