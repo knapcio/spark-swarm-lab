@@ -9,13 +9,35 @@ from unittest.mock import patch
 import sandbox_code as s
 
 
+def remote(run_result, state=None, cleanup_code=0, inspection_code=0):
+    """Fake the run -> owned state inspection -> guarded removal protocol."""
+    labels = {}
+    def invoke(argv, **kwargs):
+        command = shlex.split(argv[-1])
+        if command[:2] == ["docker", "run"]:
+            labels.update(dict(command[i + 1].split("=", 1) for i, value in enumerate(command) if value == "--label"))
+            if isinstance(run_result, Exception):
+                raise run_result
+            return run_result
+        if command[:2] == ["docker", "inspect"]:
+            value = dict(Config=dict(Labels=labels), State=state or dict(OOMKilled=False, ExitCode=0, Error="", Running=False))
+            return SimpleNamespace(returncode=inspection_code, stdout=json.dumps(value), stderr="inspection unavailable" if inspection_code else "")
+        if command[:2] == ["sh", "-c"]:
+            return SimpleNamespace(returncode=cleanup_code, stdout="", stderr="ownership mismatch" if cleanup_code else "")
+        raise AssertionError(command)
+    return invoke
+
+
 class SandboxTests(unittest.TestCase):
     def test_isolated_command_and_stdin_payload_never_interpolate_candidate(self):
         code = 'def add(a,b): return a+b\n# $(touch /tmp/unsafe); `id`'
         report = dict(status="passed", total=1, tests_run=1, passed=1, failed=0)
-        with patch.object(s.subprocess, "run", return_value=SimpleNamespace(returncode=0, stdout=json.dumps(report), stderr="")) as run:
-            self.assertEqual(s.evaluate_code(code, "add", [{"args": [2, 3], "expected": 5}], "Spark_02"), report)
-        argv = run.call_args.args[0]
+        with patch.object(s.subprocess, "run", side_effect=remote(SimpleNamespace(returncode=0, stdout=json.dumps(report), stderr=""))) as run:
+            result = s.evaluate_code(code, "add", [{"args": [2, 3], "expected": 5}], "Spark_02")
+            self.assertEqual({key: result[key] for key in report}, report)
+            self.assertTrue(result["cleanup_ok"])
+        call = run.call_args_list[0]
+        argv = call.args[0]
         self.assertEqual(argv[:6], ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "--"])
         docker = shlex.split(argv[-1])
         for flag, value in [("--network", "none"), ("--cap-drop", "ALL"), ("--memory", "256m"),
@@ -23,14 +45,16 @@ class SandboxTests(unittest.TestCase):
                             ("--security-opt", "no-new-privileges"), ("--entrypoint", "python3"), ("--pull", "never"), ("--runtime", "runc")]:
             self.assertEqual(docker[docker.index(flag) + 1], value)
         self.assertIn("--read-only", docker)
-        self.assertIn("--rm", docker)
+        self.assertNotIn("--rm", docker)  # Preserve OOM state until inspection.
         self.assertIn(s.IMAGE, docker)
         self.assertIn("NVIDIA_VISIBLE_DEVICES=void", docker)
         self.assertTrue(any(v.startswith("/tmp:rw,noexec,nosuid,nodev,size=16m") for v in docker))
         self.assertFalse(set(docker) & {"--gpus", "--device", "--privileged", "-v", "--volume", "--mount"})
         self.assertNotIn(code, argv[-1])
-        self.assertEqual(json.loads(run.call_args.kwargs["input"])["code"], code)
-        self.assertEqual(run.call_args.kwargs["timeout"], 25)
+        self.assertEqual(json.loads(call.kwargs["input"])["code"], code)
+        self.assertEqual(call.kwargs["timeout"], 25)
+        self.assertEqual(shlex.split(run.call_args_list[1].args[0][-1])[:2], ["docker", "inspect"])
+        self.assertEqual(len(run.call_args_list), 3)
 
     def test_trusted_function_cases_clone_inputs_and_report_first_failure(self):
         def trusted(items, scale=1):
@@ -55,14 +79,13 @@ class SandboxTests(unittest.TestCase):
         self.assertLess(len(json.dumps(result)), 4000)
 
     def test_timeout_cleanup_requires_both_owned_task_labels_and_exact_name(self):
-        with patch.object(s.subprocess, "run", side_effect=[subprocess.TimeoutExpired("ssh", 25),
-                         SimpleNamespace(returncode=0, stdout="", stderr="")]) as run:
+        with patch.object(s.subprocess, "run", side_effect=remote(subprocess.TimeoutExpired("ssh", 25))) as run:
             result = s.evaluate_code("def f(): pass", "f", [{"args": [], "expected": None}], "Spark_01")
         self.assertEqual(result["status"], "timeout")
         self.assertTrue(result["cleanup_ok"])
         first = shlex.split(run.call_args_list[0].args[0][-1])
         name = first[first.index("--name") + 1]
-        cleanup = shlex.split(run.call_args_list[1].args[0][-1])
+        cleanup = shlex.split(run.call_args_list[2].args[0][-1])
         self.assertEqual(cleanup[:2], ["sh", "-c"])
         self.assertIn('swarm-lab.code-owner', cleanup[2])
         self.assertIn('swarm-lab.code-task', cleanup[2])
@@ -80,15 +103,43 @@ class SandboxTests(unittest.TestCase):
             run.assert_not_called()
 
     def test_malformed_runner_response_is_not_a_passing_grade(self):
-        with patch.object(s.subprocess, "run", return_value=SimpleNamespace(returncode=0, stdout="noise", stderr="")):
+        with patch.object(s.subprocess, "run", side_effect=remote(SimpleNamespace(returncode=0, stdout="noise", stderr=""))):
             result = s.evaluate_code("unused", "f", [{"args": [], "expected": None}], "Spark_01")
         self.assertEqual(result["status"], "error")
 
     def test_failed_cleanup_is_not_reported_as_success(self):
-        with patch.object(s.subprocess, "run", side_effect=[subprocess.TimeoutExpired("ssh", 25),
-                         SimpleNamespace(returncode=1, stdout="", stderr="ownership mismatch")]):
+        with patch.object(s.subprocess, "run", side_effect=remote(subprocess.TimeoutExpired("ssh", 25), cleanup_code=1)):
             result = s.evaluate_code("unused", "f", [{"args": [], "expected": None}], "Spark_01")
         self.assertFalse(result["cleanup_ok"])
+        self.assertEqual(result["failure_kind"], "cleanup_infrastructure")
+
+    def test_oom_and_signal_are_candidate_failures_not_empty_stderr_transport_failures(self):
+        for oom, kind in [(True, "candidate_oom"), (False, "candidate_signal")]:
+            state = dict(OOMKilled=oom, ExitCode=137, Error="", Running=False)
+            with patch.object(s.subprocess, "run", side_effect=remote(SimpleNamespace(returncode=137, stdout="", stderr=""), state)):
+                result = s.evaluate_code("unused", "f", [{"args": [], "expected": None}], "Spark_04")
+            self.assertEqual(result["failure_kind"], kind)
+            self.assertEqual(result["provenance"], "candidate")
+            self.assertEqual(result["container_state"]["OOMKilled"], oom)
+            self.assertTrue(result["cleanup_ok"])
+
+    def test_docker_start_ssh_and_inspection_failures_remain_infrastructure(self):
+        cases = [(125, dict(OOMKilled=False, ExitCode=0, Error="runtime failed", Running=False), 0, "docker_infrastructure"),
+                 (255, None, 0, "ssh_infrastructure"), (0, None, 1, "inspection_infrastructure")]
+        for exit_code, state, inspect_code, kind in cases:
+            with self.subTest(kind=kind), patch.object(s.subprocess, "run", side_effect=remote(
+                    SimpleNamespace(returncode=exit_code, stdout='{"status":"passed"}', stderr="failure"), state, inspection_code=inspect_code)):
+                result = s.evaluate_code("unused", "f", [{"args": [], "expected": None}], "Spark_04")
+            self.assertEqual(result["failure_kind"], kind)
+            self.assertEqual(result["provenance"], "infrastructure")
+            self.assertTrue(result["cleanup_ok"])
+
+    def test_state_inspection_rejects_foreign_ownership(self):
+        container = dict(Config=dict(Labels={"swarm-lab.code-owner": s.OWNER, "swarm-lab.code-task": "foreign"}), State=dict(OOMKilled=True))
+        with patch.object(s, "_ssh", return_value=SimpleNamespace(returncode=0, stdout=json.dumps(container), stderr="")):
+            state, error = s._inspect_owned("Spark_04", "swarm-code-own", "own")
+        self.assertIsNone(state)
+        self.assertIn("ownership", error)
 
     def test_static_remote_runner_compiles_without_running_candidate_locally(self):
         compile(s.RUNNER, "<trusted-runner>", "exec")

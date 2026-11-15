@@ -153,6 +153,22 @@ def _cleanup(host, name, task):
         return False
 
 
+def _inspect_owned(host, name, task):
+    """Read exit/OOM evidence only after verifying both unique ownership labels."""
+    try:
+        process = _ssh(host, ["docker", "inspect", "--format", "{{json .}}", name])
+        if process.returncode:
+            return None, "Container inspection failed: " + process.stderr[-1000:]
+        container = json.loads(process.stdout)
+        labels = container.get("Config", {}).get("Labels", {})
+        if labels.get("swarm-lab.code-owner") != OWNER or labels.get("swarm-lab.code-task") != task:
+            return None, "Container ownership mismatch"
+        state = container["State"]
+        return {key: state.get(key) for key in ("OOMKilled", "ExitCode", "Error", "Running")}, None
+    except (subprocess.TimeoutExpired, OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        return None, "Container inspection failed: " + str(exc)[:1000]
+
+
 def evaluate_code(code, function_name, tests, host, timeout=10):
     """Return bounded diagnostics; execute candidate code only on the named host."""
     _validate(code, function_name, tests, host, timeout)
@@ -161,28 +177,54 @@ def evaluate_code(code, function_name, tests, host, timeout=10):
         raise ValueError("evaluation payload exceeds 1 MB")
     task = uuid.uuid4().hex
     name = "swarm-code-" + task
-    command = ["docker", "run", "--pull", "never", "--runtime", "runc", "--rm", "-i", "--name", name,
+    command = ["docker", "run", "--pull", "never", "--runtime", "runc", "-i", "--name", name,
                "--label", "swarm-lab.code-owner=" + OWNER, "--label", "swarm-lab.code-task=" + task,
                "--network", "none", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
                "--pids-limit", "64", "--memory", "256m", "--memory-swap", "256m", "--cpus", "1",
                "--user", "65534:65534", "--tmpfs", "/tmp:rw,noexec,nosuid,nodev,size=16m", "--workdir", "/tmp",
                "--env", "NVIDIA_VISIBLE_DEVICES=void",
                "--stop-timeout", "1", "--entrypoint", "python3", IMAGE, "-I", "-S", "-c", RUNNER]
+    process, execution_error = None, None
     try:
         process = _ssh(host, command, payload, timeout=timeout + 15)
-    except subprocess.TimeoutExpired:
-        return {"status": "timeout", "error": "Controller deadline exceeded", "cleanup_ok": _cleanup(host, name, task)}
-    except OSError as exc:
-        return {"status": "error", "error": type(exc).__name__ + ": " + str(exc)[:1000], "cleanup_ok": _cleanup(host, name, task)}
-    if process.returncode:
-        return {"status": "error", "error": process.stderr[-2000:], "exit_code": process.returncode,
-                "cleanup_ok": _cleanup(host, name, task)}
-    try:
-        if len(process.stdout) > 65536:
-            raise ValueError("runner output exceeds 64 KiB")
-        result = json.loads(process.stdout)
-        if not isinstance(result, dict) or result.get("status") not in ("passed", "failed", "error", "timeout"):
-            raise ValueError("invalid runner response")
-        return result
-    except (ValueError, TypeError) as exc:
-        return {"status": "error", "error": "Invalid runner protocol: " + str(exc)[:1000]}
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        execution_error = exc
+    # --rm would erase the kernel's OOM evidence. Inspect, then always guard cleanup.
+    state, inspect_error = _inspect_owned(host, name, task)
+    cleanup_ok = _cleanup(host, name, task)
+    result = dict(status="error", passed=0, failed=0, tests_run=0, total=len(tests))
+    if isinstance(execution_error, subprocess.TimeoutExpired):
+        result.update(status="timeout", error="Controller deadline exceeded",
+                      failure_kind="candidate_timeout" if state and not state.get("Error") else "ssh_infrastructure")
+    elif execution_error is not None:
+        result.update(error=type(execution_error).__name__ + ": " + str(execution_error)[:1000], failure_kind="ssh_infrastructure")
+    elif process.returncode:
+        kind = "docker_infrastructure"
+        if process.returncode == 255:
+            kind = "ssh_infrastructure"
+        elif state and state.get("OOMKilled"):
+            kind = "candidate_oom"
+        elif state and not state.get("Error") and process.returncode not in (125, 126, 127):
+            kind = "candidate_signal" if (state.get("ExitCode") or 0) >= 128 else "candidate_runtime"
+        result.update(error=process.stderr[-2000:] or kind.replace("_", " "), exit_code=process.returncode, failure_kind=kind)
+    else:
+        try:
+            if len(process.stdout) > 65536:
+                raise ValueError("runner output exceeds 64 KiB")
+            parsed = json.loads(process.stdout)
+            if not isinstance(parsed, dict) or parsed.get("status") not in ("passed", "failed", "error", "timeout"):
+                raise ValueError("invalid runner response")
+            result = parsed
+            result["failure_kind"] = {"passed": None, "failed": "candidate_test_failure", "error": "candidate_runtime", "timeout": "candidate_timeout"}[result["status"]]
+        except (ValueError, TypeError) as exc:
+            result.update(error="Invalid runner protocol: " + str(exc)[:1000], failure_kind="protocol_infrastructure")
+    result.update(container_state=state, cleanup_ok=cleanup_ok)
+    if inspect_error:
+        result["inspection_error"] = inspect_error
+        if not result.get("failure_kind", "") or not result.get("failure_kind", "").endswith("_infrastructure"):
+            result["failure_kind"] = "inspection_infrastructure"
+    if not cleanup_ok:
+        result["original_failure_kind"] = result.get("failure_kind")
+        result["failure_kind"] = "cleanup_infrastructure"
+    result["provenance"] = "infrastructure" if str(result.get("failure_kind")).endswith("_infrastructure") else "candidate"
+    return result
