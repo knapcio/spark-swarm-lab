@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "scope": "CPU-only finite trusted-reference/isolation qualification; no inference or universal runtime-equivalence claim",
+  "model_calls": 0,
+  "reference_cases": 357,
+  "reference_phase_containers": 48,
+  "reference_functions": 24,
+  "smoke_containers": 3,
+  "grading_containers_total": 51,
+  "all_reference_passed": true,
+  "smoke_classifications": [
+    "passed",
+    "candidate_timeout",
+    "candidate_oom with retainedOOMKilled:true/137"
+  ],
+  "owned_containers_remaining": {
+    "Spark_01": [],
+    "Spark_02": [],
+    "Spark_03": [],
+    "Spark_04": []
+  },
+  "source_check": "Independent git-blob SHA check: exactly one IMAGE literal substitution in sandbox_code.py; coding_harness.py unchanged",
+  "source_sha256": {
+    "sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+    "coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2"
+  },
+  "old_environment": {
+    "python": "3.12.13 (main, Mar  4 2026, 09:23:07) [GCC 11.4.0]",
+    "version_info": [
+      3,
+      12,
+      13,
+      "final",
+      0
+    ],
+    "implementation": "CPython",
+    "libc": [
+      "glibc",
+      "2.35"
+    ],
+    "machine": "aarch64",
+    "isolated": 1,
+    "no_site": 1
+  },
+  "new_environment": {
+    "python": "3.12.16 (main, Nov  5 2026, 08:06:14) [GCC 14.2.0]",
+    "version_info": [
+      3,
+      12,
+      16,
+      "final",
+      0
+    ],
+    "implementation": "CPython",
+    "libc": [
+      "glibc",
+      "2.41"
+    ],
+    "machine": "aarch64",
+    "isolated": 1,
+    "no_site": 1
+  },
+  "trusted_reference_invocation": {
+    "initial_verified": false,
+    "initial_completed_phase_reports": 11,
+    "initial_error": "NameError: name 're' is not defined",
+    "correction": "Supply existing trusted module globals import re / from collections import Counter. No model source, tests, reference function bodies or grader logic edited.",
+    "corrected_full_validation_verified": true
+  },
+  "disk_counter": {
+    "available_bytes_after_retirement": 65945247744,
+    "reclaimed_byte_delta": null,
+    "scope": "Receipt lacks a before counter; available-after is not a reclaimed-byte delta"
+  },
+  "normalization_manifest_sha256": "baac24923cd6786cfa4eb55ec5f52be781a5f5c06a3aeeb7c2ab5b00ac510ab9"
+}

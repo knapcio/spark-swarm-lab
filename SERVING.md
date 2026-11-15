@@ -32,6 +32,14 @@ The [normalized launch receipt](results/serving-v032-20261115/canary-launch.json
 
 The [manifest](results/serving-v032-20261115/manifest.json) records **141 original artifacts**, original/export SHA-256 and exact path/interpreter substitutions, including custom replay source paths and the launch cache path. Parsed inverse checks preserve original values; model outputs and reasoning are retained, and unaffected files are byte copies. [Offline curation](results/serving-v032-20261115/curate.py) and [audit](results/serving-v032-20261115/audit.py) scripts are included. No model API was used for curation. These reports are serving qualification data and are excluded from primary task-quality aggregation.
 
+## CPU grader image and disk headroom amendment
+
+The [CPU grader amendment](CPU_GRADER_AMENDMENT.json) replaces the CPU-only grader's old ML image with pinned ARM64 `python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd`. Python changes **3.12.13 → 3.12.16**, GCC **11.4.0 → 14.2.0**, and glibc **2.35 → 2.41**. Only the coding grader's `IMAGE` constant changes; stdlib grading logic/isolation, model policies, prompts, budgets and corpora stay fixed. [357 reference cases / 48 phase containers plus three smoke validations](results/cpu-grader-20261115/cpu-python-grader-validation.json) pass, with zero owned leftovers on all four hosts. [Coding experiment notes](CODING_EXPERIMENT.md) retain the initial missing-reference-import failure and explain the finite scope of validation; no universal environment-parity claim is made.
+
+The separate [Spark01 retirement receipt](results/cpu-grader-20261115/spark01-prototype-retirement.json) records retirement of the task-owned old v0.27.1 prototype and its image, with model/draft/cache directories retained for recreation. It records **65,945,247,744 bytes available AFTER the operation**. There is no before counter in that receipt, so this is not a measured reclaimed-byte delta. The small stdlib grader image removes the need to retain the ML image solely for CPU grading.
+
+At this amendment stage, Spark01's v0.32.0 repull is complete and its final launch has started; the four-replica warm/readiness gate and fresh 900+80 study remain pending. CPU image validation and empty grading-container lists are separate from model-server readiness. The [CPU receipts and audit manifest](results/cpu-grader-20261115/manifest.json) preserve the original validation, initial invocation failure and retirement evidence. No v2 primary model calls occurred before this environment amendment.
+
 ## Historical v0.27.1: target-only versus DSpark3
 
 On **Spark_02 (DGX Spark GB10, 128GB unified memory)**, DSpark3 produced a median
