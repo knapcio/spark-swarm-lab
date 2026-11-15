@@ -28,7 +28,7 @@
   },
   "interfaces": {
     "arithmetic": "Single complete JSON plan, existing exact positive-integer/subset verifier; no reference witness or solver tool",
-    "coding": "Single self-contained Python function, existing constrained CPU grader, candidate frozen before one holdout grade",
+    "coding": "Single self-contained Python function; unchanged frozen coding orchestration, feedback/holdout partitions and single frozen holdout grade, with independent outer-parent grading. Candidate child receives source/function/args only, never expected values.",
     "output_cap": 8192,
     "controller_deadline_seconds": 180,
     "reasoning": "Verify provider-supported reasoning/temperature settings and record actual settings; no silent parameter equivalence"
@@ -52,5 +52,14 @@
     "operational_halts": "Observed transport/controller/protocol or grader-infrastructure faults still halt the cohort. A deadline during an active coding grade retains its budget outcome but halts for exact-owner cleanup review before reusing any grader; do not continue blindly.",
     "dispatch_validation": "Exactly one trace request_start, matching completed request IDs/counts, and a controller-marked deadline with expected termination exit are required. A missing dispatch, arbitrary crash or ambiguous failed transport is not admitted as a clean budget result.",
     "portable_context": "Local Opus preflight is optional contextual evidence: presence flag and SHA256 or null are recorded. Its absence neither invents auth/model proof nor changes the strict actual-response model/provider check."
+  },
+  "pre_call_grading_authority_amendment": {
+    "scope": "Reference-only correction before any live reference calls; frozen Nemotron source and original scores remain unchanged.",
+    "reason": "The original same-interpreter grader exposes expected values to candidate frame access. New model references must not use that authority.",
+    "routing": "Arithmetic remains reference_worker.py. Coding uses reference_grade_worker.py, verifies the frozen source and final45 throughput gate, and explicitly injects independent_code_grader.evaluate_code into frozen coding_harness.run_experiment before delegating to the unchanged reference_worker.main.",
+    "unchanged": "Transport/model adapter, prompts, public examples, private feedback/holdout partitions, candidate selection, single-call direct policy, 8192 output cap and180s complete-task budget remain unchanged.",
+    "provenance": "Per-case separate .grader-context.json records wrapper, outer-grader and frozen-module SHA256 values, pinned CPU image, grading_authority outer_parent and oracle_sent_to_child false. Runner adapter pins include both new grader files.",
+    "comparison": "Compare new outer-graded coding references with independently regraded Nemotron confirmation. Preserve and label original frozen same-interpreter grades separately; do not replace original scores.",
+    "limitation": "Outer comparison prevents oracle exposure and child-authored grades. Child-reported return values, exception names and input-after observations are not authenticated against arbitrary interpreter tampering; finite tests do not prove general correctness."
   }
 }

@@ -50,7 +50,8 @@ def build_cases(provider, model, endpoint, output, source, cli):
                     for flag, filename in [('--tasks', 'tasks.json'), ('--tests', 'hidden-tests.json')]:
                         forwarded = replace_arg(forwarded, flag, source / 'datasets/coding-v1' / filename)
                 require(forwarded[forwarded.index('--max-tokens') + 1] == '8192', 'Frozen direct output cap mismatch')
-                command = [sys.executable, str(HERE / 'reference_worker.py'), '--run', '--provider', provider,
+                worker_name = 'reference_worker.py' if domain == 'arithmetic' else 'reference_grade_worker.py'
+                command = [sys.executable, str(HERE / worker_name), '--run', '--provider', provider,
                            '--source', str(source), '--domain', domain, '--model', model, '--cli', cli,
                            '--transport-record', str(output / (stem + '.transport.jsonl')), '--'] + forwarded
                 case.update(domain=domain, seed=seed, endpoint=endpoint, arm=ARMS[domain], command=command,
@@ -138,6 +139,8 @@ def main(argv=None):
                 budget_accounting='Dispatched controlled180s deadlines are task-budget outcomes; retain verifier proof/partial traces and unknown cost. Observed faults halt. A killed coding grade requires owner cleanup review.',
                 cost_scope='Completed client/provider usage only; global/server token cost unknown. No vLLM metrics or exclusive-endpoint claim.',
                 comparison_scope='Separate quality reference, never pooled with Nemotron; Opus effort/seed/temperature and four-GPU DeepSeek resources are not equivalent settings.',
+                coding_grading=dict(authority='independent outer parent', oracle_sent_to_child=False,
+                    comparison='Compare with independently regraded Nemotron confirmation; original frozen same-interpreter grades remain separate.'),
                 gate=str(HERE / 'runs/throughput-followup-v2-complete.json'))
     if not args.run or args.plan:
         print(json.dumps(plan, indent=2))
@@ -149,7 +152,7 @@ def main(argv=None):
     sys.path.insert(0, str(source))
     benchmark = importlib.import_module('run_benchmark')
     coding = importlib.import_module('run_coding_benchmark')
-    own_pins = {name: sha(HERE / name) for name in ['reference_worker.py', 'run_references.py']}
+    own_pins = {name: sha(HERE / name) for name in ['reference_worker.py', 'reference_grade_worker.py', 'independent_code_grader.py', 'run_references.py', 'REFERENCE_BASELINES_PLAN.json']}
     output.mkdir(parents=True)
     metadata_path, summary_path = output / 'metadata.json', output / 'summary.json'
     metadata = dict(plan, started_utc=datetime.now(timezone.utc).isoformat(), source_pin=pin, adapter_sha256=own_pins, completion_gate=gate,
