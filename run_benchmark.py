@@ -131,18 +131,25 @@ def append_controller_stop(trace, records, row, case):
 
 
 def terminate(process):
+    # Popen owns this child; re-poll exit races before falling back to its PID.
+    def send(sig):
+        try:
+            os.killpg(process.pid, sig)
+        except (PermissionError, ProcessLookupError):
+            if process.poll() is not None:
+                return
+            try:
+                (process.terminate if sig == signal.SIGTERM else process.kill)()
+            except (PermissionError, ProcessLookupError):
+                if process.poll() is None:
+                    raise
     if process.poll() is not None:
         return process.returncode
+    send(signal.SIGTERM)
     try:
-        os.killpg(process.pid, signal.SIGTERM)
-        process.wait(timeout=1)
+        return process.wait(timeout=1)
     except subprocess.TimeoutExpired:
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-    except ProcessLookupError:
-        pass
+        send(signal.SIGKILL)
     return process.wait()
 
 
