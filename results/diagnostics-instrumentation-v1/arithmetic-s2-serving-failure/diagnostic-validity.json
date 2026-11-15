@@ -1,0 +1,262 @@
+{
+  "schema_version": 1,
+  "cohort": "evaluation-valid-v1-arithmetic-s2",
+  "domain": "arithmetic",
+  "seed": 2,
+  "valid_for_aggregation": false,
+  "scope": "Partial diagnostic only: serving-engine failure, separate from previous controller/grader instrumentation defects",
+  "primary_aggregation": "Excluded partial cohort; no accuracy/ranking or final three-seed aggregation",
+  "failure_type": "serving_engine_cuda_illegal_memory_access_http500_connection_resets",
+  "failure_evidence": {
+    "main_researcher_operational_report": "Spark02 serving engine CUDA illegal memory access; all generation halted; owned controller terminated rc-15",
+    "raw_trace_transport_errors": {
+      "connection_reset": 220,
+      "http_500": 32
+    },
+    "raw_trace_other_error_categories": {
+      "JSONDecodeError": 15,
+      "ValueError": 6
+    },
+    "evidence_boundary": "CUDA kernel diagnosis and controller exit code are external operational reports; exported request traces independently show HTTP500 and connection resets. They are not synthesized into original metadata."
+  },
+  "source_commit": "6c9dfe83bcb7fca46bc3059914b7407cabf865d4",
+  "captured_start_source_hashes": {
+    "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+    "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+    "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+    "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+    "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+    "runtime.json": "5ba312b8d45b2146f39d4d3762f82d9e60d3a5d40e5dbbadcae8b741dd1a897e",
+    "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+  },
+  "final_source_unchanged_verification": "Unavailable: original final source hashes/marker absent",
+  "original_metadata_sha256": "6b4fdbd36d6170a7a9d24c27eed91c25a8498df6d89761a1cb115ca61f3f5c8d",
+  "original_summary_sha256": "54fc5171625b08f757e4888bf6ef762df6671c6c1592633f683e37868d444af8",
+  "export_manifest_sha256": "9c734a9b45474913aa288179f6adc4c900927cee1ecff1bf0e10e501317be797",
+  "completion": {
+    "planned_cases": 192,
+    "recorded_summary_rows": 28,
+    "trace_files_present": 32,
+    "started_traces_without_summary": 4,
+    "planned_cases_without_summary": 164,
+    "planned_cases_without_trace": 160,
+    "original_final_metadata_fields_absent": [
+      "completed_cases",
+      "completed_utc",
+      "final_source_hashes",
+      "source_changed_during_run",
+      "incomplete",
+      "missing_cases",
+      "slot_failures",
+      "batch_wall_seconds"
+    ]
+  },
+  "usage": {
+    "client_observed_totals": {
+      "request_starts": 2823,
+      "request_ends": 2763,
+      "unfinished_requests": 60,
+      "observed_prompt_tokens": 376861,
+      "observed_completion_tokens": 92397,
+      "missing_prompt_usage": 252,
+      "missing_completion_usage": 252,
+      "malformed_lines": 0
+    },
+    "observed_cost_is_lower_bound": true,
+    "full_cohort_client_cost": "Unknown; preserve observed usage only",
+    "server_cost_known_summary_rows": 17,
+    "server_cost_unknown_summary_rows": 11,
+    "started_cases_without_final_server_cost": 4,
+    "server_prompt_tokens_known_subtotal": 367744,
+    "server_completion_tokens_known_subtotal": 101407,
+    "full_cohort_server_cost": null,
+    "denominator_note": "Server sums cover explicitly known recorded summary rows only; no imputation for missing rows, partial traces or unknown snapshots."
+  },
+  "partial_traces": [
+    {
+      "trace": "eva-27c0dd95407a-independent100-s2.jsonl",
+      "summary_row_present": false,
+      "request_starts": 100,
+      "request_ends": 100,
+      "unfinished_requests": 0,
+      "observed_prompt_tokens": 0,
+      "observed_completion_tokens": 0,
+      "missing_prompt_usage": 100,
+      "missing_completion_usage": 100,
+      "malformed_lines": 0
+    },
+    {
+      "trace": "eva-8955514173a5-ensemble2_thinking_8k-s2.jsonl",
+      "summary_row_present": false,
+      "request_starts": 2,
+      "request_ends": 0,
+      "unfinished_requests": 2,
+      "observed_prompt_tokens": 0,
+      "observed_completion_tokens": 0,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "malformed_lines": 0
+    },
+    {
+      "trace": "eva-91cea8bac1fe-cascade32-s2.jsonl",
+      "summary_row_present": false,
+      "request_starts": 95,
+      "request_ends": 94,
+      "unfinished_requests": 1,
+      "observed_prompt_tokens": 10909,
+      "observed_completion_tokens": 1398,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "malformed_lines": 0
+    },
+    {
+      "trace": "eva-c25dd13868a8-ensemble4_thinking_8k-s2.jsonl",
+      "summary_row_present": false,
+      "request_starts": 4,
+      "request_ends": 0,
+      "unfinished_requests": 4,
+      "observed_prompt_tokens": 0,
+      "observed_completion_tokens": 0,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "malformed_lines": 0
+    }
+  ],
+  "trace_hashes": [
+    {
+      "trace": "eva-27c0dd95407a-cascade32-s2.jsonl",
+      "sha256": "b2f6652df15db3b8439080a8092cd4603b4f7ac22618f9c86d4868dd16119361"
+    },
+    {
+      "trace": "eva-27c0dd95407a-democracy32-s2.jsonl",
+      "sha256": "0a38b1be52fb665ba6505cf69c6c22b8a4de3337d13c8977ade6cff564299de5"
+    },
+    {
+      "trace": "eva-27c0dd95407a-direct_thinking_8k-s2.jsonl",
+      "sha256": "10a89fa2eaafdee94fee63b485a5864c31caa88f21a5ed32ab59c9c966e76c45"
+    },
+    {
+      "trace": "eva-27c0dd95407a-ensemble2_thinking_8k-s2.jsonl",
+      "sha256": "5c5d42340933fa390cb957e979fcd66e9df6b0b64b3f6cc1484bf23e5fd48616"
+    },
+    {
+      "trace": "eva-27c0dd95407a-ensemble4_thinking_8k-s2.jsonl",
+      "sha256": "1cc17bc7f323ed08f5f1449e6fae0dbca1a4effc6464675a4e00a3d22ed18977"
+    },
+    {
+      "trace": "eva-27c0dd95407a-independent100-s2.jsonl",
+      "sha256": "b5f04bc33142d4175fbc05b412c400fcd443a90699e0e5873abd1abb99eeda02"
+    },
+    {
+      "trace": "eva-27c0dd95407a-shared8-s2.jsonl",
+      "sha256": "3ba2af0bbb13d52eb22a5dd10f31e2493df17223a586f9c40cc1660f56c14e59"
+    },
+    {
+      "trace": "eva-4a5b112b29e0-cascade32-s2.jsonl",
+      "sha256": "0caa62a4289603eda9467f9654426decc0e5303d496ee5af65bf6b60d4a6ae65"
+    },
+    {
+      "trace": "eva-4a5b112b29e0-democracy32-s2.jsonl",
+      "sha256": "4b68d4bc5a650f1ab9ed1d8b4cf3fa70a5778e589e0b056ac60a3ee0396ddadc"
+    },
+    {
+      "trace": "eva-4a5b112b29e0-direct_thinking_8k-s2.jsonl",
+      "sha256": "f29aba5c53e8f98addadba20192363c04e7dfee5aa04df5c016eb8492eaa9922"
+    },
+    {
+      "trace": "eva-4a5b112b29e0-ensemble2_thinking_8k-s2.jsonl",
+      "sha256": "b3993ac4633fcc6f736133eb33708296313a02b338553bf660ea8e8c01095dff"
+    },
+    {
+      "trace": "eva-4a5b112b29e0-ensemble4_thinking_8k-s2.jsonl",
+      "sha256": "c7e8454e6375b90c374593568de094fe8213db78a3afad443fd3bf3aafe4097a"
+    },
+    {
+      "trace": "eva-4a5b112b29e0-independent100-s2.jsonl",
+      "sha256": "b8724cd1aaf597e18d3001626f715d381889617b2854d3290677d55151937b8d"
+    },
+    {
+      "trace": "eva-4a5b112b29e0-independent32-s2.jsonl",
+      "sha256": "4e1c50ace67b45b8db8c6cade7f8abe11faae29d8b338decc1d795129bc1c77c"
+    },
+    {
+      "trace": "eva-4a5b112b29e0-shared8-s2.jsonl",
+      "sha256": "ac70f747159661d6db67ab10a76aa61aa644a67ab3f0f5b00643bfd185ab2254"
+    },
+    {
+      "trace": "eva-8955514173a5-ensemble2_thinking_8k-s2.jsonl",
+      "sha256": "e0e0b74eda3ca0e81a5ab4f8c502b46a97d8ac63967b86cece9d758da505c68a"
+    },
+    {
+      "trace": "eva-8955514173a5-ensemble4_thinking_8k-s2.jsonl",
+      "sha256": "58322f835264afe3a3562a64df4795f00a30cd131f041efc223f607242a7e422"
+    },
+    {
+      "trace": "eva-8955514173a5-independent100-s2.jsonl",
+      "sha256": "f18fde0ee8109c01b8cf2cbdd1b1d24d4f1efa006e1487b404f8c4b4c4d16118"
+    },
+    {
+      "trace": "eva-8955514173a5-independent32-s2.jsonl",
+      "sha256": "ae94b9c65d6169a4c73d793db8e543c7a29fd1004a742975fcdd78aa5ec50a53"
+    },
+    {
+      "trace": "eva-91cea8bac1fe-cascade32-s2.jsonl",
+      "sha256": "839d3d1c1c6a3fa624ae38b6736d9a21e4532bafaebb9554afb7d91acefca790"
+    },
+    {
+      "trace": "eva-91cea8bac1fe-democracy32-s2.jsonl",
+      "sha256": "307445dc2dfdd247577ef0c935b51942910e43313d0b12fcb9330bb9f597eb7b"
+    },
+    {
+      "trace": "eva-91cea8bac1fe-direct_thinking_8k-s2.jsonl",
+      "sha256": "56195d0328c48547670a290a8fd5c8217e91f0f5ad24d7e28e6ad760cf58880f"
+    },
+    {
+      "trace": "eva-91cea8bac1fe-ensemble2_thinking_8k-s2.jsonl",
+      "sha256": "7ee1f6dea4bc35ad21c96ac6a75425c302ecbd5946751d9ebdb4778a7c47463e"
+    },
+    {
+      "trace": "eva-91cea8bac1fe-ensemble4_thinking_8k-s2.jsonl",
+      "sha256": "618c3434008bd30a9f4100d21b043ea0f1c89adfa795108a5656311462b95552"
+    },
+    {
+      "trace": "eva-91cea8bac1fe-independent100-s2.jsonl",
+      "sha256": "9a48f94f81e02191f8c120d37fc34fb37cb672fd111924362f50595d89aaecf3"
+    },
+    {
+      "trace": "eva-91cea8bac1fe-independent32-s2.jsonl",
+      "sha256": "bc67d840879a3e52c34941d539152da70a162797ed1a55242cfa88d38d1bae7d"
+    },
+    {
+      "trace": "eva-c25dd13868a8-cascade32-s2.jsonl",
+      "sha256": "8b5c429b57e08b1a5f11e78eb4a0d7e1e85e5f83e98332e00555c6d780744c98"
+    },
+    {
+      "trace": "eva-c25dd13868a8-democracy32-s2.jsonl",
+      "sha256": "537c9b64ccbbcae19dc58ef7e74be18f1859faa04c188ed0421910e722a353a1"
+    },
+    {
+      "trace": "eva-c25dd13868a8-ensemble4_thinking_8k-s2.jsonl",
+      "sha256": "a07f30df4a190828ed792f71131be0916d827c487c5a491f6c7afb479392440c"
+    },
+    {
+      "trace": "eva-c25dd13868a8-independent100-s2.jsonl",
+      "sha256": "34dd81a73e007c02024d300171eefa245634a2d46590da607307acfe2eff8b60"
+    },
+    {
+      "trace": "eva-c25dd13868a8-independent32-s2.jsonl",
+      "sha256": "150f2ca8b5838ca1f81c2e4674e59b090197cd4a2e5bb82c1aea43b4bc2b37ad"
+    },
+    {
+      "trace": "eva-c25dd13868a8-shared8-s2.jsonl",
+      "sha256": "348c29e6360887521d67e7b48efec69d9279195212fe1ef7bf9bfd1725a99376"
+    }
+  ],
+  "retention": "All99 original files copied with manifest-listed path/interpreter normalizations. Original missing final markers remain absent; diagnostic validity is a separate new file.",
+  "notes": [
+    "No model API, raw edit, prompt/model/budget change or active script change performed during export.",
+    "No completed-proof audit was run: its completeness precondition is not met.",
+    "Recorded missing metadata fields are not replaced by fabricated completion, return code, source verification or zero-cost values.",
+    "Previous original arithmetic-s2 and coding-s1 instrumentation diagnoses remain separate diagnostic cohorts."
+  ]
+}
