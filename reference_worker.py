@@ -19,6 +19,7 @@ HERE = Path(__file__).resolve().parent
 SOURCE_REVISION = 'cbcde299716b7842536b008880a089590e9816f8'
 SENTINEL = 'http://opus-reference.invalid/v1'
 OPUS = 'claude-opus-5-5'
+REQUEST_TIMEOUT_SECONDS = 210  # Whole-case controller deadline remains180s.
 
 
 def json_sha(value):
@@ -198,6 +199,15 @@ def optional_opus_preflight(root):
     return dict(opus_preflight_present=present, opus_preflight_sha256=sha(path) if present else None)
 
 
+def named_client(original, reference_model):
+    class NamedClient(original):
+        def __init__(self, endpoints, model, concurrency, max_tokens, timeout, budget, events, seed, thinking=False):
+            # The controller must classify the180s task budget before transport
+            # timeout; changing this margin does not extend the task deadline.
+            super().__init__(endpoints, reference_model, concurrency, max_tokens, REQUEST_TIMEOUT_SECONDS, budget, events, seed, thinking=thinking)
+    return NamedClient
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--provider', choices=['opus', 'deepseek'], required=True)
@@ -213,18 +223,15 @@ def main(argv=None):
     forwarded = args.harness_args[1:] if args.harness_args[:1] == ['--'] else args.harness_args
     require('--method' in forwarded and forwarded[forwarded.index('--method') + 1] == 'direct', 'Reference worker supports only frozen direct methods')
     if not args.run or args.plan:
-        print(json.dumps(dict(mode='plan', provider=args.provider, model=args.model, source=str(args.source), domain=args.domain, harness_args=forwarded)))
+        print(json.dumps(dict(mode='plan', provider=args.provider, model=args.model, source=str(args.source), domain=args.domain,
+                              request_timeout_seconds=REQUEST_TIMEOUT_SECONDS, task_deadline_seconds=180, harness_args=forwarded)))
         return 0
     verify_gate(HERE, audit_cohorts=False)
     pin = source_pin(args.source)
     require(not args.transport_record.exists() and not args.transport_record.with_suffix('.context.json').exists(), 'Transport/context record already exists')
     sys.path.insert(0, str(args.source))
     h = importlib.import_module('harness')
-    original = h.Client
-    class NamedClient(original):
-        def __init__(self, endpoints, model, *values, **kwargs):
-            super().__init__(endpoints, args.model, *values, **kwargs)
-    h.Client = NamedClient
+    h.Client = named_client(h.Client, args.model)
     if args.provider == 'opus':
         require(args.model == OPUS, 'Only exact preflighted Opus model is supported')
         urllib.request.urlopen = OpusTransport(args.cli, args.transport_record)
@@ -233,7 +240,9 @@ def main(argv=None):
         urllib.request.urlopen = OpenAIRecorder(endpoint, args.transport_record, urllib.request.urlopen)
     cli_version = subprocess.check_output([args.cli, '--version'], text=True, timeout=20).strip() if args.provider == 'opus' else None
     args.transport_record.with_suffix('.context.json').write_text(json.dumps(dict(source=pin, provider=args.provider, model=args.model, cli_version=cli_version,
-        worker_sha256=sha(__file__), argv=forwarded, **(optional_opus_preflight(HERE.parent.parent) if args.provider == 'opus' else {}), scope='Separate strong-model reference; never pool with Nemotron',
+        worker_sha256=sha(__file__), argv=forwarded, request_timeout_seconds=REQUEST_TIMEOUT_SECONDS, task_deadline_seconds=180,
+        timeout_scope='Transport margin only; whole-case180s controller budget remains unchanged.',
+        **(optional_opus_preflight(HERE.parent.parent) if args.provider == 'opus' else {}), scope='Separate strong-model reference; never pool with Nemotron',
         timing='Case controller wall includes CLI startup/auth/network or local endpoint time plus grading; not GPU decode throughput'), indent=2) + '\n')
     module = h if args.domain == 'arithmetic' else importlib.import_module('coding_harness')
     return module.main(forwarded)

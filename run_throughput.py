@@ -79,7 +79,7 @@ def main(argv=None):
                        ",".join(map(str,task["numbers"]))+":"+str(task["target"]),"--model","nemotron-lightning",
                        "--agents",str(agents),"--per-endpoint-concurrency","25","--rounds","5","--max-tokens",
                        "8192" if args.arm.endswith("_8k") else "4096" if thinking else "192",
-                       "--max-calls","1280","--max-completion-tokens","32768","--timeout","180",
+                       "--max-calls","1280","--max-completion-tokens","32768","--timeout","210",
                        "--seed",str(seed),"--events",str(trace),"--endpoint",endpoints[node]]
             if thinking: command.append("--thinking")
             if args.arm.startswith("democracy"): command.append("--accept-verified-solution")
@@ -94,7 +94,9 @@ def main(argv=None):
                     jobs_per_node=args.jobs_per_node,total_slots=4*args.jobs_per_node,model_agents_per_case=agents,
                     source_hashes=hashes(),runtime=runtime,runtime_evidence="Configuration snapshot, not live verification",
                     scheduling="All cases queued at common t0; task positions round-robin over 4 nodes, then persistent slots per node; per-task seed order rotates",
-                    budgets="1280 calls/32768 completion tokens per case, no input-token cap; request timeout180s and case deadline180s AFTER admission",
+                    budgets="1280 calls/32768 completion tokens per case, no input-token cap; request timeout210s and case deadline180s AFTER admission",
+                    request_timeout_seconds=210,case_deadline_after_admission_seconds=180,controller_poll_seconds=0.1,
+                    deadline_observation_tolerance="Nominal0.1s controller polling plus scheduling/trace overhead; original completion/proof ordering unchanged. Request timeout adds transport margin only.",
                     scope="One arm per cohort: fleet wall includes scheduling, cases and final parallel drain. Configured jobs and N are not an optimal-admission claim; vLLM queues excess model requests.",
                     clustering="Repeated seeds are attempts clustered by task_id, not independent problems; evaluation 24 tasks x4 seeds gives96 attempts, not96 independent tasks",
                     counter_scope="Only global endpoint idle counter deltas; no per-case server attribution. Assumes no outside generation traffic during cohort.",

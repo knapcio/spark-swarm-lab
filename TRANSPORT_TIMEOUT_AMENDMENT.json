@@ -1,0 +1,105 @@
+{
+  "protocol": "transport-timeout-margin-amendment-v1",
+  "recorded_utc": "2026-11-15T20:28:49.527144+00:00",
+  "cause": {
+    "source_revision": "47bba9f083653dd32ff91ca22585d4185198f65b",
+    "request_timeout_seconds": 180,
+    "case_deadline_seconds": 180,
+    "controller_poll_seconds": 0.1,
+    "request_id": "80daae2d3410",
+    "request_latency_ms": 180016.32,
+    "error": "TimeoutError: timed out",
+    "trace_sha256": "64fdc0604d9cb98f10f7f55bb69eeb0377f2366ec525088e168011fd2f67dcd7",
+    "interpretation": "Request timeout and natural child exit beat the next controller poll; no evidence of engine crash. Preserve raw failure, do not relabel it."
+  },
+  "throughput": {
+    "protocol": "throughput-timeoutguard-amendment-v1",
+    "prepared_utc": "2026-11-15T20:24:10.610477+00:00",
+    "verified": true,
+    "scope": "Offline exact source-diff amendment; not a launch receipt",
+    "base_revision": "47bba9f083653dd32ff91ca22585d4185198f65b",
+    "new_revision": "7bb965b073af8cdc211404186c15463d5cfc374e",
+    "source_tag": "throughput-timeoutguard-v1",
+    "request_timeout_before_seconds": 180,
+    "request_timeout_after_seconds": 210,
+    "case_deadline_after_admission_seconds": 180,
+    "nominal_controller_poll_seconds": 0.1,
+    "controller_ordering_unchanged": true,
+    "models_prompts_seeds_token_budgets_unchanged": true,
+    "runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+    "changed_files": {
+      "run_throughput.py": {
+        "before": "3b39987c0c9643034cbe9a1e1692de78f53ca3bbd0a13e2d5b45d6117d00fd0b",
+        "after": "6715adc8683d9a4dfccf8022fab8cf363a9c454987fa1f4c13744001e05618d1"
+      }
+    },
+    "added_files": {
+      "test_throughput_timeoutguard.py": "7126ead7a24e06be8a6cf53408edfbfe868af53f9093f58cc1ebae0d2818b7a3"
+    },
+    "all_other_tracked_bytes_unchanged": true,
+    "original_protocol_sha256": "0b749f744575ea5de00e3fd9ee0537c98f9f77630b7d02085587fee423747c09",
+    "extension_protocol_sha256": "55ee731ca3d972e66b0b628edef78c7fb914765a735243d7918c3e28656f2b79",
+    "archive_receipt": {
+      "path": "runs/diagnostics-throughput-timeout-v2/archive-receipt.json",
+      "sha256": "a7fe929bfa70c20a6440eeb139eb52b8c7cd513142963d5f22dd849853ba595c"
+    },
+    "fresh_rerun": {
+      "original_development": 20,
+      "extension_development": 16,
+      "evaluation": 9,
+      "total": 45,
+      "legacy_cohorts_pooled": 0
+    },
+    "notes": [
+      "HTTP TimeoutError classification unchanged; genuine transport errors still halt",
+      "No controller completion/proof ordering change; nominal0.1s polling plus scheduler/trace observation tolerance remains",
+      "Primary900 and solo80 are unchanged; every throughput cohort executes fresh under one new source"
+    ]
+  },
+  "prospective_csp_and_references": {
+    "before_any_model_outcomes": true,
+    "prior_csp_tag": "csp-search-v1",
+    "new_csp_tag": "csp-search-v1.1",
+    "csp_request_timeouts_seconds": [
+      210,
+      630,
+      930
+    ],
+    "csp_case_deadlines_seconds": [
+      180,
+      600,
+      900
+    ],
+    "reference_request_timeout_seconds": 210,
+    "reference_case_deadline_seconds": 180,
+    "selection_sha256": "aa7103b8f7c956bd0d9694931d9b7b5abd4de3977fc0cf6b79148d2a7553686e",
+    "unchanged": [
+      "model/runtime/weights/draft",
+      "prompts/temperature/seeds",
+      "candidate and token budgets",
+      "search/selection/verifier policies",
+      "controller completion ordering and0.1s observation tolerance"
+    ],
+    "request_timeout_is_not_a_model_body_parameter": true
+  },
+  "original_quality": {
+    "primary900_and_solo80_retained": true,
+    "scope": "Completed independently audited cohorts had no observed HTTP-timeout infrastructure event; no method/budget changes or raw row edits."
+  },
+  "independent_grader_live_qualification": {
+    "receipt_sha256": "edd4665a8e985e2588555330b771828cdff1f2d20bcf72632306b72a4d65216c",
+    "grader_sha256": "c4324123bb75a8712150adb3e06e1da4e1e44a7d91516597d9a35caa372c2726",
+    "image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+    "authored_smokes": 6,
+    "trusted_reference_cases": 405,
+    "trusted_phase_containers": 72,
+    "owned_containers_remaining": {
+      "Spark_01": [],
+      "Spark_02": [],
+      "Spark_03": [],
+      "Spark_04": []
+    },
+    "model_calls": 0
+  },
+  "publication": "Historical diagnostics and original grades stay separate. New throughput45 runs fresh under a single timeoutguard source."
+}

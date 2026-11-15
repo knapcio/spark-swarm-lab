@@ -30,7 +30,8 @@
           2,
           3
         ]
-      }
+      },
+      "request_timeout_seconds": 210
     },
     "extended_off64": {
       "priority": 2,
@@ -56,7 +57,8 @@
           2,
           3
         ]
-      }
+      },
+      "request_timeout_seconds": 630
     },
     "thinking_on16": {
       "priority": 3,
@@ -80,7 +82,8 @@
         "evaluation": [
           1
         ]
-      }
+      },
+      "request_timeout_seconds": 930
     }
   },
   "schedule": {
@@ -204,17 +207,32 @@
     "csp_tasks.py": "4a49d387687eb15c98cf226980b63b5a786c67a60ec94fa489ad58855b08373e",
     "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
     "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
-    "reference_worker.py": "72b71d05cfeb4ee7b9f79070ac14efea5de894759ee3ac07278acbeeb393d086",
+    "reference_worker.py": "17f83d857a820a0dfc8665cd8330a94836d60dbc4b16ea73d4f05433dc49cbe9",
     "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
     "datasets/csp-v1/tasks.json": "29d659bbc7b4b819ea7d572db073459eb30d6c19f7fda2114e7c174c375de960",
     "datasets/csp-v1/reference-witnesses.json": "b02be9c50fecf0c779d2959b15e00d145bfbceedecbdab25beb21643c6a9a40c",
-    "run_csp_search.py": "d7e6d921f5b7ee971da25f74dcdbf5e240b97d765ccad3df80237287a7734154",
-    "test_run_csp_search.py": "47a5225c418e2fa33cbfcc4ff21761615b3c299324bf4b047a91a5a1ce391eeb",
+    "run_csp_search.py": "b1f8acd841e539777436629e0538da9dcfd0c828fb3fe2809229e543fc3ffcf5",
+    "test_run_csp_search.py": "6a68873a3214d8a73fbcaf934c8e446fec5facdca73f9591d3f5654097bd08a7",
     "test_csp_search.py": "e9a655124ae9bc946d48c68471937aa0ebb4e5a8cd7653348fe301d289c1ceeb",
     "test_csp_social.py": "17ac98240889d0bcb9390e05187478a681dbc711bc9170c7b1b4c0203b874552",
     "test_csp_tasks.py": "b66ed7be0f6f906f8adf843d668820e2291190ac28f072808ed768aee8578b11",
     "csp_classical.py": "5a7f9388728a710cdf2d842f0ff35a4517f9612589fc0b2b93a471873c710c10",
     "test_csp_classical.py": "0a1de0bf061bd0320cd0569af56372abef8c3459ca44447b60ab4fb696eba37f"
   },
-  "final_source_freeze": "Runner/tests must pass parent review before commit/tag. Selection excludes its own hash; cohort metadata separately captures its SHA plus complete frozen source hashes and Git revision."
+  "final_source_freeze": "Runner/tests must pass parent review before commit/tag. Selection excludes its own hash; cohort metadata separately captures its SHA plus complete frozen source hashes and Git revision.",
+  "transport_timeout_amendment": {
+    "status": "Prospective transport-only v1.1 amendment before any CSP outcomes; parent will freeze the new source/tag.",
+    "supersedes_unused_csp_revision": "e647ccd9f88c59dffb752ac98ce922da03191302",
+    "change": "Per-request HTTP timeout is whole-case controller deadline+30seconds:210/630/930seconds. Case deadlines remain180/600/900seconds and controller polling remains0.1seconds.",
+    "reason": "Prevent a request timeout at the same boundary as the whole-case controller from being mistaken for a transport failure.",
+    "unchanged": [
+      "model and serving configuration",
+      "prompts and search policies",
+      "task corpus and splits",
+      "model-call/output-token budgets",
+      "case deadlines",
+      "whole-batch stopping and cost accounting"
+    ],
+    "reference_transport": "reference_worker.py source pin is refreshed for the separately authorized reference HTTP timeout margin; gate semantics remain unchanged."
+  }
 }

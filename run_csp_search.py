@@ -66,6 +66,8 @@ def build_plan(profile, split, seed, output, gate_root):
     if profile not in selection["profiles"]:
         raise ValueError("unknown profile")
     recipe = selection["profiles"][profile]
+    if recipe.get("request_timeout_seconds") != recipe["deadline_seconds"] + 30:
+        raise ValueError("request timeout must exceed the case deadline by exactly30seconds")
     if split not in recipe["splits_and_seeds"] or seed not in recipe["splits_and_seeds"][split]:
         raise ValueError("split/seed is outside the preregistered profile")
     dataset = HERE / "datasets/csp-v1/tasks.json"
@@ -96,7 +98,7 @@ def build_plan(profile, split, seed, output, gate_root):
                        "--endpoint", ENDPOINTS[slot], "--events", str(trace),
                        "--model", runtime["served_model_name"], "--seed", str(seed),
                        "--max-tokens", str(recipe["max_tokens"]), "--max-calls", str(recipe["max_calls"]),
-                       "--timeout", str(recipe["deadline_seconds"])]
+                       "--timeout", str(recipe["request_timeout_seconds"])]
             if recipe["thinking"]:
                 command.append("--thinking")
             cases.append(dict(task_id=task["id"], task=task, split=split, arm=arm, seed=seed,
@@ -113,6 +115,7 @@ def build_plan(profile, split, seed, output, gate_root):
                 scheduling="One persistent slot per endpoint; each task's arms sequential; seed-dependent rotations.",
                 scope="Quality/latency with four endpoint-owned case slots; not saturated fleet throughput.",
                 stop_policy="Worker finishes dispatched batches; controller only terminates whole-case deadlines.",
+                transport_timeout_policy="Per-request HTTP timeout is case deadline+30seconds; controller deadline, budgets and polling unchanged.",
                 timing="Candidate verification seconds start at worker search entry; controller proof time includes worker startup and polling delay.",
                 unknown_cost_policy="Unknown server costs are null; incomplete client usage remains a lower bound.")
 

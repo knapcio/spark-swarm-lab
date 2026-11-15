@@ -60,12 +60,14 @@ class RunCSPTests(unittest.TestCase):
             plan = self.plan("/tmp/unused-csp-plan", profile, "evaluation")
             self.assertEqual(len(plan["cases"]), 12 * arms)
             self.assertEqual(plan["recipe"]["deadline_seconds"], deadline)
+            self.assertEqual(plan["recipe"]["request_timeout_seconds"], deadline + 30)
             mapping = {}
             for case in plan["cases"]:
                 mapping.setdefault(case["task_id"], set()).add(case["arm"])
                 command = case["command"]
                 self.assertEqual(command[command.index("--max-calls") + 1], str(calls))
                 self.assertEqual(command[command.index("--max-tokens") + 1], str(cap))
+                self.assertEqual(command[command.index("--timeout") + 1], str(deadline + 30))
                 self.assertEqual("--thinking" in command, profile == "thinking_on16")
                 self.assertFalse(case["stop_on_solution"])
                 self.assertTrue(case["server_metrics"])
@@ -190,6 +192,22 @@ class RunCSPTests(unittest.TestCase):
                 metadata = json.loads((Path(plan["output"]) / "metadata.json").read_text())
                 self.assertTrue(metadata["incomplete"])
                 self.assertFalse(metadata["verified"])
+
+    def test_request_margin_never_extends_controller_deadline(self):
+        for profile, deadline in (("core_off16", 180), ("extended_off64", 600), ("thinking_on16", 900)):
+            with self.subTest(profile=profile), tempfile.TemporaryDirectory() as directory:
+                plan = self.plan(directory, profile, "evaluation")
+                plan["cases"] = plan["cases"][:1]
+                plan["planned_cases"] = 1
+                observed = []
+                def executor(case, controller_deadline):
+                    observed.append(controller_deadline)
+                    self.assertEqual(case["command"][case["command"].index("--timeout") + 1], str(deadline + 30))
+                    row, records = fixture(case, max_calls=plan["recipe"]["max_calls"])
+                    Path(case["events"]).write_text("".join(json.dumps(r) + "\n" for r in records))
+                    return row
+                self.assertEqual(self.mocked_run(plan, executor), 0)
+                self.assertEqual(observed, [deadline])
 
     def test_fault_stops_following_cases_but_retains_raw_and_invalid_row(self):
         with tempfile.TemporaryDirectory() as directory:

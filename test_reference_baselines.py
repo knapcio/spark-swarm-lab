@@ -327,6 +327,17 @@ with tempfile.TemporaryDirectory() as d:
             path.write_text('{"scope":"SYNTHETIC"}')
             self.assertEqual(w.optional_opus_preflight(root), {'opus_preflight_present': True, 'opus_preflight_sha256': w.sha(path)})
 
+    def test_request_timeout_margin_preserves_identity_budgets_and_body_settings(self):
+        calls=[]
+        class Original:
+            def __init__(self,endpoints,model,concurrency,max_tokens,timeout,budget,events,seed,thinking=False):
+                calls.append((endpoints,model,concurrency,max_tokens,timeout,budget,events,seed,thinking))
+        endpoints=['SYNTHETIC_ENDPOINT'];budget=object();events=object()
+        client=w.named_client(Original,w.OPUS)
+        client(endpoints,'legacy_alias',1,8192,180,budget,events,3,thinking=True)
+        client(endpoints=endpoints,model='legacy_alias',concurrency=1,max_tokens=8192,timeout=180,budget=budget,events=events,seed=3,thinking=True)
+        self.assertEqual(calls,[(endpoints,w.OPUS,1,8192,210,budget,events,3,True)]*2)
+
     def test_real_execution_gate_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaises(FileNotFoundError):

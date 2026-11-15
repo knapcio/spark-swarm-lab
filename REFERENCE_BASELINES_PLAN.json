@@ -51,7 +51,13 @@
     "output_budget": "8192 output-token cap remains unchanged. A completed length finish or parser/test failure is an observed quality/output-budget outcome, not infrastructure; an actually verified solution remains valid. No automatic repair or extra model call.",
     "operational_halts": "Observed transport/controller/protocol or grader-infrastructure faults still halt the cohort. A deadline during an active coding grade retains its budget outcome but halts for exact-owner cleanup review before reusing any grader; do not continue blindly.",
     "dispatch_validation": "Exactly one trace request_start, matching completed request IDs/counts, and a controller-marked deadline with expected termination exit are required. A missing dispatch, arbitrary crash or ambiguous failed transport is not admitted as a clean budget result.",
-    "portable_context": "Local Opus preflight is optional contextual evidence: presence flag and SHA256 or null are recorded. Its absence neither invents auth/model proof nor changes the strict actual-response model/provider check."
+    "portable_context": "Local Opus preflight is optional contextual evidence: presence flag and SHA256 or null are recorded. Its absence neither invents auth/model proof nor changes the strict actual-response model/provider check.",
+    "transport_timeout_margin": {
+      "request_timeout_seconds": 210,
+      "whole_task_deadline_seconds": 180,
+      "scope": "Pre-call transport-only correction: the HTTP/CLI request timeout exceeds the unchanged180s whole-task controller deadline so near-simultaneous client timeout cannot preempt controller budget classification. Model identity, request body, prompts, seed, token budgets and verifier remain unchanged.",
+      "precedence": "The whole-case controller terminates the case process group at180s. Request210s is not a task-budget extension; pending provider work/cost remains unknown after cancellation."
+    }
   },
   "pre_call_grading_authority_amendment": {
     "scope": "Reference-only correction before any live reference calls; frozen Nemotron source and original scores remain unchanged.",
