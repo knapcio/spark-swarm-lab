@@ -1,0 +1,58 @@
+{
+  "protocol": "exploratory-throughput-cheap-coverage-v1",
+  "frozen_utc": "2026-11-15T15:21:07.863265+00:00",
+  "status": "Frozen before any throughput queue generation calls; supplementary late coverage amendment",
+  "disclosure": "Primary arithmetic seed1 outcomes had already been inspected. This is not retroactively prespecified confirmatory evidence. All four cheap primary arithmetic arms omitted from the original throughput matrix are included systematically, with no selection of individual arms by evaluation success.",
+  "original_protocol_sha256": "0b749f744575ea5de00e3fd9ee0537c98f9f77630b7d02085587fee423747c09",
+  "original_protocol_unchanged": true,
+  "rationale": "The original5 throughput arms cover strong full-plan solo/ensembles and cascade but omit cheap independent, voting and shared-state policies. Development evidence alone establishes distinct latency/cost scales requiring a common loaded-queue measurement.",
+  "source_tag": "throughput-infra-v1",
+  "source_revision": "b38179d",
+  "dataset": "datasets/arithmetic-v1/tasks.json",
+  "dataset_sha256": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+  "split": "development",
+  "seeds": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "arms": [
+    "independent32",
+    "independent100",
+    "democracy32",
+    "shared8"
+  ],
+  "jobs_per_node": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "cohorts": 16,
+  "attempts_per_cohort": 32,
+  "unique_tasks_per_cohort": 8,
+  "primary_metric": "verified successes/minute over actual four-node batch wall including final drain",
+  "selection_rule": "For each arm choose jobs_per_node with greatest development verified successes/min; if within1% choose smaller concurrency. No evaluation-concurrency tuning.",
+  "eval_followup": {
+    "split": "evaluation",
+    "seeds": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "unique_tasks": 24,
+    "attempts": 96,
+    "concurrency": "Choose separately for each arm by development only; freeze selected jobs before evaluating any extension cohort"
+  },
+  "scheduling": "Run only after original20 throughput development cohorts; no overlapping model cohorts. Armorder as listed, concurrency order alternating ascending/descending as original protocol.",
+  "limitations": [
+    "Finite32-attempt development batch cannot exceed8admitted cases/node.",
+    "Cheap policies may create many queued requests above25engine slots; N remains logical path count, not activeGPUparallelism.",
+    "Admission deadlines180s, queuewait included in end-to-end latency but excluded from admission deadline.",
+    "Repeated task seeds remain clustered; small8task development selection is noisy.",
+    "No prompts, inference budgets, worker logic or original evaluation outcomes are changed.",
+    "Later throughput extension reported separately from frozen primary900 and originalthroughputplan."
+  ]
+}

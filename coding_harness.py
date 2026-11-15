@@ -52,7 +52,13 @@ def parse_python_response(content, stage):
 
 
 def infrastructure(report):
-    return ("exit_code" in report or "cleanup_ok" in report
+    if report.get("cleanup_ok") is False:
+        return True
+    if report.get("provenance") == "infrastructure" or str(report.get("failure_kind", "")).endswith("_infrastructure"):
+        return True
+    if report.get("provenance") == "candidate" or str(report.get("failure_kind", "")).startswith("candidate_"):
+        return False
+    return ("exit_code" in report
             or str(report.get("error", "")).startswith("Invalid runner protocol")
             or report.get("status") not in ("passed", "failed", "error", "timeout"))
 

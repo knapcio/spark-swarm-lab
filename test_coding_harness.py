@@ -112,6 +112,23 @@ class CodingTests(unittest.TestCase):
         self.assertIn("agent=1", grades[-1][1])
         self.assertEqual(result["infrastructure_failures"], 1)
 
+    def test_resource_failures_with_successful_cleanup_can_be_repaired(self):
+        def grade(phase, code, tests):
+            if phase == "feedback" and "round=0" in code:
+                return dict(status="error", passed=0, total=len(tests), error="candidate OOM", exit_code=137,
+                            container_state=dict(OOMKilled=True, ExitCode=137), cleanup_ok=True,
+                            failure_kind="candidate_oom", provenance="candidate")
+            return dict(status="passed", passed=len(tests), total=len(tests))
+        result, rows, calls, _ = self.execute("iterative", grade)
+        self.assertTrue(result["solved"])
+        self.assertEqual(result["infrastructure_failures"], 0)
+        self.assertIn("Previous implementation", calls[1]["prompt"])
+        self.assertIn("candidate OOM", calls[1]["prompt"])
+        for kind in ("candidate_oom", "candidate_signal", "candidate_runtime", "candidate_timeout"):
+            self.assertFalse(c.infrastructure(dict(status="error", exit_code=137, cleanup_ok=True, failure_kind=kind)))
+        self.assertTrue(c.infrastructure(dict(status="error", failure_kind="candidate_oom", cleanup_ok=False)))
+        self.assertTrue(c.infrastructure(dict(status="error", failure_kind="ssh_infrastructure", cleanup_ok=True)))
+
     def test_all_invalid_model_outputs_finish_without_a_holdout_or_extra_calls(self):
         client, events = Client(), Events()
         args = argparse.Namespace(method="shared", agents=2, rounds=3, host="Spark_02")

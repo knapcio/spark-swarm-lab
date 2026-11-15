@@ -1,13 +1,18 @@
 # Swarm Lab: exact arithmetic, visible decisions
 
-**Research in progress.** A new solo-versus-swarm comparison is running on a
-frozen development/evaluation dataset. Existing results below are exploratory;
-they do not establish a generally superior agent architecture. See
-[EXPERIMENT_PLAN.md](EXPERIMENT_PLAN.md) for the current protocol.
+**Research in progress.** The frozen primary comparison covers 900 attempts:
+24 arithmetic tasks and 18 Python-function tasks, three sampling seeds, and
+strong solo, independent-ensemble, shared-state and voting controls. Repeated
+seeds remain clustered by task. See [EVALUATION_SELECTION.json](EVALUATION_SELECTION.json)
+for the primary protocol and [EVALUATION_PROGRESS.md](EVALUATION_PROGRESS.md)
+for interim coverage and instrumentation exclusions. Development results below
+do not establish a generally superior agent architecture.
 
-A standard-library Python prototype comparing independent search trajectories,
-LLM democracy, and voting weighted by previous objectively scored games. No
-model-written code is executed. The arithmetic evaluator uses `fractions.Fraction`.
+A standard-library Python prototype for four independent Nemotron replicas.
+Arithmetic moves are verified with `fractions.Fraction`. Generated Python
+functions are evaluated separately in constrained, CPU-only Docker containers;
+feedback tests guide repairs, and a frozen selected candidate receives one
+held-out evaluation. See [EXPERIMENT_PLAN.md](EXPERIMENT_PLAN.md) for the design.
 
 Each move consumes two indexed numbers and appends their result. Supported
 operations are `+ - * /`; results must be positive integers. `--allow-fractions`
@@ -19,12 +24,14 @@ is `25,50,75,100,3,6:952`. One valid five-move solution exists.
 
 Does cooperation improve exact puzzle success over independent search when
 measured against actual prompt/completion tokens, request counts and wall time?
-Does reputation from separate objectively scored games help beyond equal votes?
-The study will compare independent search, democracy and reputation-weighted
-voting across held-out puzzles and seeds; equal agent counts alone do not match
-budgets. Preserve seeds, model/runtime/code revisions, calibration artifacts and
-JSONL events so each experiment can be traced and repeated, while recognizing
-that API seeds do not guarantee identical GPU execution.
+Can shared state or voting improve on independent whole-plan sampling and
+sequential self-repair? The frozen comparison reports quality, latency and actual
+costs; a separate single-policy queue experiment measures verified solutions per
+minute under load. Reputation-weighted voting remains an exploratory prototype,
+not a primary evaluation arm. Equal agent counts alone do not match budgets.
+Preserve seeds, model/runtime/code revisions, calibration artifacts and JSONL
+events so each experiment can be traced and repeated, while recognizing that
+API seeds do not guarantee identical GPU execution.
 
 ## Current evidence
 
