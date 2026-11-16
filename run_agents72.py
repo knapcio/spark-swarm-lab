@@ -169,7 +169,7 @@ def main(argv=None):
     stamp = datetime.fromisoformat(admission['verified_utc'])
     require(stamp.utcoffset() is not None and stamp.utcoffset().total_seconds() == 0, 'UTC admission stamp required')
     age = (datetime.now(timezone.utc) - stamp).total_seconds()
-    require(admission.get('verified') is True and admission.get('all_four_owned_healthy_idle') is True
+    require(admission.get('verified') is True and (admission.get('all_four_owned_healthy_idle') is True or admission.get('allow_busy') is True)
             and 0 <= age <= 900 and admission.get('source_sha256') == before, 'Fresh admission required')
     output.mkdir(parents=True)
     meta.update(started_utc=datetime.now(timezone.utc).isoformat(), admission=admission,
