@@ -152,3 +152,22 @@ and frontier selection; it is not a pure memory ablation or shared GPU attention
 cache. This context does not amend the frozen methods. The [structured review](results/related-work-20261115.json)
 records versions, author repositories and comparison limits; dates above are first
 arXiv submissions, not necessarily venue publication dates.
+
+### Program-search context added after the original experiments
+
+The later reusable-program experiment is also related to
+[FunSearch's author paper](https://storage.googleapis.com/deepmind-media/DeepMind.com/Blog/funsearch-making-new-discoveries-in-mathematical-sciences-using-large-language-models/Mathematical-discoveries-from-program-search-with-large-language-models.pdf):
+it combines a frozen language model, executable candidate programs, evaluator
+feedback and a diverse program population. Its published method evolves critical
+functions inside a supplied skeleton and uses island-based search.
+[AlphaEvolve's paper](https://storage.googleapis.com/deepmind-media/DeepMind.com/Blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/AlphaEvolve.pdf)
+describes program proposals, automated evaluation and a program database, with
+Gemini Flash and Pro providing different generation roles.
+
+Our small study uses one fixed Nemotron checkpoint for every writing/review role,
+four development graphs, a fixed call budget and selected source frozen before
+evaluation. It asks for a complete solver rather than supplying a search-algorithm
+skeleton. These are related research directions, not replications of either
+system or claims of new algorithmic discoveries. This bibliography addition was
+checked on 2026-11-16 after original program outcomes were known; it changes no
+frozen protocol, prompt or result.
