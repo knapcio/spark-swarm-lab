@@ -104,6 +104,13 @@ class ForcedTests(unittest.TestCase):
         self.assertEqual(ends[1]['response'], GOOD)
         self.assertEqual(ends[0]['token_ids'], [7] * f.THINK_CAP)
 
+    def test_plain_original_is_one_uncapped_call_without_forcing(self):
+        c, result = self.run_case([sse('notes', [7] * f.TOTAL, 'length')], variant='plain_original')
+        self.assertEqual(len(c.bodies), 1)
+        self.assertEqual(c.bodies[0]['max_tokens'], f.TOTAL)
+        self.assertFalse(result['solved'] or result['budget_forced'])
+        self.assertNotIn('Leftover numbers are allowed', c.prompt)
+
     def test_original_variant_uses_original_prompt(self):
         c, _ = self.run_case([sse('n</think>' + GOOD, [5], 'stop')], variant='forced_original')
         self.assertNotIn('Leftover numbers are allowed', c.prompt)
