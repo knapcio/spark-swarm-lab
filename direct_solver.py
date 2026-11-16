@@ -5,9 +5,7 @@ import json
 from harness import apply_action, canonical, solved
 
 
-def run_direct(experiment, initial, puzzle_id, agent_id=0, feedback_text="", plan_revision=None):
-    e = experiment
-    state, node_id = initial, e.node(initial, None, 0, puzzle_id, agent_id)
+def build_prompt(e, state, feedback_text=""):
     maximum = min(e.args.rounds, len(state) - 1)
     rule = "positive rational" if e.args.allow_fractions else "positive integer"
     prompt = (
@@ -21,8 +19,22 @@ def run_direct(experiment, initial, puzzle_id, agent_id=0, feedback_text="", pla
     )
     if feedback_text:
         prompt += "\n" + feedback_text[:3999]
+    return prompt
+
+
+def run_direct(experiment, initial, puzzle_id, agent_id=0, feedback_text="", plan_revision=None):
+    e = experiment
+    node_id = e.node(initial, None, 0, puzzle_id, agent_id)
+    prompt = build_prompt(e, initial, feedback_text)
     revision_fields = {} if plan_revision is None else dict(phase="sequential_full_plan_refinement", plan_revision=plan_revision)
     result = e.client.call(agent_id, "plan", prompt, node_id=node_id, puzzle_id=puzzle_id, **revision_fields)
+    return replay_plan(e, initial, node_id, result, puzzle_id, agent_id, plan_revision)
+
+
+def replay_plan(e, initial, node_id, result, puzzle_id, agent_id=0, plan_revision=None, compile_action=None):
+    state = initial
+    maximum = min(e.args.rounds, len(state) - 1)
+    revision_fields = {} if plan_revision is None else dict(phase="sequential_full_plan_refinement", plan_revision=plan_revision)
     validation_error = None
     moves = result.get("moves") if isinstance(result, dict) and set(result) == {"moves"} else None
     if not isinstance(moves, list) or not 1 <= len(moves) <= maximum:
@@ -38,6 +50,10 @@ def run_direct(experiment, initial, puzzle_id, agent_id=0, feedback_text="", pla
                       puzzle_id=puzzle_id, depth=depth,
                       proposal_id=hashlib.sha256(json.dumps(identity).encode()).hexdigest()[:12], **revision_fields)
         try:
+            if compile_action is not None:
+                fields["model_action"] = action
+                action = compile_action(state, action)
+                fields["action"] = action
             child = apply_action(state, action, e.args.allow_fractions)
         except (ValueError, TypeError) as exc:
             validation_error = str(exc)

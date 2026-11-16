@@ -1,0 +1,95 @@
+{
+  "status": "PROVISIONAL_CLEAR_FOR_FREEZE",
+  "verified": true,
+  "complete": true,
+  "checked_utc": "2026-11-16T07:25:09.257800+00:00",
+  "source_revision": "13b32819a9ce294e9e0898d880d67f66c0d419f3",
+  "source_sha256": {
+    "run_followup72.py": "83a6c396c80bc8e89a7182dd1a2e55212be103f06de493df895ccc23d82e509e",
+    "followup72_worker.py": "0ec9737b8e277bf7f9c06535429f56b543f7fa4c3fa1b909cafc393305e1329c",
+    "followup72.py": "c901925e0b1f0bf3829bf80ca8110ef6e35c5da79f833939a710cdb6dd10feb4",
+    "followup72_client.py": "83ac1afa8d14aee184d47a6cf7d1f67126ccfaa4c02a8e91f4f10851b3f9802d",
+    "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+    "direct_solver.py": "125425ef7eedfdede1cdb3cca9381e57f3e3cda3d1acf981209dfc8bc42b4fc8",
+    "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+    "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+    "FOLLOWUP72_DEVELOPMENT_PLAN.json": "cede7c919951464fe2b8af29d28bc44b12c24699132cd35f5429b1b2e0f94e69",
+    "datasets/arithmetic-v1/tasks.json": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+    "test_followup72.py": "808ee5366f773bbfe8185a11e6d1d94db6b4a9ef6225c9a7f05b17173ace383c",
+    "test_followup72_client.py": "ef71b5068ba8a069e65c11a738e3babfc686fbd400d02338a13f97e455fef480",
+    "test_run_followup72.py": "b430b836550ded80412458b4d6b51df1c1e3e8045387322eb457e86a03c2901b"
+  },
+  "production_source_keys": [
+    "run_followup72.py",
+    "followup72_worker.py",
+    "followup72.py",
+    "followup72_client.py",
+    "harness.py",
+    "direct_solver.py",
+    "run_benchmark.py",
+    "runtime.json",
+    "FOLLOWUP72_DEVELOPMENT_PLAN.json",
+    "datasets/arithmetic-v1/tasks.json"
+  ],
+  "protocol_status": "PROPOSED",
+  "launch_authorized_by_audit": false,
+  "remaining": [
+    "Bind final frozen protocol/source commit and hashes; verify no semantic drift",
+    "Fresh fleet/runtime admission is a separate prerequisite, not performed by this offline audit"
+  ],
+  "resolved_blocker": {
+    "id": "controller_exception_stop",
+    "before": "Two extra execute calls after authored fault",
+    "after": "Zero extra execute calls; initial four admitted, three completed, return code1",
+    "implementation": "Local slot exception handler sets shared stop immediately, then records under lock; shared lock orders next-case admission and attempted-event recording. Source identity checked before every global block."
+  },
+  "verification": {
+    "original_harness_byte_identical": true,
+    "baseline_revision": "1a462213dd368cdfa664076399b5a458cdd1a40a",
+    "golden_original_direct_fixtures": 192,
+    "focused_tests": 16,
+    "test_returncode": 0,
+    "test_output": "----------------------------------------------------------------------\nRan 16 tests in 0.011s\n\nOK\n",
+    "full_matrix_mock_cases": 168,
+    "source_drift_mock_stops_after": 7,
+    "proposed_gate_mock_model_execute_calls": 0,
+    "worker_uses_isolated_FollowupClient": true,
+    "request_body_and_sha_tested_on_actual_mocked_urllib_bytes": true
+  },
+  "review_findings": [
+    "canonical/apply_action/solved/parse_json_response ASTs match original 1a462 baseline",
+    "192 authored original run_direct comparisons have exact return/events/client-call parity",
+    "16 focused authored tests pass after isolated FollowupClient refactor; original harness restored byte-for-byte.",
+    "168 development cases: 8 tasks x 7 variants x 3 seeds; 42 cases per node and 2 per variant/node/seed",
+    "First request budget: 8192 singles or 7936 scribes; conditional 256 commitment, at most 8192 requested output per case and 240 requests per cohort",
+    "Scribe eligibility uses exactly parsed None AND response_received True AND length finish AND nonblank own reasoning; no retry for non-None invalid plan",
+    "Full/tail/empty notes come only from same case immediately preceding request and are hash/parent-bound; no extracted audit plans, witnesses or external advisors",
+    "Value addressing consumes first available distinct literal operand occurrences and then passes ordered operation to unchanged exact verifier; no search/correction",
+    "Client exact encoded request body SHA is computed on same bytes handed to urllib; local cap/thinking overrides do not mutate shared defaults; cancellations settle/log then propagate"
+  ],
+  "interpretation": [
+    "Known original development tasks; design was informed by already-seen evaluation failure diagnostics and advisory review. This is exploratory recipe selection, not fresh heldout generalization.",
+    "Any later success on original 24 x 3 evaluation pairs is already-seen tuned-suite success, not a new confirmation or universal guarantee.",
+    "Fresh evaluation must be separately generated/frozen with prior-corpus exclusions and selected method fixed before outcomes.",
+    "Common output cap is not matched realized cost; full notes incur additional prompt work, scribe recipe also reallocates 8192 into 7936+256. Empty notes still receive complete task.",
+    "Derived request seeds depend on prompt; equal numeric seed labels are paired task labels, not identical random streams after prompt changes.",
+    "Scribe arms share identical first-request prompt/cap/derived seed, deliberately testing different commits, but repeated deterministic first outputs are not independent reasoning discoveries."
+  ],
+  "input_sha256": {
+    "CONTROLLER_EXCEPTION_AFTER.json": "19de04695509c33e9f98caa5eb5386c4180eef7967959d0ad7cd00a35f504d78",
+    "CONTROLLER_EXCEPTION_BEFORE.json": "8b1abe900460df2ccbfcd65f9331a847683e7eb0dfbb1fcc4ec28d4091780fab",
+    "GOLDEN_PARITY.json": "a7aad2309eb5b31b258cb7d84b99686cab4430cd2c595020e9ddc3ad282f319c",
+    "GOLDEN_PARITY_AFTER.json": "a7aad2309eb5b31b258cb7d84b99686cab4430cd2c595020e9ddc3ad282f319c",
+    "INITIAL_SOURCE_REVIEW.json": "c79aef5ea58d465a2953a34e9d4d3070db295f52483ad7660038d25f82c2a5e9",
+    "PROVISIONAL_REVIEW.json": "f0da7b1f24c01d9f2e60239a7a65e8cfd69f5bb9fa034e78246325f171c8cf1c",
+    "RUNNER_OFFLINE_CHECKS.json": "7ef290cdf199d84bc9d2d504e58a914114e0467c0909f7caefc6a0840f3f86a3",
+    "check_parity.py": "0ad33c8a463f5e84e1e512dbb8f7d5846e38219986c9867d00c42a2e3a5e7780",
+    "check_runner_offline.py": "4c38fe50666eb33d26e42b9fc6a59041bb0857fd70fdfba04703a6f56482eb1e",
+    "reproduce_controller_exception.py": "51e62efc1e0daeb6fb6fba5d86f08e0c76c5e34498bbb0cfa4c925ead13db386"
+  },
+  "limitations": [
+    "No model/SSH/GPU or generated candidate execution. Fake execute/HTTP fixtures only.",
+    "Original scores/raw traces and runtime/source pins remain untouched. Changes reviewed only in separate followup source worktree.",
+    "Independent review does not prove live model quality, fleet identity or universal arithmetic success."
+  ]
+}
