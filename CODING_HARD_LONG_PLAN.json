@@ -1,0 +1,41 @@
+{
+  "protocol": "coding-agents-v1",
+  "status": "FROZEN",
+  "source_revision": "b1474532c3463aadc5a4753d359d2516cd9bcd73",
+  "source_path": ".runtime/coding-forced-source",
+  "limits": {
+    "per_agent_completion_tokens": 16000,
+    "idle_timeout_seconds": 120,
+    "agent_wall_deadline_seconds": 2400,
+    "sandbox": "CPU-only Docker python@c61cffc3, no network, 256 MB, 1 CPU, 10 s per grade"
+  },
+  "scheduling": {
+    "concurrent_agents_per_node": 10,
+    "placement": "agent j of case c on replica/grader host (c+j)%4"
+  },
+  "selection": "first agent in fixed order whose code passes ALL feedback cases; solved if that code passes ALL holdout cases",
+  "runner": "run_coding_agents.py",
+  "study": "coding-hard-long-v1",
+  "agent_variants": [
+    "code_long",
+    "code_long",
+    "code_long",
+    "code_long"
+  ],
+  "agent_seed_offset": 600,
+  "matrix": {
+    "tasks": "datasets/coding-hard-v1/tasks.json",
+    "tests": "datasets/coding-hard-v1/hidden-tests.json",
+    "tasks_sha256": "01cb39b1b18d7e6565576fa8b96a30681b3fe2a31796399bfd8f0f6761033da0",
+    "tests_sha256": "57cf4420c5db07ae2afab10b86c93f07fc24da6318386856cd10399b11effa13",
+    "split": "evaluation",
+    "tasks_count": 24,
+    "seeds": [
+      1,
+      2,
+      3
+    ]
+  },
+  "question": "Do 4 deep coding agents (16K) beat 8 budget-forced 8K agents (28/72, coding-hard-eval-v1) on the hard coding tasks?",
+  "frozen_note": "Frozen 2026-11-17 ~00:20 Europe/Warsaw. Same 24 evaluation tasks x 3 seeds as coding-hard-eval-v1 (seen once by the 8K agents; nothing tuned on them). Deep agents chosen because depth beat breadth on hard arithmetic."
+}
