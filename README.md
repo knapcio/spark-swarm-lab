@@ -5,7 +5,7 @@
 strong solo, independent-ensemble, shared-state and voting controls. Repeated
 seeds remain clustered by task. See [EVALUATION_SELECTION.json](EVALUATION_SELECTION.json)
 for the primary protocol and [EVALUATION_PROGRESS.md](EVALUATION_PROGRESS.md)
-for interim coverage and instrumentation exclusions. Development results below
+for completed coverage and instrumentation exclusions. Development results below
 do not establish a generally superior agent architecture.
 
 A standard-library Python prototype for four independent Nemotron replicas.
@@ -35,13 +35,17 @@ API seeds do not guarantee identical GPU execution.
 
 ## Current evidence
 
-**Current runtime: vLLM 0.32.0 ARM64, DSpark3, four independent replicas.** The uniform runtime-v2 primary study has completed all **900 attempts**, plus **80 supplemental solo-control attempts** (8 development and 72 evaluation). The separate loaded-queue study is still running; there is no final solutions-per-minute winner yet. [Progress and exclusions](EVALUATION_PROGRESS.md).
+**Current runtime: vLLM 0.32.0 ARM64, DSpark3, four independent replicas.** The uniform runtime-v2 study completed **900 primary attempts**, **80 supplemental solo-control attempts** (8 development and 72 evaluation), and **45 corrected loaded-queue cohorts / 2,016 attempts** (36 development batches and 9 evaluation batches). [Progress and exclusions](EVALUATION_PROGRESS.md).
 
-The arithmetic primary four-sample reasoning ensemble solved **49/72 attempts (68.1%)**; the supplemental sequential own-feedback control solved **45/72 (62.5%)**, versus **18/72 (25.0%)** for one reasoning call. These are repeated attempts on **24 distinct tasks**, not 72 independent tasks, and realized costs differ. Coding results await independent confirmation after a grader integrity and test-coverage audit; original frozen scores remain separately preserved. [Audit and limitations](CORRECTNESS_AUDIT.md).
+The arithmetic primary four-sample reasoning ensemble solved **49/72 attempts (68.1%)**; sequential own-feedback refinement solved **45/72 (62.5%; task-cluster 95% interval 47.2–77.8%)**, versus **18/72 (25.0%)** for one reasoning call. The paired ensemble-minus-refinement difference is **+5.56 percentage points (95% interval −5.56 to +16.67)**, spanning zero. These are repeated attempts on **24 distinct tasks**, with separate execution schedules and different realized costs. [Completed stronger-solo comparison](results/solo-control-v2/complete-comparison/solo-comparison/REPORT.md).
+
+Under load, shared frontier 8 recorded **12/96 successes at 21.31 successful attempts/minute**; four full plans recorded **48/96 at 2.87/minute**. These describe quality/rate tradeoffs for finite batches, not a universal efficiency winner. Admission was selected on development within **1/2/4/8 cases per node**; that bounded sweep does not establish globally optimal solo saturation. Four cheap-policy arms were a later exploratory amendment. [Completed throughput report, costs and figures](results/throughput-timeoutguard-20261115/REPORT.md).
+
+Independent outer-parent coding confirmation completed **824 unique grading jobs for all 324 cases / 323 selected artifacts**. Original holdout outcomes agree in every case: **295 passes, 28 failures and one no-candidate failure**. Original scores are preserved; public examples and posthoc probes remain separate. This confirms finite test outcomes without repairing the original grader or proving general correctness. [Confirmation analysis](results/coding-confirmation-v1-analysis/NOTES.md) · [grader audit and limitations](CORRECTNESS_AUDIT.md).
 
 The runtime-v2 serving qualification completed **416 mixed requests including warmups**, with **69,158 output tokens / 39.008007 full wall seconds = 1,772.918 output tok/s** and zero recorded transport errors. Separate short-JSON probes passed **100/100 at T0 and 100/100 at T0.8**. These bounded serving checks do not measure task-solving efficiency. The historical v0.27.1 DSpark comparison measured **+51.40%** on its particular matched workload; that is not a measured gain for the current runtime. [Serving reports and exact pins](SERVING.md).
 
-Next, the frozen [graph-search protocol](SEARCH_SELECTION.json) compares independent repair, evolution, reviewer reuse, ordinary voting and quality-weighted voting with exact constraint verification. The optional [reusable-program protocol](PROGRAM_SEARCH_SELECTION.json) compares one self-repair chain with four independent program writers, selecting on development graphs before evaluating frozen programs. Neither experiment has produced model outcomes yet.
+The frozen [graph-search study](SEARCH_SELECTION.json) is running: 144 classical-control cases and 28 development cases are complete, with evaluation underway. No partial CSP scores are reported here. It compares independent repair, evolution, reviewer reuse, ordinary voting and quality-weighted voting with exact constraint verification. The optional [reusable-program protocol](PROGRAM_SEARCH_SELECTION.json) still has **zero model calls**; it selects programs on development graphs before evaluating frozen source.
 
 The saved four-agent DeepSeek pipeline check (`runs/pipeline-check-deepseek-4.jsonl`, local only)
 made **24 calls**, using **341 completion tokens** and **2,952 prompt tokens**.

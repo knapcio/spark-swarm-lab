@@ -1,12 +1,14 @@
-# Evaluation progress — primary and solo complete
+# Evaluation progress — primary, solo, throughput and coding confirmation complete
 
-All **900 runtime-v2 primary cases are verified and independently audited**: arithmetic 576/576 and coding 324/324. The following three-seed results use only the six complete amended-runtime cohorts. The separate 80 supplementary solo attempts are also complete; their final three-seed aggregate waits for a quiet window after loaded-fleet throughput. Loaded-fleet throughput comparisons remain incomplete; **no overall efficiency winner is declared**.
+All **900 runtime-v2 primary cases are verified and independently audited**: arithmetic 576/576 and coding 324/324. The following three-seed results use only the six complete amended-runtime cohorts. The separate **80 supplementary solo attempts** and their final task-clustered aggregate are complete, as are **45 corrected loaded-throughput cohorts / 2,016 attempts**. These measurements expose quality, latency and cost tradeoffs; they do not establish a universal efficiency winner.
 
-**Coding confirmation audit:** a later independent audit reproduces same-interpreter grade forgery and an ordinary balanced-bracket nesting coverage gap. Original scores and traces remain unchanged; they describe the frozen grader, not adversarially secure verification. [Evidence, mutation tests and limitations](CORRECTNESS_AUDIT.md) distinguish demonstrated vulnerabilities from observed programs: static triage found no obvious exploitation. A separate outer-parent regrade of frozen selected programs is planned after throughput, with original holdout and additional probes reported separately.
+**Coding confirmation complete:** the separate outer-parent regrade completed **824 unique jobs for 324 cases / 323 selected artifacts**. All original-holdout outcomes agree: **295 passes, 28 failures and one no-candidate failure**. Public examples and posthoc robustness are separate phases, not replacement scores. The [confirmation analysis](results/coding-confirmation-v1-analysis/NOTES.md) and [paired CSV](results/coding-confirmation-v1-analysis/paired-holdout.csv) preserve that comparison. The original same-interpreter forgery and finite nesting-coverage gap remain demonstrated limitations; static triage found no obvious historical exploitation. [Audit and limits](CORRECTNESS_AUDIT.md).
+
+The [CSP assignment study](SEARCH_SELECTION.json) is now running: 144 classical-control cases and 28 development cases are complete, with evaluation underway. No partial CSP scores are included here. The optional [generic-program study](PROGRAM_SEARCH_SELECTION.json) still has zero model calls.
 
 Accuracy is the equally weighted mean of each task's three seed outcomes. The 95% percentile bootstrap resamples **task clusters**, retaining all three seeds (5000 repetitions, fixed bootstrap seed 20261115): 24 arithmetic tasks and 18 coding tasks, rather than treating repeated seeds as independent tasks. All 28 arithmetic and 15 coding paired contrasts match task/seed and use the same clustered design. Their intervals are pointwise and unadjusted for multiple comparisons. These finite synthetic corpora limit generalization.
 
-All cases use the frozen source `cbcde299716b7842536b008880a089590e9816f8`, pinned vLLM 0.32.0 DSpark runtime and amended CPU grader. Prior v1 outcomes had already been inspected before the infrastructure restart: these are fresh executions of the frozen corpora, **not newly unseen evaluation data**. No method, prompt, corpus or budget was selected again from v2 outcomes.
+All primary cases use the frozen source `cbcde299716b7842536b008880a089590e9816f8`, pinned vLLM 0.32.0 DSpark runtime and amended CPU grader. Prior v1 outcomes had already been inspected before the infrastructure restart: these are fresh executions of the frozen corpora, **not newly unseen evaluation data**. No method, prompt, corpus or budget was selected again from v2 outcomes.
 
 ### Complete primary arithmetic
 
@@ -48,17 +50,25 @@ All cases use the frozen source `cbcde299716b7842536b008880a089590e9816f8`, pinn
 
 The server columns cover **900/900 cases**, with independently reconciled before/after counters and idle/drain boundaries; they include stopped sibling work. Prompt and completion tokens are separate accounting quantities, not equivalent units of GPU work. Full-plan ensemble client usage omits cancelled siblings: completed-client totals are lower bounds for 1044 unfinished arithmetic responses and two coding responses, while the known server totals above retain that work. The complete CSVs retain both accounting views and their coverage.
 
-The recipes differ materially: arithmetic direct uses one reasoning-ON response capped at 8192 tokens, ensembles allow two or four such full plans, and Independent100 uses up to100 short OFF/192 paths over rounds, queued behind a 25-request engine cap. They share a 32768-completion-token case ceiling, not equal consumed input/output or reasoning settings. Observed ensemble accuracy is therefore a result for these complete recipes, not an isolated effect of agent count. The stronger iterative solo control has completed its separate 80 attempts (eight development plus 72 evaluation); final clustered control comparisons await a quiet window after throughput.
+The recipes differ materially: arithmetic direct uses one reasoning-ON response capped at 8192 tokens, ensembles allow two or four such full plans, and Independent100 uses up to100 short OFF/192 paths over rounds, queued behind a 25-request engine cap. They share a 32768-completion-token case ceiling, not equal consumed input/output or reasoning settings. Observed ensemble accuracy is therefore a result for these complete recipes, not an isolated effect of agent count. The stronger sequential solo control completed its separate 80 attempts (eight development plus 72 evaluation); its final clustered comparison is linked below.
 
 Occupied-case median/p95 above includes controller, metrics and drain overhead across **all cases**. The time-success curves divide successes observed by each deadline by all 72 or 54 task/seed cases; solved-only first-proof summaries are separately named in JSON. Four fixed job slots assign one endpoint each. Mixed-arm queue wall is retained per cohort and must not be converted into per-arm fleet throughput. No deadlines, budget denials, controller errors or unexpected process failures were recorded. Early-stopped arithmetic workers retain **120 unknown final infrastructure counters**, not confirmed zeros. Coding retains one kernel-confirmed candidate OOM as a model resource failure, with successful cleanup and no grader infrastructure failure.
 
-Coding success means the selected frozen candidate passed its single final holdout: **295/324**, separate from **297/324 feedback-pass cases**. There are 323 holdout grades; one no-candidate case remains unsolved in the full denominator and its absent holdout/test totals remain unknown. Selection precedes holdout, with no holdout-driven model retry. This audit validates the pinned grader protocol and artifacts, not universal resistance to malicious grader forgery.
+Coding success means the selected frozen candidate passed its single final holdout: **295/324**, separate from **297/324 feedback-pass cases**. There are 323 holdout grades; one no-candidate case remains unsolved in the full denominator and its absent holdout/test totals remain unknown. Selection precedes holdout, with no holdout-driven model retry. Independent outer-parent confirmation reproduced all 324 binary outcomes, without replacing historical grades or establishing universal resistance to malicious interpreter tampering.
 
 The [complete primary ledger](results/evaluation-v2/primary-aggregate/verified-ledger.json), [source/configuration record](results/evaluation-v2/primary-aggregate/source-configurations.json), [24-artifact export manifest](results/evaluation-v2/primary-aggregate/manifest.json), [independent aggregate audit](results/evaluation-v2/primary-aggregate/aggregation-audit.json) and [audit script](results/evaluation-v2/primary-aggregate/audit.py) preserve dataset/source/runtime hashes and exact path/interpreter normalizations. Original ledger/input SHA references deliberately remain original hashes; the manifest maps them to normalized export hashes. CSVs, figures and captured model/source values are unchanged. Both accuracy PNGs received independent visual QA. No model API or active/frozen source change was used for analysis.
 
-## Supplementary sequential solo — seed 1 of 3
+## Completed supplemental solo and loaded-throughput comparisons
 
-This first cohort of the separate [supplemental control](EVALUATION_SOLO_CONTROL.json), frozen before primary outcomes, contains **24/24 independently audited cases**, seed 1, source `a8adff19f690e90aec5705c373a82005e869f1f2`. It is not added to the original 900-case matrix or pooled with the eight-task [development smoke](results/solo-control-v2/development-s1/). All three completed seeds are documented below; the final clustered control aggregate and loaded-fleet comparison remain pending.
+Sequential own-plan refinement solved **45/72 (62.5%; task-cluster 95% interval 47.2–77.8%)**. Four independent full plans solved 49/72; the paired difference is **+5.56 percentage points, 95% interval −5.56 to +16.67**. This pointwise interval spans zero. The methods retain separate schedules, source variants and actual costs. [Complete comparison and figures](results/solo-control-v2/complete-comparison/solo-comparison/REPORT.md).
+
+All **45 timeout-corrected queue cohorts** passed: 36 development batches of 32 attempts and nine evaluation batches of 96, totaling **2,016 attempts**. Development chose admission from 1/2/4/8 cases per node before evaluation. Shared frontier 8 recorded **12/96 at 21.31 successful attempts/minute**; four full plans recorded **48/96 at 2.87/minute**. These are different quality/rate tradeoffs, not an overall winner. Rate uses one finite full-batch wall including final drain, so there is no rate CI; success intervals cluster the 24 tasks and retain four seeds. The bounded admission sweep is not a globally saturated solo optimum, and the four cheap-policy arms remain a later exploratory amendment. [Completed throughput report](results/throughput-timeoutguard-20261115/REPORT.md) · [evaluation CSV](results/throughput-timeoutguard-20261115/evaluation/summary.csv) · [hash manifest](results/throughput-timeoutguard-20261115/manifest.json).
+
+## Historical snapshot — supplementary sequential solo, seed 1 of 3
+
+The per-seed records below preserve earlier measurements and analysis stages. Pending/deferred statements refer to those historical snapshots; the completed aggregates above supersede their completion status. No historical outcome or artifact is rewritten.
+
+This first cohort of the separate [supplemental control](EVALUATION_SOLO_CONTROL.json), frozen before primary outcomes, contains **24/24 independently audited cases**, seed 1, source `a8adff19f690e90aec5705c373a82005e869f1f2`. It is not added to the original 900-case matrix or pooled with the eight-task [development smoke](results/solo-control-v2/development-s1/). At this snapshot, the final clustered control aggregate and loaded-fleet comparison were pending.
 
 One agent may revise its own full plan up to four times, thinking ON/8192 per response, under the same 32768-completion-token / 1280-call ceiling and 180s controller deadline. Each revision starts from the original task and receives only its own preceding parsed plan, exact transition error and final state. The pinned source, protocol timing and feedback provenance were independently checked.
 
@@ -70,17 +80,17 @@ All eight unsolved cases reach the controller deadline. Their unfinished calls m
 
 The [audit](results/solo-control-v2/evaluation-s1/analysis/proof-cost-audit.json) and [script](results/solo-control-v2/evaluation-s1/analysis/proof-cost-audit.py) check 52 original roots, 42 legal Fraction transitions, one independently rejected illegal proposal, all 16 successful ancestries, own-feedback revision order, 52 starts/44 ends, usage/charges/caps and server deltas. The [82-artifact manifest](results/solo-control-v2/evaluation-s1/manifest.json) passes independent original/export SHA and parsed inverse checks, including the [verified ledger receipt](results/solo-control-v2/evaluation-s1/analysis/verified-ledger-entry.json). [24-case CSV](results/solo-control-v2/evaluation-s1/summary.csv) · [source/runtime metadata](results/solo-control-v2/evaluation-s1/metadata.json) · [derived interim analysis](results/solo-control-v2/evaluation-s1/analysis/summary-derived/analysis.json). No partial seed 2/3 outcomes, model API or active/frozen source changes were used.
 
-## Supplementary sequential solo — seed 2 of 3
+## Historical snapshot — supplementary sequential solo, seed 2 of 3
 
-This second independently verified cohort has **24/24 cases**, source `a8adff19`, unchanged frozen control and runtime. It solves **14/24** (single-seed Wilson 95% 38.8–75.5%); all ten unsolved cases hit the 180s controller deadline. It remains separate from the original 900-case matrix and eight-task development smoke; three-seed control aggregation and loaded-fleet comparisons are pending. No seed 3 partial outcomes were read.
+This second independently verified cohort has **24/24 cases**, source `a8adff19`, unchanged frozen control and runtime. It solves **14/24** (single-seed Wilson 95% 38.8–75.5%); all ten unsolved cases hit the 180s controller deadline. It remains separate from the original 900-case matrix and eight-task development smoke; at this snapshot, three-seed control aggregation and loaded-fleet comparisons were pending. No seed 3 partial outcomes were read.
 
 The [audit](results/solo-control-v2/evaluation-s2/analysis/proof-cost-audit.json) checks 51 original-task roots, 36 legal Fraction transitions, all 14 proof-backed successes, own-feedback revision order and 51 starts/41 ends. Ten unfinished calls make client **8083 prompt / 281967 completion** a lower bound. Server costs cover **24/24** cases: **10,503 prompt / 334,786 completion**. Ten final worker infrastructure counters stay unknown; there is no controller error, unexpected process failure or budget denial. There are 27 length finishes and 27 parser-error events. Median/p95 occupied wall is 111.285/181.225s including metrics/drain; separate queue wall is 1010.708336s, not a per-arm fleet-throughput rate.
 
 The [82-artifact manifest](results/solo-control-v2/evaluation-s2/manifest.json) and [verified receipt](results/solo-control-v2/evaluation-s2/analysis/verified-ledger-entry.json) pass original/export SHA and independent parsed-inverse checks. [24-case CSV](results/solo-control-v2/evaluation-s2/summary.csv) · [source/runtime metadata](results/solo-control-v2/evaluation-s2/metadata.json) · [interim summary](results/solo-control-v2/evaluation-s2/analysis/summary-derived/analysis.json). No model API, remote execution or active/frozen source edit was used.
 
-## Supplementary sequential solo — seed 3 of 3
+## Historical snapshot — supplementary sequential solo, seed 3 of 3
 
-The final cohort is **24/24 verified and independently audited**, source `a8adff19`. It solves **15/24** (single-seed Wilson 95% 42.7–78.8%), with nine unsolved deadline cases. All 80 supplemental attempts are complete (eight development plus 72 evaluation); development is never pooled with evaluation. Task-clustered control aggregation is deliberately deferred until after the loaded-throughput window, with no efficiency winner declared.
+The final cohort is **24/24 verified and independently audited**, source `a8adff19`. It solves **15/24** (single-seed Wilson 95% 42.7–78.8%), with nine unsolved deadline cases. All 80 supplemental attempts are complete (eight development plus 72 evaluation); development is never pooled with evaluation. At this snapshot, task-clustered control aggregation was deliberately deferred until after the loaded-throughput window.
 
 The [audit](results/solo-control-v2/evaluation-s3/analysis/proof-cost-audit.json) replays 41 legal Fraction transitions, independently rejects two illegal proposals, verifies 47 original roots and all 15 successful ancestries, and checks sequential own-feedback/protocol/source/budget provenance. There are 47 starts/38 ends and nine unfinished responses. Client **7438 prompt / 253118 completion** is a lower bound; all 24 server costs are known: **9630 prompt / 298367 completion**. Nine final worker infrastructure counters remain unknown; there is no controller error, unexpected process failure or budget denial. Twenty-one length finishes and 21 parser-error events are retained. Median/p95 occupied wall is 96.466/182.927s including controller/drain; separate queue wall is 844.424475s. Neither is repurposed as a per-arm fleet-throughput rate.
 
@@ -95,17 +105,17 @@ The [single-node qualification evidence](SERVING.md) and [141-artifact export](r
 
 Before any v2 primary model calls, the [CPU grader environment amendment](CPU_GRADER_AMENDMENT.json) changes the pinned image and Python/compiler/libc versions, retaining stdlib grader logic, isolation, model policies, prompts, budgets and corpora. [357 trusted-reference cases in 48 phase containers plus three smoke validations](results/cpu-grader-20261115/cpu-python-grader-validation.json) pass, with zero owned leftovers on four nodes. The [initial trusted-reference invocation failure](results/cpu-grader-20261115/cpu-python-grader-reference-import-diagnostic.json) is preserved; it was corrected by supplying existing module imports `re`/`Counter` to trusted function fragments, without editing model source or tests. This finite validation does not establish universal environment equivalence.
 
-The active amended source tags are `evaluation-runtime-v2.1` (`cbcde299`), `solo-control-runtime-v2.1` (`a8adff19`) and `throughput-runtime-v2.1` (`47bba9f0`). Actual coding jobs use the new Python image; arithmetic-only snapshots can retain an unused historical grader file for strict byte identity. No v2 primary calls preceded the CPU amendment. The retirement receipt's 65,945,247,744-byte value is available space after the operation, not a reclaimed-byte delta.
+The CPU-amended source tags at that stage were `evaluation-runtime-v2.1` (`cbcde299`), `solo-control-runtime-v2.1` (`a8adff19`) and `throughput-runtime-v2.1` (`47bba9f0`). Actual coding jobs use the new Python image; arithmetic-only snapshots can retain an unused historical grader file for strict byte identity. The later completed loaded study uses timeout-corrected source `7bb965b073af8cdc211404186c15463d5cfc374e`; see the [transport amendment](TRANSPORT_TIMEOUT_AMENDMENT.json). No v2 primary calls preceded the CPU amendment. The retirement receipt's 65,945,247,744-byte value is available space after the operation, not a reclaimed-byte delta.
 
-## Runtime-v2 primary execution started
+## Historical snapshot — runtime-v2 primary execution started
 
 The [four-replica health/idle gate](results/runtime-v2-fleet-qualification/health-receipt.json) passed at **2026-11-15 16:46:18 UTC**, with [matching pinned image/commands](results/runtime-v2-fleet-qualification/serving-inspection.json). Fresh primary generation was authorized at **16:49:07 UTC (17:49:07 Europe/Warsaw)**. The primary phase is complete; all 900 primary cases and the separate 80 supplementary solo attempts belong to the amended environment, with no old/partial cohort pooling.
 
 The separate [serving qualification](SERVING.md) completed 416 requests, including warmups, with 69,158 completion tokens in 39.008007 full-wall seconds (1772.918 tok/s), zero recorded transport errors and sampled peaks of 25 running requests per endpoint. Its [13 original reports](results/runtime-v2-fleet-qualification/manifest.json) and [audit](results/runtime-v2-fleet-qualification/qualification-audit.json) are serving diagnostics, not primary task-quality outcomes or a causal comparison with earlier measurements.
 
-Each primary cohort was read for quality analysis only after completion and an explicit `verified:true` receipt in the v2 ledger. The reports below preserve their original interim seed/scope labels; the complete primary aggregate is now above. Supplementary controls and loaded-fleet measurements remain separate, with no overall efficiency winner declared.
+Each primary cohort was read for quality analysis only after completion and an explicit `verified:true` receipt in the v2 ledger. The reports below preserve their original interim seed/scope evidence; their pending statements refer to the historical snapshot, and completed primary/solo/throughput aggregates are above. Supplementary controls and loaded-fleet measurements remain separate, with no overall efficiency winner declared.
 
-## Completed v2 arithmetic — seed 1 of 3, aggregate pending
+## Historical snapshot — completed v2 arithmetic, seed 1 of 3 before aggregation
 
 This completed cohort contains **24 tasks × 8 frozen arms = 192 cases**, seed 1. Its [ledger receipt](results/evaluation-v2/arithmetic-s1/analysis/verified-ledger-entry.json) has `verified:true`, `valid_for_aggregation:true`, return code 0, complete case coverage and unchanged sources. Producer `cbcde299716b7842536b008880a089590e9816f8` and all seven captured source hashes match the final hashes, frozen files and commit blobs. Runtime SHA-256 is `072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5`, with vLLM v0.32.0, the pinned target/draft and the amended CPU-grader metadata. The public task dataset and predeclared arm list are unchanged; no witness/oracle input was supplied.
 
@@ -147,15 +157,15 @@ The [audit](results/evaluation-v2/arithmetic-s1/analysis/proof-cost-audit.json) 
 
 The [manifest](results/evaluation-v2/arithmetic-s1/manifest.json) covers **592 original/derived artifacts** with original/export SHA-256, exact path/interpreter edits and parsed inverse audits. Raw case files are unchanged. Model outputs, failed attempts, reasoning and incomplete-response costs remain present. The completed ledger entry is captured separately with its [normalization audit](results/evaluation-v2/arithmetic-s1/analysis/verified-ledger-entry-normalizations.json); no unfinished cohort's outcomes were read for this report. No model API or active/frozen source edit was performed during curation.
 
-![Runtime-v2 arithmetic seed 1 of 3, aggregate pending](results/evaluation-v2/arithmetic-s1/analysis/accuracy-wilson95.png)
+![Historical snapshot — Runtime-v2 arithmetic seed 1 of 3; before aggregation](results/evaluation-v2/arithmetic-s1/analysis/accuracy-wilson95.png)
 
 ![Runtime-v2 seed-1 completed-client output costs; starred totals are lower bounds](results/evaluation-v2/arithmetic-s1/analysis/success-vs-completion-cost.png)
 
 [192-case CSV](results/evaluation-v2/arithmetic-s1/summary.csv) · [metadata/source pins](results/evaluation-v2/arithmetic-s1/metadata.json) · [analysis](results/evaluation-v2/arithmetic-s1/analysis/analysis.json) · [paired task outcomes](results/evaluation-v2/arithmetic-s1/analysis/paired-results.csv) · [accuracy SVG](results/evaluation-v2/arithmetic-s1/analysis/accuracy-wilson95.svg) · [cost SVG](results/evaluation-v2/arithmetic-s1/analysis/success-vs-completion-cost.svg) · [latency SVG](results/evaluation-v2/arithmetic-s1/analysis/case-latency.svg).
 
-## Completed v2 coding — seed 1 of 3, aggregate pending
+## Historical snapshot — completed v2 coding, seed 1 of 3 before aggregation
 
-The second reported v2 cohort contains **18 coding tasks × 6 frozen arms = 108 cases**, seed 1, with [verified complete ledger admission](results/evaluation-v2/coding-s1/analysis/verified-ledger-entry.json), return code 0 and unchanged sources. Together with arithmetic seed 1, these first two cohorts contribute **300 independently audited primary cases**; the full 900-case comparison and separate supplementary controls remain pending. This is a single-seed interim result, with no final winner declaration.
+The second reported v2 cohort contains **18 coding tasks × 6 frozen arms = 108 cases**, seed 1, with [verified complete ledger admission](results/evaluation-v2/coding-s1/analysis/verified-ledger-entry.json), return code 0 and unchanged sources. Together with arithmetic seed 1, these first two cohorts contribute **300 independently audited primary cases**; at this snapshot, the full 900-case comparison and separate supplementary controls were pending. This is a single-seed interim result, with no final winner declaration.
 
 Source is `cbcde299716b7842536b008880a089590e9816f8`, including the amended Python3.12 CPU image and exact static grading-runner hash. All seven source hashes match the frozen files, final hashes and commit blobs. Public/private corpus SHA-256 values match the predeclared selection. The audit verifies public-example, feedback and holdout inputs are disjoint, and checks grade case counts and first-failure input/expected values against the pinned private phase data. Model prompts use public specifications/examples and permitted feedback; the holdout is graded only after candidate selection freezes.
 
@@ -189,11 +199,11 @@ The [independent protocol/cost audit](results/evaluation-v2/coding-s1/analysis/p
 
 The [owned-grader boundary receipt](results/evaluation-v2/coding-s1/owned-grader-boundary.json) is verified at **17:32:53 UTC**, after 6.599s, with no owned containers or local coding children remaining. The [manifest](results/evaluation-v2/coding-s1/manifest.json) covers **341 original/derived artifacts**, retaining all negative outputs, parser/grade reports, cache events, source/data hashes and raw null fields, with audited path/interpreter normalization. The [completed ledger entry normalization record](results/evaluation-v2/coding-s1/analysis/verified-ledger-entry-normalizations.json) links its canonical original and exported values. No partial seed-2 outcomes or model APIs were used for this curation.
 
-![Runtime-v2 coding seed 1 of 3 final holdout task success, aggregate pending](results/evaluation-v2/coding-s1/analysis/accuracy-wilson95.png)
+![Historical snapshot — Runtime-v2 coding seed 1 of 3 final holdout task success; before aggregation](results/evaluation-v2/coding-s1/analysis/accuracy-wilson95.png)
 
 [108-case CSV](results/evaluation-v2/coding-s1/summary.csv) · [metadata/source pins](results/evaluation-v2/coding-s1/metadata.json) · [analysis and grade coverage](results/evaluation-v2/coding-s1/analysis/analysis.json) · [paired tasks](results/evaluation-v2/coding-s1/analysis/paired-results.csv) · [accuracy SVG](results/evaluation-v2/coding-s1/analysis/accuracy-wilson95.svg) · [cost SVG](results/evaluation-v2/coding-s1/analysis/success-vs-completion-cost.svg) · [latency SVG](results/evaluation-v2/coding-s1/analysis/case-latency.svg).
 
-## Completed v2 arithmetic — seed 2 of 3, aggregate pending
+## Historical snapshot — completed v2 arithmetic, seed 2 of 3 before aggregation
 
 This third reported cohort adds **192 complete cases** (24 tasks × 8 arms), bringing the independently audited total to **492/900 primary cases**. Its [completed ledger receipt](results/evaluation-v2/arithmetic-s2/analysis/verified-ledger-entry.json) has `verified:true`, `valid_for_aggregation:true` and return code 0. Producer `cbcde299716b7842536b008880a089590e9816f8`, runtime SHA `072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5` and all seven captured/final source hashes match the frozen files and commit blobs. Target/draft, serving limits, CPU-grader metadata and public dataset remain pinned. Commands contain only the declared task/seed/policy inputs, with no witness/oracle input.
 
@@ -231,11 +241,11 @@ The [independent audit](results/evaluation-v2/arithmetic-s2/analysis/proof-cost-
 
 The [manifest](results/evaluation-v2/arithmetic-s2/manifest.json) covers **592 original/derived artifacts** with original/export hashes and audited path/interpreter normalizations. Model outputs, reasoning, errors, unknown counts and source hashes are retained; raw case files are unchanged. The [ledger normalization audit](results/evaluation-v2/arithmetic-s2/analysis/verified-ledger-entry-normalizations.json) preserves the canonical verified entry. No partial coding seed-2 outcome, model API or active/frozen source edit was used for this curation.
 
-![Runtime-v2 arithmetic seed 2 of 3, aggregate pending](results/evaluation-v2/arithmetic-s2/analysis/accuracy-wilson95.png)
+![Historical snapshot — Runtime-v2 arithmetic seed 2 of 3; before aggregation](results/evaluation-v2/arithmetic-s2/analysis/accuracy-wilson95.png)
 
 [192-case CSV](results/evaluation-v2/arithmetic-s2/summary.csv) · [metadata/source pins](results/evaluation-v2/arithmetic-s2/metadata.json) · [analysis](results/evaluation-v2/arithmetic-s2/analysis/analysis.json) · [paired task outcomes](results/evaluation-v2/arithmetic-s2/analysis/paired-results.csv) · [accuracy SVG](results/evaluation-v2/arithmetic-s2/analysis/accuracy-wilson95.svg) · [cost SVG](results/evaluation-v2/arithmetic-s2/analysis/success-vs-completion-cost.svg) · [latency SVG](results/evaluation-v2/arithmetic-s2/analysis/case-latency.svg).
 
-## Completed v2 coding — seed 2 of 3, aggregate pending
+## Historical snapshot — completed v2 coding, seed 2 of 3 before aggregation
 
 This cohort adds **108 complete cases** (18 tasks × 6 arms), bringing the independently audited primary total to **600/900**. Its [ledger entry](results/evaluation-v2/coding-s2/analysis/verified-ledger-entry.json) is explicitly verified/admitted, with return code 0 and unchanged sources. Source remains `cbcde299716b7842536b008880a089590e9816f8`, runtime `072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5`, and the pinned Python CPU-grader image. All seven source hashes, grading-runner hash, public/private corpus hashes and case commands match the frozen configuration.
 
@@ -271,13 +281,13 @@ The [audit](results/evaluation-v2/coding-s2/analysis/protocol-cost-audit.json) a
 
 The [owned-grader boundary](results/evaluation-v2/coding-s2/owned-grader-boundary.json) is verified empty at **18:19:14 UTC**, after **2.669s**. The [341-artifact manifest](results/evaluation-v2/coding-s2/manifest.json) and [ledger normalization audit](results/evaluation-v2/coding-s2/analysis/verified-ledger-entry-normalizations.json) preserve original/export hashes, raw failures, resource evidence, cache decisions and model outputs with audited path/interpreter normalization. No raw case, source, policy or active orchestration file was edited, and no model API or partial arithmetic seed-3 result was read for this curation.
 
-![Runtime-v2 coding seed 2 of 3 final holdout task success, aggregate pending](results/evaluation-v2/coding-s2/analysis/accuracy-wilson95.png)
+![Historical snapshot — Runtime-v2 coding seed 2 of 3 final holdout task success; before aggregation](results/evaluation-v2/coding-s2/analysis/accuracy-wilson95.png)
 
 [108-case CSV](results/evaluation-v2/coding-s2/summary.csv) · [metadata/source pins](results/evaluation-v2/coding-s2/metadata.json) · [analysis](results/evaluation-v2/coding-s2/analysis/analysis.json) · [paired task outcomes](results/evaluation-v2/coding-s2/analysis/paired-results.csv) · [accuracy SVG](results/evaluation-v2/coding-s2/analysis/accuracy-wilson95.svg) · [cost SVG](results/evaluation-v2/coding-s2/analysis/success-vs-completion-cost.svg) · [latency SVG](results/evaluation-v2/coding-s2/analysis/case-latency.svg).
 
-## Completed v2 arithmetic — seed 3 of 3, primary aggregate pending
+## Historical snapshot — completed v2 arithmetic, seed 3 of 3 before aggregation
 
-The third arithmetic cohort adds **192 complete cases**, bringing the independently audited primary total to **792/900**. All three arithmetic seeds are now preserved separately; cross-seed aggregation waits for the remaining verified coding cohort. The [ledger receipt](results/evaluation-v2/arithmetic-s3/analysis/verified-ledger-entry.json) is verified/admitted with return code 0. Source `cbcde299716b7842536b008880a089590e9816f8`, runtime `072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5`, all seven source/final/git-blob hashes, target/draft and CPU-grader metadata remain pinned. Public task records and commands contain no witness/oracle input.
+The third arithmetic cohort adds **192 complete cases**, bringing the independently audited primary total to **792/900**. All three arithmetic seeds were preserved separately at this snapshot; cross-seed aggregation waited for the remaining verified coding cohort. The [ledger receipt](results/evaluation-v2/arithmetic-s3/analysis/verified-ledger-entry.json) is verified/admitted with return code 0. Source `cbcde299716b7842536b008880a089590e9816f8`, runtime `072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5`, all seven source/final/git-blob hashes, target/draft and CPU-grader metadata remain pinned. Public task records and commands contain no witness/oracle input.
 
 The table follows the predeclared **half-rotated arm order for seed 3**, with task-local rotation. Limits remain 1280 calls / 32,768 completion tokens, five rounds, a 180-second deadline, T0.8 and ON/8192 full-plan versus OFF/192 cheap responses. Four fixed endpoint slots retain their assignments. Whole mixed-arm queue wall is **2015.258091s**, separate from occupied case wall and per-arm fleet throughput. These are single-seed task outcomes with descriptive Wilson intervals; no pooled task-clustered result or final winner is declared here.
 
@@ -313,11 +323,11 @@ The [independent audit](results/evaluation-v2/arithmetic-s3/analysis/proof-cost-
 
 The [592-artifact manifest](results/evaluation-v2/arithmetic-s3/manifest.json) and [ledger normalization audit](results/evaluation-v2/arithmetic-s3/analysis/verified-ledger-entry-normalizations.json) retain original/export hashes, source pins, all model text/reasoning, negative cases and unknown counts with audited path/interpreter edits. No partial coding seed-3 outcome, model API or active/frozen source change was used for this curation.
 
-![Runtime-v2 arithmetic seed 3 of 3, primary aggregate pending](results/evaluation-v2/arithmetic-s3/analysis/accuracy-wilson95.png)
+![Historical snapshot — Runtime-v2 arithmetic seed 3 of 3; before aggregation](results/evaluation-v2/arithmetic-s3/analysis/accuracy-wilson95.png)
 
 [192-case CSV](results/evaluation-v2/arithmetic-s3/summary.csv) · [metadata/source pins](results/evaluation-v2/arithmetic-s3/metadata.json) · [analysis](results/evaluation-v2/arithmetic-s3/analysis/analysis.json) · [paired task outcomes](results/evaluation-v2/arithmetic-s3/analysis/paired-results.csv) · [accuracy SVG](results/evaluation-v2/arithmetic-s3/analysis/accuracy-wilson95.svg) · [cost SVG](results/evaluation-v2/arithmetic-s3/analysis/success-vs-completion-cost.svg) · [latency SVG](results/evaluation-v2/arithmetic-s3/analysis/case-latency.svg).
 
-## Completed v2 coding — seed 3 of 3
+## Historical snapshot — completed v2 coding, seed 3 of 3
 
 All **108/108** seed-3 cases have a [verified complete ledger receipt](results/evaluation-v2/coding-s3/analysis/verified-ledger-entry.json), source `cbcde299`, unchanged seven-file hashes and the pinned v0.32/new-CPU environment. Final holdout and feedback case passes are each **98/108**, reported distinctly. Per-arm final holds: Direct OFF 13/18, iterative solo 15/18, direct thinking 18/18, Independent 8 17/18, shared 8 18/18 and Democracy 8 17/18. These single-seed results are retained separately; the three-seed clustered summary is above.
 
@@ -325,9 +335,9 @@ The [independent protocol/cost audit](results/evaluation-v2/coding-s3/analysis/p
 
 The [341-artifact manifest](results/evaluation-v2/coding-s3/manifest.json) and [ledger normalization audit](results/evaluation-v2/coding-s3/analysis/verified-ledger-entry-normalizations.json) pass original/export SHA and parsed inverse checks. [108-case CSV](results/evaluation-v2/coding-s3/summary.csv) · [source metadata](results/evaluation-v2/coding-s3/metadata.json) · [seed-3 analysis](results/evaluation-v2/coding-s3/analysis/analysis.json) · [seed-3 accuracy SVG](results/evaluation-v2/coding-s3/analysis/accuracy-wilson95.svg). No incomplete supplementary outcome was read, and no model API or active/frozen source was changed.
 
-## Preserved runtime-v1 arithmetic seed 1
+## Historical snapshot — preserved runtime-v1 arithmetic seed 1
 
-This is an interim record for [spark-swarm-lab](https://github.com/knapcio/spark-swarm-lab). Only the first completed **arithmetic** cohort is reported here: **24 evaluation tasks × 8 frozen arms = 192 cases**, seed 1. The final three-seed, task-clustered aggregate is pending. These observations do not select or change a method, prompt, budget or configuration, and no winner is declared.
+This is an interim record for [spark-swarm-lab](https://github.com/knapcio/spark-swarm-lab). Only the first completed **arithmetic** cohort is reported here: **24 evaluation tasks × 8 frozen arms = 192 cases**, seed 1. At this historical stage, the final three-seed, task-clustered aggregate was pending. These observations do not select or change a method, prompt, budget or configuration, and no winner is declared.
 
 ## Frozen protocol and scope
 
@@ -385,7 +395,7 @@ The [export manifest](results/evaluation-v1/arithmetic-s1/manifest.json) covers 
 
 ## Figures and data
 
-![Evaluation arithmetic seed 1 of 3, aggregate pending](results/evaluation-v1/arithmetic-s1/analysis/accuracy-wilson95.png)
+![Historical snapshot — Evaluation arithmetic seed 1 of 3; before aggregation](results/evaluation-v1/arithmetic-s1/analysis/accuracy-wilson95.png)
 
 ![Evaluation seed 1 client-output cost; starred costs are lower bounds](results/evaluation-v1/arithmetic-s1/analysis/success-vs-completion-cost.png)
 
