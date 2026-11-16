@@ -1,0 +1,2548 @@
+{
+ "version": 1,
+ "project": "patchwork",
+ "canary": "BUGBENCH-HIDDEN-CANARY 4aa5da40-bugbench-patchwork-probes",
+ "clean_tree_sha256": "90193290b80225644bd5414be219b3fb56263c85e3cb0febdcc2c7a4de429fe3",
+ "probes_sha256": "7d81c7430aec5494e8987fe7494728b515e1ecb1936b05cd8e8c6d2864641d52",
+ "frozen_with_python": "3.14.6",
+ "probes": {
+  "probe_text_parse_and_equality": {
+   "kind": "value",
+   "value": [
+    [
+     [],
+     true,
+     true,
+     0
+    ],
+    [
+     [
+      "a"
+     ],
+     false,
+     true,
+     1
+    ],
+    [
+     [
+      "a"
+     ],
+     true,
+     true,
+     1
+    ],
+    [
+     [
+      "a",
+      "b"
+     ],
+     false,
+     true,
+     2
+    ],
+    [
+     [
+      "a",
+      "b"
+     ],
+     true,
+     true,
+     2
+    ],
+    [
+     [
+      ""
+     ],
+     true,
+     true,
+     1
+    ],
+    [
+     [
+      "",
+      ""
+     ],
+     true,
+     true,
+     2
+    ],
+    [
+     [
+      "a\r",
+      "b"
+     ],
+     false,
+     true,
+     2
+    ],
+    [
+     [
+      " x ",
+      "\ty"
+     ],
+     false,
+     true,
+     2
+    ],
+    true,
+    true,
+    false,
+    true,
+    true,
+    "Text('q\\n')",
+    "b",
+    [
+     "a",
+     "b"
+    ],
+    true,
+    "a\nb\n",
+    "z",
+    "k",
+    [
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError",
+     "AttributeError",
+     "PatchworkError"
+    ]
+   ]
+  },
+  "probe_text_keys_and_loose": {
+   "kind": "value",
+   "value": [
+    [
+     "a  b",
+     "\tc\t d ",
+     [
+      "end",
+      "no newline"
+     ]
+    ],
+    [
+     "a b",
+     "c d",
+     [
+      "end",
+      "no newline"
+     ]
+    ],
+    [
+     "x"
+    ],
+    [],
+    [
+     "a b",
+     "",
+     "",
+     "a b",
+     "x y"
+    ],
+    [
+     false,
+     true,
+     false
+    ],
+    [
+     false,
+     true,
+     true,
+     false
+    ]
+   ]
+  },
+  "probe_opcodes_tie_break": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      "delete",
+      0,
+      1,
+      0,
+      0
+     ],
+     [
+      "equal",
+      1,
+      2,
+      0,
+      1
+     ],
+     [
+      "insert",
+      2,
+      2,
+      1,
+      2
+     ]
+    ],
+    [
+     [
+      "delete",
+      0,
+      2,
+      0,
+      0
+     ],
+     [
+      "equal",
+      2,
+      3,
+      0,
+      1
+     ],
+     [
+      "delete",
+      3,
+      4,
+      1,
+      1
+     ],
+     [
+      "equal",
+      4,
+      5,
+      1,
+      2
+     ],
+     [
+      "insert",
+      5,
+      5,
+      2,
+      3
+     ],
+     [
+      "equal",
+      5,
+      7,
+      3,
+      5
+     ],
+     [
+      "insert",
+      7,
+      7,
+      5,
+      6
+     ]
+    ],
+    [
+     [
+      "insert",
+      0,
+      0,
+      0,
+      2
+     ]
+    ],
+    [
+     [
+      "delete",
+      0,
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     [
+      "equal",
+      0,
+      3,
+      0,
+      3
+     ]
+    ],
+    [
+     [
+      "replace",
+      0,
+      3,
+      0,
+      3
+     ]
+    ],
+    [
+     [
+      "equal",
+      0,
+      1,
+      0,
+      1
+     ],
+     [
+      "delete",
+      1,
+      2,
+      1,
+      1
+     ],
+     [
+      "equal",
+      2,
+      3,
+      1,
+      2
+     ]
+    ],
+    [
+     [
+      "equal",
+      0,
+      1,
+      0,
+      1
+     ],
+     [
+      "insert",
+      1,
+      1,
+      1,
+      2
+     ],
+     [
+      "equal",
+      1,
+      2,
+      2,
+      3
+     ]
+    ],
+    [
+     [
+      "equal",
+      0,
+      1,
+      0,
+      1
+     ],
+     [
+      "delete",
+      1,
+      2,
+      1,
+      1
+     ],
+     [
+      "equal",
+      2,
+      3,
+      1,
+      2
+     ],
+     [
+      "insert",
+      3,
+      3,
+      2,
+      3
+     ],
+     [
+      "equal",
+      3,
+      4,
+      3,
+      4
+     ]
+    ],
+    [
+     [
+      "delete",
+      0,
+      1,
+      0,
+      0
+     ],
+     [
+      "equal",
+      1,
+      4,
+      0,
+      3
+     ],
+     [
+      "insert",
+      4,
+      4,
+      3,
+      4
+     ]
+    ],
+    [
+     [
+      "equal",
+      0,
+      1,
+      0,
+      1
+     ],
+     [
+      "delete",
+      1,
+      2,
+      1,
+      1
+     ],
+     [
+      "equal",
+      2,
+      3,
+      1,
+      2
+     ],
+     [
+      "delete",
+      3,
+      4,
+      2,
+      2
+     ],
+     [
+      "equal",
+      4,
+      5,
+      2,
+      3
+     ]
+    ],
+    [
+     [
+      "equal",
+      0,
+      1,
+      0,
+      1
+     ],
+     [
+      "insert",
+      1,
+      1,
+      1,
+      2
+     ],
+     [
+      "equal",
+      1,
+      2,
+      2,
+      3
+     ],
+     [
+      "insert",
+      2,
+      2,
+      3,
+      4
+     ],
+     [
+      "equal",
+      2,
+      3,
+      4,
+      5
+     ]
+    ],
+    [
+     [
+      "equal",
+      0,
+      1,
+      0,
+      1
+     ],
+     [
+      "replace",
+      1,
+      2,
+      1,
+      2
+     ],
+     [
+      "equal",
+      2,
+      3,
+      2,
+      3
+     ],
+     [
+      "replace",
+      3,
+      4,
+      3,
+      4
+     ],
+     [
+      "equal",
+      4,
+      5,
+      4,
+      5
+     ]
+    ],
+    [
+     [
+      "replace",
+      0,
+      1,
+      0,
+      1
+     ]
+    ],
+    [
+     [
+      "equal",
+      0,
+      1,
+      0,
+      1
+     ],
+     [
+      "delete",
+      1,
+      2,
+      1,
+      1
+     ]
+    ]
+   ]
+  },
+  "probe_matches_similarity_distance": {
+   "kind": "value",
+   "value": [
+    [
+     [],
+     1.0,
+     0
+    ],
+    [
+     [
+      [
+       0,
+       0
+      ],
+      [
+       1,
+       1
+      ],
+      [
+       2,
+       2
+      ]
+     ],
+     1.0,
+     0
+    ],
+    [
+     [],
+     0.0,
+     3
+    ],
+    [
+     [
+      [
+       1,
+       1
+      ],
+      [
+       2,
+       2
+      ],
+      [
+       3,
+       3
+      ],
+      [
+       5,
+       5
+      ]
+     ],
+     0.6154,
+     5
+    ],
+    [
+     [
+      [
+       1,
+       0
+      ],
+      [
+       4,
+       1
+      ],
+      [
+       5,
+       3
+      ],
+      [
+       6,
+       4
+      ]
+     ],
+     0.6154,
+     5
+    ],
+    [
+     [
+      [
+       0,
+       0
+      ],
+      [
+       1,
+       1
+      ]
+     ],
+     0.8,
+     1
+    ],
+    [
+     [
+      [
+       0,
+       0
+      ],
+      [
+       2,
+       1
+      ],
+      [
+       3,
+       3
+      ]
+     ],
+     0.75,
+     2
+    ],
+    [
+     [
+      [
+       0,
+       0
+      ],
+      [
+       1,
+       1
+      ]
+     ],
+     0.6667,
+     2
+    ],
+    [
+     [
+      2,
+      2,
+      1,
+      0
+     ],
+     [
+      2,
+      1,
+      1,
+      0
+     ],
+     [
+      1,
+      1,
+      1,
+      0
+     ],
+     [
+      0,
+      0,
+      0,
+      0
+     ]
+    ],
+    [
+     [
+      0,
+      0,
+      0
+     ]
+    ]
+   ]
+  },
+  "probe_make_hunks_basic": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      2,
+      2,
+      [
+       " 3",
+       " 4",
+       " 5",
+       "-6",
+       "+six",
+       " 7",
+       " 8",
+       " 9"
+      ],
+      true,
+      true
+     ]
+    ],
+    [
+     [
+      4,
+      4,
+      [
+       " 5",
+       "-6",
+       "+six",
+       " 7"
+      ],
+      true,
+      true
+     ]
+    ],
+    [
+     [
+      5,
+      5,
+      [
+       "-6",
+       "+six"
+      ],
+      true,
+      true
+     ]
+    ],
+    [
+     [
+      0,
+      0,
+      [
+       "+0",
+       " 1",
+       " 2",
+       " 3"
+      ],
+      true,
+      true
+     ]
+    ],
+    [
+     [
+      10,
+      10,
+      [
+       " 11",
+       " 12",
+       "+13"
+      ],
+      true,
+      true
+     ]
+    ],
+    [
+     [
+      0,
+      0,
+      [
+       "-1",
+       "-2",
+       "-3",
+       "-4",
+       "-5",
+       "-6",
+       "-7",
+       "-8",
+       "-9",
+       "-10",
+       "-11",
+       "-12"
+      ],
+      true,
+      true
+     ]
+    ],
+    [
+     [
+      0,
+      0,
+      [
+       "-1",
+       "-2",
+       " 3",
+       " 4",
+       " 5"
+      ],
+      true,
+      true
+     ]
+    ],
+    [
+     [
+      1,
+      1,
+      [
+       " 2",
+       " 3",
+       "-4",
+       "-5",
+       "+four",
+       " 6",
+       " 7"
+      ],
+      true,
+      true
+     ]
+    ],
+    [
+     [
+      8,
+      8,
+      [
+       " 9",
+       " 10",
+       " 11",
+       "+x",
+       "+y",
+       " 12"
+      ],
+      true,
+      true
+     ]
+    ],
+    [
+     [
+      0,
+      0,
+      [
+       "+a",
+       "+b"
+      ],
+      true,
+      false
+     ]
+    ],
+    [
+     [
+      2,
+      2,
+      [
+       " c",
+       "-d",
+       "+d"
+      ],
+      false,
+      true
+     ]
+    ],
+    [],
+    [
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError"
+    ]
+   ]
+  },
+  "probe_make_hunks_ignore_space": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      0,
+      0,
+      [
+       " def f():",
+       "-    return  1",
+       "+    return 1",
+       " x = 2",
+       "-y = 3",
+       "+y = 4"
+      ],
+      true,
+      true
+     ]
+    ],
+    [
+     [
+      2,
+      2,
+      [
+       " x = 2",
+       "-y = 3",
+       "+y = 4"
+      ],
+      true,
+      true
+     ]
+    ],
+    [],
+    [
+     [
+      0,
+      0,
+      [
+       "  a ",
+       "+b"
+      ],
+      true,
+      true
+     ]
+    ]
+   ]
+  },
+  "probe_hunk_properties_and_reverse": {
+   "kind": "value",
+   "value": [
+    6,
+    6,
+    2,
+    2,
+    [
+     "a",
+     "b",
+     "c",
+     "d",
+     "e",
+     "g"
+    ],
+    [
+     "a",
+     "b",
+     "C",
+     "e",
+     "F",
+     "g"
+    ],
+    2,
+    1,
+    [
+     6,
+     4,
+     [
+      " a",
+      " b",
+      "-C",
+      "+c",
+      "+d",
+      " e",
+      "-F",
+      " g"
+     ],
+     false,
+     true
+    ],
+    true,
+    2,
+    1,
+    0,
+    0,
+    0,
+    2,
+    true,
+    [
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError"
+    ],
+    [
+     0,
+     0,
+     [
+      "-b",
+      "+a",
+      "+c",
+      " d",
+      "-e",
+      "+f"
+     ],
+     true,
+     true
+    ]
+   ]
+  },
+  "probe_hunk_gap_boundary": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      1,
+      14,
+      1,
+      14
+     ]
+    ],
+    [
+     [
+      1,
+      7,
+      1,
+      7
+     ],
+     [
+      9,
+      7,
+      9,
+      7
+     ]
+    ],
+    [
+     [
+      1,
+      13,
+      1,
+      13
+     ]
+    ],
+    [
+     [
+      1,
+      10,
+      1,
+      10
+     ]
+    ],
+    [
+     [
+      1,
+      5,
+      1,
+      5
+     ],
+     [
+      7,
+      5,
+      7,
+      5
+     ]
+    ],
+    [
+     [
+      8,
+      6,
+      8,
+      6
+     ]
+    ],
+    [
+     [
+      8,
+      3,
+      8,
+      3
+     ],
+     [
+      12,
+      3,
+      12,
+      3
+     ]
+    ],
+    [
+     [
+      2,
+      1,
+      2,
+      1
+     ],
+     [
+      4,
+      1,
+      4,
+      1
+     ]
+    ],
+    [
+     [
+      1,
+      9,
+      1,
+      9
+     ],
+     [
+      11,
+      9,
+      11,
+      9
+     ]
+    ],
+    [
+     [
+      1,
+      9,
+      1,
+      9
+     ],
+     [
+      12,
+      9,
+      12,
+      9
+     ]
+    ]
+   ]
+  },
+  "probe_diff_texts_gap_boundary": {
+   "kind": "value",
+   "value": [
+    "--- a/words.txt\n+++ b/words.txt\n@@ -1,9 +1,9 @@\n alpha\n-bravo\n+BRAVO\n charlie\n delta\n echo\n foxtrot\n-golf\n+GOLF\n hotel\n india\n",
+    "--- a/words.txt\n+++ b/words.txt\n@@ -1,3 +1,3 @@\n alpha\n-bravo\n+BRAVO\n charlie\n@@ -6,3 +6,3 @@\n foxtrot\n-golf\n+GOLF\n hotel\n",
+    "--- a/g\n+++ b/g\n@@ -1,11 +1,13 @@\n alpha\n bravo\n charlie\n+new\n delta\n echo\n foxtrot\n golf\n hotel\n india\n+more\n juliet\n kilo\n",
+    "--- a/g\n+++ b/g\n@@ -2,4 +2,5 @@\n bravo\n charlie\n+new\n delta\n echo\n@@ -8,4 +9,5 @@\n hotel\n india\n+more\n juliet\n kilo\n"
+   ]
+  },
+  "probe_diffstat_gap_boundary": {
+   "kind": "value",
+   "value": [
+    {
+     "files": 2,
+     "hunks": 3,
+     "insertions": 4,
+     "deletions": 4
+    },
+    [
+     [
+      2,
+      2,
+      1
+     ],
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    {
+     "files": 2,
+     "hunks": 4,
+     "insertions": 4,
+     "deletions": 4
+    },
+    [
+     " a.txt | 4 ++--",
+     " b.txt | 4 ++--",
+     " 2 files changed, 4 insertions(+), 4 deletions(-)"
+    ],
+    3
+   ]
+  },
+  "probe_trimmed_leaves_hunk": {
+   "kind": "value",
+   "value": [
+    [
+     5,
+     5,
+     [
+      " 6",
+      " 7",
+      "-8",
+      "+eight",
+      " 9",
+      " 10"
+     ],
+     true,
+     true
+    ],
+    [
+     6,
+     6,
+     [
+      " 7",
+      "-8",
+      "+eight",
+      " 9"
+     ],
+     true,
+     true
+    ],
+    [
+     7,
+     7,
+     [
+      "-8",
+      "+eight"
+     ],
+     true,
+     true
+    ],
+    true,
+    true,
+    [
+     1,
+     1,
+     [
+      "-b",
+      "+B",
+      " c"
+     ],
+     true,
+     true
+    ],
+    [
+     1,
+     1,
+     [
+      "-b",
+      "+B",
+      " c"
+     ],
+     true,
+     true
+    ],
+    [
+     0,
+     0,
+     [
+      " a",
+      "-b",
+      "+B",
+      " c",
+      " d",
+      " e"
+     ],
+     true,
+     true
+    ]
+   ]
+  },
+  "probe_format_headers": {
+   "kind": "value",
+   "value": [
+    [
+     "@@ -0,0 +1 @@",
+     [
+      "@@ -0,0 +1 @@",
+      "+a"
+     ]
+    ],
+    [
+     "@@ -1 +0,0 @@",
+     [
+      "@@ -1 +0,0 @@",
+      "-a"
+     ]
+    ],
+    [
+     "@@ -5 +5 @@",
+     [
+      "@@ -5 +5 @@",
+      "-x",
+      "+y"
+     ]
+    ],
+    [
+     "@@ -10 +11,2 @@",
+     [
+      "@@ -10 +11,2 @@",
+      " c",
+      "+n"
+     ]
+    ],
+    [
+     "@@ -4,2 +2,0 @@",
+     [
+      "@@ -4,2 +2,0 @@",
+      "-a",
+      "-b"
+     ]
+    ],
+    [
+     "@@ -7,0 +8,2 @@",
+     [
+      "@@ -7,0 +8,2 @@",
+      "+a",
+      "+b"
+     ]
+    ],
+    [
+     "@@ -1,3 +1,2 @@",
+     [
+      "@@ -1,3 +1,2 @@",
+      " a",
+      "-b",
+      " c",
+      "\\ No newline at end of file"
+     ]
+    ],
+    [
+     "@@ -2 +2 @@",
+     [
+      "@@ -2 +2 @@",
+      "-b",
+      "\\ No newline at end of file",
+      "+c"
+     ]
+    ],
+    [
+     "@@ -2 +2 @@",
+     [
+      "@@ -2 +2 @@",
+      "-b",
+      "+c",
+      "\\ No newline at end of file"
+     ]
+    ],
+    [
+     "@@ -2 +2 @@",
+     [
+      "@@ -2 +2 @@",
+      "-b",
+      "\\ No newline at end of file",
+      "+c",
+      "\\ No newline at end of file"
+     ]
+    ],
+    [
+     "@@ -1 +1,2 @@",
+     [
+      "@@ -1 +1,2 @@",
+      " a",
+      "+b",
+      "\\ No newline at end of file"
+     ]
+    ]
+   ]
+  },
+  "probe_parse_paths_and_commentary": {
+   "kind": "value",
+   "value": [
+    [
+     "src/x.py",
+     "src/x.py",
+     "src/x.py",
+     false,
+     false,
+     false,
+     [
+      [
+       1,
+       1,
+       [
+        " a",
+        "-b",
+        "+c"
+       ],
+       true,
+       true
+      ],
+      [
+       9,
+       9,
+       [
+        " x",
+        "+y"
+       ],
+       true,
+       true
+      ]
+     ]
+    ],
+    [
+     "old/name.txt",
+     "new/name.txt",
+     "new/name.txt",
+     false,
+     false,
+     true,
+     [
+      [
+       0,
+       0,
+       [
+        "-q",
+        "+r"
+       ],
+       true,
+       true
+      ]
+     ]
+    ],
+    [
+     null,
+     "made.txt",
+     "made.txt",
+     true,
+     false,
+     false,
+     [
+      [
+       0,
+       0,
+       [
+        "+1",
+        "+2"
+       ],
+       true,
+       true
+      ]
+     ]
+    ],
+    [
+     "dead.txt",
+     null,
+     "dead.txt",
+     false,
+     true,
+     false,
+     [
+      [
+       0,
+       0,
+       [
+        "-1",
+        "-2"
+       ],
+       true,
+       true
+      ]
+     ]
+    ],
+    [
+     [
+      "z.c",
+      "z.c"
+     ]
+    ],
+    [
+     [
+      "z.c",
+      "z.c"
+     ]
+    ],
+    [
+     0,
+     0,
+     [
+      " a",
+      " ",
+      "-b",
+      "+c"
+     ],
+     true,
+     true
+    ],
+    [
+     3,
+     3,
+     [
+      "+x",
+      "+y"
+     ],
+     true,
+     true
+    ]
+   ]
+  },
+  "probe_parse_errors": {
+   "kind": "value",
+   "value": [
+    [
+     "PatchParseError",
+     null
+    ],
+    [
+     "PatchParseError",
+     null
+    ],
+    [
+     "PatchParseError",
+     1
+    ],
+    [
+     "PatchParseError",
+     null
+    ],
+    [
+     "PatchParseError",
+     5
+    ],
+    [
+     "PatchParseError",
+     4
+    ],
+    [
+     "PatchParseError",
+     3
+    ],
+    [
+     "PatchParseError",
+     4
+    ],
+    [
+     "PatchParseError",
+     4
+    ],
+    [
+     "PatchParseError",
+     1
+    ],
+    [
+     "PatchParseError",
+     1
+    ],
+    [
+     "PatchParseError",
+     8
+    ],
+    [
+     "PatchParseError",
+     8
+    ],
+    null,
+    [
+     "PatchParseError",
+     4
+    ],
+    [
+     "PatchParseError",
+     null
+    ],
+    null,
+    [
+     [
+      4,
+      4,
+      [
+       "-a",
+       "+b"
+      ],
+      true,
+      true
+     ],
+     [
+      5,
+      5,
+      [
+       "-c",
+       "+d"
+      ],
+      true,
+      true
+     ]
+    ]
+   ]
+  },
+  "probe_parse_marker_after_changed_lines": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      0,
+      0,
+      [
+       " a",
+       "-b",
+       "+c"
+      ],
+      false,
+      false
+     ]
+    ],
+    [
+     [
+      0,
+      0,
+      [
+       " a",
+       "-b",
+       "+b"
+      ],
+      false,
+      true
+     ]
+    ],
+    [
+     [
+      0,
+      0,
+      [
+       " a",
+       "-b",
+       "+b"
+      ],
+      true,
+      false
+     ]
+    ],
+    [
+     [
+      0,
+      0,
+      [
+       " x",
+       "+y"
+      ],
+      true,
+      false
+     ]
+    ]
+   ]
+  },
+  "probe_marker_after_context_flags": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      [
+       0,
+       0,
+       [
+        " a",
+        "-b",
+        "+B",
+        " c"
+       ],
+       false,
+       false
+      ]
+     ]
+    ],
+    [
+     [
+      [
+       1,
+       1,
+       [
+        "-K=1",
+        "+K=2",
+        "+L=3",
+        " M=9"
+       ],
+       false,
+       false
+      ]
+     ]
+    ],
+    [
+     [
+      [
+       0,
+       0,
+       [
+        "-x",
+        "+y",
+        " z"
+       ],
+       false,
+       false
+      ]
+     ],
+     [
+      [
+       0,
+       0,
+       [
+        "-p",
+        "+q"
+       ],
+       true,
+       true
+      ]
+     ]
+    ]
+   ]
+  },
+  "probe_marker_context_patchset_apply": {
+   "kind": "value",
+   "value": [
+    {
+     "motd": "Welcome\nto this\nserver",
+     "notes.txt": "one\n2\nthree\nfour\nfive"
+    },
+    true,
+    true
+   ]
+  },
+  "probe_marker_context_apply_hunks": {
+   "kind": "value",
+   "value": [
+    "0\na\nb\nC\nd",
+    [
+     "hunk 1 applied at line 3 (offset +1)"
+    ],
+    "a\nb\nC\nd",
+    "x\ny\nz"
+   ]
+  },
+  "probe_format_round_trip": {
+   "kind": "value",
+   "value": [
+    [
+     "--- a/f\n+++ b/f\n@@ -1,3 +1,2 @@\n a\n-b\n c\n",
+     true,
+     true
+    ],
+    [
+     "--- a/f\n+++ b/f\n@@ -1,2 +1,2 @@\n a\n-b\n\\ No newline at end of file\n+b\n",
+     true,
+     true
+    ],
+    [
+     "--- a/f\n+++ b/f\n@@ -1,2 +1,2 @@\n a\n-b\n+b\n\\ No newline at end of file\n",
+     true,
+     true
+    ],
+    [
+     "--- a/f\n+++ b/f\n@@ -0,0 +1 @@\n+x\n\\ No newline at end of file\n",
+     true,
+     true
+    ],
+    [
+     "--- a/f\n+++ /dev/null\n@@ -1 +0,0 @@\n-x\n\\ No newline at end of file\n",
+     true,
+     true
+    ],
+    [
+     "--- /dev/null\n+++ b/g\n@@ -0,0 +1,2 @@\n+1\n+2\n",
+     true,
+     true
+    ],
+    [
+     "--- a/f\n+++ b/f\n@@ -1,4 +1,3 @@\n-1\n 2\n 3\n 4\n",
+     true,
+     true
+    ]
+   ]
+  },
+  "probe_find_search_order": {
+   "kind": "value",
+   "value": [
+    2,
+    4,
+    2,
+    4,
+    5,
+    null,
+    7,
+    5,
+    null,
+    null,
+    0,
+    null,
+    3,
+    6
+   ]
+  },
+  "probe_apply_offsets_multi_hunk": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      1,
+      7,
+      1,
+      7
+     ],
+     [
+      17,
+      6,
+      17,
+      7
+     ],
+     [
+      31,
+      7,
+      32,
+      6
+     ]
+    ],
+    [
+     "hunk 1 applied at line 4 (offset +2)",
+     "hunk 2 applied at line 20 (offset +2)",
+     "hunk 3 applied at line 34 (offset +1)"
+    ],
+    true,
+    [
+     "hunk 1 applied at line 2",
+     "hunk 2 applied at line 18",
+     "hunk 3 applied at line 33"
+    ],
+    true,
+    true,
+    false,
+    []
+   ]
+  },
+  "probe_apply_fuzz_one": {
+   "kind": "value",
+   "value": [
+    [
+     "hunk 1 applied at line 11 (offset +1, fuzz 1)"
+    ],
+    1,
+    [
+     "hunk 1 applied at line 10 (fuzz 1)"
+    ],
+    [
+     "nine",
+     "10",
+     "11",
+     "twelve",
+     "13"
+    ]
+   ]
+  },
+  "probe_fuzz_two_offsets": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      "hunk 1 applied at line 11 (fuzz 2)"
+     ],
+     true
+    ],
+    [
+     [
+      "hunk 1 applied at line 11 (fuzz 2)"
+     ],
+     true
+    ],
+    [
+     [
+      "hunk 1 applied at line 12 (offset +1, fuzz 2)"
+     ],
+     true
+    ],
+    [
+     [
+      "hunk 1 applied at line 3 (fuzz 2)",
+      "hunk 2 applied at line 17 (fuzz 2)"
+     ],
+     [
+      "1",
+      "two",
+      "3",
+      "four",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12",
+      "13",
+      "14",
+      "15",
+      "sixteen",
+      "17",
+      "eighteen",
+      "19",
+      "20"
+     ]
+    ]
+   ]
+  },
+  "probe_apply_reverse_partial_errors": {
+   "kind": "value",
+   "value": [
+    true,
+    [
+     "hunk 1 applied at line 1",
+     "hunk 2 applied at line 8"
+    ],
+    [
+     "hunk 1 applied at line 1",
+     "hunk 2 rejected"
+    ],
+    [
+     1
+    ],
+    [
+     "1",
+     "two",
+     "3"
+    ],
+    false,
+    [
+     "n.txt",
+     1
+    ],
+    [
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError",
+     true
+    ],
+    "a\nb\nz\n",
+    "z\ny\na\nb\n",
+    true
+   ]
+  },
+  "probe_apply_newline_end": {
+   "kind": "value",
+   "value": [
+    [
+     "a\nb",
+     [
+      "hunk 1 applied at line 1"
+     ]
+    ],
+    [
+     "a\nb\n",
+     [
+      "hunk 1 applied at line 1"
+     ]
+    ],
+    [
+     "x\na\nc",
+     [
+      "hunk 1 applied at line 2 (offset +1)"
+     ]
+    ],
+    [
+     "a\nB\nc\nd\ne\nf",
+     [
+      "hunk 1 applied at line 1"
+     ]
+    ],
+    [
+     "1\n2\n3\n4\n5\n6\n7\nx",
+     [
+      "hunk 1 applied at line 5"
+     ]
+    ],
+    [
+     "",
+     [
+      "hunk 1 applied at line 1"
+     ]
+    ],
+    [
+     "z",
+     [
+      "hunk 1 applied at line 1"
+     ]
+    ]
+   ]
+  },
+  "probe_is_applied": {
+   "kind": "value",
+   "value": [
+    true,
+    false,
+    true,
+    false,
+    true
+   ]
+  },
+  "probe_patchset_diff_and_format": {
+   "kind": "value",
+   "value": [
+    "--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-x\n+y\n--- a/b.txt\n+++ b/b.txt\n@@ -1,3 +1,2 @@\n 1\n-2\n 3\n--- /dev/null\n+++ b/c/new.txt\n@@ -0,0 +1 @@\n+n\n--- a/gone\n+++ /dev/null\n@@ -1 +0,0 @@\n-g\n",
+    [
+     "a.txt",
+     "b.txt",
+     "c/new.txt",
+     "gone"
+    ],
+    4,
+    [
+     [
+      "a.txt",
+      "a.txt"
+     ],
+     [
+      "b.txt",
+      "b.txt"
+     ],
+     [
+      null,
+      "c/new.txt"
+     ],
+     [
+      "gone",
+      null
+     ]
+    ],
+    "",
+    0,
+    "--- a/o.txt\n+++ b/n.txt\n@@ -1 +1 @@\n-a\n+b\n",
+    [
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError",
+     "PatchParseError"
+    ]
+   ]
+  },
+  "probe_patchset_apply_actions": {
+   "kind": "value",
+   "value": [
+    {
+     "keep.txt": "k\n",
+     "made/n.txt": "hello\n",
+     "new.txt": "1\ntwo\n3\n"
+    },
+    [
+     "renaming old.txt to new.txt",
+     "  hunk 1 applied at line 2",
+     "deleting file del.txt",
+     "  hunk 1 applied at line 1",
+     "creating file made/n.txt",
+     "  hunk 1 applied at line 1"
+    ],
+    {
+     "new.txt": [
+      0
+     ],
+     "del.txt": [
+      0
+     ],
+     "made/n.txt": [
+      0
+     ]
+    },
+    [],
+    [
+     "del.txt",
+     "made/n.txt",
+     "new.txt"
+    ],
+    [
+     "del.txt",
+     "made/n.txt",
+     "new.txt",
+     "old.txt"
+    ],
+    "1\n2\n3\n",
+    [
+     [
+      "TreeError",
+      "keep.txt"
+     ],
+     [
+      "TreeError",
+      "nope"
+     ],
+     [
+      "TreeError",
+      "keep.txt"
+     ],
+     [
+      "HunkFailed",
+      "del.txt",
+      0
+     ]
+    ],
+    [
+     "PatchworkError",
+     "PatchworkError"
+    ]
+   ]
+  },
+  "probe_patchset_reverse_and_atomic": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      "d",
+      null
+     ],
+     [
+      null,
+      "c"
+     ],
+     [
+      "b",
+      "b"
+     ],
+     [
+      "a",
+      "a"
+     ]
+    ],
+    true,
+    [
+     "deleting file d",
+     "  hunk 1 applied at line 1",
+     "creating file c",
+     "  hunk 1 applied at line 1",
+     "patching file b",
+     "  hunk 1 applied at line 1",
+     "patching file a",
+     "  hunk 1 applied at line 1"
+    ],
+    [
+     "b",
+     0
+    ],
+    true,
+    [
+     "patching file a",
+     "  hunk 1 applied at line 2 (offset +1)",
+     "patching file b",
+     "  hunk 1 applied at line 1",
+     "deleting file c",
+     "  hunk 1 applied at line 1",
+     "creating file d",
+     "  hunk 1 applied at line 1"
+    ]
+   ]
+  },
+  "probe_patchset_reused_across_trees": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      "patching file site.ini",
+      "  hunk 1 applied at line 5"
+     ],
+     [
+      "[db]",
+      "name = shop",
+      "user = app",
+      "[web]",
+      "bind = 0.0.0.0",
+      "port = 80",
+      "name = shop",
+      "threads = 6",
+      "gzip = on",
+      "cache = 64",
+      "tls = off",
+      ""
+     ]
+    ],
+    [
+     [
+      "patching file site.ini",
+      "  hunk 1 applied at line 5"
+     ],
+     [
+      "[db]",
+      "name = shop",
+      "user = app",
+      "[http]",
+      "bind = 0.0.0.0",
+      "port = 80",
+      "name = shop",
+      "threads = 6",
+      "gzip = on",
+      "cache = 64",
+      "tls = off",
+      ""
+     ]
+    ],
+    [
+     [
+      "patching file site.ini",
+      "  hunk 1 applied at line 7 (fuzz 2)"
+     ],
+     [
+      "[db]",
+      "name = shop",
+      "user = app",
+      "[web]",
+      "bind = 10.1.1.1",
+      "port = 8080",
+      "name = shop",
+      "threads = 6",
+      "gzip = on",
+      "cache = 64",
+      "tls = off",
+      ""
+     ]
+    ],
+    [
+     [
+      "patching file site.ini",
+      "  hunk 1 applied at line 5"
+     ],
+     [
+      "[db]",
+      "name = shop",
+      "user = app",
+      "[web]",
+      "bind = 0.0.0.0",
+      "port = 80",
+      "name = shop",
+      "threads = 6",
+      "gzip = on",
+      "cache = 64",
+      "tls = off",
+      ""
+     ]
+    ],
+    [
+     [
+      "patching file site.ini",
+      "  hunk 1 applied at line 6 (offset +1)"
+     ],
+     [
+      "# copy",
+      "[db]",
+      "name = shop",
+      "user = app",
+      "[web]",
+      "bind = 0.0.0.0",
+      "port = 80",
+      "name = shop",
+      "threads = 6",
+      "gzip = on",
+      "cache = 64",
+      "tls = off",
+      ""
+     ]
+    ],
+    true
+   ]
+  },
+  "probe_merge_regions": {
+   "kind": "value",
+   "value": [
+    [
+     "a\nb\nc\nd\ne\nf\n",
+     0,
+     [
+      [
+       "same",
+       6
+      ]
+     ],
+     true
+    ],
+    [
+     "a\nB\nc\nd\ne\nf\n",
+     0,
+     [
+      [
+       "same",
+       1
+      ],
+      [
+       "ours",
+       1
+      ],
+      [
+       "same",
+       4
+      ]
+     ],
+     true
+    ],
+    [
+     "a\nb\nc\nd\nE\nf\n",
+     0,
+     [
+      [
+       "same",
+       4
+      ],
+      [
+       "theirs",
+       1
+      ],
+      [
+       "same",
+       1
+      ]
+     ],
+     true
+    ],
+    [
+     "a\nB\nc\nd\ne\nf\n",
+     0,
+     [
+      [
+       "same",
+       1
+      ],
+      [
+       "both",
+       1
+      ],
+      [
+       "same",
+       4
+      ]
+     ],
+     true
+    ],
+    [
+     "b\nc\nd\ne\nf\ng\n",
+     0,
+     [
+      [
+       "ours",
+       0
+      ],
+      [
+       "same",
+       5
+      ],
+      [
+       "theirs",
+       1
+      ]
+     ],
+     true
+    ],
+    [
+     "x\na\nb\nc\nd\ne\nf\ny\n",
+     0,
+     [
+      [
+       "ours",
+       1
+      ],
+      [
+       "same",
+       6
+      ],
+      [
+       "theirs",
+       1
+      ]
+     ],
+     true
+    ],
+    [
+     "a\nb\n<<<<<<< ours\ne\n=======\nc\nd\nE\n>>>>>>> theirs\nf\n",
+     1,
+     [
+      [
+       "same",
+       2
+      ],
+      [
+       "conflict",
+       7
+      ],
+      [
+       "same",
+       1
+      ]
+     ],
+     false
+    ]
+   ]
+  },
+  "probe_merge_conflicts_and_newline": {
+   "kind": "value",
+   "value": [
+    "a\n<<<<<<< mine\nX\n=======\nY\n>>>>>>> main\nc\n",
+    "a\n<<<<<<< ours\nX\n||||||| base\nb\n=======\nY\n>>>>>>> theirs\nc\n",
+    "a\n<<<<<<< ours\nX\nX2\n=======\n>>>>>>> theirs\nc\n",
+    1,
+    2,
+    1,
+    [
+     "a\nB\n",
+     "a\nB",
+     "a\nb",
+     "x\n"
+    ],
+    2,
+    [
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError"
+    ]
+   ]
+  },
+  "probe_diffstat_scaling_and_summary": {
+   "kind": "value",
+   "value": [
+    [
+     " big.py         | 120 ++++++++++++++++++++++++++++++----------",
+     " s.py           |   2 +-",
+     " old/x => new/x |   1 +",
+     " g              |   3 -",
+     " 4 files changed, 92 insertions(+), 34 deletions(-)"
+    ],
+    [
+     " big.py         | 120 +++++++++++++++-----",
+     " s.py           |   2 +-",
+     " old/x => new/x |   1 +",
+     " g              |   3 -",
+     " 4 files changed, 92 insertions(+), 34 deletions(-)"
+    ],
+    [
+     " big.py         | 120 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------",
+     " s.py           |   2 +-",
+     " old/x => new/x |   1 +",
+     " g              |   3 ---",
+     " 4 files changed, 92 insertions(+), 34 deletions(-)"
+    ],
+    [
+     " s.py | 2 +-",
+     " 1 file changed, 1 insertion(+), 1 deletion(-)"
+    ],
+    [
+     " 0 files changed"
+    ],
+    [
+     " old/x => new/x | 1 +",
+     " 1 file changed, 1 insertion(+)"
+    ],
+    {
+     "files": 4,
+     "hunks": 4,
+     "insertions": 92,
+     "deletions": 34
+    },
+    {
+     "files": 0,
+     "hunks": 0,
+     "insertions": 0,
+     "deletions": 0
+    },
+    {
+     "big.py": 120,
+     "g": 3,
+     "s.py": 2,
+     "new/x": 1
+    },
+    " 1 file changed, 3 deletions(-)",
+    [
+     "PatchworkError",
+     "PatchworkError",
+     "PatchworkError"
+    ],
+    [
+     " w | 41 ++++++++++++++++++++++++++++++++++++++++",
+     " 1 file changed, 41 insertions(+)"
+    ]
+   ]
+  },
+  "probe_option_defaults": {
+   "kind": "value",
+   "value": [
+    null,
+    false,
+    1,
+    "--- a/f\n+++ b/f\n@@ -1,2 +1,2 @@\n-a b\n+a  b\n c\n",
+    "HunkFailed",
+    "HunkFailed",
+    0
+   ]
+  },
+  "probe_fuzz_limits": {
+   "kind": "value",
+   "value": [
+    [
+     "hunk 1 applied at line 8 (fuzz 1)"
+    ],
+    [
+     "9",
+     "ten",
+     ""
+    ],
+    [
+     "hunk 1 applied at line 1 (fuzz 1)"
+    ],
+    [
+     "one",
+     "2"
+    ],
+    "HunkFailed"
+   ]
+  },
+  "probe_edge_ordering": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      0,
+      6,
+      0,
+      6
+     ],
+     [
+      8,
+      11,
+      8,
+      11
+     ]
+    ],
+    [
+     [
+      1,
+      17,
+      1,
+      17
+     ]
+    ],
+    [
+     "m.txt",
+     "z.txt"
+    ],
+    [
+     "a.txt",
+     "m.txt",
+     "z.txt"
+    ],
+    [
+     "z.txt",
+     "m.txt"
+    ],
+    [
+     "k",
+     "b",
+     "q",
+     "a"
+    ],
+    [
+     " q | 2 +",
+     " b | 2 +",
+     " k | 5 +",
+     " a | 1 +",
+     " 4 files changed, 10 insertions(+)"
+    ],
+    [
+     [
+      [
+       0,
+       0,
+       [
+        "-a",
+        "+b"
+       ],
+       true,
+       true
+      ]
+     ]
+    ],
+    [
+     [
+      [
+       0,
+       0,
+       [
+        "-a",
+        "+b"
+       ],
+       true,
+       true
+      ]
+     ]
+    ],
+    [
+     [
+      [
+       0,
+       0,
+       [
+        "-a",
+        "+b"
+       ],
+       true,
+       true
+      ]
+     ]
+    ],
+    [
+     "PatchParseError",
+     13
+    ]
+   ]
+  }
+ }
+}

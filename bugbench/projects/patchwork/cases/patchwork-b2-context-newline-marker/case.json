@@ -1,0 +1,43 @@
+{
+ "case_id": "patchwork-b2-context-newline-marker",
+ "project": "patchwork",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "medium",
+ "bug_class": "parser_lexer",
+ "mutations": [
+  {
+   "file": "patchwork/unified.py",
+   "old": "            if last != \"-\":\n                hunk.new_newline = False\n",
+   "new": "            if last == \"+\":\n                hunk.new_newline = False\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "patchwork/unified.py"
+  ],
+  "functions": [
+   "patchwork/unified.py::_read_hunk"
+  ]
+ },
+ "symptom_files": [
+  "patchwork/patchset.py",
+  "patchwork/apply.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "patchwork/unified.py::_read_hunk (any equivalent condition, e.g. last in (' ', '+'))"
+ ],
+ "target_probes": [
+  "probe_marker_after_context_flags",
+  "probe_marker_context_apply_hunks",
+  "probe_marker_context_patchset_apply"
+ ],
+ "notes": "When parsing a hunk, a 'No newline at end of file' marker after a context line only marks the old side, so the parsed hunk says the new file ends with a newline and applying it adds a final newline. Markers after '-' or '+' lines are read correctly (public test), and patches built in memory by diffing are unaffected. The flags probe reads the parsed hunks directly (documented in the module docstring and README), so compensating in the apply step still fails it.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 4aa5da40-bugbench-patchwork-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

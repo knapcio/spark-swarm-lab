@@ -1,0 +1,44 @@
+{
+ "case_id": "junction-b2-walk-time-rounding",
+ "project": "junction",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "medium",
+ "bug_class": "rounding_units",
+ "mutations": [
+  {
+   "file": "junction/network.py",
+   "old": "    return math.ceil(whole(metres, 1, MAX_FOOTPATH, \"footpath length\") / WALK_SPEED)\n",
+   "new": "    return round(whole(metres, 1, MAX_FOOTPATH, \"footpath length\") / WALK_SPEED)\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "junction/network.py"
+  ],
+  "functions": [
+   "junction/network.py::walking_minutes"
+  ]
+ },
+ "symptom_files": [
+  "junction/planner.py",
+  "junction/journey.py",
+  "junction/loader.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "junction/network.py::walking_minutes (any round-up, e.g. -(-metres // WALK_SPEED))"
+ ],
+ "target_probes": [
+  "probe_walk_text_journey",
+  "probe_walk_transfer_rounding_plan",
+  "probe_walking_minutes_round_up"
+ ],
+ "notes": "Walking time is rounded to nearest (banker's rounding) instead of up, so footpaths whose length is not a multiple of 80 m can be one minute short (250 m -> 3, 200 m -> 2, 520 m -> 6, 40 m -> 0). The planner then catches departures the passenger cannot reach. Multiples of 80 m and lengths whose remainder rounds up anyway are unaffected (public tests use 80/160/240/400 m). Fixing the walk text in journeys only leaves the planner wrong.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 6757f080-bugbench-junction-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

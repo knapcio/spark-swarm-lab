@@ -1,0 +1,44 @@
+{
+ "case_id": "patchwork-b3-fuzz-trims-patch",
+ "project": "patchwork",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "hard",
+ "bug_class": "aliasing_mutation",
+ "mutations": [
+  {
+   "file": "patchwork/hunks.py",
+   "old": "        lines = list(self.lines)\n",
+   "new": "        lines = self.lines\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "patchwork/hunks.py"
+  ],
+  "functions": [
+   "patchwork/hunks.py::Hunk.trimmed"
+  ]
+ },
+ "symptom_files": [
+  "patchwork/patchset.py",
+  "patchwork/apply.py"
+ ],
+ "call_hops_symptom_to_bug": 3,
+ "alternative_fix_sites": [
+  "patchwork/hunks.py::Hunk.trimmed (build the remaining lines with a slice or comprehension instead of deleting in place)"
+ ],
+ "target_probes": [
+  "probe_fuzz_two_offsets",
+  "probe_patchset_reused_across_trees",
+  "probe_patchset_reverse_and_atomic",
+  "probe_trimmed_leaves_hunk"
+ ],
+ "notes": "Trimming context lines for fuzzy application deletes them from the hunk's own line list instead of a copy, while the hunk keeps its start position. Inside one application, the fuzz-2 attempt trims an already trimmed hunk (too much context dropped, start off by one, offset +1 reported). Afterwards the patch set itself is damaged: a later application searches for context-less lines from the old start and can patch a different, nearer match (wrong section). A single application that succeeds at fuzz 0 or fuzz 1 is correct (public test). Copying the hunk inside the apply step fixes the apply symptoms but still fails the direct probe of the documented 'this hunk is unchanged' guarantee.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 4aa5da40-bugbench-patchwork-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

@@ -1,0 +1,1831 @@
+{
+ "version": 1,
+ "project": "relay",
+ "canary": "BUGBENCH-HIDDEN-CANARY 7b3e9a51-bugbench-relay-probes",
+ "clean_tree_sha256": "0937a61591c2697c664f4676df0a2fa7559896a4028771dfb9576cc01b64ce66",
+ "probes_sha256": "6ee02a440d6b90ddaa15d833b0193a597536e2a557240a4d65bd8efae53fd7f6",
+ "frozen_with_python": "3.14.6",
+ "probes": {
+  "probe_duration_parsing": {
+   "kind": "value",
+   "value": [
+    [
+     "0ms",
+     0
+    ],
+    [
+     "250ms",
+     250
+    ],
+    [
+     "1.5s",
+     1500
+    ],
+    [
+     "2m",
+     120000
+    ],
+    [
+     "1m30s",
+     90000
+    ],
+    [
+     "1h0.5s",
+     3600500
+    ],
+    [
+     " 3s ",
+     3000
+    ],
+    [
+     "1h2m3.004s",
+     3723004
+    ],
+    [
+     "0.001s",
+     1
+    ],
+    [
+     "1.25m",
+     75000
+    ],
+    [
+     "0s",
+     0
+    ],
+    [
+     "10h",
+     36000000
+    ],
+    [
+     "1h30m",
+     5400000
+    ],
+    [
+     "2s500ms",
+     2500
+    ],
+    [
+     "0.5h",
+     1800000
+    ],
+    [
+     0,
+     7,
+     123456
+    ],
+    [
+     "DurationError",
+     "DurationError",
+     "DurationError",
+     "DurationError",
+     "DurationError",
+     "DurationError",
+     "DurationError",
+     "DurationError",
+     "DurationError",
+     "DurationError",
+     "DurationError",
+     "DurationError",
+     "DurationError",
+     "DurationError",
+     "DurationError",
+     "DurationError",
+     null,
+     "DurationError",
+     "DurationError",
+     "DurationError"
+    ]
+   ]
+  },
+  "probe_duration_formatting": {
+   "kind": "value",
+   "value": [
+    [
+     0,
+     "0ms"
+    ],
+    [
+     1,
+     "1ms"
+    ],
+    [
+     999,
+     "999ms"
+    ],
+    [
+     1000,
+     "1s"
+    ],
+    [
+     1001,
+     "1.001s"
+    ],
+    [
+     1500,
+     "1.5s"
+    ],
+    [
+     12345,
+     "12.345s"
+    ],
+    [
+     59999,
+     "59.999s"
+    ],
+    [
+     60000,
+     "1m"
+    ],
+    [
+     60500,
+     "1m0.5s"
+    ],
+    [
+     90000,
+     "1m30s"
+    ],
+    [
+     3599999,
+     "59m59.999s"
+    ],
+    [
+     3600000,
+     "1h"
+    ],
+    [
+     3600250,
+     "1h0.25s"
+    ],
+    [
+     3661500,
+     "1h1m1.5s"
+    ],
+    [
+     7200000,
+     "2h"
+    ],
+    [
+     3605000,
+     "1h5s"
+    ],
+    [
+     "1m30s",
+     "1m30s"
+    ],
+    "DurationError",
+    "DurationError"
+   ]
+  },
+  "probe_clock": {
+   "kind": "value",
+   "value": [
+    1000,
+    1250,
+    1250,
+    2000,
+    2000,
+    "ClockError",
+    2000,
+    "DurationError",
+    "Clock(2s)",
+    0,
+    "DurationError"
+   ]
+  },
+  "probe_rate_parsing": {
+   "kind": "value",
+   "value": [
+    [
+     "2/s",
+     "2/1s burst 2"
+    ],
+    [
+     "10/250ms",
+     "10/250ms burst 10"
+    ],
+    [
+     "30/m",
+     "30/1m burst 30"
+    ],
+    [
+     "5/h",
+     "5/1h burst 5"
+    ],
+    [
+     "4/ms",
+     "4/1ms burst 4"
+    ],
+    [
+     "3/2s",
+     "3/2s burst 3"
+    ],
+    [
+     " 6 / 1.5s ",
+     "6/1.5s burst 6"
+    ],
+    [
+     "1/1m30s",
+     "1/1m30s burst 1"
+    ],
+    [
+     "2/1s burst 5",
+     "2/1s burst 7",
+     "3/1s burst 9",
+     true
+    ],
+    [
+     "RateError",
+     "RateError",
+     "RateError",
+     "RateError",
+     "RateError",
+     "RateError",
+     "RateError",
+     "RateError",
+     "RateError",
+     "RateError"
+    ],
+    [
+     "RateError",
+     "RateError",
+     "RateError",
+     "RateError",
+     "RateError"
+    ],
+    [
+     4,
+     1000,
+     4
+    ]
+   ]
+  },
+  "probe_bucket_refill_and_debt": {
+   "kind": "value",
+   "value": [
+    3,
+    [
+     0,
+     0,
+     0,
+     500,
+     1000
+    ],
+    0,
+    1500,
+    2000,
+    0,
+    500,
+    1,
+    3,
+    3,
+    0,
+    500,
+    [
+     0,
+     9000
+    ],
+    "ClockError",
+    [
+     0,
+     200,
+     400,
+     500,
+     700,
+     1,
+     0,
+     200
+    ],
+    [
+     0,
+     240,
+     490,
+     1,
+     0,
+     [
+      260,
+      760
+     ]
+    ],
+    [
+     0,
+     6000,
+     11000,
+     11000
+    ]
+   ]
+  },
+  "probe_bucket_max_wait": {
+   "kind": "value",
+   "value": [
+    0,
+    500,
+    [
+     -1000,
+     0
+    ],
+    [
+     "RateLimited",
+     "api",
+     1000,
+     500
+    ],
+    [
+     -1000,
+     0
+    ],
+    500,
+    "RateLimited",
+    [
+     -1000,
+     500
+    ],
+    500,
+    [
+     0,
+     250,
+     "RateLimited",
+     250,
+     [
+      -1000,
+      250
+     ]
+    ],
+    [
+     0,
+     0,
+     "RateLimited",
+     0,
+     "RateLimited"
+    ]
+   ]
+  },
+  "probe_limiter_settings_and_status": {
+   "kind": "value",
+   "value": [
+    "5/1s burst 5",
+    0,
+    [
+     0
+    ],
+    200,
+    3,
+    "2/1s burst 1",
+    [
+     0,
+     500
+    ],
+    "RateLimited",
+    [
+     [
+      "anything",
+      "5/1s burst 5",
+      3,
+      0
+     ],
+     [
+      "mail",
+      "2/1s burst 1",
+      0,
+      1000
+     ]
+    ],
+    2,
+    [
+     0,
+     0,
+     500,
+     1000
+    ],
+    [
+     [
+      "anything",
+      "5/1s burst 5",
+      5,
+      0
+     ],
+     [
+      "mail",
+      "2/1s burst 2",
+      0,
+      1000
+     ]
+    ],
+    null,
+    null,
+    0,
+    [
+     0
+    ],
+    [],
+    "RelayError",
+    "RateError",
+    "RelayError",
+    null,
+    "RateError",
+    "DurationError",
+    "RateError"
+   ]
+  },
+  "probe_reserve_all_or_nothing_once_each": {
+   "kind": "value",
+   "value": [
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     "sms",
+     500
+    ],
+    true,
+    [
+     400
+    ],
+    null,
+    [
+     2,
+     1,
+     10,
+     null
+    ]
+   ]
+  },
+  "probe_backoff_kinds": {
+   "kind": "value",
+   "value": [
+    [
+     300,
+     300,
+     300
+    ],
+    [
+     100,
+     150,
+     200,
+     250
+    ],
+    [
+     500,
+     500
+    ],
+    [
+     100,
+     200,
+     400,
+     800,
+     1600,
+     3200
+    ],
+    [
+     100,
+     200,
+     400,
+     800,
+     1000,
+     1000
+    ],
+    [
+     250,
+     750,
+     2000,
+     2000
+    ],
+    [
+     0,
+     1000,
+     2000,
+     2500,
+     2500
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     1000,
+     1000,
+     1000
+    ],
+    [
+     300,
+     600,
+     1200,
+     1200
+    ],
+    [
+     "400",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     []
+    ]
+   ]
+  },
+  "probe_backoff_fractional_rounding": {
+   "kind": "value",
+   "value": [
+    [
+     75,
+     113,
+     169,
+     253,
+     380
+    ],
+    [
+     10,
+     25,
+     63,
+     156,
+     391
+    ],
+    [
+     1,
+     2,
+     2,
+     3,
+     5,
+     8
+    ],
+    [
+     3,
+     4,
+     5,
+     5,
+     5
+    ],
+    [
+     200,
+     220,
+     242,
+     266
+    ],
+    "exp 75ms x1.5 max 1m30s"
+   ]
+  },
+  "probe_backoff_jitter": {
+   "kind": "value",
+   "value": [
+    [
+     "943/1000",
+     "99/200",
+     "157/200",
+     "17/250",
+     "399/500",
+     "83/125",
+     "167/200",
+     "43/1000",
+     "437/1000"
+    ],
+    [
+     [
+      623,
+      1604,
+      2058,
+      2488
+     ],
+     [
+      973,
+      1362,
+      2203,
+      2398
+     ],
+     [
+      666,
+      1966,
+      2476,
+      2879
+     ],
+     [
+      948,
+      1230,
+      2281,
+      2423
+     ]
+    ],
+    [
+     253,
+     216,
+     257
+    ],
+    [
+     9,
+     14,
+     18,
+     25
+    ],
+    [
+     "exp 1s x2 max 3s jitter 40%",
+     "fixed 1s",
+     0
+    ]
+   ]
+  },
+  "probe_backoff_parsing": {
+   "kind": "value",
+   "value": [
+    "fixed 2s",
+    "linear 1s +250ms max 1m",
+    "exp 50ms x3 jitter 10%",
+    "exp 1.5s x1.75 max 20s jitter 5%",
+    [
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError",
+     "BackoffError"
+    ],
+    [
+     true,
+     true,
+     "exp",
+     100,
+     null
+    ]
+   ]
+  },
+  "probe_job_validation": {
+   "kind": "value",
+   "value": [
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    [
+     "a.b_c-9",
+     "mail",
+     9,
+     1500,
+     20,
+     2,
+     1000,
+     "queued",
+     0,
+     "a.b_c-9 mail p9 queued attempts 0/20",
+     "Job(a.b_c-9 mail p9 queued attempts 0/20)"
+    ],
+    [
+     0,
+     1,
+     20,
+     "default"
+    ]
+   ]
+  },
+  "probe_job_lifecycle": {
+   "kind": "value",
+   "value": [
+    null,
+    null,
+    false,
+    [
+     false,
+     "scripted failure 1"
+    ],
+    [
+     false,
+     "ValueError: flaky"
+    ],
+    [
+     true,
+     30
+    ],
+    "done",
+    30,
+    "ValueError: flaky",
+    10,
+    35,
+    true,
+    [
+     2,
+     3
+    ],
+    [
+     [
+      0,
+      "submitted",
+      "ready 0ms"
+     ],
+     [
+      10,
+      "started",
+      "w2 attempt 1"
+     ],
+     [
+      15,
+      "failed",
+      "scripted failure 1; retry 18ms"
+     ],
+     [
+      20,
+      "started",
+      "w2 attempt 2"
+     ],
+     [
+      25,
+      "failed",
+      "ValueError: flaky; retry 28ms"
+     ],
+     [
+      30,
+      "started",
+      "w2 attempt 3"
+     ],
+     [
+      35,
+      "done",
+      ""
+     ]
+    ],
+    "JobStateError",
+    "JobStateError",
+    "JobStateError",
+    "dead",
+    3,
+    null,
+    true,
+    "JobStateError",
+    "queued",
+    0,
+    0,
+    null,
+    null,
+    [
+     false,
+     "scripted failure 0"
+    ],
+    [
+     9,
+     "revived",
+     ""
+    ],
+    "cancelled",
+    4,
+    true,
+    "JobStateError"
+   ]
+  },
+  "probe_backlog_priority_and_tickets": {
+   "kind": "value",
+   "value": [
+    null,
+    0,
+    6,
+    7,
+    [
+     "f",
+     "b",
+     "d"
+    ],
+    8,
+    [
+     "late",
+     "a",
+     "c",
+     "c2",
+     "e"
+    ],
+    null,
+    null,
+    0
+   ]
+  },
+  "probe_backlog_pending_withdraw": {
+   "kind": "value",
+   "value": [
+    [
+     "f",
+     "e",
+     "c",
+     "b",
+     "d",
+     "a"
+    ],
+    [
+     6,
+     5,
+     3,
+     2,
+     4,
+     1
+    ],
+    [
+     "k0",
+     "k1"
+    ],
+    true,
+    false,
+    0,
+    "c",
+    "UnknownJob",
+    false,
+    [
+     "f",
+     "e",
+     "b",
+     "d",
+     "a"
+    ],
+    {
+     "k0": 2,
+     "k1": 3
+    },
+    5,
+    [
+     "f",
+     "e",
+     null
+    ],
+    null,
+    [],
+    {},
+    0
+   ]
+  },
+  "probe_dispatcher_submit_checks": {
+   "kind": "value",
+   "value": [
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    "DuplicateJob",
+    "InvalidJob",
+    "InvalidJob",
+    "InvalidJob",
+    [],
+    1,
+    [
+     [
+      "a",
+      0,
+      0,
+      1
+     ],
+     [
+      "b",
+      1000,
+      0,
+      2
+     ],
+     [
+      "c",
+      2000,
+      0,
+      3
+     ]
+    ],
+    "DuplicateJob",
+    "UnknownJob",
+    "UnknownJob",
+    1000,
+    [
+     "InvalidJob",
+     "InvalidJob",
+     "InvalidJob",
+     "InvalidJob"
+    ],
+    64,
+    "exp 100ms x2 max 10s",
+    false,
+    true,
+    [
+     [
+      0,
+      "submit a ready 0ms"
+     ],
+     [
+      0,
+      "submit b ready 1s"
+     ],
+     [
+      0,
+      "submit c ready 2s"
+     ]
+    ]
+   ]
+  },
+  "probe_dispatcher_workers_and_moments": {
+   "kind": "value",
+   "value": [
+    0,
+    [
+     [
+      1,
+      "a",
+      300
+     ],
+     [
+      2,
+      "b",
+      100
+     ],
+     [
+      3,
+      "c",
+      0
+     ]
+    ],
+    0,
+    300,
+    [
+     "a#1@0",
+     "b#1@0",
+     "c#1@0",
+     "d#1@0",
+     "e#1@100",
+     "f#1@200"
+    ],
+    [
+     [
+      "a",
+      "done",
+      1,
+      0,
+      0,
+      300
+     ],
+     [
+      "b",
+      "done",
+      1,
+      0,
+      0,
+      100
+     ],
+     [
+      "c",
+      "done",
+      1,
+      0,
+      0,
+      0
+     ],
+     [
+      "d",
+      "done",
+      1,
+      0,
+      0,
+      200
+     ],
+     [
+      "e",
+      "done",
+      1,
+      0,
+      100,
+      200
+     ],
+     [
+      "f",
+      "done",
+      1,
+      0,
+      200,
+      200
+     ]
+    ],
+    [
+     [
+      100,
+      "start e on w2 attempt 1"
+     ],
+     [
+      200,
+      "done e"
+     ],
+     [
+      200,
+      "done d"
+     ],
+     [
+      200,
+      "start f on w2 attempt 1"
+     ],
+     [
+      200,
+      "done f"
+     ],
+     [
+      300,
+      "done a"
+     ]
+    ],
+    null,
+    true,
+    [
+     "z#1@0",
+     "x#1@0",
+     "y#1@100",
+     "w#1@100"
+    ],
+    [
+     [
+      100,
+      "done z"
+     ],
+     [
+      100,
+      "done x"
+     ],
+     [
+      150,
+      "done w"
+     ],
+     [
+      200,
+      "done y"
+     ]
+    ]
+   ]
+  },
+  "probe_dispatcher_retries_and_dead_letter": {
+   "kind": "value",
+   "value": [
+    [
+     "c#1@0",
+     "a#1@1000",
+     "b#1@1050",
+     "a#2@1150",
+     "b#2@1200",
+     "a#3@1500",
+     "a#4@2050"
+    ],
+    [
+     [
+      "a",
+      "done",
+      4,
+      2050,
+      1000,
+      2100
+     ],
+     [
+      "b",
+      "dead",
+      2,
+      1160,
+      1050,
+      1210
+     ],
+     [
+      "c",
+      "done",
+      1,
+      0,
+      0,
+      1000
+     ]
+    ],
+    [
+     "b"
+    ],
+    [
+     "fail a attempt 1, retry at 1.15s",
+     "fail b attempt 1, retry at 1.16s",
+     "fail a attempt 2, retry at 1.5s",
+     "dead b after 2 attempts",
+     "fail a attempt 3, retry at 2.05s"
+    ],
+    "scripted failure 2",
+    [
+     [
+      1550,
+      "failed",
+      "scripted failure 3; retry 2.05s"
+     ],
+     [
+      2050,
+      "started",
+      "w1 attempt 4"
+     ],
+     [
+      2100,
+      "done",
+      ""
+     ]
+    ]
+   ]
+  },
+  "probe_dispatcher_handlers": {
+   "kind": "value",
+   "value": [
+    [
+     "ok",
+     "done",
+     "fine",
+     null,
+     1
+    ],
+    [
+     "flaky",
+     "done",
+     {
+      "sent": "flaky"
+     },
+     "RuntimeError: try again",
+     3
+    ],
+    [
+     "broken",
+     "dead",
+     null,
+     "KeyError: 'broken'",
+     2
+    ],
+    [
+     "scripted",
+     "done",
+     2,
+     "scripted failure 1",
+     2
+    ],
+    [
+     [
+      "flaky",
+      1
+     ],
+     [
+      "flaky",
+      2
+     ],
+     [
+      "flaky",
+      3
+     ]
+    ],
+    [
+     "ok#1@0",
+     "flaky#1@0",
+     "broken#1@5",
+     "scripted#1@5",
+     "flaky#2@15",
+     "broken#2@15",
+     "scripted#2@15",
+     "flaky#3@40"
+    ]
+   ]
+  },
+  "probe_dispatcher_cancel_and_revive": {
+   "kind": "value",
+   "value": [
+    "cancelled",
+    "JobStateError",
+    "UnknownJob",
+    0,
+    "JobStateError",
+    "JobStateError",
+    "queued",
+    "dead",
+    [
+     "b"
+    ],
+    "JobStateError",
+    570,
+    [],
+    0,
+    "JobStateError",
+    [
+     [
+      "a",
+      "cancelled",
+      0,
+      500,
+      null,
+      0
+     ],
+     [
+      "b",
+      "done",
+      1,
+      570,
+      0,
+      580
+     ],
+     [
+      "c",
+      "done",
+      1,
+      0,
+      10,
+      310
+     ]
+    ],
+    [
+     "b#1@0",
+     "c#1@10",
+     "b#2@310",
+     "b#1@570"
+    ],
+    0,
+    [
+     [
+      320,
+      "revive b ready 570ms"
+     ],
+     [
+      570,
+      "start b on w1 attempt 1"
+     ],
+     [
+      580,
+      "done b"
+     ]
+    ]
+   ]
+  },
+  "probe_dispatcher_run_until": {
+   "kind": "value",
+   "value": [
+    999,
+    [
+     [
+      1,
+      "a",
+      1000
+     ]
+    ],
+    1000,
+    [
+     [
+      1,
+      "b",
+      1500
+     ]
+    ],
+    "ClockError",
+    1500,
+    "queued",
+    1700,
+    1700,
+    [
+     [
+      1,
+      "b",
+      2200
+     ]
+    ],
+    2200,
+    2200,
+    5000,
+    true,
+    [
+     "a#1@0",
+     "b#1@1000",
+     "b#2@1700"
+    ]
+   ]
+  },
+  "probe_dispatcher_intake_delay_and_cost": {
+   "kind": "value",
+   "value": [
+    [
+     "m1",
+     0
+    ],
+    [
+     "m2",
+     500
+    ],
+    [
+     "m3",
+     2000
+    ],
+    [
+     "m4",
+     2500
+    ],
+    [
+     "d1",
+     0
+    ],
+    [
+     "d2",
+     500
+    ],
+    [
+     "m1#1@0",
+     "d1#1@0",
+     "m2#1@500",
+     "d2#1@500",
+     "m3#1@2000",
+     "m4#1@2500"
+    ],
+    [
+     [
+      "bulk",
+      "10/1s burst 10",
+      10,
+      0
+     ],
+     [
+      "mail",
+      "2/1s burst 2",
+      0,
+      500
+     ]
+    ]
+   ]
+  },
+  "probe_stats_percentile": {
+   "kind": "value",
+   "value": [
+    [
+     1,
+     15
+    ],
+    [
+     5,
+     15
+    ],
+    [
+     20,
+     15
+    ],
+    [
+     21,
+     20
+    ],
+    [
+     30,
+     20
+    ],
+    [
+     40,
+     20
+    ],
+    [
+     41,
+     35
+    ],
+    [
+     50,
+     35
+    ],
+    [
+     60,
+     35
+    ],
+    [
+     61,
+     40
+    ],
+    [
+     80,
+     40
+    ],
+    [
+     99,
+     50
+    ],
+    [
+     100,
+     50
+    ],
+    7,
+    7,
+    null,
+    9,
+    3,
+    2,
+    2,
+    1,
+    [
+     "RelayError",
+     "RelayError",
+     "RelayError",
+     "RelayError",
+     "RelayError",
+     "RelayError"
+    ]
+   ]
+  },
+  "probe_stats_reports": {
+   "kind": "value",
+   "value": [
+    {
+     "now": 3000,
+     "queued": 1,
+     "running": 1,
+     "done": 4,
+     "dead": 0,
+     "cancelled": 0,
+     "runs": 8,
+     "retries": 3,
+     "dead_letter": []
+    },
+    [
+     [
+      "mail",
+      4,
+      4,
+      0,
+      5,
+      250,
+      800,
+      900
+     ],
+     [
+      "sms",
+      2,
+      0,
+      0,
+      3,
+      0,
+      0,
+      null
+     ]
+    ],
+    "key   jobs  done  dead  runs  p50 wait  max wait  p90 latency\nmail     4     4     0     5  250ms     800ms     900ms\nsms      2     0     0     3  0ms       0ms       -",
+    [
+     "m0",
+     "x",
+     "m1",
+     "m2",
+     "m3"
+    ],
+    [
+     "  0ms submit m2 ready 500ms",
+     "500ms start m2 on w1 attempt 1",
+     "600ms fail m2 attempt 1, retry at 700ms",
+     "700ms start m2 on w1 attempt 2",
+     "800ms done m2"
+    ],
+    [
+     "2.1s fail x attempt 2, retry at 2.2s",
+     "2.2s start x on w1 attempt 3"
+    ],
+    [
+     "  0ms submit m0 ready 0ms",
+     "  0ms submit m1 ready 250ms",
+     "  0ms submit m2 ready 500ms"
+    ],
+    "n   flag  name\n 1  -     ab\n22  True  c",
+    {
+     "now": 5000,
+     "queued": 0,
+     "running": 0,
+     "done": 5,
+     "dead": 1,
+     "cancelled": 0,
+     "runs": 9,
+     "retries": 3,
+     "dead_letter": [
+      "x"
+     ]
+    },
+    [
+     "sms",
+     2,
+     1,
+     1,
+     4,
+     0,
+     5000,
+     5000
+    ],
+    []
+   ]
+  },
+  "probe_script_flow": {
+   "kind": "value",
+   "value": [
+    [
+     "submitted a ready 0ms",
+     "submitted b ready 0ms",
+     "submitted c@500ms, d@200ms",
+     "submitted e ready 1s",
+     "submitted z ready 600ms",
+     "cancelled d",
+     "a mail p1 queued attempts 0/3 ready 0ms",
+     "mail 0",
+     "now 450ms",
+     "a#1@0ms b#1@0ms b#2@200ms",
+     "error UnknownJob",
+     "now 1s",
+     "revived z ready 1.25s",
+     "now 1.25s",
+     "b#1@0ms b#2@200ms b#3@500ms b#4@850ms",
+     "done 5 dead 0 queued 0 cancelled 1 runs 9 retries 4",
+     "key      jobs  done  dead  runs  p50 wait  max wait  p90 latency\nbulk        1     0     0     0  -         -         -\ndefault     1     1     0     2  600ms     600ms     1.25s\nmail        4     4     0     7  0ms       1s        1s",
+     "bulk 1",
+     "now 2.75s",
+     "b mail p0 done attempts 4/4 ready 850ms"
+    ],
+    2750,
+    2,
+    "linear 100ms +100ms max 250ms"
+   ]
+  },
+  "probe_script_errors": {
+   "kind": "value",
+   "value": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    "ScriptError",
+    [
+     "submitted a ready 0ms",
+     "error DuplicateJob",
+     "error UnknownJob",
+     "error JobStateError",
+     "error RelayError",
+     "error RateError",
+     "error InvalidJob",
+     "now 0ms",
+     "now 0ms",
+     "now 0ms",
+     "a default p0 done attempts 1/3 ready 0ms",
+     "error DuplicateJob",
+     "error InvalidJob",
+     "a#1@0ms",
+     "free unlimited",
+     "now 1s",
+     "error UnknownJob"
+    ]
+   ]
+  },
+  "probe_intake_wait_rounds_up": {
+   "kind": "value",
+   "value": [
+    [
+     0,
+     334,
+     667,
+     1000
+    ],
+    1334,
+    0,
+    334,
+    0,
+    333,
+    [
+     0,
+     286,
+     572,
+     1329,
+     1615
+    ],
+    [
+     0
+    ],
+    "RateLimited",
+    167,
+    166,
+    1,
+    0,
+    0,
+    1,
+    [
+     0
+    ]
+   ]
+  },
+  "probe_intake_wait_start_times": {
+   "kind": "value",
+   "value": [
+    [
+     "m0",
+     0
+    ],
+    [
+     "m1",
+     334
+    ],
+    [
+     "m2",
+     667
+    ],
+    [
+     "m3",
+     1000
+    ],
+    [
+     "s0",
+     0
+    ],
+    [
+     "s1",
+     0
+    ],
+    [
+     "s2",
+     223
+    ],
+    [
+     "s3",
+     445
+    ],
+    [
+     "m0#1@0",
+     "s0#1@0",
+     "s1#1@0",
+     "s2#1@223",
+     "m1#1@334",
+     "s3#1@445",
+     "m2#1@667",
+     "m3#1@1000"
+    ]
+   ]
+  },
+  "probe_intake_wait_script": {
+   "kind": "value",
+   "value": [
+    "submitted a@0ms, b@0ms, c@143ms, d@429ms",
+    "submitted w1 ready 0ms",
+    "submitted w2 ready 667ms",
+    "error RateLimited",
+    "now 667ms",
+    "a#1@0ms b#1@0ms w1#1@0ms c#1@143ms d#1@429ms w2#1@667ms",
+    "api 1"
+   ]
+  },
+  "probe_ready_time_breaks_ties": {
+   "kind": "value",
+   "value": [
+    "late-ticket",
+    [
+     "high",
+     "early-ticket",
+     "other",
+     "low"
+    ],
+    [
+     "second",
+     "third",
+     "first"
+    ]
+   ]
+  },
+  "probe_retry_ready_order": {
+   "kind": "value",
+   "value": [
+    [
+     "long#1@0",
+     "sync#1@1000",
+     "email#1@1050",
+     "report#1@1060",
+     "sync#2@1150"
+    ],
+    [
+     "p#1@0",
+     "q#1@0",
+     "flaky#1@400",
+     "tail#1@400",
+     "batch#1@420",
+     "flaky#2@470",
+     "flaky#3@590"
+    ]
+   ]
+  },
+  "probe_ready_order_script": {
+   "kind": "value",
+   "value": [
+    "submitted big ready 0ms",
+    "submitted m1 ready 0ms",
+    "submitted m2 ready 250ms",
+    "submitted m3 ready 500ms",
+    "submitted nudge ready 300ms",
+    "submitted later ready 900ms",
+    "submitted urgent ready 950ms",
+    "now 1s",
+    "big#1@0ms urgent#1@1s m1#1@1s m2#1@1s nudge#1@1s m3#1@1s later#1@1s"
+   ]
+  },
+  "probe_rejected_reservation_restores": {
+   "kind": "value",
+   "value": [
+    [
+     0
+    ],
+    [
+     "sms",
+     500
+    ],
+    true,
+    [
+     "mail",
+     1500
+    ],
+    true,
+    [
+     "mail",
+     1500
+    ],
+    true,
+    2,
+    1,
+    [
+     0,
+     500
+    ]
+   ]
+  },
+  "probe_rejected_batch_then_submit": {
+   "kind": "value",
+   "value": [
+    "RateLimited",
+    [
+     "m0"
+    ],
+    [
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     [
+      "m0",
+      0
+     ],
+     [
+      "m3",
+      0
+     ],
+     [
+      "m4",
+      250
+     ],
+     [
+      "s3",
+      0
+     ],
+     [
+      "m5",
+      500
+     ]
+    ],
+    [
+     "m0#1@0",
+     "m3#1@0",
+     "s3#1@0",
+     "m4#1@250",
+     "m5#1@500"
+    ]
+   ]
+  },
+  "probe_rejected_batch_script": {
+   "kind": "value",
+   "value": [
+    "submitted warm ready 0ms",
+    "error RateLimited",
+    "api 1",
+    "submitted f ready 0ms",
+    "submitted g ready 200ms",
+    "now 200ms",
+    "warm#1@0ms f#1@0ms g#1@200ms"
+   ]
+  }
+ }
+}

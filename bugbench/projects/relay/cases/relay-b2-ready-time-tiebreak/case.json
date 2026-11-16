@@ -1,0 +1,44 @@
+{
+ "case_id": "relay-b2-ready-time-tiebreak",
+ "project": "relay",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "medium",
+ "bug_class": "wrong_tie_break_ordering",
+ "mutations": [
+  {
+   "file": "relay/backlog.py",
+   "old": "        job = min(ready, key=lambda job: (-job.priority, job.ready_at, job.ticket))\n",
+   "new": "        job = min(ready, key=lambda job: (-job.priority, job.ticket, job.ready_at))\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "relay/backlog.py"
+  ],
+  "functions": [
+   "relay/backlog.py::Backlog.pop_ready"
+  ]
+ },
+ "symptom_files": [
+  "relay/stats.py",
+  "relay/dispatcher.py",
+  "relay/script.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "relay/backlog.py::Backlog.pop_ready (any selection that orders ready jobs by priority, then ready_at, then ticket, e.g. sorting the ready list)"
+ ],
+ "target_probes": [
+  "probe_ready_order_script",
+  "probe_ready_time_breaks_ties",
+  "probe_retry_ready_order"
+ ],
+ "notes": "The dispatch key compares tickets before ready times, so among ready jobs of equal priority the one that entered the backlog first wins even when another became ready earlier. Only visible when a worker is busy while two equal-priority jobs become ready in the opposite order of their tickets: delayed jobs, intake-throttled jobs, or retries that re-enter the backlog. Priority order and FIFO among jobs ready at the same time are unaffected (public test). The pending() listing uses its own correct key (decoy). A dispatcher-only fix that bypasses Backlog.pop_ready still fails the direct backlog probe, which the backlog module docstring entails.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 7b3e9a51-bugbench-relay-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

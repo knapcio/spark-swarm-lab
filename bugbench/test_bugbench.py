@@ -22,7 +22,7 @@ import bugbench_grader as g  # noqa: E402
 
 CASES = ["stockroom-b1-tier-boundary", "stockroom-b2-snapshot-alias", "stockroom-b3-rollback-order"]
 PROJECT = "stockroom"
-PROJECTS = ["agenda", "inkwell", "quarry", "stockroom", "tally", "trellis"]
+PROJECTS = ["agenda", "inkwell", "junction", "patchwork", "quarry", "relay", "stockroom", "tally", "trellis"]
 ALL_CASES = {
     "agenda": ["agenda-b1-slot-grid-default", "agenda-b2-weekday-order", "agenda-b3-split-cancelled-count"],
     "inkwell": ["inkwell-b1-round-half-even", "inkwell-b2-and-or-precedence", "inkwell-b3-trim-line-drift"],
@@ -30,6 +30,10 @@ ALL_CASES = {
     "tally": ["tally-b1-discount-last-day", "tally-b2-vat-per-line", "tally-b3-rejected-discount-payment"],
     "quarry": ["quarry-b1-desc-tie-order", "quarry-b2-right-assoc-minus", "quarry-b3-failed-insert-keys"],
     "trellis": ["trellis-b1-caret-zero-patch", "trellis-b2-install-order-ready", "trellis-b3-backtrack-leak"],
+    # fourth batch (2026-11-16)
+    "relay": ["relay-b1-wait-rounds-down", "relay-b2-ready-time-tiebreak", "relay-b3-rejected-batch-tokens"],
+    "patchwork": ["patchwork-b1-hunk-merge-gap", "patchwork-b2-context-newline-marker", "patchwork-b3-fuzz-trims-patch"],
+    "junction": ["junction-b1-exact-transfer-time", "junction-b2-walk-time-rounding", "junction-b3-night-listing-stale"],
 }
 
 
@@ -781,6 +785,409 @@ class ThirdBatchFixTests(unittest.TestCase):
                 for case_id, numbers in zip(cases, quoted):
                     for number in numbers:
                         self.assertIn(number, g.load_case(case_id)["report_text"])
+
+
+# === fourth batch: relay, patchwork, junction ===================================================
+# --- relay: rate limiter + job queue ---------------------------------------------------------------
+RELAY = ["relay-b1-wait-rounds-down", "relay-b2-ready-time-tiebreak", "relay-b3-rejected-batch-tokens"]
+RELAY_REPORTS = '''
+def probe_b1():
+    from relay import Dispatcher, Limiter
+    limiter = Limiter()
+    limiter.configure("mail", "3/s", burst=1)
+    dispatcher = Dispatcher(workers=3, limiter=limiter)
+    for n in (1, 2, 3):
+        dispatcher.submit(f"welcome-{n}", key="mail")
+    dispatcher.run()
+    return [[job.id, job.started_at] for job in dispatcher.jobs()]
+def probe_b2():
+    from relay import Dispatcher, order_of_starts
+    dispatcher = Dispatcher(workers=1)
+    dispatcher.submit("report", delay="600ms", takes="10ms")
+    dispatcher.submit("backup", takes="1s")
+    dispatcher.submit("email", delay="100ms", takes="10ms")
+    dispatcher.run()
+    return str(order_of_starts(dispatcher))
+def probe_b3():
+    from relay import replay
+    _, outputs = replay("""rate api 5/s burst 2 maxwait 400ms
+submit warm key api
+batch a key api ; b key api ; c key api ; d key api
+tokens api
+submit e key api
+submit f key api
+""")
+    return outputs
+'''
+
+
+class RelayTests(unittest.TestCase):
+    """relay: hand-computed oracle values, alternative / masking / overfit fixes, report numbers."""
+
+    def values(self):
+        return {name: obs.get("value") for name, obs in g.load_expected("relay")["probes"].items()}
+
+    def assertFixes(self, case_id, patch):
+        result = g.grade(case_id, patch)
+        self.assertEqual(result["status"], "passed", result.get("hidden"))
+        return result
+
+    def assertFailsOnly(self, case_id, patch, probes):
+        result = g.grade(case_id, patch)
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(sorted(result["hidden"]["failed_probes"]), sorted(probes))
+        self.assertEqual(result["regression"]["broken"], [])
+        return result
+
+    def test_relay_targets(self):
+        expected = self.values()
+        # 3/s burst 1: one token = 1000 units, +3 units/ms. Debts 1000, 2000, 3000 units -> ceil(/3) = 334, 667, 1000 ms;
+        # after four takes a fifth token needs 4000 units -> ceil(4000/3) = 1334 ms
+        self.assertEqual(expected["probe_intake_wait_rounds_up"][:2], [[0, 334, 667, 1000], 1334])
+        # 6/s burst 1, max wait 166 ms: a second token needs ceil(1000/6) = 167 ms > 166 -> rejected;
+        # at 166 ms 4 units are missing -> 1 ms; at 167 ms 1002 units -> 1 token
+        self.assertEqual(expected["probe_intake_wait_rounds_up"][-8:], ["RateLimited", 167, 166, 1, 0, 0, 1, [0]])
+        # 9/2s burst 2: one token = 2000 units, +9/ms; debts 2000, 4000 -> ceil(222.2) = 223, ceil(444.4) = 445
+        self.assertEqual(expected["probe_intake_wait_start_times"][:8],
+                         [["m0", 0], ["m1", 334], ["m2", 667], ["m3", 1000], ["s0", 0], ["s1", 0], ["s2", 223], ["s3", 445]])
+        # 7/s burst 2: c owes 1000 units -> ceil(142.9) = 143; d (cost 2) owes 3000 -> ceil(428.6) = 429.
+        # 3/2s burst 1, max wait 667ms: w2 owes 2000 units -> ceil(666.7) = 667 (allowed), w3 1334 -> rejected
+        self.assertEqual(expected["probe_intake_wait_script"][:4],
+                         ["submitted a@0ms, b@0ms, c@143ms, d@429ms", "submitted w1 ready 0ms", "submitted w2 ready 667ms",
+                          "error RateLimited"])
+        # equal priority 2: late-ticket (ready 100) is the only priority-2 job ready at 399; at 500 early-ticket and
+        # other are both ready at 400 -> ticket order; second backlog: ready 20, 20, 50 -> second, third, first
+        self.assertEqual(expected["probe_ready_time_breaks_ties"],
+                         ["late-ticket", ["high", "early-ticket", "other", "low"], ["second", "third", "first"]])
+        # one worker busy with long until 1000: ready sync (0) < email (100) < report (600); sync fails at 1050,
+        # its retry is due at 1150 (fixed 100ms) and re-enters the backlog
+        self.assertEqual(expected["probe_retry_ready_order"][0],
+                         ["long#1@0", "sync#1@1000", "email#1@1050", "report#1@1060", "sync#2@1150"])
+        # mail 2/s burst 3 (2000 units left after one take): each rejected reservation leaves both buckets unchanged;
+        # 5 more mails would owe 3000 units -> 1500 ms > 1 s; finally 2 + 1 tokens -> waits 0 and 500 ms
+        self.assertEqual(expected["probe_rejected_reservation_restores"],
+                         [[0], ["sms", 500], True, ["mail", 1500], True, ["mail", 1500], True, 2, 1, [0, 500]])
+        # 5/s burst 2: warm leaves 1 token; the batch is rejected at d (debt 3000 units -> 600 ms > 400 ms);
+        # then f takes the token (ready 0) and g owes 1000 units -> 200 ms
+        self.assertEqual(expected["probe_rejected_batch_script"][:5],
+                         ["submitted warm ready 0ms", "error RateLimited", "api 1", "submitted f ready 0ms",
+                          "submitted g ready 200ms"])
+        self.assertEqual(expected["probe_rejected_batch_then_submit"][3],
+                         [["m0", 0], ["m3", 0], ["m4", 250], ["s3", 0], ["m5", 500]])
+
+    def test_relay_alternative_masking_and_overfit(self):
+        b1, b2, b3 = RELAY
+        ceil_line = "        return missing // self.rate.tokens\n"
+        self.assertFixes(b1, patched(b1, "relay/limiter.py", ceil_line,
+                                     "        return (missing + self.rate.tokens - 1) // self.rate.tokens\n"))
+        overfit = patched(b1, "relay/limiter.py", ceil_line,
+                          "        return missing // self.rate.tokens + (self.rate.tokens == 3 and missing % 3 != 0)\n")
+        result = g.grade(b1, overfit)
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["target"]["passed"], 0)
+        take_only = patched(b1, "relay/limiter.py", "        wait = self._ms_for(-after) if after < 0 else 0\n",
+                            "        wait = -(after // self.rate.tokens) if after < 0 else 0\n")
+        self.assertFailsOnly(b1, take_only, ["probe_intake_wait_rounds_up"])
+        self.assertFixes(b2, patched(b2, "relay/backlog.py",
+                                     "        job = min(ready, key=lambda job: (-job.priority, job.ticket, job.ready_at))\n",
+                                     "        ready.sort(key=lambda job: (-job.priority, job.ready_at, job.ticket))\n"
+                                     "        job = ready[0]\n"))
+        dispatcher_only = patched(b2, "relay/dispatcher.py", "            job = self.backlog.pop_ready(moment)\n",
+                                  "            ready = [j for j in self.backlog.pending() if j.ready_at <= moment]\n"
+                                  "            job = min(ready, key=lambda j: (-j.priority, j.ready_at, j.ticket)) if ready else None\n"
+                                  "            if job is not None:\n"
+                                  "                self.backlog.withdraw(job.id)\n")
+        self.assertFailsOnly(b2, dispatcher_only, ["probe_ready_time_breaks_ties"])
+        result = self.assertFixes(b3, patched(b3, "relay/limiter.py", "                saved[key] = bucket.state()\n",
+                                              "                if key not in saved:\n"
+                                              "                    saved[key] = bucket.state()\n"))
+        self.assertTrue(result["localization"]["gold_function_hit"])
+        restore_in_dispatcher = patched(
+            b3, "relay/dispatcher.py",
+            "        waits = self.limiter.reserve([(job.key, job.cost) for job, _ in built], now)\n",
+            "        buckets = {job.key: self.limiter.bucket(job.key, now) for job, _ in built}\n"
+            "        states = {key: bucket.state() for key, bucket in buckets.items() if bucket is not None}\n"
+            "        try:\n"
+            "            waits = self.limiter.reserve([(job.key, job.cost) for job, _ in built], now)\n"
+            "        except RelayError:\n"
+            "            for key, state in states.items():\n"
+            "                buckets[key].restore(state)\n"
+            "            raise\n")
+        restore_in_dispatcher = restore_in_dispatcher.replace(
+            "from .errors import ClockError, DuplicateJob, InvalidJob, JobStateError, UnknownJob\n",
+            "from .errors import ClockError, DuplicateJob, InvalidJob, JobStateError, RelayError, UnknownJob\n")
+        self.assertFailsOnly(b3, restore_in_dispatcher, ["probe_rejected_reservation_restores"])
+
+    def test_relay_report_numbers_reproduce_on_clean_and_buggy(self):
+        clean_values = {"probe_b1": [["welcome-1", 0], ["welcome-2", 334], ["welcome-3", 667]],
+                        "probe_b2": "['backup', 'email', 'report']",
+                        "probe_b3": ["submitted warm ready 0ms", "error RateLimited", "api 1", "submitted e ready 0ms",
+                                     "submitted f ready 200ms"]}
+        buggy_values = {"probe_b1": [["welcome-1", 0], ["welcome-2", 333], ["welcome-3", 666]],
+                        "probe_b2": "['backup', 'report', 'email']",
+                        "probe_b3": ["submitted warm ready 0ms", "error RateLimited", "api 0", "error RateLimited",
+                                     "error RateLimited"]}
+        quoted = [["334 ms", "667 ms", "333 ms", "666 ms"],
+                  ["['backup', 'email', 'report']", "['backup', 'report', 'email']"],
+                  ["api 1", "submitted e ready 0ms", "submitted f ready 200ms", "api 0", "error RateLimited"]]
+        self.assertEqual(run_snippet(g.clean_files("relay"), RELAY_REPORTS, "relay"), clean_values)
+        actual = {probe: run_snippet(g.buggy_files(g.load_case(case_id)), RELAY_REPORTS, "relay")[probe]
+                  for probe, case_id in zip(["probe_b1", "probe_b2", "probe_b3"], RELAY)}
+        self.assertEqual(actual, buggy_values)
+        for case_id, numbers in zip(RELAY, quoted):
+            for number in numbers:
+                self.assertIn(number, g.load_case(case_id)["report_text"])
+
+
+# --- patchwork (diff/patch tool) -------------------------------------------------------------------
+PATCHWORK = ["patchwork-b1-hunk-merge-gap", "patchwork-b2-context-newline-marker", "patchwork-b3-fuzz-trims-patch"]
+PATCHWORK_REPORTS = """
+def probe_b1():
+    from patchwork import PatchSet, diff_texts, summary
+    old = "".join(f"{name}\\n" for name in ["click==8.1", "flask==3.0", "jinja2==3.1", "markupsafe==2.1", "pytest==8.2",
+                                              "requests==2.32", "rich==13.7", "urllib3==2.2", "werkzeug==3.0", "zipp==3.19"])
+    new = old.replace("flask==3.0", "flask==3.1").replace("werkzeug==3.0", "werkzeug==3.1")
+    text = diff_texts(old, new, "requirements.txt")
+    return [[line for line in text.splitlines() if line.startswith("@@")], summary(PatchSet.diff({"r": old}, {"r": new}))["hunks"]]
+def probe_b2():
+    from patchwork import PatchSet
+    patch = PatchSet.parse("--- a/.env\\n+++ b/.env\\n@@ -1,3 +1,3 @@\\n DEBUG=0\\n-WORKERS=2\\n+WORKERS=4\\n PORT=8000\\n"
+                           "\\\\ No newline at end of file\\n")
+    return repr(patch.apply({".env": "DEBUG=0\\nWORKERS=2\\nPORT=8000"}).tree[".env"])
+def probe_b3():
+    from patchwork import PatchSet
+    cfg = ("[client]\\ntimeout = 30\\nretries = 2\\n[server]\\nhost = 0.0.0.0\\nport = 8080\\ntimeout = 30\\n"
+           "workers = 4\\nlog = info\\ncache = on\\n")
+    patch = PatchSet.parse("--- a/app.ini\\n+++ b/app.ini\\n@@ -4,7 +4,7 @@\\n [server]\\n host = 0.0.0.0\\n port = 8080\\n"
+                           "-timeout = 30\\n+timeout = 60\\n workers = 4\\n log = info\\n cache = on\\n")
+    first = patch.apply({"app.ini": cfg.replace("host = 0.0.0.0", "host = 10.0.0.5")})
+    second = patch.apply({"app.ini": cfg})
+    lines = second.tree["app.ini"].split("\\n")
+    return [first.log[1].strip(), second.log[1].strip(), lines[1], lines[6]]
+"""
+
+
+class PatchworkTests(unittest.TestCase):
+    def values(self):
+        return {name: obs.get("value") for name, obs in g.load_expected("patchwork")["probes"].items()}
+
+    def assertFixes(self, case_id, patch):
+        result = g.grade(case_id, patch)
+        self.assertEqual(result["status"], "passed", result.get("hidden"))
+        return result
+
+    def assertFailsOnly(self, case_id, patch, probes):
+        result = g.grade(case_id, patch)
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(sorted(result["hidden"]["failed_probes"]), sorted(probes))
+        self.assertEqual(result["regression"]["broken"], [])
+        return result
+
+    def test_patchwork_targets(self):
+        expected = self.values()
+        gaps = expected["probe_hunk_gap_boundary"]
+        # changes on lines 5 and 12, context 3: 6 unchanged lines between -> one hunk over lines 2..15
+        self.assertEqual(gaps[0], [[1, 14, 1, 14]])
+        # lines 5 and 13: 7 between -> two hunks, lines 2..8 and 10..16
+        self.assertEqual(gaps[1], [[1, 7, 1, 7], [9, 7, 9, 7]])
+        # lines 4 and 9 with context 2 (4 between) and lines 10 and 13 with context 1 (2 between) merge
+        self.assertEqual(gaps[3], [[1, 10, 1, 10]])
+        self.assertEqual(gaps[5], [[8, 6, 8, 6]])
+        # bravo and golf with context 2: charlie..foxtrot (4 lines) between -> lines 1..9 in one hunk
+        self.assertTrue(expected["probe_diff_texts_gap_boundary"][0].startswith("--- a/words.txt\n+++ b/words.txt\n@@ -1,9 +1,9 @@\n"))
+        # a.txt: lines 10 and 17 (6 between) one hunk; b.txt: 10 and 18 (7 between) two hunks
+        self.assertEqual(expected["probe_diffstat_gap_boundary"][0], {"files": 2, "hunks": 3, "insertions": 4, "deletions": 4})
+        # marker after a context line: old and new both end without a newline
+        self.assertEqual(expected["probe_marker_after_context_flags"][0], [[[0, 0, [" a", "-b", "+B", " c"], False, False]]])
+        self.assertEqual(expected["probe_marker_context_apply_hunks"][2:], ["a\nb\nC\nd", "x\ny\nz"])
+        self.assertEqual(expected["probe_marker_context_patchset_apply"][0],
+                         {"motd": "Welcome\nto this\nserver", "notes.txt": "one\n2\nthree\nfour\nfive"})
+        # trimming leaves the hunk itself alone: lines 5..11 around 8, fuzz 1 drops 5 and 11
+        trimmed = expected["probe_trimmed_leaves_hunk"]
+        self.assertEqual(trimmed[0], [5, 5, [" 6", " 7", "-8", "+eight", " 9", " 10"], True, True])
+        self.assertEqual(trimmed[3:5], [True, True])
+        # change on 12, context 9..11 / 13..15; 10 drifted -> fuzz 2 drops 9, 10 -> first line placed is 11
+        self.assertEqual(expected["probe_fuzz_two_offsets"][0], [["hunk 1 applied at line 11 (fuzz 2)"], True])
+        reused = expected["probe_patchset_reused_across_trees"]
+        self.assertEqual([item[0][1] for item in reused[:5]], ["  hunk 1 applied at line 5"] * 2 +
+                         ["  hunk 1 applied at line 7 (fuzz 2)", "  hunk 1 applied at line 5", "  hunk 1 applied at line 6 (offset +1)"])
+        self.assertTrue(reused[5])
+
+    def test_patchwork_alternative_masking_and_overfit(self):
+        b1, b2, b3 = PATCHWORK
+        gap = "        if groups and op[1] - groups[-1][-1][2] < 2 * context:\n"
+        self.assertFixes(b1, patched(b1, "patchwork/hunks.py", gap,
+                                     "        if groups and op[1] - groups[-1][-1][2] < 2 * context + 1:\n"))
+        overfit = patched(b1, "patchwork/hunks.py", gap,
+                          "        if groups and (op[1] - groups[-1][-1][2] < 2 * context or op[1] - groups[-1][-1][2] == 6):\n")
+        result = g.grade(b1, overfit)
+        self.assertEqual(result["status"], "failed")
+        self.assertLess(result["target"]["passed"], result["target"]["total"])
+        self.assertFixes(b2, patched(b2, "patchwork/unified.py", '            if last == "+":\n',
+                                     '            if last in (" ", "+"):\n'))
+        keep_target_newline = patched(b2, "patchwork/apply.py", "            newline = candidate.new_newline\n",
+                                      '            newline = text.newline if candidate.lines[-1][0] == " " else candidate.new_newline\n')
+        self.assertFailsOnly(b2, keep_target_newline, ["probe_marker_after_context_flags"])
+        slice_copy = patched(b3, "patchwork/hunks.py", "        lines = self.lines\n        del lines[len(lines) - back:]\n        del lines[:front]\n",
+                             "        lines = self.lines[front:len(self.lines) - back]\n")
+        self.assertTrue(self.assertFixes(b3, slice_copy)["localization"]["gold_function_hit"])
+        copy_in_apply = patched(b3, "patchwork/apply.py", "        candidate = hunk if level == 0 else hunk.trimmed(level)\n",
+                                "        fresh = type(hunk)(hunk.old_start, hunk.new_start, list(hunk.lines), hunk.old_newline, hunk.new_newline)\n"
+                                "        candidate = hunk if level == 0 else fresh.trimmed(level)\n")
+        self.assertFailsOnly(b3, copy_in_apply, ["probe_trimmed_leaves_hunk"])
+        copy_per_tree = patched(b3, "patchwork/patchset.py",
+                                "            outcome = apply_hunks(base, item.hunks, fuzz=fuzz, ignore_space=ignore_space, path=item.path)\n",
+                                "            hunks = [type(h)(h.old_start, h.new_start, list(h.lines), h.old_newline, h.new_newline) for h in item.hunks]\n"
+                                "            outcome = apply_hunks(base, hunks, fuzz=fuzz, ignore_space=ignore_space, path=item.path)\n")
+        # a fresh copy per file still over-trims inside one fuzz-2 application
+        self.assertFailsOnly(b3, copy_per_tree, ["probe_fuzz_two_offsets", "probe_patchset_reused_across_trees",
+                                                 "probe_trimmed_leaves_hunk"])
+
+    def test_patchwork_report_numbers_reproduce_on_clean_and_buggy(self):
+        clean_values = {"probe_b1": [["@@ -1,10 +1,10 @@"], 1], "probe_b2": "'DEBUG=0\\nWORKERS=4\\nPORT=8000'",
+                        "probe_b3": ["hunk 1 applied at line 6 (fuzz 2)", "hunk 1 applied at line 4", "timeout = 30", "timeout = 60"]}
+        buggy_values = {"probe_b1": [["@@ -1,5 +1,5 @@", "@@ -6,5 +6,5 @@"], 2], "probe_b2": "'DEBUG=0\\nWORKERS=4\\nPORT=8000\\n'",
+                        "probe_b3": ["hunk 1 applied at line 7 (offset +1, fuzz 2)", "hunk 1 applied at line 2 (offset -2)",
+                                     "timeout = 60", "timeout = 30"]}
+        quoted = [["@@ -1,10 +1,10 @@", "@@ -1,5 +1,5 @@", "@@ -6,5 +6,5 @@"],
+                  ["'DEBUG=0\\nWORKERS=4\\nPORT=8000'", "'DEBUG=0\\nWORKERS=4\\nPORT=8000\\n'"],
+                  ["hunk 1 applied at line 6 (fuzz 2)", "hunk 1 applied at line 4", "hunk 1 applied at line 7 (offset +1, fuzz 2)",
+                   "hunk 1 applied at line 2 (offset -2)", "timeout = 60", "timeout = 30"]]
+        self.assertEqual(run_snippet(g.clean_files("patchwork"), PATCHWORK_REPORTS, "patchwork"), clean_values)
+        actual = {probe: run_snippet(g.buggy_files(g.load_case(case_id)), PATCHWORK_REPORTS, "patchwork")[probe]
+                  for probe, case_id in zip(["probe_b1", "probe_b2", "probe_b3"], PATCHWORK)}
+        self.assertEqual(actual, buggy_values)
+        for case_id, numbers in zip(PATCHWORK, quoted):
+            for number in numbers:
+                self.assertIn(number, g.load_case(case_id)["report_text"])
+
+
+# --- junction: rail timetable planner ----------------------------------------------------------
+JUNCTION = ["junction-b1-exact-transfer-time", "junction-b2-walk-time-rounding", "junction-b3-night-listing-stale"]
+JUNCTION_REPORTS = """
+def probe_b1():
+    from junction import Junction
+    text = ('station KRK "Krakow Glowny" zone 1 transfer 5\\nstation KRB "Krakow Bus Station" zone 1\\n'
+            'station WIE "Wieliczka" zone 2\\nstation RZE "Rzeszow Glowny" zone 4\\nfootpath KRB KRK 240\\n'
+            'service WK mon-fri 2026-03-02..2026-03-31\\ntrip R1 R5 WK\\n  WIE 07:45\\n  KRK 07:57\\n'
+            'trip B1 B7 WK\\n  WIE 07:30\\n  KRB 07:52\\ntrip IC1 IC31 WK\\n  KRK 08:02\\n  RZE 09:30\\n')
+    return Junction.from_text(text).plan("WIE", "RZE", "2026-03-02", "07:00").describe().splitlines()
+def probe_b2():
+    from junction import Junction
+    text = ('station GLW "Gliwice" zone 1 transfer 4\\nstation KAT "Katowice" zone 2 transfer 5\\n'
+            'station KTB "Katowice Bus" zone 2 transfer 2\\nstation SOS "Sosnowiec" zone 3\\nfootpath KAT KTB 250\\n'
+            'service ALL daily 2026-05-01..2026-05-31\\ntrip G1 KS1 ALL\\n  GLW 07:00\\n  KAT 07:26\\n'
+            'trip M1 B12 ALL\\n  KTB 07:29\\n  SOS 07:50\\ntrip M2 B12 ALL\\n  KTB 07:40\\n  SOS 08:01\\n')
+    return Junction.from_text(text).plan("GLW", "SOS", "2026-05-12", "06:30").describe().splitlines()
+def probe_b3():
+    from junction import Junction
+    text = ('station WAW "Warszawa Centralna" zone 1 transfer 6\\nstation RAD "Radom" zone 3 transfer 3\\n'
+            'station KIE "Kielce" zone 5\\nservice NT daily 2026-03-01..2026-03-31\\n'
+            'trip NX1 TLK8 NT\\n  WAW 23:20\\n  RAD 24:35 24:37\\n  KIE 25:40\\n')
+    junction = Junction.from_text(text)
+    before = junction.board("RAD", "2026-03-10", "00:00", "02:00").splitlines()
+    junction.apply("delay NX1 2026-03-09 +25\\n")
+    after = junction.board("RAD", "2026-03-10", "00:00", "02:00").splitlines()
+    return [before, after, junction.plan("RAD", "KIE", "2026-03-10", "00:00").summary()]
+"""
+
+
+class JunctionTests(unittest.TestCase):
+    def values(self):
+        return {name: obs.get("value") for name, obs in g.load_expected("junction")["probes"].items()}
+
+    def assertFixes(self, case_id, patch):
+        result = g.grade(case_id, patch)
+        self.assertEqual(result["status"], "passed", result.get("hidden"))
+        return result
+
+    def assertFailsWith(self, case_id, patch, probes, exact=False):
+        result = g.grade(case_id, patch)
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["regression"]["broken"], [])
+        if exact:
+            self.assertEqual(sorted(result["hidden"]["failed_probes"]), sorted(probes))
+        else:
+            self.assertTrue(set(probes) <= set(result["hidden"]["failed_probes"]), result["hidden"])
+        return result
+
+    def test_junction_targets(self):
+        """Hand-computed values for target probes, independent of the reference implementation."""
+        expected = self.values()
+        # a gap equal to the transfer time is enough (ALF 0, BET 4, EPS 7); one minute less is not
+        self.assertEqual(expected["probe_change_exact_transfer_time"][0], [True, True, False, True, False])
+        # X1 reaches BET 09:20, transfer 4 -> X2 at 09:24 arrives 10:00 (X3 would arrive 10:10)
+        self.assertEqual(expected["probe_change_exact_transfer_time"][1][0], "09:00 ALF -> 10:00 GAM, 1h 00m, 1 transfer")
+        # T5 reaches KRK 07:57, transfer 5 -> T1 08:02; same arrival as T3 (07:40) but departs later
+        self.assertEqual(expected["probe_change_exact_text_plan"][1][0], "07:45 WIE -> 09:30 RZE, 1h 45m, 1 transfer")
+        # metres / 80 rounded up: 1, 40, 79 -> 1; 81, 120 -> 2; 200 -> 3; 250 -> 4; 360 -> 5; 440 -> 6; 2999, 3000 -> 38
+        self.assertEqual(expected["probe_walking_minutes_round_up"][0], [1, 1, 1, 2, 2, 3, 4, 5, 6, 38, 38])
+        # 520 m = 6.5 -> 7 min: LOD 07:03 + 7 = 07:10 misses the 07:09, so the 07:25 arrives 08:30
+        self.assertEqual(expected["probe_walk_text_journey"][0][0], "06:50 LDW -> 08:30 SIE, 1h 40m, 1 transfer")
+        self.assertEqual(expected["probe_walk_text_journey"][1:], [7, [0, 15], 7])
+        # N2 (service day 2 Mar) leaves BCH 24:06 -> 00:06 on 3 Mar; +12 -> 00:18.  N6 23:52 +9 = 24:01 -> 00:01 on 3 Mar
+        night = expected["probe_night_delay_after_board"]
+        self.assertEqual(night[:3], [[[6, 6, 0, "N7", "N2", "TRN"]], [[18, 6, 12, "N7", "N2", "TRN"]], [[1, -8, 9, "N7", "N6", "BCH"]]])
+        # after cancelling the night train, the next BCH -> TRN on Tuesday 3 Mar is T1 08:21 -> 08:41; +20 from KRK: 00:26 -> 00:55
+        plans = expected["probe_night_cancel_feed_plan"]
+        self.assertEqual([plans[0][0], plans[1][0], plans[3][0]], ["00:06 BCH -> 00:35 TRN, 29m, 0 transfers",
+                                                                   "08:21 BCH -> 08:41 TRN, 20m, 0 transfers",
+                                                                   "00:26 BCH -> 00:55 TRN, 29m, 0 transfers"])
+        # N8 of Sat 7 Mar: DEB 24:06 -> TRN 24:40 shows as 00:40 on Sun 8 Mar once reinstated, 00:45 after +5 from TRN
+        self.assertEqual([rows[0][:3] for rows in expected["probe_night_reinstate_arrivals"][1:3]], [[40, 40, 0], [45, 40, 5]])
+
+    def test_junction_alternative_masking_and_overfit(self):
+        b1, b2, b3 = JUNCTION
+        self.assertFixes(b1, patched(b1, "junction/planner.py", "    return departure - arrival > network.transfer_minutes(station)\n",
+                                     "    return not departure - arrival < network.transfer_minutes(station)\n"))
+        overfit = patched(b1, "junction/planner.py", "    return departure - arrival > network.transfer_minutes(station)\n",
+                          "    return departure - arrival > network.transfer_minutes(station) or departure - arrival == 5\n")
+        result = g.grade(b1, overfit)
+        self.assertEqual(result["status"], "failed")
+        self.assertLess(result["target"]["passed"], result["target"]["total"])
+        floor_division = patched(b2, "junction/network.py",
+                                 '    return round(whole(metres, 1, MAX_FOOTPATH, "footpath length") / WALK_SPEED)\n',
+                                 '    return -(-whole(metres, 1, MAX_FOOTPATH, "footpath length") // WALK_SPEED)\n')
+        self.assertTrue(self.assertFixes(b2, floor_division)["localization"]["gold_function_hit"])
+        text_only = patched(b2, "junction/journey.py",
+                            '        return f"walk {self.minutes} min ({self.metres} m) {self.start} -> {self.end}"\n',
+                            '        return f"walk {-(-self.metres // 80)} min ({self.metres} m) {self.start} -> {self.end}"\n')
+        self.assertFailsWith(b2, text_only, ["probe_walk_transfer_rounding_plan", "probe_walking_minutes_round_up"])
+        both_days = patched(b3, "junction/timetable.py", "        for listed in (service_day, service_day - ONE_DAY):\n",
+                            "        for listed in (service_day - ONE_DAY, service_day, service_day + ONE_DAY):\n")
+        self.assertTrue(self.assertFixes(b3, both_days)["localization"]["gold_function_hit"])
+        forget_all = patched(b3, "junction/timetable.py", "        for listed in (service_day, service_day - ONE_DAY):\n",
+                             "        for listed in list(self._listings):\n")
+        self.assertFixes(b3, forget_all)
+        boards_only = patched(b3, "junction/boards.py", "    for hop in timetable.connections(day):\n",
+                              "    timetable._listings.clear()\n    for hop in timetable.connections(day):\n")
+        self.assertFailsWith(b3, boards_only, ["probe_night_cancel_feed_plan"], exact=True)
+
+    def test_junction_report_numbers_reproduce_on_clean_and_buggy(self):
+        clean_values = {
+            "probe_b1": ["07:45 WIE -> 09:30 RZE, 1h 45m, 1 transfer", "  07:45 WIE -> 07:57 KRK  R5 R1",
+                         "  08:02 KRK -> 09:30 RZE  IC31 IC1"],
+            "probe_b2": ["07:00 GLW -> 08:01 SOS, 1h 01m, 1 transfer", "  07:00 GLW -> 07:26 KAT  KS1 G1",
+                         "  walk 4 min (250 m) KAT -> KTB", "  07:40 KTB -> 08:01 SOS  B12 M2"],
+            "probe_b3": [["Radom 2026-03-10", "00:37       TLK8   Kielce"], ["Radom 2026-03-10", "01:02 +25   TLK8   Kielce"],
+                         "01:02 RAD -> 02:05 KIE, 1h 03m, 0 transfers"]}
+        buggy_values = {
+            "probe_b1": ["07:30 WIE -> 09:30 RZE, 2h 00m, 1 transfer", "  07:30 WIE -> 07:52 KRB  B7 B1",
+                         "  walk 3 min (240 m) KRB -> KRK", "  08:02 KRK -> 09:30 RZE  IC31 IC1"],
+            "probe_b2": ["07:00 GLW -> 07:50 SOS, 50m, 1 transfer", "  07:00 GLW -> 07:26 KAT  KS1 G1",
+                         "  walk 3 min (250 m) KAT -> KTB", "  07:29 KTB -> 07:50 SOS  B12 M1"],
+            "probe_b3": [["Radom 2026-03-10", "00:37       TLK8   Kielce"], ["Radom 2026-03-10", "00:37       TLK8   Kielce"],
+                         "00:37 RAD -> 01:40 KIE, 1h 03m, 0 transfers"]}
+        quoted = [["07:45 WIE -> 09:30 RZE, 1h 45m, 1 transfer", "07:30 WIE -> 09:30 RZE, 2h 00m, 1 transfer", "07:57", "08:02"],
+                  ["walk 4 min (250 m) KAT -> KTB", "walk 3 min (250 m) KAT -> KTB", "08:01", "07:50", "07:29", "07:40"],
+                  ["01:02 +25   TLK8   Kielce", "01:02 RAD -> 02:05 KIE", "00:37 RAD -> 01:40 KIE", "+25"]]
+        self.assertEqual(run_snippet(g.clean_files("junction"), JUNCTION_REPORTS, "junction"), clean_values)
+        actual = {probe: run_snippet(g.buggy_files(g.load_case(case_id)), JUNCTION_REPORTS, "junction")[probe]
+                  for probe, case_id in zip(["probe_b1", "probe_b2", "probe_b3"], JUNCTION)}
+        self.assertEqual(actual, buggy_values)
+        for case_id, numbers in zip(JUNCTION, quoted):
+            for number in numbers:
+                self.assertIn(number, g.load_case(case_id)["report_text"])
 
 
 # --- Docker executor (fake ssh; the fake runs the real CHILD locally) --------------------------

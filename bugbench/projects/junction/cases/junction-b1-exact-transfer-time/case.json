@@ -1,0 +1,43 @@
+{
+ "case_id": "junction-b1-exact-transfer-time",
+ "project": "junction",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "easy",
+ "bug_class": "off_by_one_boundary",
+ "mutations": [
+  {
+   "file": "junction/planner.py",
+   "old": "    return departure - arrival >= network.transfer_minutes(station)\n",
+   "new": "    return departure - arrival > network.transfer_minutes(station)\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "junction/planner.py"
+  ],
+  "functions": [
+   "junction/planner.py::can_change"
+  ]
+ },
+ "symptom_files": [
+  "junction/planner.py",
+  "junction/journey.py"
+ ],
+ "call_hops_symptom_to_bug": 0,
+ "alternative_fix_sites": [
+  "junction/planner.py::can_change (any inclusive comparison, e.g. not departure - arrival < transfer)"
+ ],
+ "target_probes": [
+  "probe_change_exact_journeys",
+  "probe_change_exact_text_plan",
+  "probe_change_exact_transfer_time"
+ ],
+ "notes": "A change between trips at the same station needs MORE than the minimum transfer time instead of at least that time. Journeys whose only (or latest-departing) option uses exactly the transfer time get a later arrival or an earlier departure. Gaps longer than the transfer time and changes after a walk are unaffected (public tests). Probes use stations with transfer times 0, 2, 3, 4, 5, 6 and 7, the API, the text format and journeys(), so special-casing the report's station or 5 minutes fails.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 6757f080-bugbench-junction-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

@@ -1,0 +1,43 @@
+{
+ "case_id": "relay-b3-rejected-batch-tokens",
+ "project": "relay",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "hard",
+ "bug_class": "error_path_state_not_restored",
+ "mutations": [
+  {
+   "file": "relay/limiter.py",
+   "old": "                saved.setdefault(key, bucket.state())\n",
+   "new": "                saved[key] = bucket.state()\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "relay/limiter.py"
+  ],
+  "functions": [
+   "relay/limiter.py::Limiter.reserve"
+  ]
+ },
+ "symptom_files": [
+  "relay/script.py",
+  "relay/dispatcher.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "relay/limiter.py::Limiter.reserve (save each bucket only before its first take, e.g. `if key not in saved`, or snapshot every involved bucket before the loop, or give back exactly the units taken)"
+ ],
+ "target_probes": [
+  "probe_rejected_batch_script",
+  "probe_rejected_batch_then_submit",
+  "probe_rejected_reservation_restores"
+ ],
+ "notes": "The all-or-nothing reservation saves a bucket's state before every take instead of only before the first take of that key, so the rollback restores the state after the last successful take of the key: every earlier take of a repeated key stays charged. Needs a rejected batch (max wait exceeded) in which a key appears at least twice before or at the rejected job; batches whose keys appear once each, and single submissions, roll back correctly (public test). Symptoms: fewer tokens, later ready times and spurious RateLimited for later submissions, two modules away from the defect. Restoring buckets in Dispatcher.submit_batch instead passes the dispatcher and script probes but fails the direct Limiter.reserve probe, whose docstring and the README promise the guarantee.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 7b3e9a51-bugbench-relay-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

@@ -9,6 +9,10 @@ A third batch of three projects (`tally`, `quarry`, `trellis`, 9 more cases,
 all author-reviewed only) was added on 2026-11-16 with the same conventions;
 it is listed below the prototype rows in each table.
 
+A fourth batch (`relay`, `patchwork`, `junction`, 9 more cases, author-reviewed
+only) was added on 2026-11-16 later the same day, after the evaluation
+manifest was frozen; it is not part of `EVAL_MANIFEST.json`.
+
 | Project | Domain | Modules / lines / ~tokens | Cases (easy / medium / hard) |
 |---|---|---|---|
 | `stockroom` | warehouse ledger, FIFO lots, orders, journal DSL | 10 / 1,413 / 14.2K | tier boundary / snapshot alias / rollback order |
@@ -17,6 +21,9 @@ it is listed below the prototype rows in each table.
 | `tally` | double-entry bookkeeping: chart and ledger, closed periods, invoices/credit notes with per-code VAT, payments with early discounts, prepayments, reports, script DSL | 10 / 1,219 / 13.6K | discount last day / VAT rounded per line / rejected discounted payment not undone |
 | `quarry` | SQL engine over in-memory tables: lexer, precedence parser, typed tables with keys, joins, 3-valued logic, grouping, ordering | 10 / 1,319 / 14.0K | DESC tie order / right-associative `-` and `/` / failed INSERT leaves keys |
 | `trellis` | package resolver: semver with pre-releases, caret/tilde constraints, backtracking resolver, lock files, install order | 10 / 923 / 9.9K | caret on 0.0.x / install-order tie-break / requirement leak on backtracking |
+| `relay` | rate limiter + job queue on a virtual clock: per-key token buckets with debt and all-or-nothing reservations, backoff with reproducible jitter, priority backlog, simulated workers, retries and dead letters, script DSL | 10 / 1,163 / 13.4K | wait rounded down / ready-time tie-break / rejected batch keeps tokens |
+| `patchwork` | diff/patch tool: final-newline tracking, LCS diff with a documented tie-break, hunks, unified-format writer/parser, fuzzy and reverse apply, multi-file patch sets, three-way merge, diffstat | 10 / 1,108 / 11.9K | hunk merge gap bound / newline marker after a context line / fuzz trimming mutates the patch |
+| `junction` | rail timetable planner: times past 24:00, service calendars, transfer times and footpaths, delays/cancellations with a cached daily listing, round-based planner with tie-breaks, zone fares, boards, text format | 10 / 1,162 / 13.0K | exact transfer time / walking time rounded to nearest / night disruption misses next day's cached listing |
 
 ## 1. Why this benchmark
 
@@ -148,6 +155,78 @@ Case summaries for the third batch:
   required package leaks into later attempts (older versions or false
   conflicts). Building new lists in `_add_dependencies` passes.
 
+Case summaries for the fourth batch:
+
+- `relay-b1` (easy, rounding/units): the helper that turns missing bucket units
+  into a wait floors instead of rounding up, so with rates whose token count
+  does not divide the debt (3/s, 6/s, 7/s, 9/2s) a throttled job becomes ready
+  1 ms before its token exists (334/667 ms become 333/666 ms) and a max-wait
+  check accepts a take that needs 1 ms too much. Rates that divide evenly are
+  unaffected (all public tests). Fixing only the take path fails the direct
+  `wait` probe; special-casing 3/s fails the other rates.
+- `relay-b2` (medium, tie-break): the backlog's dispatch key compares tickets
+  before ready times, so among equal-priority ready jobs the one that entered
+  the backlog first wins over one that became ready earlier (delays, intake
+  throttling, retries that re-enter). Symptom in start order (stats/script, 2
+  hops). Sorting the ready list correctly passes; picking the job in the
+  dispatcher while leaving `Backlog.pop_ready` wrong fails the direct backlog
+  probe.
+- `relay-b3` (hard, error path): the all-or-nothing reservation saves a
+  bucket's state before every take instead of only the first take of that key,
+  so a rejected batch that names a key twice rolls back only the last take;
+  earlier takes stay charged. Later submissions get fewer tokens, later ready
+  times or spurious `RateLimited` (dispatcher/script, 2 hops). Needs a rejected
+  batch with a repeated key; batches with each key once and single submits are
+  restored correctly (public test). `if key not in saved` passes; restoring the
+  buckets in `Dispatcher.submit_batch` passes the dispatcher and script probes
+  but fails the direct `Limiter.reserve` probe, whose docstring and the README
+  state the guarantee.
+- `patchwork-b1` (easy, boundary): changes separated by exactly `2 × context`
+  unchanged lines get two hunks (`<` instead of `<=`); the report's two pins
+  six lines apart give `@@ -1,5 +1,5 @@` and `@@ -6,5 +6,5 @@` instead of
+  `@@ -1,10 +1,10 @@`. Probes use contexts 0–4, replacements and insertions,
+  `diff_texts`, hunk shapes and patch-set summaries; special-casing a gap of
+  6 fails. Gap bound `< 2 * context + 1` passes.
+- `patchwork-b2` (medium, parser): a `\ No newline at end of file` marker
+  after a context line marks only the old side, so the parsed hunk says the
+  new file ends with a newline and applying it adds one. Symptom in patch-set
+  application (2 hops from the hunk reader). Markers after `-`/`+` lines and
+  patches built in memory are unaffected (public test). `last in (" ", "+")`
+  passes; keeping the target's newline in the apply step when the hunk ends
+  in context fails the direct parsed-flags probe only.
+- `patchwork-b3` (hard, aliasing): `Hunk.trimmed` (used for fuzz) deletes the
+  context lines from the hunk's own list while the hunk keeps its start.
+  Inside one application the fuzz-2 attempt over-trims (offset +1 reported);
+  afterwards the patch set is damaged, and the next tree is searched for
+  context-less lines from the old start, so a nearer identical line in
+  another section is patched (`[client]` instead of `[server]`). Needs a
+  fuzzy application followed by reuse, or a fuzz-2 application; a single
+  fuzz-0/1 application is right (public test). 3 hops from `PatchSet.apply`.
+  Slicing a copy in `trimmed` passes; copying the hunk in the apply step
+  fails the documented "this hunk is unchanged" probe; copying hunks per
+  file in the patch set also fails the fuzz-2 probes.
+- `junction-b1` (easy, boundary): a change between trips at one station needs
+  *more* than the minimum transfer time (`>` instead of `>=` in
+  `can_change`). Journeys that rely on an exact gap get a later arrival or,
+  through the latest-departure tie-break, an earlier departure. Probes use
+  transfer times 0, 2, 3, 4, 5, 6 and 7, the API, the text format and
+  `journeys()`; an `== 5` special case for the report fails.
+- `junction-b2` (medium, rounding/units): footpath walking time is
+  `round(metres / 80)` (banker's) instead of rounded up, so 250 m take 3
+  minutes, 200 m 2, 520 m 6. Symptom in planned journeys (planner, journey
+  text, 2 hops from `network.walking_minutes`). Multiples of 80 m are
+  unaffected (public tests). Rewriting only the walk text in journeys fails
+  the planner probe; `-(-m // 80)` in the gold function passes.
+- `junction-b3` (hard, caching/stale state): a disruption of service day D
+  drops the kept listings of D and D-1, but the after-midnight part of D's
+  trips is listed on D+1 (`connections` builds day X from service days X-1
+  and X, which looks symmetric with the buggy `- ONE_DAY`). Needs a trip past
+  midnight, the next day's board or plan first, then a delay, cancellation
+  or reinstatement. Same-day disruptions work (public test); line summaries
+  read stop times directly and are right (decoy). Clearing kept listings in
+  boards only fails the planner probe; clearing all listings or also
+  dropping D+1 in `_invalidate` passes.
+
 Excluded: concurrency and timing bugs (non-deterministic grading), performance
 bugs, security bugs, and anything needing network, files outside the tree or
 wall-clock time.
@@ -214,6 +293,9 @@ observation differs or the child fails. Survivors need human review.
 | `tally` | 309 | 293 (94.8%) | 16, all reviewed as equivalent: 8 `frozen`/`eq` flags, 2 `seq ± 1` (only relative order is used), `break`→`continue` when nothing is left to allocate, 3 unreachable script length bounds, 2 `[0]`→`[-1]` on one-argument commands |
 | `quarry` | 333 | 310 (93.1%) | 23, all reviewed as equivalent: 9 `frozen`, 3 defaults always passed explicitly, 8 `[0]`→`[-1]` on one-element lists or grouped columns, 2 sign tests with a zero dividend, 1 exception-message-only change |
 | `trellis` | 208 | 193 (92.8%) | 13 equivalent (4 `frozen`/field flags/defaults, a one-element index, 6 sorts whose result is sorted again or already sorted, `break`→`continue`, an `or`→`and` that ends in the same error); 1 real gap: the `MAX_STEPS` limit is not probed (2 mutants) |
+| `relay` | 282 | 264–265 (93.6–94.0%) | 17–18, all reviewed as equivalent or probabilistic: `sorted`→`list` over a set of key names is killed only when the hash seed orders it non-alphabetically; 2 `frozen`, 9 `[0]`→`[-1]` on one-element lists or one-word commands, 1 exception-message-only `sorted`, `sorted`→`list` of runs ending in one `_complete` call (all end at the same moment), `break`→`continue` after an empty backlog, `>`→`>=` at the cap (same value), and two `>`/`<` flips at exactly zero missing units (`_ms_for(0)` is 0). Three real gaps from the first run (262/282 = 92.9% → 265/282: trailing junk after a duration, `by_key` order, `revive <id> after <d>` in the script) got probes before freezing |
+| `patchwork` | 361 | 356 (98.6%) | 5, all reviewed as equivalent: 1 exception-message-only change (`line is None`), 3 on the end-sentinel guard in `opcodes` (`mi < len(a) and mj < len(b)`: `<=`/`or` only differ for the sentinel, which both forms exclude), 1 `largest > width` → `>=` (factor 1 is a no-op). First run 334/361 (92.5%); probes `probe_option_defaults`, `probe_fuzz_limits`, `probe_edge_ordering` were added for default `ignore_space` flags, fuzz room/limit, three-change grouping, tree/fuzzy/churn ordering, `width=1`, parse of a patch without a final newline or ending in `--- `, and overlap against the previous hunk |
+| `junction` | 259 | 241 (93.1%) | 18, all reviewed as equivalent or undocumented: 7 `frozen=True`; 2 `sorted`->`list` of small-int weekday sets (CPython already iterates them in order); `zones <= 3`->`< 3` (3 zones price the same in both branches); 2 latest-departure candidate filters (`>`->`>=`, `and`->`or`; the best departure itself is tried before any smaller moment); `moment <= LATEST`->`<` (no journey can depart at 47:59); `break`->`continue` after a round without improvement; final `<`->`<=` on the destination (an improved label is already strictly earlier); 3 tie-replacement mutants in the round search (`<`->`<=` for ride and walk labels, `sorted`->`list` of improved stations) that only change which of several equal journeys is kept beyond the three documented tie-breaks. First run was 233/259 (90.0%); probes added for `1h59m`, zone-list order, the `journeys` count limit, sorted exception dates (hash-seed dependent) and the 47:59 delay bound, and `lines()` order. |
 
 For the two newer projects, about 99% of behaviour-changing, non-equivalent
 mutants are killed. Edge probes were added after the first run (inkwell 78%→90%,
@@ -417,6 +499,15 @@ Secondary:
 | Bug reports | 0.2–0.5K | 0.2–0.3K | 0.2–0.3K |
 | Hidden probes | 28 | 28 | 27 |
 
+| Item (fourth batch) | relay | patchwork | junction |
+|---|---|---|---|
+| Package | ~13.4K (10 modules, 1,163 lines) | ~11.9K (10 modules, 1,108 lines) | ~13.0K (10 modules, 1,162 lines) |
+| Largest module | `dispatcher.py` 196 lines, ~2.4K | `unified.py` 192 lines, ~2.0K | `timetable.py` 244 lines, ~3.0K |
+| Public tests + README | ~2.8K (13 tests) | ~2.8K (15 tests) | ~2.9K (16 tests) |
+| Repo map | ~2.8K | ~2.5K | ~3.0K |
+| Bug reports | 0.3K | 0.3–0.4K | 0.3–0.4K |
+| Hidden probes | 36 | 36 | 31 |
+
 Compress the repo map to ~1.5K for fixers by dropping dunders and errors.
 
 Per call: **prompt ≤ 7.5K, completion ≤ 8K** (thinking on, so reasoning and
@@ -577,6 +668,7 @@ compute.
 cd apps/swarm-lab
 python3 -m unittest discover -s bugbench -p 'test_*.py'      # 45 offline tests
 python3 -m unittest bugbench/test_bugbench.py                # 52 grader/invariant tests after the third batch
+                                                              # 61 after the fourth batch
 python3 bugbench/bugbench_grader.py verify                     # case invariants (all 9 cases)
 python3 bugbench/bugbench_grader.py mutants inkwell            # probe strength (~1 min per project)
 python3 bugbench/bugbench_grader.py materialize stockroom-b3-rollback-order /tmp/case

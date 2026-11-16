@@ -1,0 +1,45 @@
+{
+ "case_id": "junction-b3-night-listing-stale",
+ "project": "junction",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "hard",
+ "bug_class": "caching_stale_state",
+ "mutations": [
+  {
+   "file": "junction/timetable.py",
+   "old": "        for listed in (service_day, service_day + ONE_DAY):\n",
+   "new": "        for listed in (service_day, service_day - ONE_DAY):\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "junction/timetable.py"
+  ],
+  "functions": [
+   "junction/timetable.py::Timetable._invalidate"
+  ]
+ },
+ "symptom_files": [
+  "junction/boards.py",
+  "junction/planner.py",
+  "junction/loader.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "junction/timetable.py::Timetable._invalidate (clear every kept listing, or also drop the next day's)",
+  "junction/timetable.py::Timetable.connections (no caching at all)"
+ ],
+ "target_probes": [
+  "probe_night_cancel_feed_plan",
+  "probe_night_delay_after_board",
+  "probe_night_reinstate_arrivals"
+ ],
+ "notes": "A disruption of service day D drops the kept listings of D and D-1, but the after-midnight part of D's trips is shown in the listing of D+1 (connections() builds day X from service days X-1 and X, so the inverse is D and D+1). If the next day's listing was already built (a board or a plan for the early morning), delays, cancellations and reinstatements of the night trip stay invisible there. Needs: a trip running past midnight, a board or plan of the next calendar day, then a disruption. Same-day disruptions are fine (public test), and line summaries read stop times directly and are always right (decoy). Clearing the kept listings inside boards only fixes boards; the planner probe still fails.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 6757f080-bugbench-junction-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

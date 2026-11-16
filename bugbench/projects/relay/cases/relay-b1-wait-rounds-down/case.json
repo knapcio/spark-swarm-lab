@@ -1,0 +1,45 @@
+{
+ "case_id": "relay-b1-wait-rounds-down",
+ "project": "relay",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "easy",
+ "bug_class": "rounding_units",
+ "mutations": [
+  {
+   "file": "relay/limiter.py",
+   "old": "        return -(-missing // self.rate.tokens)\n",
+   "new": "        return missing // self.rate.tokens\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "relay/limiter.py"
+  ],
+  "functions": [
+   "relay/limiter.py::Bucket._ms_for"
+  ]
+ },
+ "symptom_files": [
+  "relay/dispatcher.py",
+  "relay/script.py",
+  "relay/limiter.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "relay/limiter.py::Bucket._ms_for (any exact ceiling, e.g. (missing + tokens - 1) // tokens or math.ceil)",
+  "relay/limiter.py::Bucket.take and Bucket.wait (rounding up at both call sites instead of in the helper)"
+ ],
+ "target_probes": [
+  "probe_intake_wait_rounds_up",
+  "probe_intake_wait_script",
+  "probe_intake_wait_start_times"
+ ],
+ "notes": "The helper that converts missing bucket units into a wait floors the division instead of rounding up, so whenever the rate's token count does not divide the missing units (3/s, 6/s, 7/2s, 9/2s) a debt wait is 1 ms short: the job becomes ready one millisecond before its token is fully earned, and a max-wait check can accept a take that needs 1 ms more than allowed. Rates that divide evenly (2/s, 4/s, 5/s, 1/250ms, 10/s) are unaffected, which is all the public tests use. Probes cover Bucket.take/wait, Limiter.reserve/wait/available and a max-wait boundary, dispatcher ready and start times for two rates, and the script language, so fixing only take (not wait) or special-casing 3/s fails.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 7b3e9a51-bugbench-relay-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

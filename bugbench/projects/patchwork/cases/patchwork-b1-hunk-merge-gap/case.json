@@ -1,0 +1,44 @@
+{
+ "case_id": "patchwork-b1-hunk-merge-gap",
+ "project": "patchwork",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "easy",
+ "bug_class": "off_by_one_boundary",
+ "mutations": [
+  {
+   "file": "patchwork/hunks.py",
+   "old": "        if groups and op[1] - groups[-1][-1][2] <= 2 * context:\n",
+   "new": "        if groups and op[1] - groups[-1][-1][2] < 2 * context:\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "patchwork/hunks.py"
+  ],
+  "functions": [
+   "patchwork/hunks.py::make_hunks"
+  ]
+ },
+ "symptom_files": [
+  "patchwork/patchset.py",
+  "patchwork/unified.py",
+  "patchwork/stats.py"
+ ],
+ "call_hops_symptom_to_bug": 1,
+ "alternative_fix_sites": [
+  "patchwork/hunks.py::make_hunks (any equivalent bound, e.g. gap < 2 * context + 1)"
+ ],
+ "target_probes": [
+  "probe_diff_texts_gap_boundary",
+  "probe_diffstat_gap_boundary",
+  "probe_hunk_gap_boundary"
+ ],
+ "notes": "Two changes separated by exactly 2 x context unchanged lines are split into two hunks (strict < instead of <=). Gaps one shorter or longer behave correctly (public tests use gaps 2 and 7 with context 3). Probes cover contexts 0-4, replacements and insertions, diff text, hunk shapes and patch-set summaries, so special-casing context 3 or the report file fails.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 4aa5da40-bugbench-patchwork-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}
