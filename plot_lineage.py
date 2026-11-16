@@ -64,14 +64,8 @@ def render(document,output,title='Search lineage DAG'):
     size=(max(9,depth*2.5),max(5,width*1.5+2));fig,ax=plt.subplots(figsize=size)
     parallel=defaultdict(list)
     for edge in document['edges']:parallel[edge['source'],edge['target']].append(edge)
-    relations=set()
-    for(a,b),edges in parallel.items():
-        for index,edge in enumerate(edges):
-            relation=edge.get('relation','edge');relations.add(relation);color,style=STYLES.get(relation,('#666666',':'))
-            curve=.14*(index-(len(edges)-1)/2)
-            ax.add_patch(FancyArrowPatch(positions[a],positions[b],arrowstyle='-|>',mutation_scale=12,
-                linewidth=1.3,color=color,linestyle=style,alpha=.8,shrinkA=48,shrinkB=48,
-                connectionstyle=f'arc3,rad={curve}',zorder=1))
+    relations={edge.get('relation','edge')for edge in document['edges']}
+    boxes={}
     selected=document.get('selected_program')or{};selected_id='program-'+str(selected.get('candidate_index'))
     pruned={name for event in document.get('selections',[])for name in event.get('pruned_ids',[])}
     for node in document['nodes']:
@@ -79,9 +73,10 @@ def render(document,output,title='Search lineage DAG'):
         exact=(node.get('verification')or{}).get('solved')is True
         face='#FFF2CC'if node.get('kind')=='review'else'#DFF3ED'if node.get('origin')=='derived'else'#F3F5F7'
         border='#6F42C1'if frozen else'#009E73'if exact else'#666666'
-        ax.text(*positions[name],label(node,frozen),ha='center',va='center',fontsize=8,zorder=3,
+        text=ax.text(*positions[name],label(node,frozen),ha='center',va='center',fontsize=8,zorder=3,
             bbox=dict(boxstyle='round,pad=.4',facecolor=face,edgecolor=border,
                       linewidth=2.4 if frozen or exact else 1,linestyle='--'if name in pruned and not frozen else'-'))
+        boxes[name]=text.get_bbox_patch()
     legends=[Line2D([0],[0],color=STYLES.get(r,('#666666',':'))[0],linestyle=STYLES.get(r,('#666666',':'))[1],label=r.replace('_',' '))for r in sorted(relations)]
     legends += [Line2D([0],[0],color='#009E73',linewidth=2.4,label='Exact solution: recorded verifier proof'),
                 Line2D([0],[0],color='#6F42C1',linewidth=2.4,label='Explicitly frozen/selected source'),
@@ -90,6 +85,15 @@ def render(document,output,title='Search lineage DAG'):
     ax.legend(handles=legends,loc='upper left',bbox_to_anchor=(0,-.03),ncol=3,fontsize=8,frameon=False)
     fig.text(.01,.01,'DAG retains every recorded edge. Conflicts may be repaired; unselected does not mean incorrect. Layout is not evidence of causal contribution.',fontsize=8)
     fig.subplots_adjust(bottom=min(.3,1.4/size[1]),top=.94,left=.02,right=.98)
+    # Initialize real text extents after layout; clip arrows to each box boundary.
+    fig.canvas.draw()
+    for(a,b),edges in parallel.items():
+        for index,edge in enumerate(edges):
+            relation=edge.get('relation','edge');color,style=STYLES.get(relation,('#666666',':'))
+            curve=.14*(index-(len(edges)-1)/2)
+            ax.add_patch(FancyArrowPatch(positions[a],positions[b],patchA=boxes[a],patchB=boxes[b],
+                arrowstyle='-|>',mutation_scale=12,linewidth=1.3,color=color,linestyle=style,
+                alpha=.8,shrinkA=3,shrinkB=3,connectionstyle=f'arc3,rad={curve}',zorder=1))
     targets[0].parent.mkdir(parents=True,exist_ok=True)
     fig.savefig(targets[0],bbox_inches='tight');dpi=min(140,math.sqrt(30_000_000/(size[0]*size[1])))
     fig.savefig(targets[1],dpi=dpi,bbox_inches='tight');plt.close(fig)
