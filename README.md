@@ -1,6 +1,6 @@
 # Swarm Lab: verified agent search on four DGX Sparks
 
-**Completed exploratory overnight study.** [Article draft](ARTICLE_DRAFT.md) · [X draft for the owner to publish](X_POST_DRAFT.md) · [DeepSeek reference](results/reference-deepseek-v1-analysis/REPORT.md) · [Reproduction guide](REPRODUCING.md). Raw release packaging is being finalized.
+**Completed exploratory overnight study.** [Article draft](ARTICLE_DRAFT.md) · [X draft for the owner to publish](X_POST_DRAFT.md) · [DeepSeek reference](results/reference-deepseek-v1-analysis/REPORT.md) · [Reproduction guide](REPRODUCING.md). [Published raw evidence: 85.9 MB archive, manifests and checksums](EVIDENCE_RELEASE.md).
 
 The frozen primary comparison covers 900 attempts:
 24 arithmetic tasks and 18 Python-function tasks, three sampling seeds, and
@@ -39,7 +39,7 @@ API seeds do not guarantee identical GPU execution.
 
 The separate native DeepSeek TP4 reference completed **72/72 arithmetic and 54/54 coding attempts**, on the same 24/18 tasks and three repetitions, with independent verification. This is a pinned custom abliterated checkpoint and a different serving/compute recipe, not an equal-cost model ranking. Native client usage is complete; global server token cost is unknown. [Reference comparison and limitations](results/reference-deepseek-v1-analysis/REPORT.md) · [independent audit](results/reference-deepseek-v1-audit/AUDIT.json). The planned Opus reference was unavailable because the account hit its weekly usage limit; the optional GLM hybrid was not run.
 
-**Nemotron study runtime: vLLM 0.32.0 ARM64, DSpark3, four independent replicas.** These replicas are now stopped and retained; the saved native DeepSeek TP4 production service is restored and running the separate quality reference. The uniform runtime-v2 study completed **900 primary attempts**, **80 supplemental solo-control attempts** (8 development and 72 evaluation), and **45 corrected loaded-queue cohorts / 2,016 attempts** (36 development batches and 9 evaluation batches). [Progress and exclusions](EVALUATION_PROGRESS.md).
+**Nemotron study runtime: vLLM 0.32.0 ARM64, DSpark3, four independent replicas.** These replicas are now stopped and retained; the saved native DeepSeek TP4 production service is restored after completing the separate quality reference. The uniform runtime-v2 study completed **900 primary attempts**, **80 supplemental solo-control attempts** (8 development and 72 evaluation), and **45 corrected loaded-queue cohorts / 2,016 attempts** (36 development batches and 9 evaluation batches). [Progress and exclusions](EVALUATION_PROGRESS.md).
 
 The arithmetic primary four-sample reasoning ensemble solved **49/72 attempts (68.1%)**; sequential own-feedback refinement solved **45/72 (62.5%; task-cluster 95% interval 47.2–77.8%)**, versus **18/72 (25.0%)** for one reasoning call. The paired ensemble-minus-refinement difference is **+5.56 percentage points (95% interval −5.56 to +16.67)**, spanning zero. These are repeated attempts on **24 distinct tasks**, with separate execution schedules and different realized costs. [Completed stronger-solo comparison](results/solo-control-v2/complete-comparison/solo-comparison/REPORT.md).
 

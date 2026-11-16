@@ -22,4 +22,4 @@ For context, our pinned native DeepSeek TP4 reference solved all 126 original ma
 Code, protocols, plots, real proposal/review trees and evidence:
 https://github.com/knapcio/spark-swarm-lab
 
-Suggested figures: arithmetic confidence intervals; additional-graph confirmation; real reviewer lineage. Full article draft: ARTICLE_DRAFT.md. Release link can be added after evidence packaging completes.
+Suggested figures: arithmetic confidence intervals; additional-graph confirmation; real reviewer lineage. Full article draft: ARTICLE_DRAFT.md. Evidence release: https://github.com/knapcio/spark-swarm-lab/releases/tag/study-20261116

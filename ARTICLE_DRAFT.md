@@ -6,7 +6,7 @@ We wanted to find out whether a large population of small language-model agents 
 
 The useful result was more specific than “more agents are smarter.” Independent complete solutions and execution feedback helped. Voting at every step did not become the strongest method. The strongest graph results appeared when we switched to a different workflow: generating a reusable solver program and executing it on CPU. That changes both the candidate representation and the execution process.
 
-The prototype, protocols, raw evidence and plots are in [Spark Swarm Lab](https://github.com/knapcio/spark-swarm-lab). Model-generated programs ran only inside constrained CPU Docker sandboxes.
+The prototype, protocols, raw evidence and plots are in [Spark Swarm Lab](https://github.com/knapcio/spark-swarm-lab). Model-generated programs ran only inside constrained CPU Docker sandboxes. [Download the canonical evidence archive and checksums](EVIDENCE_RELEASE.md).
 
 ## The hardware and model
 

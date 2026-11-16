@@ -123,12 +123,10 @@ Original 12-graph outcomes remain separate. Full audit snapshots retain original
 absolute paths and require the original study environment; this portable command
 uses only the public evidence copies.
 
-## Study-bound orchestration and planned archive
+## Study-bound orchestration and published archive
 
 `run_csp_search.py`, `program_search.py`, `confirm_coding.py`, `run_references.py`,
 `run_program_confirmation.py`, `report_program_confirmation.py --run`
 and `report_completed_studies.py --run` require original study receipts/gates;
 a fresh checkout cannot execute those complete pipelines. Do not fabricate gates.
-After completion, an archive of exact orchestration sources, source hashes,
-canonical ledgers/receipts and completed exports is planned; it is not yet
-available.
+The [published evidence archive](EVIDENCE_RELEASE.md) contains exact orchestration sources, source hashes, canonical ledgers/receipts and completed exports. Original absolute paths and admissions remain provenance rather than portable launch commands. Download and verify the release manifests before using archived evidence.
