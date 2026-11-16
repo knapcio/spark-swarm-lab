@@ -97,6 +97,7 @@ def main(argv=None):
     p.add_argument('--model', required=True)
     p.add_argument('--seed', type=int, required=True)
     p.add_argument('--events', required=True)
+    p.add_argument('--max-tokens', type=int, default=8192)
     p.add_argument('--run', action='store_true')
     args = p.parse_args(argv)
     initial, args.target = parse_puzzle(args.puzzle)
@@ -105,7 +106,7 @@ def main(argv=None):
         print(json.dumps(dict(mode='plan', model_calls=0)))
         return 0
     events = Events(args.events, 'index_original_stream')
-    budget = Budget(1, 8192)
+    budget = Budget(1, args.max_tokens)
     client = StreamClient(args.endpoint, args.model, budget, events, args.seed)
     experiment = Experiment(args, client, events)
     puzzle_id = 'p0-' + fingerprint(initial, args.target)[:10]
@@ -114,7 +115,7 @@ def main(argv=None):
     try:
         events.emit('puzzle_start', puzzle_id=puzzle_id, target=args.target, state=canonical(initial))
         root = experiment.node(initial, None, 0, puzzle_id, 0)
-        plan = client.call(0, 'plan', prompt_for(experiment, initial, 'index_original'), 8192,
+        plan = client.call(0, 'plan', prompt_for(experiment, initial, 'index_original'), args.max_tokens,
                            node_id=root, puzzle_id=puzzle_id, variant='index_original')
         result = replay_plan(experiment, initial, root, plan, puzzle_id, 0)
         result.update(method='index_original_stream', variant='index_original')

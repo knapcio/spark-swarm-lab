@@ -36,7 +36,7 @@ def make_jobs(corpora, output, source, plan, endpoint):
                     if plan.get('transport') == 'stream':  # same method, streamed, no wall-clock cutoff
                         command = [sys.executable, str(HERE / 'ds_stream_worker.py'), '--run', '--puzzle', puzzle,
                                    '--endpoint', endpoint, '--seed', agent_seed_value, '--events', str(events),
-                                   '--model', plan['model']]
+                                   '--model', plan['model'], '--max-tokens', str(plan.get('max_tokens', 8192))]
                     else:
                         command = [sys.executable, str(source / 'followup72_worker.py'), '--run', '--variant', variant,
                                    '--puzzle', puzzle, '--endpoint', endpoint, '--seed', agent_seed_value,
