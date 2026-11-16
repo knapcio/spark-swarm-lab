@@ -85,7 +85,7 @@
   "study": "arithmetic-v2-confirmation-v1",
   "matrix": {
     "dataset": "datasets/arithmetic-v2/tasks.json",
-    "dataset_protocol": "arithmetic-v2-corpus-v1",
+    "dataset_protocol": "synthetic-countdown-v2",
     "split": "evaluation",
     "tasks": 48,
     "seeds": [
@@ -96,5 +96,8 @@
     "cases": 144,
     "agent_runs": 1728
   },
-  "scope": "Fresh confirmation, normal difficulty: arithmetic-v2 evaluation split (48 tasks, generated after this freeze by the frozen 6c7dcc0 constructor). Development split unused."
+  "scope": "Fresh confirmation, normal difficulty: arithmetic-v2 evaluation split (48 tasks, generated after this freeze by the frozen 6c7dcc0 constructor). Development split unused.",
+  "errata": [
+    "2026-11-16 ~11:50, after generation and before any model call: dataset_protocol corrected from \"arithmetic-v2-corpus-v1\" (plan name, typed by mistake) to \"synthetic-countdown-v2\", the PROTOCOL constant of the frozen 6c7dcc0 constructor. No design field changed."
+  ]
 }
