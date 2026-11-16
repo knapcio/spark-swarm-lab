@@ -1,0 +1,71 @@
+{
+  "verified": true,
+  "complete": true,
+  "completed_jobs": 768,
+  "created_utc": "2026-11-16T03:04:44.640937+00:00",
+  "execution_revision": "66de0f195101f31d394f2d869c01538e79a2f7d8",
+  "prospective_plan_sha256": "4b25b675ace76ecfd15863241cd28178d9b3f5e4ad0171f5cbc945451eaf9061",
+  "dataset_sha256": "b1267cbd9f371383402ff116a9139c22515c046d924d6b6f6b6df2cee8fda85e",
+  "graphs": 96,
+  "programs": 8,
+  "grades": 768,
+  "model_calls": 0,
+  "counts": {
+    "independent4/solved": 376,
+    "proofs_replayed": 626,
+    "negative_status/passed": 0,
+    "cleanup_verified": 768,
+    "sequential16/solved": 237,
+    "negative_status/failed": 13,
+    "negative_status/timeout": 17,
+    "negative_status/error": 125
+  },
+  "original12_separate_validation": {
+    "sequential16/cases": 48,
+    "sequential16/solved": 29,
+    "independent4/cases": 48,
+    "independent4/solved": 47
+  },
+  "factorial_cells": 12,
+  "graphs_per_cell": 8,
+  "selected_sources": {
+    "s1-sequential16": "83b6f778ac40e9022c091e3cc56343f245cdc3312b5fdbf09680e6670158d90c",
+    "s1-independent4": "fe4bd37be0783f0e9a19c84d73f5746b992905203e03dc3ce1de4ed3776a9e93",
+    "s2-sequential16": "31ddf773cb864c78375b7295dee423ab4c4f1750c9a0cf8e5f5ac7a6f8d97656",
+    "s2-independent4": "0ca8e5697d9a3c8731fbafd8d04052dcd88a25f466fba04ad7b58b6874115d3c",
+    "s3-sequential16": "3b2d9498c01ade8dbac8d6b03d85bf372f0931584b745f8b35d13f9764974b37",
+    "s3-independent4": "c3b43a636a5960da52ad8df67d72d1952d7d2689c84973b65ca85d7a728a6039",
+    "s4-sequential16": "02a8d77f450fe1c44bff11080ee328feb0d39c4d6358407f25544d68e29968b9",
+    "s4-independent4": "3972d15eed0ed1dbbe606813b014e327e0e397bd3f54fd1a4f8a82243db076d5"
+  },
+  "checks": [
+    "frozen source and exact qualified grader/image pins",
+    "prospective corpus before original program calls",
+    "all8 original selected sources and development-only earliest-best selection",
+    "all96 original holdout grades occurred after source selection",
+    "fresh96 simple connected graphs,12factorialcells, no labeled duplicates",
+    "all768 child payload hashes bind originalgraph+selectedsource+10second timeout",
+    "independent full vertex/domain/edge proof replay",
+    "candidate negatives preserved, no source replacement/retries",
+    "all cleanup receipts and finalfour idle health",
+    "source_before/source_after identity"
+  ],
+  "limitations": [
+    "Only original outer graph assignments independently verified; no candidate source was executed by auditor.",
+    "Returned child observations are unauthenticated; positive acceptance depends on exact original graph proof and unchanged-input flag. Negative exception/timeout classifications rely on retained qualified transport reports.",
+    "No per-grade start timestamp or container identifier is retained; immutable runner order establishes binding-before-first-grade and one serial worker perhost, not independent process tracing.",
+    "768 grades share96 graphs and8 selected programs from4paired training episodes; not768 independent tasks. No universal correctness or100% guarantee.",
+    "Original12 evaluation results remain separate. Remote CPU time is unknown; local parent CPU intervals overlap."
+  ],
+  "input_sha256": {
+    "runs/program-confirmation-v1/metadata.json": "dde553d400bce070f4a2c5d7bf6fc99211172f48005d50ecb907f90f8b9806cc",
+    "runs/program-confirmation-v1/grades.jsonl": "9239592bfb824d7df05864eca0ecb59e439ae48c2fda7bd9eb6794d2b1e8ce2c",
+    "runs/program-confirmation-v1/summary.json": "51c72c6370b7b6dc79cfc3067fa5d58a764dc8f2276172da17defbac5f40409b",
+    "runs/program-confirmation-v1/bindings.json": "3d2b2eb21d80ee997195300c07a9fa9bcf66bc10f6c59ae0299873b392042795",
+    "runs/program-confirmation-v1/corpus.json": "b1267cbd9f371383402ff116a9139c22515c046d924d6b6f6b6df2cee8fda85e",
+    ".runtime/PROGRAM_CONFIRMATION_LAUNCH.json": "282f4577ab85df1e9aa60495c21a31aaa0284429816c0a7b7cd55c69fe725aca",
+    ".runtime/PROGRAM_CONFIRMATION_EXECUTION_FROZEN.json": "522114ab2050a7081daa9082cc4b99605b833c530a78b1ab7c55ccfbbd995e03",
+    ".runtime/program-confirmation-admission-v1/owner-admission.json": "f08c8e7f425fab838adfdc7748fca61ec4cfcdbb58a106a79c595f2fe8ffdff4"
+  },
+  "auditor_sha256": "869fa5d06a196ab76767937d07d185c124746a2d2d28a24013bfdf96e83cabd4"
+}
