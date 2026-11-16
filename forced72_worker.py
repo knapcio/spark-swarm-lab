@@ -4,7 +4,7 @@ import argparse
 import json
 
 from harness import Budget, Events, Experiment, canonical, fingerprint, parse_puzzle
-from forced72 import VARIANTS, ForcedClient, run_forced
+from forced72 import CAPS, VARIANTS, ForcedClient, run_forced
 
 
 def main(argv=None):
@@ -22,7 +22,7 @@ def main(argv=None):
         p.error('Study tasks require four or six strictly positive integers')
     args.agents, args.allow_fractions, args.thinking = 1, False, True
     args.rounds, args.max_tokens = 5, 8192
-    args.max_calls, args.max_completion_tokens = 2, 8192
+    args.max_calls, args.max_completion_tokens = 2, CAPS[args.variant][1]
     if not args.run:
         print(json.dumps(dict(mode='plan', config=vars(args), model_calls=0)))
         return 0

@@ -111,6 +111,15 @@ class ForcedTests(unittest.TestCase):
         self.assertFalse(result['solved'] or result['budget_forced'])
         self.assertNotIn('Leftover numbers are allowed', c.prompt)
 
+    def test_long_variant_uses_whole_context_budget(self):
+        c = FakeForced([sse('notes', [7] * 14848, 'length'), sse('</think>{"moves":[{"i":0,"j":1,"op":"+"}]}', [8] * 20, 'stop')])
+        c.budget = h.Budget(2, 16000)
+        e = engine(c)
+        c.events = e.events
+        result = f.run_forced(e, STATE, 'p', 'long_forced_explicit')
+        self.assertTrue(result['solved'] and result['budget_forced'])
+        self.assertEqual((c.bodies[0]['max_tokens'], c.bodies[1]['max_tokens']), (14848, 16000 - 14848))
+
     def test_original_variant_uses_original_prompt(self):
         c, _ = self.run_case([sse('n</think>' + GOOD, [5], 'stop')], variant='forced_original')
         self.assertNotIn('Leftover numbers are allowed', c.prompt)

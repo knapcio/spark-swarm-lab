@@ -23,10 +23,13 @@ from harness import parse_json_response
 
 SYSTEM = 'Solve the precise arithmetic task. Return only the requested JSON object. Do not explain or use tools.'
 VARIANTS = {'forced_explicit': 'index_explicit', 'forced_original': 'index_original',
-            'plain_original': 'index_original'}
+            'plain_original': 'index_original', 'long_forced_explicit': 'index_explicit',
+            'long_forced_original': 'index_original'}
+# long_*: same agent with the whole 16K context: thinking up to 14848, total completion 16000.
 # plain_original = the original single reasoning call (index_original, 8192, no second call) on this transport.
 THINK_CAP = 7168
-TOTAL = 8192
+TOTAL = 8192  # defaults; per-variant caps in CAPS
+CAPS = {name: (14848, 16000) if name.startswith('long_') else (THINK_CAP, TOTAL) for name in VARIANTS}
 END_THINK = '</think>'
 FORCE_TEXT = '\n</think>\n'
 IDLE_TIMEOUT = 120
@@ -138,15 +141,16 @@ def run_forced(experiment, initial, puzzle_id, variant, agent_id=0):
         raise ValueError('unknown variant')
     e = experiment
     client = e.client
+    think_cap, total = CAPS[variant]
     budget = client.budget.snapshot()
-    if (e.args.allow_fractions or budget['max_calls'] != 2 or budget['max_completion_tokens'] != TOTAL
+    if (e.args.allow_fractions or budget['max_calls'] != 2 or budget['max_completion_tokens'] != total
             or budget['calls'] != 0 or budget['completion_tokens_reserved'] != 0):
-        raise ValueError('fresh case Budget(2,8192) and integer rules required')
+        raise ValueError('fresh case Budget(2, variant total) and integer rules required')
     root = e.node(initial, None, 0, puzzle_id, agent_id)
     prompt = prompt_for(e, initial, VARIANTS[variant])
     prompt_ids = client.chat_prompt_ids(prompt)
     plain = variant.startswith('plain_')
-    first = client.complete(agent_id, 'plan', prompt_ids, TOTAL if plain else THINK_CAP, node_id=root,
+    first = client.complete(agent_id, 'plan', prompt_ids, total if plain else think_cap, node_id=root,
                             puzzle_id=puzzle_id, variant=variant, followup_phase='think')
     plan, second, forced = parse_plan(first['answer']), None, False
     # Same trigger as the scribe commit: no parsed plan, cut by length, own tokens available.
@@ -154,7 +158,7 @@ def run_forced(experiment, initial, puzzle_id, variant, agent_id=0):
                 and len(first['token_ids']) > 0 and first['error'] is None)
     if eligible:
         forced = first['answer'] is None  # still thinking -> force the end; else just let the answer finish
-        remaining = TOTAL - client.budget.snapshot()['completion_tokens_charged']
+        remaining = total - client.budget.snapshot()['completion_tokens_charged']
         suffix = client.force_ids() if forced else []
         e.events.emit('budget_forced' if forced else 'answer_continued', node_id=root, puzzle_id=puzzle_id,
                       variant=variant, parent_request_id=first['request_id'],
