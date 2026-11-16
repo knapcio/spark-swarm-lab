@@ -1,0 +1,83 @@
+{
+  "protocol": "optional-frozen-program-confirmation-execution-v1",
+  "prepared_utc": "2026-11-16T01:09:06.819808+00:00",
+  "status": "PREPARATION_ONLY; no program outcome inspected for this runner and no live grades/model/SSH/server calls. Root review, immutable source freeze and explicit future admission required.",
+  "upstream_plan": "PROGRAM_CONFIRMATION_SELECTION.json",
+  "upstream_plan_sha256": "4b25b675ace76ecfd15863241cd28178d9b3f5e4ad0171f5cbc945451eaf9061",
+  "dataset": "datasets/program-confirmation-v1/tasks.json",
+  "program_source_revision": "c5ed1190ac380cf1ed1193b0bd7971dcc0eb1bae",
+  "arms": [
+    "sequential16",
+    "independent4"
+  ],
+  "trained_seeds": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "programs": 8,
+  "graphs": 96,
+  "fresh_grading_jobs": 768,
+  "image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+  "source_sha256": {
+    "run_program_confirmation.py": "251f01e4b83e4119940f47fcdf66236e074069218bea229aff2fbca8132180af",
+    "test_run_program_confirmation.py": "203d8fadc3120892db5a181a5e87e954697d1d8e24efaaf128c1c7b5fc775837",
+    "csp_program_grader.py": "7fa45db50bfbef04c868b35ddb3aab67fceab4818ca5820bba2427f14ff6873a",
+    "test_csp_program_grader.py": "1ab51b9ead1dde2b36c73dd51da6c6024f77bd6b1d4bf36539e196346f41daa3",
+    "independent_code_grader.py": "c4324123bb75a8712150adb3e06e1da4e1e44a7d91516597d9a35caa372c2726",
+    "csp_tasks.py": "4a49d387687eb15c98cf226980b63b5a786c67a60ec94fa489ad58855b08373e",
+    "program_search.py": "52bd9bda514c1a561763f7bedbb4a73de22987b71210ca37c2a38653200e7deb",
+    "test_program_search.py": "ad3aebbb7eef01d01454576e49335f7a5792d4cf27ff317ced5d716bdb652871",
+    "PROGRAM_SEARCH_SELECTION.json": "2f48e62258510e858a490de3cde6c884df450d8debf0391963a4327a5654d987",
+    "reference_worker.py": "17f83d857a820a0dfc8665cd8330a94836d60dbc4b16ea73d4f05433dc49cbe9",
+    "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+    "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+    "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+    "PROGRAM_CONFIRMATION_SELECTION.json": "4b25b675ace76ecfd15863241cd28178d9b3f5e4ad0171f5cbc945451eaf9061",
+    "prepare_program_confirmation.py": "b0b22f5e4c5025bb0ab8fb17c346243e4321a706339534ac2ee469293e98f014",
+    "datasets/program-confirmation-v1/tasks.json": "b1267cbd9f371383402ff116a9139c22515c046d924d6b6f6b6df2cee8fda85e",
+    "datasets/csp-v1/tasks.json": "29d659bbc7b4b819ea7d572db073459eb30d6c19f7fda2114e7c174c375de960"
+  },
+  "execution": {
+    "cpu_workers": 4,
+    "one_serial_worker_per_host": true,
+    "host_mapping": "Original trained seed1/2/3/4 to Spark_01/02/03/04; both arms sequential, odd seeds sequential16 first, even seeds independent4 first.",
+    "graph_order": "Exact stored96-graph order; all8 selected artifacts once each, even identical source SHA. No result cache, retries, filtering, repair, reselection or fresh-evaluation feedback.",
+    "limits": "Qualified unchanged one fresh10s/256MiB/1CPU container per graph; no GPU/network/mount additions. No model requests. Internal program randomness is not seeded or retried by this runner.",
+    "evidence": "Copy all8 source bytes and complete corpus; freeze bindings and every source/grader/image/config/test hash before first grade. Append/flush raw grades, candidate_output and exact proof; independently replay every returned assignment proof.",
+    "failure_policy": "Candidate wrong/error/timeout/OOM/protocol/mutation outcomes remain failures. Infrastructure, cleanup, source/payload identity or proof integrity faults stop new dispatch; finish already owned in-flight cleanup. Missing/unknown stays explicit.",
+    "cost": "Whole CPU grading wall includes SSH/container/cleanup; remote CPU seconds are unmeasured/null, never model-call equivalents."
+  },
+  "admission": {
+    "automatic_launch": false,
+    "scope": "Before any model switch, after original45/full10stagepost/all8program episodes complete and all4Nemotron replicas healthy/idle. Post-reference alternative is not implemented.",
+    "prerequisites": "Full hash-linked45 gate; exact mandatory/eligible-skipped10stage post gate; c5ed producer source identity; all8episodes16calls/12original evaluations; evaluation_seen=false selection source freezes; original3live grader-smoke receipt.",
+    "manual_receipt": {
+      "required_keys": [
+        "verified:true",
+        "model_switch_started:false",
+        "workloads_drained:true",
+        "optional_time_admitted:true",
+        "checked_utc",
+        "nodes[4]"
+      ],
+      "age_seconds": 900,
+      "node_keys": [
+        "seed",
+        "host",
+        "endpoint",
+        "healthy:true",
+        "idle:true",
+        "owner:swarm-lab-20261115",
+        "runtime_sha256",
+        "image",
+        "model_revision",
+        "draft_revision"
+      ],
+      "node_scope": "Exact trained seed/host/localhost18081..18084 mapping; runtime image/target/draft must match pinned runtime.json. Root supplies fresh independently verified source/owner evidence; runner also reads current metrics/health at both boundaries."
+    },
+    "timing": "Optional only if root reserves enough time; never displace mandatory strong references or restoration. No changes to existing gates/serving/source/corpora."
+  },
+  "reporting": "Same-distribution96graphs, original12 reported separately. Graph blocks and4paired trained episodes are correlated; no generic100%correctness claim. Child observations remain unauthenticated, while original outer graph proof is checked."
+}
