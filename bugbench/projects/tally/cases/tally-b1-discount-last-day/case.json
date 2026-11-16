@@ -1,0 +1,44 @@
+{
+ "case_id": "tally-b1-discount-last-day",
+ "project": "tally",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "easy",
+ "bug_class": "off_by_one_boundary",
+ "mutations": [
+  {
+   "file": "tally/payments.py",
+   "old": "                if on <= invoice.discount_date:\n",
+   "new": "                if on < invoice.discount_date:\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "tally/payments.py"
+  ],
+  "functions": [
+   "tally/payments.py::PaymentBook._plan"
+  ]
+ },
+ "symptom_files": [
+  "tally/payments.py",
+  "tally/reports.py",
+  "tally/script.py"
+ ],
+ "call_hops_symptom_to_bug": 1,
+ "alternative_fix_sites": [
+  "tally/invoices.py::Invoice.discount_date (returning the day after the last discount day) only if every use is adjusted consistently; not recommended"
+ ],
+ "target_probes": [
+  "probe_discount_on_last_day",
+  "probe_discount_last_day_reports",
+  "probe_discount_last_day_script"
+ ],
+ "notes": "The early payment discount is refused on the last day of the discount period (strict < instead of <=). Payments inside the window work (public test pays on day 4 of 10). Probes cover two different terms (2%/10 and 1.5%/7), the API, statement/aging/trial balance and the script language, so special-casing the report numbers fails.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 5e6f1d2a-bugbench-tally-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

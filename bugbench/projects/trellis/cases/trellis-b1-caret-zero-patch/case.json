@@ -1,0 +1,42 @@
+{
+ "case_id": "trellis-b1-caret-zero-patch",
+ "project": "trellis",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "easy",
+ "bug_class": "off_by_one_boundary",
+ "mutations": [
+  {
+   "file": "trellis/constraint.py",
+   "old": "    elif minor > 0 or len(numbers) == 2:\n",
+   "new": "    elif minor >= 0 or len(numbers) == 2:\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "trellis/constraint.py"
+  ],
+  "functions": [
+   "trellis/constraint.py::_caret"
+  ]
+ },
+ "symptom_files": [
+  "trellis/resolver.py",
+  "trellis/workspace.py",
+  "trellis/graph.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [],
+ "target_probes": [
+  "probe_caret_zero_zero_patch",
+  "probe_caret_zero_zero_resolution",
+  "probe_caret_zero_zero_workspace"
+ ],
+ "notes": "A caret on a full 0.0.x version (^0.0.3) gets the 0.x upper bound (<0.1.0) instead of <0.0.4. ^1.2.3, ^0.2.3, ^0.0 and ^0 are right (public tests cover ^1.2.3 and ^0.2.3). Probes cover the constraint text, allows(), resolution with direct and transitive carets, lock checks and the tree view, so special-casing the report's package fails.",
+ "canary": "BUGBENCH-HIDDEN-CANARY c8d2f047-bugbench-trellis-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

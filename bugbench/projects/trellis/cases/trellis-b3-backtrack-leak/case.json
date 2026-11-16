@@ -1,0 +1,44 @@
+{
+ "case_id": "trellis-b3-backtrack-leak",
+ "project": "trellis",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "hard",
+ "bug_class": "aliasing_mutation",
+ "mutations": [
+  {
+   "file": "trellis/resolver.py",
+   "old": "        return _State(dict(self.chosen), {name: list(found) for name, found in self.requirements.items()})\n",
+   "new": "        return _State(dict(self.chosen), dict(self.requirements))\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "trellis/resolver.py"
+  ],
+  "functions": [
+   "trellis/resolver.py::_State.copy"
+  ]
+ },
+ "symptom_files": [
+  "trellis/workspace.py",
+  "trellis/lockfile.py",
+  "trellis/resolver.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "trellis/resolver.py::Resolver._add_dependencies (build a new list instead of appending in place, e.g. state.requirements[dep] = state.requirements.get(dep, []) + [...])"
+ ],
+ "target_probes": [
+  "probe_backtrack_keeps_newest",
+  "probe_backtrack_no_false_conflict",
+  "probe_backtrack_workspace_lock"
+ ],
+ "notes": "The search state is copied shallowly, so requirement lists are shared between a state and the attempts made from it. When an abandoned candidate added a requirement on a package that already had requirements, that requirement stays behind: later candidates see it, the resolver settles for older versions or reports a false conflict that blames a release it did not choose. Needs backtracking past a release whose dependency hits an already-required package; backtracking that only adds new packages is unaffected (public test).",
+ "canary": "BUGBENCH-HIDDEN-CANARY c8d2f047-bugbench-trellis-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

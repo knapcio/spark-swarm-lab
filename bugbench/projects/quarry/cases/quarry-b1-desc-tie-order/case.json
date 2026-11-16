@@ -1,0 +1,43 @@
+{
+ "case_id": "quarry-b1-desc-tie-order",
+ "project": "quarry",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "easy",
+ "bug_class": "wrong_tie_break_ordering",
+ "mutations": [
+  {
+   "file": "quarry/planner.py",
+   "old": "        records.sort(key=lambda record: sort_key(function(record)), reverse=descending)\n",
+   "new": "        records.sort(key=lambda record: sort_key(function(record)))\n        if descending:\n            records.reverse()\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "quarry/planner.py"
+  ],
+  "functions": [
+   "quarry/planner.py::run_select"
+  ]
+ },
+ "symptom_files": [
+  "quarry/planner.py",
+  "quarry/engine.py"
+ ],
+ "call_hops_symptom_to_bug": 1,
+ "alternative_fix_sites": [
+  "quarry/planner.py::run_select (any stable descending sort, e.g. sorting with a negated or inverted key)"
+ ],
+ "target_probes": [
+  "probe_desc_keeps_tied_rows_in_order",
+  "probe_desc_ties_with_limit_and_nulls",
+  "probe_desc_ties_in_groups"
+ ],
+ "notes": "Descending ORDER BY items are sorted ascending and then reversed, which reverses rows that tie on that item. With several ORDER BY items, a descending first item reverses the order established by the later items. Descending order without ties is correct (public test). Probes cover single and multiple keys, LIMIT/OFFSET, NULL keys, DISTINCT, GROUP BY with aggregate keys, positions and joins.",
+ "canary": "BUGBENCH-HIDDEN-CANARY a41c7e93-bugbench-quarry-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

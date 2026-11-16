@@ -22,11 +22,14 @@ import bugbench_grader as g  # noqa: E402
 
 CASES = ["stockroom-b1-tier-boundary", "stockroom-b2-snapshot-alias", "stockroom-b3-rollback-order"]
 PROJECT = "stockroom"
-PROJECTS = ["agenda", "inkwell", "stockroom"]
+PROJECTS = ["agenda", "inkwell", "quarry", "stockroom", "tally", "trellis"]
 ALL_CASES = {
     "agenda": ["agenda-b1-slot-grid-default", "agenda-b2-weekday-order", "agenda-b3-split-cancelled-count"],
     "inkwell": ["inkwell-b1-round-half-even", "inkwell-b2-and-or-precedence", "inkwell-b3-trim-line-drift"],
     "stockroom": CASES,
+    "tally": ["tally-b1-discount-last-day", "tally-b2-vat-per-line", "tally-b3-rejected-discount-payment"],
+    "quarry": ["quarry-b1-desc-tie-order", "quarry-b2-right-assoc-minus", "quarry-b3-failed-insert-keys"],
+    "trellis": ["trellis-b1-caret-zero-patch", "trellis-b2-install-order-ready", "trellis-b3-backtrack-leak"],
 }
 
 
@@ -546,6 +549,230 @@ def probe_b3():
         for name, source in (("inkwell", ink), ("agenda", agenda)):
             clean_values, buggy_values, quoted = expected[name]
             with self.subTest(name):
+                self.assertEqual(run_snippet(g.clean_files(name), source, name), clean_values)
+                cases = ALL_CASES[name]
+                actual = {probe: run_snippet(g.buggy_files(g.load_case(case_id)), source, name)[probe]
+                          for probe, case_id in zip(["probe_b1", "probe_b2", "probe_b3"], cases)}
+                self.assertEqual(actual, buggy_values)
+                for case_id, numbers in zip(cases, quoted):
+                    for number in numbers:
+                        self.assertIn(number, g.load_case(case_id)["report_text"])
+
+
+# --- the third batch: tally, quarry, trellis -----------------------------------------------------
+TALLY, QUARRY, TRELLIS = ALL_CASES["tally"], ALL_CASES["quarry"], ALL_CASES["trellis"]
+THIRD_BATCH_REPORTS = {
+    "tally": """
+import datetime
+def probe_b1():
+    from tally import Books
+    books = Books()
+    books.add_customer("ACME", "Acme Ltd", days=30, discount="2", discount_days=10)
+    books.invoice("A-1", "ACME", datetime.date(2026, 5, 4), [("Widget", "10", "10.00", "S")])
+    payment = books.receive("P-1", "ACME", "120.54", datetime.date(2026, 5, 14))
+    return [list(payment.allocations), books.statement("ACME")[0]]
+def probe_b2():
+    from tally import Books
+    books = Books()
+    books.add_customer("BETA", "Beta", days=14)
+    invoice = books.invoice("INV-31", "BETA", datetime.date(2026, 5, 4),
+                            [("Toner", "1", "189.00", "S"), ("Pens", "12", "1.15", "S"), ("Labels", "2", "12.35", "S")])
+    return [invoice.tax, invoice.gross, books.vat_report(datetime.date(2026, 5, 1), datetime.date(2026, 5, 31))[0]]
+def probe_b3():
+    from tally import Books, PeriodClosed
+    books = Books()
+    books.add_customer("ACME", "Acme Ltd", days=30, discount="2", discount_days=10)
+    books.invoice("A-1", "ACME", datetime.date(2026, 4, 24), [("Widget", "10", "10.00", "S")])
+    books.invoice("A-2", "ACME", datetime.date(2026, 4, 28), [("Widget", "5", "10.00", "S")])
+    books.close_period(datetime.date(2026, 4, 30))
+    try:
+        books.receive("P-1", "ACME", "180.81", datetime.date(2026, 4, 29))
+    except PeriodClosed:
+        pass
+    payment = books.receive("P-2", "ACME", "180.81", datetime.date(2026, 5, 3))
+    return [list(payment.allocations), books.statement("ACME")[-1], books.balance("1100")]
+""",
+    "quarry": """
+def probe_b1():
+    from quarry import Engine
+    db = Engine()
+    db.run_script("CREATE TABLE scores (player TEXT, team TEXT, points INTEGER);"
+                  "INSERT INTO scores VALUES ('Ola', 'red', 90), ('Bart', 'blue', 75), ('Celina', 'red', 90), "
+                  "('Dawid', 'blue', 90), ('Ewa', 'red', 60), ('Filip', 'blue', 75)")
+    return [", ".join(r[0] for r in db.query("SELECT player FROM scores ORDER BY team DESC, player")),
+            ", ".join(r[0] for r in db.query("SELECT player FROM scores ORDER BY points DESC"))]
+def probe_b2():
+    from quarry import Engine
+    db = Engine()
+    db.run_script("CREATE TABLE lines (no INTEGER, gross INTEGER, discount INTEGER, shipping INTEGER);"
+                  "INSERT INTO lines VALUES (1, 1000, 100, 50), (2, 500, 0, 25)")
+    return [str(db.query("SELECT no, gross - discount - shipping AS net FROM lines")), db.query("SELECT 12 / 2 * 3")[0][0]]
+def probe_b3():
+    from quarry import Engine
+    db = Engine()
+    db.execute("CREATE TABLE orders (no INTEGER PRIMARY KEY, product INTEGER, qty INTEGER, city TEXT)")
+    out = []
+    for sql in ("INSERT INTO orders VALUES (7, 10, 1, 'Lodz'), (8, 11, 2, 'Lodz'), (9, 12, 'three', 'Lodz')",
+                "INSERT INTO orders VALUES (7, 10, 1, 'Lodz'), (8, 11, 2, 'Lodz'), (9, 12, 3, 'Lodz')"):
+        try:
+            out.append(db.execute(sql).rowcount)
+        except Exception as exc:
+            out.append(type(exc).__name__)
+    return out + [db.query("SELECT COUNT(*) FROM orders")[0][0]]
+""",
+    "trellis": """
+def probe_b1():
+    from trellis import Constraint, Workspace
+    index = "tiny 0.0.3\\ntiny 0.0.4\\ntiny 0.0.9\\nweb 1.0.0: tiny ^0.0.3\\n"
+    lock = Workspace(index, '[project]\\nname = "shop"\\n[dependencies]\\nweb = "^1"\\n').install().lock
+    return [lock.splitlines()[2], str(Constraint.parse("^0.0.3"))]
+def probe_b2():
+    from trellis import Workspace
+    index = "fmt 2.0.0\\nlog 1.0.0: fmt *\\nweb 1.0.0: log *\\nauth 1.0.0: fmt *\\nzip 1.0.0\\n"
+    return str(Workspace(index, '[project]\\nname = "shop"\\n[dependencies]\\nweb = "*"\\nauth = "*"\\nzip = "*"\\n').install().order)
+def probe_b3():
+    from trellis import ResolutionImpossible, Workspace
+    index = "ui 1.1.0: theme ^2\\nui 1.0.0: theme ^1\\ntheme 1.0.0\\ntheme 1.1.0\\ntheme 1.2.0\\ntheme 2.0.0\\n"
+    try:
+        return Workspace(index, '[project]\\nname = "shop"\\n[dependencies]\\nui = "*"\\ntheme = "^1"\\n').install().lock.splitlines()[2:]
+    except ResolutionImpossible as exc:
+        return exc.lines
+""",
+}
+
+
+class ThirdBatchOracleTests(unittest.TestCase):
+    """Hand-computed values for target probes, independent of the reference implementations."""
+
+    def values(self, project):
+        return {name: obs.get("value") for name, obs in g.load_expected(project)["probes"].items()}
+
+    def test_tally_targets(self):
+        expected = self.values("tally")
+        # 10 x 10.00 = 100.00 + 23 % = 123.00; 2 % discount = 2.46; paid on day 10 settles 120.54 + 2.46
+        self.assertEqual(expected["probe_discount_on_last_day"][0], [["A-1", 12054, 246]])
+        # net 189.00 + 13.80 + 24.70 = 227.50; 23 % = 52.325 -> 52.33 (per line: 43.47 + 3.17 + 5.68 = 52.32)
+        self.assertEqual(expected["probe_vat_rounded_per_code"][0][:4], ["INV-31", 22750, 5233, 27983])
+        # 2 x 10.02 at 23 %: 20.04 x 0.23 = 4.6092 -> 4.61 once per code, not 2.30 + 2.30
+        self.assertEqual(expected["probe_vat_rounded_per_code"][4][0], ["S", 2004, 461])
+        self.assertEqual(expected["probe_rejected_discount_payment_restores_invoice"][:4], ["PeriodClosed", 12300, 0, 0])
+
+    def test_quarry_targets(self):
+        expected = self.values("quarry")
+        # 10-4-3, 12/2*3, 100/10/5, 7-2+1, 17%5*2, 7*3/2 (21/2 truncated), 2*7%4, 1-1-1-1
+        self.assertEqual(expected["probe_left_to_right_arithmetic"][0], [[3, 18, 2, 6, 4, 10, 2, -2]])
+        self.assertEqual(expected["probe_desc_keeps_tied_rows_in_order"][0],
+                         [["Ola"], ["Celina"], ["Dawid"], ["Bart"], ["Filip"], ["Ewa"]])
+        self.assertEqual(expected["probe_insert_retry_after_failed_batch"], [["error", "TypeMismatch"], [[], [], 3], [[7], [8], [9]]])
+
+    def test_trellis_targets(self):
+        expected = self.values("trellis")
+        self.assertEqual(expected["probe_caret_zero_zero_patch"][0], [">=0.0.3, <0.0.4", ["0.0.3"]])
+        # core first (only package without dependencies besides mid/zeta); alpha becomes ready and sorts before mid
+        self.assertEqual(expected["probe_install_order_ready_alphabetical"], ["core", "alpha", "mid", "zeta"])
+        self.assertEqual(expected["probe_backtrack_keeps_newest"][0], {"app-core": "1.0.0", "http": "2.2.0", "json": "2.4.0"})
+
+
+class ThirdBatchFixTests(unittest.TestCase):
+    def assertFixes(self, case_id, patch):
+        result = g.grade(case_id, patch)
+        self.assertEqual(result["status"], "passed", result.get("hidden"))
+        return result
+
+    def assertFailsWith(self, case_id, patch, probes, exact=False):
+        result = g.grade(case_id, patch)
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["regression"]["broken"], [])
+        if exact:
+            self.assertEqual(sorted(result["hidden"]["failed_probes"]), sorted(probes))
+        else:
+            self.assertTrue(set(probes) <= set(result["hidden"]["failed_probes"]), result["hidden"])
+        return result
+
+    def test_tally_alternative_masking_and_overfit(self):
+        self.assertFixes(TALLY[0], patched(TALLY[0], "tally/payments.py", "                if on < invoice.discount_date:\n",
+                                           "                if not on > invoice.discount_date:\n"))
+        overfit = patched(TALLY[0], "tally/payments.py", "                if on < invoice.discount_date:\n",
+                          "                if on < invoice.discount_date or on == datetime.date(2026, 5, 14):\n")
+        self.assertLess(g.grade(TALLY[0], overfit)["target"]["passed"], 3)
+        self.assertFixes(TALLY[1], patched(TALLY[1], "tally/tax.py",
+                                           "        group[1] += round_cents(Decimal(line.net) * rate / HUNDRED)\n",
+                                           "        group[1] = Decimal(group[0]) * rate / HUNDRED\n"))
+        invoice_only = patched(TALLY[1], "tally/invoices.py", "        self.tax_lines = tax_summary(self.lines)\n",
+                               "        self.tax_lines = [type(t)(t.code, t.net, round_cents(Decimal(t.net) * (t.rate or 0) / HUNDRED))\n"
+                               "                          for t in tax_summary(self.lines)]\n")
+        self.assertFailsWith(TALLY[1], invoice_only, ["probe_vat_rounded_per_code"], exact=True)
+        post_first = patched(TALLY[2], "tally/payments.py",
+                             "        done = []\n        try:\n            for invoice, take, discount in plan:\n"
+                             "                invoice.settle(take, discount)\n                done.append((invoice, take, discount))\n"
+                             "            return self.ledger.post(on, memo, postings, source=source)\n        except TallyError:\n"
+                             "            for invoice, take, discount in reversed(done):\n                invoice.settle(-take, discount)\n"
+                             "            raise\n",
+                             "        entry = self.ledger.post(on, memo, postings, source=source)\n"
+                             "        for invoice, take, discount in plan:\n            invoice.settle(take, discount)\n        return entry\n")
+        self.assertTrue(self.assertFixes(TALLY[2], post_first)["localization"]["gold_function_hit"])
+        no_once_rule = patched(TALLY[2], "tally/payments.py",
+                               "            if allow_discount and invoice.discount_date is not None and invoice.discount_taken == 0:\n",
+                               "            if allow_discount and invoice.discount_date is not None:\n")
+        self.assertFailsWith(TALLY[2], no_once_rule, ["probe_rejected_discount_payment_restores_invoice"])
+
+    def test_quarry_alternative_and_masking(self):
+        reverse_twice = patched(QUARRY[0], "quarry/planner.py", "        records.sort(key=lambda record: sort_key(function(record)))\n",
+                                "        if descending:\n            records.reverse()\n"
+                                "        records.sort(key=lambda record: sort_key(function(record)))\n")
+        self.assertFixes(QUARRY[0], reverse_twice)
+        associative_only = patched(QUARRY[1], "quarry/parser.py", "            right = self.expression(prec)\n",
+                                   '            right = self.expression(prec if op in ("AND", "OR", "||", "+", "*") else prec + 1)\n')
+        result = self.assertFailsWith(QUARRY[1], associative_only, ["probe_left_to_right_canonical_text"])
+        self.assertLess(result["target"]["passed"], result["target"]["total"])
+        rebuild = patched(QUARRY[2], "quarry/table.py", "        checked, seen = [], set()\n",
+                          "        if self.key_index is not None:\n            self._keys = {row[self.key_index] for row in self._rows}\n"
+                          "        checked, seen = [], set()\n")
+        self.assertTrue(self.assertFixes(QUARRY[2], rebuild)["localization"]["gold_function_hit"])
+
+    def test_trellis_alternative_and_overfit(self):
+        self.assertFixes(TRELLIS[0], patched(TRELLIS[0], "trellis/constraint.py", "    elif minor >= 0 or len(numbers) == 2:\n",
+                                             "    elif minor != 0 or len(numbers) == 2:\n"))
+        overfit = patched(TRELLIS[0], "trellis/constraint.py", "    elif minor >= 0 or len(numbers) == 2:\n",
+                          "    elif (minor >= 0 and patch != 3) or len(numbers) == 2:\n")
+        result = g.grade(TRELLIS[0], overfit)
+        self.assertEqual(result["status"], "failed")
+        self.assertLess(result["target"]["passed"], result["target"]["total"])
+        self.assertFixes(TRELLIS[1], patched(TRELLIS[1], "trellis/graph.py", "                ready.append(dependent)\n",
+                                             "                ready.append(dependent)\n                ready.sort()\n"))
+        fresh_lists = patched(TRELLIS[2], "trellis/resolver.py",
+                              "            state.requirements.setdefault(dep, []).append((constraint, source))\n",
+                              "            state.requirements[dep] = state.requirements.get(dep, []) + [(constraint, source)]\n")
+        self.assertFalse(self.assertFixes(TRELLIS[2], fresh_lists)["localization"]["gold_function_hit"])
+
+    def test_report_numbers_reproduce_on_clean_and_buggy(self):
+        expected = {
+            "tally": ({"probe_b1": [[["A-1", 12054, 246]], "A-1 2026-05-04 123.00 open 0.00"],
+                       "probe_b2": [5233, 27983, ["23%", "227.50", "52.33"]],
+                       "probe_b3": [[["A-1", 12054, 246], ["A-2", 6027, 123]], "balance due 0.00", 0]},
+                      {"probe_b1": [[["A-1", 12054, 0]], "A-1 2026-05-04 123.00 open 2.46"],
+                       "probe_b2": [5232, 27982, ["23%", "227.50", "52.32"]],
+                       "probe_b3": [[["A-1", 11808, 0], ["A-2", 5904, 0]], "balance due -3.69", 738]},
+                      [["2.46", "open 0.00", "open 2.46"], ["52.33", "279.83", "52.32", "279.82"],
+                       ["118.08", "59.04", "3.69", "7.38"]]),
+            "quarry": ({"probe_b1": ["Celina, Ewa, Ola, Bart, Dawid, Filip", "Ola, Celina, Dawid, Bart, Filip, Ewa"],
+                        "probe_b2": ["[(1, 850), (2, 475)]", 18], "probe_b3": ["TypeMismatch", 3, 3]},
+                       {"probe_b1": ["Ola, Ewa, Celina, Filip, Dawid, Bart", "Dawid, Celina, Ola, Filip, Bart, Ewa"],
+                        "probe_b2": ["[(1, 950), (2, 525)]", 2], "probe_b3": ["TypeMismatch", "DuplicateKey", 0]},
+                       [["Celina, Ewa, Ola, Bart, Dawid, Filip", "Ola, Ewa, Celina, Filip, Dawid, Bart"],
+                        ["[(1, 850), (2, 475)]", "[(1, 950), (2, 525)]", "returns 2 instead of 18"], ["DuplicateKey", "adds 3 rows"]]),
+            "trellis": ({"probe_b1": ["tiny 0.0.3", ">=0.0.3, <0.0.4"], "probe_b2": "['fmt', 'auth', 'log', 'web', 'zip']",
+                         "probe_b3": ["theme 1.2.0", "ui 1.0.0"]},
+                        {"probe_b1": ["tiny 0.0.9", ">=0.0.3, <0.1.0"], "probe_b2": "['fmt', 'zip', 'auth', 'log', 'web']",
+                         "probe_b3": ["no version of theme satisfies all requirements:", "  shop requires theme >=1.0.0, <2.0.0",
+                                      "  ui 1.1.0 requires theme >=2.0.0, <3.0.0"]},
+                        [["tiny 0.0.3", "tiny 0.0.9", "<0.0.4", "<0.1.0"],
+                         ["['fmt', 'auth', 'log', 'web', 'zip']", "['fmt', 'zip', 'auth', 'log', 'web']"],
+                         ["theme 1.2.0", "ui 1.1.0 requires theme >=2.0.0, <3.0.0"]]),
+        }
+        for name, (clean_values, buggy_values, quoted) in expected.items():
+            with self.subTest(name):
+                source = THIRD_BATCH_REPORTS[name]
                 self.assertEqual(run_snippet(g.clean_files(name), source, name), clean_values)
                 cases = ALL_CASES[name]
                 actual = {probe: run_snippet(g.buggy_files(g.load_case(case_id)), source, name)[probe]

@@ -5,11 +5,18 @@ run on it. Nothing here is a result. The Docker grading adapter is implemented
 and tested offline with a fake `ssh`; it has not yet been run against a real
 host.
 
+A third batch of three projects (`tally`, `quarry`, `trellis`, 9 more cases,
+all author-reviewed only) was added on 2026-11-16 with the same conventions;
+it is listed below the prototype rows in each table.
+
 | Project | Domain | Modules / lines / ~tokens | Cases (easy / medium / hard) |
 |---|---|---|---|
 | `stockroom` | warehouse ledger, FIFO lots, orders, journal DSL | 10 / 1,413 / 14.2K | tier boundary / snapshot alias / rollback order |
 | `inkwell` | text template engine: lexer, precedence parser, filters, includes, autoescape | 10 / 1,411 / 13.4K | round half-even / `and`-`or` precedence / line drift after whitespace trim |
 | `agenda` | calendar: recurrence rules, cancel/move/split, free slots, reports, schedule DSL | 8 / 942 / 10.6K | free-slot grid default / weekday order contract / split count after cancellation |
+| `tally` | double-entry bookkeeping: chart and ledger, closed periods, invoices/credit notes with per-code VAT, payments with early discounts, prepayments, reports, script DSL | 10 / 1,219 / 13.6K | discount last day / VAT rounded per line / rejected discounted payment not undone |
+| `quarry` | SQL engine over in-memory tables: lexer, precedence parser, typed tables with keys, joins, 3-valued logic, grouping, ordering | 10 / 1,319 / 14.0K | DESC tie order / right-associative `-` and `/` / failed INSERT leaves keys |
+| `trellis` | package resolver: semver with pre-releases, caret/tilde constraints, backtracking resolver, lock files, install order | 10 / 923 / 9.9K | caret on 0.0.x / install-order tie-break / requirement leak on backtracking |
 
 ## 1. Why this benchmark
 
@@ -106,6 +113,41 @@ Case summaries for the two newer projects:
   still count. Needs a repeating event, a cancellation before the split and
   a split; the old series loses a session and the new one gains one.
 
+Case summaries for the third batch:
+
+- `tally-b1` (easy, boundary): the early payment discount uses `on <
+  discount_date`, so a payment on the last discount day is only partial.
+  Probes use two different terms and the API, reports and script language.
+- `tally-b2` (medium, rounding): VAT is rounded per line and then summed
+  instead of once per VAT code (227.50 at 23 % gives 52.32, not 52.33).
+  Symptom in invoice totals, the VAT report and the trial balance (2 hops).
+  Computing VAT only inside `Invoice` fails the direct `tax_summary` probe.
+- `tally-b3` (hard, error path): the undo after a failed posting reverses the
+  payment but adds the early payment discount again. Needs a discount-earning
+  payment rejected for a closed period; afterwards the invoice has lost its
+  discount and the subledger disagrees with account 1100. Posting before
+  settling passes; dropping the "discount once" check fails.
+- `quarry-b1` (easy, tie-break): DESC is implemented as ascending sort plus
+  `reverse()`, which reverses ties, and a DESC first key reverses the order of
+  later keys. "Reverse, sort, reverse" passes.
+- `quarry-b2` (medium, precedence): the precedence-climbing loop recurses with
+  `prec` instead of `prec + 1`, so equal-precedence operators group to the
+  right (`10 - 4 - 3` is 9). Associative chains are unaffected. Keeping right
+  recursion for "associative" operators fails (`a * b / c`).
+- `quarry-b3` (hard, error path): a multi-row INSERT that fails after its first
+  row leaves the earlier rows' keys in the key index; a retry raises
+  `DuplicateKey`. UPDATE and DELETE rebuild the index (decoy). Rebuilding the
+  index at the start of `insert` passes.
+- `trellis-b1` (easy, boundary): `minor > 0` became `minor >= 0` in the caret
+  expansion, so `^0.0.3` allows `<0.1.0`.
+- `trellis-b2` (medium, tie-break): packages that become ready during the
+  topological sort are appended instead of inserted alphabetically. The order
+  stays valid, only the documented tie-break breaks. Re-sorting passes.
+- `trellis-b3` (hard, aliasing): the search state copies the requirement dict
+  but shares its lists, so an abandoned candidate's requirement on an already
+  required package leaks into later attempts (older versions or false
+  conflicts). Building new lists in `_add_dependencies` passes.
+
 Excluded: concurrency and timing bugs (non-deterministic grading), performance
 bugs, security bugs, and anything needing network, files outside the tree or
 wall-clock time.
@@ -169,6 +211,9 @@ observation differs or the child fails. Survivors need human review.
 | `inkwell` | 302 | 272 (90%) | 17 `frozen=True`→`False` (immutability is not observable through the documented API); 12 equivalent or reachable only with input rejected earlier (e.g. `index < best` for distinct openers, `targets[0]`/`[-1]` with one target); 1 real gap: `{#-#}` (empty comment with a dash) trims differently, undocumented |
 | `agenda` | 317 | 293–294 (92–93%) | 2 `frozen`; 21 equivalent (9 `[0]`→`[-1]` on one-element lists, `sorted(set(ints))`→`list(set(ints))` which CPython already orders, zero durations rejected by `Interval` anyway, ...); 1 probabilistic: `sorted`→`list` of a shared-attendee set is killed only when the hash seed orders the set non-alphabetically |
 | `stockroom` | 172 | 140 (81%) | 11 `frozen`; most others are unprobed type-validation branches (`bool`/`str` quantities, wrong-currency costs). The earlier ad-hoc count (92/95 of 114) used a narrower operator set |
+| `tally` | 309 | 293 (94.8%) | 16, all reviewed as equivalent: 8 `frozen`/`eq` flags, 2 `seq ± 1` (only relative order is used), `break`→`continue` when nothing is left to allocate, 3 unreachable script length bounds, 2 `[0]`→`[-1]` on one-argument commands |
+| `quarry` | 333 | 310 (93.1%) | 23, all reviewed as equivalent: 9 `frozen`, 3 defaults always passed explicitly, 8 `[0]`→`[-1]` on one-element lists or grouped columns, 2 sign tests with a zero dividend, 1 exception-message-only change |
+| `trellis` | 208 | 193 (92.8%) | 13 equivalent (4 `frozen`/field flags/defaults, a one-element index, 6 sorts whose result is sorted again or already sorted, `break`→`continue`, an `or`→`and` that ends in the same error); 1 real gap: the `MAX_STEPS` limit is not probed (2 mutants) |
 
 For the two newer projects, about 99% of behaviour-changing, non-equivalent
 mutants are killed. Edge probes were added after the first run (inkwell 78%→90%,
@@ -363,6 +408,15 @@ Secondary:
 | Repo map | ~3.2K | ~2.7K | ~2.0K |
 | Bug reports | 0.2–0.3K | 0.2–0.4K | 0.2–0.3K |
 
+| Item (third batch) | tally | quarry | trellis |
+|---|---|---|---|
+| Package | ~13.6K (10 modules, 1,219 lines) | ~14.0K (10 modules, 1,319 lines) | ~9.9K (10 modules, 923 lines) |
+| Largest module | `ledger.py` 237 lines, ~2.5K | `parser.py` 254 lines, ~2.8K | `constraint.py` 151 lines, ~1.6K |
+| Public tests + README | ~2.6K | ~2.4K | ~2.0K |
+| Repo map | ~2.7K | ~2.0K | ~1.9K |
+| Bug reports | 0.2–0.5K | 0.2–0.3K | 0.2–0.3K |
+| Hidden probes | 28 | 28 | 27 |
+
 Compress the repo map to ~1.5K for fixers by dropping dunders and errors.
 
 Per call: **prompt ≤ 7.5K, completion ≤ 8K** (thinking on, so reasoning and
@@ -493,6 +547,7 @@ compute.
 ```sh
 cd apps/swarm-lab
 python3 -m unittest discover -s bugbench -p 'test_*.py'      # 45 offline tests
+python3 -m unittest bugbench/test_bugbench.py                # 52 grader/invariant tests after the third batch
 python3 bugbench/bugbench_grader.py verify                     # case invariants (all 9 cases)
 python3 bugbench/bugbench_grader.py mutants inkwell            # probe strength (~1 min per project)
 python3 bugbench/bugbench_grader.py materialize stockroom-b3-rollback-order /tmp/case

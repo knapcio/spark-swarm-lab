@@ -1,0 +1,44 @@
+{
+ "case_id": "tally-b3-rejected-discount-payment",
+ "project": "tally",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "hard",
+ "bug_class": "error_path_state_not_restored",
+ "mutations": [
+  {
+   "file": "tally/payments.py",
+   "old": "                invoice.settle(-take, -discount)\n",
+   "new": "                invoice.settle(-take, discount)\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "tally/payments.py"
+  ],
+  "functions": [
+   "tally/payments.py::PaymentBook._apply"
+  ]
+ },
+ "symptom_files": [
+  "tally/reports.py",
+  "tally/script.py",
+  "tally/payments.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "tally/payments.py::PaymentBook._apply (post the entry before settling the invoices, so nothing needs undoing)"
+ ],
+ "target_probes": [
+  "probe_rejected_discount_payment_restores_invoice",
+  "probe_rejected_discount_payment_then_repay",
+  "probe_rejected_discount_payment_script"
+ ],
+ "notes": "The undo path after a failed posting reverses the payment but adds the early payment discount a second time instead of removing it. Only reachable when a payment that earns a discount is rejected (closed period); rejected payments without a discount restore correctly (public test and a regression probe). The invoice then looks discounted, loses its discount eligibility, and the subledger disagrees with the receivables account. Dropping the 'discount at most once' check masks the re-payment symptom but still fails probe_rejected_discount_payment_restores_invoice.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 5e6f1d2a-bugbench-tally-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

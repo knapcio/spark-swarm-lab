@@ -1,0 +1,42 @@
+{
+ "case_id": "trellis-b2-install-order-ready",
+ "project": "trellis",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "medium",
+ "bug_class": "wrong_tie_break_ordering",
+ "mutations": [
+  {
+   "file": "trellis/graph.py",
+   "old": "                bisect.insort(ready, dependent)\n",
+   "new": "                ready.append(dependent)\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "trellis/graph.py"
+  ],
+  "functions": [
+   "trellis/graph.py::install_order"
+  ]
+ },
+ "symptom_files": [
+  "trellis/workspace.py"
+ ],
+ "call_hops_symptom_to_bug": 1,
+ "alternative_fix_sites": [
+  "trellis/graph.py::install_order (any ready queue that always yields the alphabetically first ready package, e.g. a heap or re-sorting)"
+ ],
+ "target_probes": [
+  "probe_install_order_ready_alphabetical",
+  "probe_install_order_layers",
+  "probe_install_order_plan"
+ ],
+ "notes": "Packages that become ready during the topological sort are appended to the ready queue instead of being inserted in alphabetical order, so a package that becomes ready late can be installed after alphabetically later packages that were ready earlier. The order is still a valid topological order, so only the documented tie-break is violated. Chains and graphs whose late-ready packages sort last are unaffected (public test).",
+ "canary": "BUGBENCH-HIDDEN-CANARY c8d2f047-bugbench-trellis-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

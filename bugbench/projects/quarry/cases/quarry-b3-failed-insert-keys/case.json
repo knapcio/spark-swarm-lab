@@ -1,0 +1,42 @@
+{
+ "case_id": "quarry-b3-failed-insert-keys",
+ "project": "quarry",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "hard",
+ "bug_class": "error_path_state_not_restored",
+ "mutations": [
+  {
+   "file": "quarry/table.py",
+   "old": "                seen.add(key)\n",
+   "new": "                self._keys.add(key)\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "quarry/table.py"
+  ],
+  "functions": [
+   "quarry/table.py::Table.insert"
+  ]
+ },
+ "symptom_files": [
+  "quarry/engine.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "quarry/table.py::Table.insert (restore the key index on any failure, e.g. snapshot and roll back)"
+ ],
+ "target_probes": [
+  "probe_insert_retry_after_failed_batch",
+  "probe_failed_batch_keys_are_free",
+  "probe_failed_insert_in_script"
+ ],
+ "notes": "A multi-row INSERT that fails on a later row leaves the primary keys of the earlier rows in the key index although no row was stored. Retrying the corrected statement, or inserting one of those keys later, raises DuplicateKey. Needs a primary key, a multi-row INSERT failing after its first row, and a later insert of a leaked key with no UPDATE/DELETE in between (both rebuild the index, a decoy). Single-row failures are correct (public test). Rebuilding the index from the rows inside Engine only masks the symptom for engine callers; probes go through the engine, so an Engine-level rebuild after every failed insert would also pass and is an accepted alternative.",
+ "canary": "BUGBENCH-HIDDEN-CANARY a41c7e93-bugbench-quarry-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

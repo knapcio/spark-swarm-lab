@@ -1,0 +1,44 @@
+{
+ "case_id": "quarry-b2-right-assoc-minus",
+ "project": "quarry",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "medium",
+ "bug_class": "parser_precedence",
+ "mutations": [
+  {
+   "file": "quarry/parser.py",
+   "old": "            right = self.expression(prec + 1)\n",
+   "new": "            right = self.expression(prec)\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "quarry/parser.py"
+  ],
+  "functions": [
+   "quarry/parser.py::Parser.expression"
+  ]
+ },
+ "symptom_files": [
+  "quarry/expr.py",
+  "quarry/planner.py",
+  "quarry/engine.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "quarry/parser.py::Parser.expression (any loop that folds equal-precedence operators to the left)"
+ ],
+ "target_probes": [
+  "probe_left_to_right_arithmetic",
+  "probe_left_to_right_columns",
+  "probe_left_to_right_canonical_text"
+ ],
+ "notes": "Binary operators of equal precedence group to the right, so 10 - 4 - 3 is 9 and 12 / 2 * 3 is 2. Associative chains (a + b + c, AND, OR, ||) and mixed precedence (2 + 3 * 4) are unaffected (public tests pass). Symptoms appear in values, WHERE filters, UPDATE results and generated column names; patching evaluation or the canonical text cannot fix all three.",
+ "canary": "BUGBENCH-HIDDEN-CANARY a41c7e93-bugbench-quarry-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

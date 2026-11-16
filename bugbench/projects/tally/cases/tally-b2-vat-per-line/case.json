@@ -1,0 +1,42 @@
+{
+ "case_id": "tally-b2-vat-per-line",
+ "project": "tally",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "medium",
+ "bug_class": "rounding_units",
+ "mutations": [
+  {
+   "file": "tally/tax.py",
+   "old": "        group[1] += Decimal(line.net) * rate / HUNDRED\n",
+   "new": "        group[1] += round_cents(Decimal(line.net) * rate / HUNDRED)\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "tally/tax.py"
+  ],
+  "functions": [
+   "tally/tax.py::tax_summary"
+  ]
+ },
+ "symptom_files": [
+  "tally/invoices.py",
+  "tally/reports.py",
+  "tally/script.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [],
+ "target_probes": [
+  "probe_vat_rounded_per_code",
+  "probe_vat_per_code_reports",
+  "probe_vat_per_code_script"
+ ],
+ "notes": "VAT is rounded per line and then added, against the documented rule (sum the nets per code, round once). Visible only when several lines share a VAT code and their per-line roundings drift; single-line codes and exact-VAT lines are unaffected (public tests pass). The target probe also calls tax_summary directly, which its module docstring documents, so recomputing VAT only inside Invoice fails.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 5e6f1d2a-bugbench-tally-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}
