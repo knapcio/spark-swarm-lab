@@ -12,7 +12,7 @@ Python 3.10 and 3.12. These commands do not contact a model or change a server:
 ```sh
 git clone https://github.com/knapcio/spark-swarm-lab.git
 cd spark-swarm-lab
-git checkout 9662f2c97c9f4d5e628c550130c0c9761428f40b
+git checkout e2cbdf6
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-plot.txt
 .venv/bin/python -m unittest -q
@@ -83,9 +83,50 @@ controller. They are new experiments, not a replay of frozen results.
 `fleet.sh`/`connect.sh` operate the original hardware and are not deployment tools
 for an arbitrary endpoint.
 
+## Replay fresh-program confirmation without running candidate code
+
+The published fresh confirmation includes all 768 grade records, the 96 graphs
+and all eight frozen source copies. This command hashes source bytes and checks
+returned assignments; it never imports or executes those candidate programs,
+contacts a model, or launches a container:
+
+```sh
+.venv/bin/python - <<'PY'
+import hashlib, json
+from pathlib import Path
+from csp_tasks import load_tasks, verify_assignment
+from report_completed_studies import crossed_program_statistics
+
+base = Path('results/program-confirmation-v1-analysis')
+manifest = json.loads((base / 'manifest.json').read_text())
+for name, expected in manifest['files'].items():
+    assert hashlib.sha256((base / name).read_bytes()).hexdigest() == expected, name
+tasks = {t['id']: t for t in load_tasks(base / 'evidence/corpus.json', 'evaluation')}
+grades = [json.loads(line) for line in (base / 'evidence/grades.jsonl').read_text().splitlines()]
+assert len(grades) == len({(r['seed'], r['arm'], r['task_id']) for r in grades}) == 768
+for row in grades:
+    report = row['report']
+    assert row['infrastructure'] is False and report['cleanup_ok'] is True
+    source = base / f"evidence/selected-s{row['seed']}-{row['arm']}.py"
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == row['code_sha256']
+    if report.get('proof') is not None:
+        assert verify_assignment(tasks[row['task_id']], report['candidate_output']) == report['proof']
+    assert row['solved'] is report['solved']
+rows = [{k: r[k] for k in ('task_id', 'seed', 'arm', 'solved')} for r in grades]
+print(json.dumps(crossed_program_statistics(rows, 5000, 20261115), indent=2))
+PY
+```
+
+This reproduces finite stored outcomes and the graph/training-seed bootstrap.
+It does not rerun the CPU solvers or authenticate the original child process.
+Original 12-graph outcomes remain separate. Full audit snapshots retain original
+absolute paths and require the original study environment; this portable command
+uses only the public evidence copies.
+
 ## Study-bound orchestration and planned archive
 
-`run_csp_search.py`, `program_search.py`, `confirm_coding.py`, `run_references.py`
+`run_csp_search.py`, `program_search.py`, `confirm_coding.py`, `run_references.py`,
+`run_program_confirmation.py`, `report_program_confirmation.py --run`
 and `report_completed_studies.py --run` require original study receipts/gates;
 a fresh checkout cannot execute those complete pipelines. Do not fabricate gates.
 After completion, an archive of exact orchestration sources, source hashes,
