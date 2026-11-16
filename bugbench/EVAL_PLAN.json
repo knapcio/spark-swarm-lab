@@ -1,0 +1,47 @@
+{
+  "protocol": "bugbench-eval-v1",
+  "status": "FROZEN",
+  "frozen_note": "Frozen 2026-11-16 ~21:55 Europe/Warsaw before any model call on the 18 evaluation cases.",
+  "cases": [
+    "quarry-b1-desc-tie-order",
+    "quarry-b2-right-assoc-minus",
+    "quarry-b3-failed-insert-keys",
+    "tally-b1-discount-last-day",
+    "tally-b2-vat-per-line",
+    "tally-b3-rejected-discount-payment",
+    "trellis-b1-caret-zero-patch",
+    "trellis-b2-install-order-ready",
+    "trellis-b3-backtrack-leak",
+    "junction-b1-exact-transfer-time",
+    "junction-b2-walk-time-rounding",
+    "junction-b3-night-listing-stale",
+    "patchwork-b1-hunk-merge-gap",
+    "patchwork-b2-context-newline-marker",
+    "patchwork-b3-fuzz-trims-patch",
+    "relay-b1-wait-rounds-down",
+    "relay-b2-ready-time-tiebreak",
+    "relay-b3-rejected-batch-tokens"
+  ],
+  "manifest_sha256": "8f1ffd90fcce26c785cef37b9a919c04ce90a1f78eb6aeb4f469f8d136b772f5",
+  "seeds": [
+    1,
+    2
+  ],
+  "policies": [
+    "S1",
+    "S3",
+    "T3",
+    "V3"
+  ],
+  "policy_rule": "From the 9-case development runs (dev9-v1: S1 9/18, W1 9/18, S3 15/18; dev9-selfcheck-v1 partial at freeze: T1 1/4, T3 4/4, V3 2/2): keep S1 as single-agent baseline; keep every swarm policy that beat S1 on dev or is an arbiter-free self-check policy with no dev failure; drop W1 (no gain at 3.5x cost) and T1 (below S1). No prompt/budget change after this freeze.",
+  "selection": "Arbiter-free only (visible material, public tests, agent-written tests, votes, model reviews); one hidden grade of the selected patch; oracle (hidden grade of every distinct patch) reported separately as hindsight upper bound.",
+  "source_sha256": {
+    "agents.py": "9a17237a045ffc6498d4dd11cef498584f8459a062e3e12fb47f22d337826adb",
+    "run_agents.py": "4eaeff5238d55353c7baf81fbe4525627233e356c2177078bc299bcb5fb4af0a",
+    "bugbench_grader.py": "1b63ab22a2e8dff52bf695fd02ef8d847fa5bf6dc7ffbd2a19391b59662e3628"
+  },
+  "transport": "budget-forcing client, no wall-clock cutoff, 120 s idle timeout = infrastructure fault",
+  "grading": "pinned python@c61cffc3 container via ssh on Spark_04",
+  "scheduling": "--per-endpoint 8 --parallel-attempts 6; concurrent owned runs allowed (outcomes load-independent)",
+  "primary_outcome": "hidden-grade fix rate per policy over 36 attempts; paired by case; plus oracle gap, calls and tokens"
+}
