@@ -1,13 +1,26 @@
 {
   "protocol": "proposed-arithmetic-v2-corpus-v1",
-  "status": "PROPOSED",
+  "status": "FROZEN",
   "seed": 2026111601,
-  "counts": {"development": 16, "evaluation": 48},
+  "counts": {
+    "development": 16,
+    "evaluation": 48
+  },
   "shape": "Equal four/six-number counts within each split; exact make_tasks.generate RNG construction/filter order with only split counts parameterized.",
   "distribution_scope": "Same positive-integer/subset construction and filters; no uniform-hardness or minimum-depth matching claim. No CPU exhaustive solver or unsolvable tripwires in this corpus.",
-  "source_files_to_pin_before_freeze": ["make_arithmetic_v2.py", "test_make_arithmetic_v2.py", "make_tasks.py", "harness.py"],
-  "source_sha256": {},
-  "source_pin_status": "DEFERRED_UNTIL_REVIEW_FREEZE; no source/history hashing needed during active model timing",
+  "source_files_to_pin_before_freeze": [
+    "make_arithmetic_v2.py",
+    "test_make_arithmetic_v2.py",
+    "make_tasks.py",
+    "harness.py"
+  ],
+  "source_sha256": {
+    "make_arithmetic_v2.py": "6955556d6cebebfc6eb9775aa878c506b344ba74dbc24623feb062ed326adeb8",
+    "test_make_arithmetic_v2.py": "776162ef08930828811060a4eff6d11e28534228a5b58d00625bd304468edce2",
+    "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8",
+    "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e"
+  },
+  "source_pin_status": "FROZEN_AFTER_ROOT_REVIEW_AND_6_AUTHORED_TESTS; no corpus/history scan generated; current model timing still blocks generation",
   "exclusion_inventory_status": "DEFERRED_COMPLETE_SCAN_REQUIRED_BEFORE_GENERATION",
   "exclusion_allowlist": [
     "*.json",
@@ -23,11 +36,20 @@
     ".runtime/benchmark-development-plan.json"
   ],
   "exclusion_policy": "Include ALL old arithmetic task lists, including generator outputs and planned/unexecuted outputs. Never apply the old protocol-based skip. JSONL contributes only run_start/puzzle_start initial configurations, never intermediate nodes/model responses. Explicit historical initial puzzles are also excluded. Symlinks/restricted credential-like filenames/malformed JSON fail closed for owner review.",
-  "historical_initial_puzzles": ["2,3,5,9:28", "3,5,7,9:24", "2,4,7,9,25,50:684", "25,50,75,100,3,6:952"],
-  "historical_initial_sources": ["run_study.py:PUZZLES", "harness.py:--puzzle default; additional historical initial configurations are collected by the deferred inventory"],
+  "historical_initial_puzzles": [
+    "2,3,5,9:28",
+    "3,5,7,9:24",
+    "2,4,7,9,25,50:684",
+    "25,50,75,100,3,6:952"
+  ],
+  "historical_initial_sources": [
+    "run_study.py:PUZZLES",
+    "harness.py:--puzzle default; additional historical initial configurations are collected by the deferred inventory"
+  ],
   "exclusion_scope_limit": "Controlled study JSON/data roots only, plus named *-source dataset snapshots. No arbitrary .runtime files, model weights, caches, credentials, cookies or account/auth-status inventory. Owner must register any old arithmetic task-list location outside this allowlist before declaring the scan complete.",
   "generation_admission": "No actual64 generation or full historical scan while any model timing is active. Require statusFROZEN/source pins, explicit hash-bound verified owner receipt with all_model_timing_idle/root_go/prospective_plan_frozen=true and verified_utc in UTC aged0..900seconds, and complete unchanged exclusion scan. Root must approve any source/protocol revision before use.",
   "public_output": "New output/tasks.json contains only public tasks/rules/construction/exclusion provenance; no witness actions or final states.",
   "private_output": "Separate output/reference-witnesses.json; original Fraction/apply_action replays every positive-integer construction path. Workers never load this file.",
-  "overwrite_policy": "New inventory and new dataset output only; no overwrite/resume/reseed on unfavorable results. No corpus generation occurred during preparation."
+  "overwrite_policy": "New inventory and new dataset output only; no overwrite/resume/reseed on unfavorable results. No corpus generation occurred during preparation.",
+  "frozen_utc": "2026-11-16T08:18:06.793236+00:00"
 }
