@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 from harness import Budget, Events
-from coding_forced import VARIANTS, CodingClient, run_agent
+from coding_forced import CAPS, VARIANTS, CodingClient, run_agent
 
 
 def main(argv=None):
@@ -30,7 +30,7 @@ def main(argv=None):
         print(json.dumps(dict(mode='plan', task=args.task_id, variant=args.variant, model_calls=0)))
         return 0
     events = Events(args.events, args.variant)
-    budget = Budget(2, 8192)
+    budget = Budget(2, CAPS[args.variant][1])
     client = CodingClient(args.endpoint, args.model, budget, events, args.seed)
     events.emit('run_start', config={k: str(v) for k, v in vars(args).items()}, budget=budget.snapshot(), task_id=task['id'],
                 public_sha256=hashlib.sha256(args.tasks.read_bytes()).hexdigest(),

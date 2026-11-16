@@ -46,6 +46,16 @@ class CodingForcedTests(unittest.TestCase):
         self.assertFalse(r['holdout_pass'] or r['solved'])
         self.assertEqual(c.bodies[1]['prompt'], [1, 2, 3] + [7] * f.THINK_CAP + [9, 13, 9])
 
+    def test_long_variant_caps(self):
+        import harness as h
+        c = FakeCoding([sse('thinking', [7] * 14848, 'length'), sse(GOOD, [8] * 20, 'stop')])
+        c.budget = h.Budget(2, 16000)
+        c.events = Recorder()
+        ev = evaluator([dict(status='passed', passed=1, total=1), dict(status='passed', passed=1, total=1)])
+        r = cf.run_agent(c, TASK, PRIVATE, 'Spark_01', 'code_long', c.events, ev)
+        self.assertTrue(r['solved'] and r['budget_forced'])
+        self.assertEqual((c.bodies[0]['max_tokens'], c.bodies[1]['max_tokens']), (14848, 16000 - 14848))
+
     def test_no_code_means_no_grading(self):
         c, ev, r = self.run_agent([sse('thinking', [7] * f.TOTAL, 'length')], [], variant='code_plain')
         self.assertFalse(r['parsed'] or r['budget_forced'])

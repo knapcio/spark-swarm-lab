@@ -11,7 +11,9 @@ from coding_harness import context, infrastructure, parse_python_response
 from forced72 import END_THINK, TOTAL, THINK_CAP, ForcedClient
 from sandbox_code import evaluate_code
 
-VARIANTS = ('code_forced', 'code_plain')
+VARIANTS = ('code_forced', 'code_plain', 'code_long')
+# code_long: same agent with the whole 16K context (thinking up to 14848, total completion 16000).
+CAPS = {'code_forced': (THINK_CAP, TOTAL), 'code_plain': (TOTAL, TOTAL), 'code_long': (14848, 16000)}
 SYSTEM = ('Implement or review the specified pure Python function. Return complete Python source for '
           'code proposals and the requested JSON for voting. Do not explain or use tools.')
 INSTRUCTION = '\nReturn complete Python function source only. Do not wrap it in JSON or include explanations.'
@@ -40,15 +42,16 @@ def propose(client, task, variant, events, agent_id=0):
     if variant not in VARIANTS:
         raise ValueError('unknown variant')
     plain = variant == 'code_plain'
+    think_cap, total = CAPS[variant]
     prompt_ids = client.chat_prompt_ids(context(task) + INSTRUCTION)
-    first = client.complete(agent_id, 'code_propose', prompt_ids, TOTAL if plain else THINK_CAP,
+    first = client.complete(agent_id, 'code_propose', prompt_ids, think_cap,
                             puzzle_id=task['id'], variant=variant, followup_phase='think')
     code, second, forced = parse_code(first['answer']), None, False
     eligible = (not plain and code is None and first['response_received'] and first['finish_reason'] == 'length'
                 and len(first['token_ids']) > 0 and first['error'] is None)
     if eligible:
         forced = first['answer'] is None
-        remaining = TOTAL - client.budget.snapshot()['completion_tokens_charged']
+        remaining = total - client.budget.snapshot()['completion_tokens_charged']
         events.emit('budget_forced' if forced else 'answer_continued', puzzle_id=task['id'], variant=variant,
                     parent_request_id=first['request_id'], forced_after_tokens=len(first['token_ids']),
                     remaining_completion_tokens=remaining)
