@@ -24,6 +24,8 @@ def main(argv=None):
     p.add_argument('--source', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--note', default='')
+    p.add_argument('--allow-busy', action='store_true',
+                   help='concurrent owned runs allowed (no wall-clock limits): identity/health still required, load recorded')
     a = p.parse_args(argv)
     plan = json.loads(a.plan.read_text())
     source = a.source.resolve()
@@ -41,10 +43,12 @@ def main(argv=None):
                     running_requests=metric(text, 'num_requests_running'), waiting_requests=metric(text, 'num_requests_waiting'),
                     health=health)
         node['ok'] = (running == 'true' and oom == 'false' and restarts == '0' and health == 200 and image.endswith(IMAGE)
-                      and cid.startswith(CONTAINERS[host]) and node['running_requests'] == node['waiting_requests'] == 0)
+                      and cid.startswith(CONTAINERS[host])
+                      and (a.allow_busy or node['running_requests'] == node['waiting_requests'] == 0))
         ok_all &= node['ok']
         nodes.append(node)
-    receipt = dict(protocol='known72-agent-run-admission', verified=ok_all, all_four_owned_healthy_idle=ok_all,
+    receipt = dict(protocol='known72-agent-run-admission', verified=ok_all, all_four_owned_healthy_idle=ok_all and not a.allow_busy,
+                   allow_busy=a.allow_busy,
                    verified_utc=datetime.now(timezone.utc).isoformat(), plan=str(a.plan), plan_status=plan['status'],
                    source_revision=plan['source_revision'], source_sha256=runner.hashes(source), endpoints=endpoints,
                    runner_commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(), nodes=nodes, note=a.note)
