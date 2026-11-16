@@ -212,6 +212,7 @@ def run_episode(development, evaluation, arm, seed, host, client, events, direct
     rank = lambda row: (-row["development_solved"], row["development_penalty"], row["index"])
 
     def review_round(population, generation):
+        require(not stop.is_set(), "global infrastructure stop before review dispatch")
         ordered = sorted(population, key=rank)
         pairs = list(zip(ordered[2:], ordered[:2]))
         events.emit("review_population", generation=generation,
@@ -251,6 +252,7 @@ def run_episode(development, evaluation, arm, seed, host, client, events, direct
                                 review_id=review_id, repair_target_index=target["index"])
             parsed = value if isinstance(value, dict) and set(value) == {"raw", "code", "parse_error"} else parse_program(None)
             return dict(index=index, chain=target["chain"], parent_index=target["index"], review_id=review_id, **parsed)
+        require(not stop.is_set(), "global infrastructure stop before repair dispatch")
         with ThreadPoolExecutor(max_workers=2) as pool:
             rows = list(pool.map(repair, enumerate(reviews, start=4 + (generation-1)*2)))
         score_rows(rows)
@@ -323,7 +325,7 @@ def run_episode(development, evaluation, arm, seed, host, client, events, direct
 
 def load_plan(gate_root, output):
     selection = json.loads((HERE / PLAN_FILE).read_text())
-    require(selection["protocol"] == "reusable-coloring-program-review-elites4-v1", "unexpected program protocol")
+    require(selection["protocol"] == "reusable-coloring-program-review-elites4-v1.1", "unexpected program protocol")
     require(selection.get("limits") == LIMITS and selection.get("arms") == [REVIEW_ARM]
             and selection.get("seeds") == list(SEEDS), "program allocation differs from fixed implementation")
     require(set(selection["source_sha256"]) == set(FILES) - {PLAN_FILE}, "incomplete program source pin set")
@@ -492,7 +494,7 @@ def main(argv=None):
     parser.add_argument("--run", action="store_true")
     args = parser.parse_args(argv)
     root = args.gate_root.resolve()
-    output = (args.output or root / "runs/program-review-elites4-v1").resolve()
+    output = (args.output or root / "runs/program-review-elites4-v1.1").resolve()
     plan, development, evaluation = load_plan(root, output)
     if not args.run:
         print(json.dumps(dict(plan, mode="plan"), indent=2)); return 0

@@ -108,6 +108,32 @@ class ReviewElitesTests(unittest.TestCase):
             self.assertFalse((Path(directory)/'selection.json').exists())
             self.assertEqual(client.system_prompt,p.SYSTEM)
 
+    def test_shared_stop_during_joined_critics_prevents_all_repairs(self):
+        stop, critics_started = threading.Event(), threading.Barrier(2)
+        class PeerFaultClient(Client):
+            def call(self, agent, stage, prompt, **context):
+                result = super().call(agent, stage, prompt, **context)
+                if stage.startswith('review-'):
+                    critics_started.wait(timeout=2)
+                    stop.set()  # Another episode faults while this review batch is in flight.
+                return result
+        with tempfile.TemporaryDirectory() as directory:
+            client, events, grades = PeerFaultClient(), Events(), []
+            def evaluate(code, task, host, timeout):
+                grades.append(task['id']); return report(task)
+            result = p.run_episode(DEV,EVAL,p.REVIEW_ARM,1,'Spark_01',client,events,
+                                   directory,evaluate,stop)
+            self.assertTrue(stop.is_set())
+            self.assertFalse(result['complete'])
+            self.assertEqual(len(client.calls),6)
+            self.assertEqual(sum(c['stage'].startswith('program-') for c in client.calls),4)
+            self.assertEqual(sum(c['stage'].startswith('review-') for c in client.calls),2)
+            self.assertEqual(len(grades),16)
+            self.assertEqual(result['evaluation_completed'],0)
+            self.assertFalse((Path(directory)/'selection.json').exists())
+            self.assertFalse((Path(directory)/'selected.py').exists())
+            self.assertEqual(client.system_prompt,p.SYSTEM)
+
     def test_empty_critiques_are_spent_without_retries_or_extra_authors(self):
         with tempfile.TemporaryDirectory() as directory:
             result, client, events, _ = self.episode(directory, client=Client(empty_review=True))

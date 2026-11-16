@@ -63,3 +63,18 @@ auto-launches, and the original plans and stage schedules are not rewritten.
 Token limits match the original program experiment; input contexts, candidate
 count, review interaction and realized token use differ. No outcome or genuine
 individual-intelligence advantage is claimed by this prospective branch.
+
+## Prospective v1.1 phase-stop amendment
+
+Pre-call audit of the unused v1 producer `d704ae1` found that an infrastructure
+fault in another episode during the joined critic phase could set the shared
+stop event yet still allow this episode's two repairs to dispatch. V1 made no
+variant model calls. Its tag and original frozen receipt remain historical and
+unchanged. V1.1 checks the shared stop before review dispatch and again after
+both critics have joined, immediately before repair dispatch. A stop admits no
+new phase; already dispatched critic calls finish and the author system prompt
+is restored. An authored two-critic barrier fixture reproduces eight calls in
+v1 and requires only six (four authors, two critics), no repairs, no selection
+and no evaluation in v1.1. No candidate policy, prompts, budgets, grader or data
+changed. Root must separately review and freeze the v1.1 producer and its
+orchestrator before any optional launch.
