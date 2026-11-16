@@ -1,0 +1,302 @@
+{
+  "status": "PREPARED_NOT_EXECUTED_WAITING_ROOT_CPU_WINDOW",
+  "observed_utc": "2026-11-16T05:12:04.129549+00:00",
+  "command": [
+    ".venv/bin/python",
+    "report_completed_studies.py",
+    "--kind",
+    "csp",
+    "runs/csp-core_off16-evaluation-s1",
+    "runs/csp-core_off16-evaluation-s2",
+    "runs/csp-core_off16-evaluation-s3",
+    "runs/csp-extended_off64-evaluation-s1",
+    "runs/csp-extended_off64-evaluation-s2",
+    "runs/csp-extended_off64-evaluation-s3",
+    "runs/csp-thinking_on16-evaluation-s1-late",
+    "--run",
+    "--output",
+    "results/csp-completed-profiles-v1-analysis",
+    "--plot",
+    "--repetitions",
+    "5000"
+  ],
+  "inputs": [
+    {
+      "path": "runs/csp-core_off16-evaluation-s1",
+      "profile": "core_off16",
+      "seed": 1,
+      "split": "evaluation",
+      "metadata_sha256": "68ec916dc47722886294cd72ba33508812ea3192d5502686174aca39143cfed2",
+      "source_revision": "dadba8c29cd5b11bd71e49b4c8ba4e6ee5adaab5",
+      "source_before_equals_after": true,
+      "recipe": {
+        "priority": 1,
+        "thinking": false,
+        "temperature": 0.8,
+        "max_tokens": 512,
+        "max_calls": 16,
+        "max_completion_tokens": 8192,
+        "deadline_seconds": 180,
+        "arms": [
+          "resample",
+          "sequential",
+          "parallel_repair4",
+          "evolution4",
+          "review_elites4",
+          "democracy4",
+          "weighted_democracy4"
+        ],
+        "splits_and_seeds": {
+          "development": [
+            1
+          ],
+          "evaluation": [
+            1,
+            2,
+            3
+          ]
+        },
+        "request_timeout_seconds": 210
+      }
+    },
+    {
+      "path": "runs/csp-core_off16-evaluation-s2",
+      "profile": "core_off16",
+      "seed": 2,
+      "split": "evaluation",
+      "metadata_sha256": "65cd7dc1c09db5a971cf60e2b07a2e52a81b622a76d8d171feef1af4deb591ab",
+      "source_revision": "dadba8c29cd5b11bd71e49b4c8ba4e6ee5adaab5",
+      "source_before_equals_after": true,
+      "recipe": {
+        "priority": 1,
+        "thinking": false,
+        "temperature": 0.8,
+        "max_tokens": 512,
+        "max_calls": 16,
+        "max_completion_tokens": 8192,
+        "deadline_seconds": 180,
+        "arms": [
+          "resample",
+          "sequential",
+          "parallel_repair4",
+          "evolution4",
+          "review_elites4",
+          "democracy4",
+          "weighted_democracy4"
+        ],
+        "splits_and_seeds": {
+          "development": [
+            1
+          ],
+          "evaluation": [
+            1,
+            2,
+            3
+          ]
+        },
+        "request_timeout_seconds": 210
+      }
+    },
+    {
+      "path": "runs/csp-core_off16-evaluation-s3",
+      "profile": "core_off16",
+      "seed": 3,
+      "split": "evaluation",
+      "metadata_sha256": "5293e1a9faf074d9fa85aeb44aecc6059eb2f959f73a71efdc7b999ac88c2b00",
+      "source_revision": "dadba8c29cd5b11bd71e49b4c8ba4e6ee5adaab5",
+      "source_before_equals_after": true,
+      "recipe": {
+        "priority": 1,
+        "thinking": false,
+        "temperature": 0.8,
+        "max_tokens": 512,
+        "max_calls": 16,
+        "max_completion_tokens": 8192,
+        "deadline_seconds": 180,
+        "arms": [
+          "resample",
+          "sequential",
+          "parallel_repair4",
+          "evolution4",
+          "review_elites4",
+          "democracy4",
+          "weighted_democracy4"
+        ],
+        "splits_and_seeds": {
+          "development": [
+            1
+          ],
+          "evaluation": [
+            1,
+            2,
+            3
+          ]
+        },
+        "request_timeout_seconds": 210
+      }
+    },
+    {
+      "path": "runs/csp-extended_off64-evaluation-s1",
+      "profile": "extended_off64",
+      "seed": 1,
+      "split": "evaluation",
+      "metadata_sha256": "48e7229a2e5627ded2581826a162e9fbc01efbf630971ed778d575574557c6f9",
+      "source_revision": "dadba8c29cd5b11bd71e49b4c8ba4e6ee5adaab5",
+      "source_before_equals_after": true,
+      "recipe": {
+        "priority": 2,
+        "thinking": false,
+        "temperature": 0.8,
+        "max_tokens": 512,
+        "max_calls": 64,
+        "max_completion_tokens": 32768,
+        "deadline_seconds": 600,
+        "arms": [
+          "resample",
+          "sequential",
+          "parallel_repair4",
+          "evolution4",
+          "review_elites4",
+          "democracy4",
+          "weighted_democracy4",
+          "evolution_mutation4"
+        ],
+        "splits_and_seeds": {
+          "evaluation": [
+            1,
+            2,
+            3
+          ]
+        },
+        "request_timeout_seconds": 630
+      }
+    },
+    {
+      "path": "runs/csp-extended_off64-evaluation-s2",
+      "profile": "extended_off64",
+      "seed": 2,
+      "split": "evaluation",
+      "metadata_sha256": "d5b919dd2c312f0aa0f0e29647a57c3a7dfca10551ce527cfb4ea2a5e5d97af3",
+      "source_revision": "dadba8c29cd5b11bd71e49b4c8ba4e6ee5adaab5",
+      "source_before_equals_after": true,
+      "recipe": {
+        "priority": 2,
+        "thinking": false,
+        "temperature": 0.8,
+        "max_tokens": 512,
+        "max_calls": 64,
+        "max_completion_tokens": 32768,
+        "deadline_seconds": 600,
+        "arms": [
+          "resample",
+          "sequential",
+          "parallel_repair4",
+          "evolution4",
+          "review_elites4",
+          "democracy4",
+          "weighted_democracy4",
+          "evolution_mutation4"
+        ],
+        "splits_and_seeds": {
+          "evaluation": [
+            1,
+            2,
+            3
+          ]
+        },
+        "request_timeout_seconds": 630
+      }
+    },
+    {
+      "path": "runs/csp-extended_off64-evaluation-s3",
+      "profile": "extended_off64",
+      "seed": 3,
+      "split": "evaluation",
+      "metadata_sha256": "68eee96924fca7186e261b6acbf0d78adcb5e0feb6684db3fc9e22125deef935",
+      "source_revision": "dadba8c29cd5b11bd71e49b4c8ba4e6ee5adaab5",
+      "source_before_equals_after": true,
+      "recipe": {
+        "priority": 2,
+        "thinking": false,
+        "temperature": 0.8,
+        "max_tokens": 512,
+        "max_calls": 64,
+        "max_completion_tokens": 32768,
+        "deadline_seconds": 600,
+        "arms": [
+          "resample",
+          "sequential",
+          "parallel_repair4",
+          "evolution4",
+          "review_elites4",
+          "democracy4",
+          "weighted_democracy4",
+          "evolution_mutation4"
+        ],
+        "splits_and_seeds": {
+          "evaluation": [
+            1,
+            2,
+            3
+          ]
+        },
+        "request_timeout_seconds": 630
+      }
+    },
+    {
+      "path": "runs/csp-thinking_on16-evaluation-s1-late",
+      "profile": "thinking_on16",
+      "seed": 1,
+      "split": "evaluation",
+      "metadata_sha256": "8f615057eb38bf748120a1226dcec1e4fe9678b14bbbbe08facef9a18639e439",
+      "source_revision": "dadba8c29cd5b11bd71e49b4c8ba4e6ee5adaab5",
+      "source_before_equals_after": true,
+      "recipe": {
+        "priority": 3,
+        "thinking": true,
+        "temperature": 0.8,
+        "max_tokens": 4096,
+        "max_calls": 16,
+        "max_completion_tokens": 65536,
+        "deadline_seconds": 900,
+        "arms": [
+          "resample",
+          "sequential",
+          "parallel_repair4",
+          "evolution4",
+          "review_elites4",
+          "democracy4",
+          "weighted_democracy4",
+          "evolution_mutation4"
+        ],
+        "splits_and_seeds": {
+          "evaluation": [
+            1
+          ]
+        },
+        "request_timeout_seconds": 930
+      }
+    }
+  ],
+  "late_audit": {
+    "path": "results/csp-thinking-on16-late-audit-20261116/FINAL_AUDIT.json",
+    "sha256": "dde71acd09f6bfcc100a12e3d8f0860a808a3fcc45940dee571e9e3f921bdbbc"
+  },
+  "source_sha256": {
+    "report_completed_studies.py": "572281e4864e1ff1f9da3ec99ebfd7bcf15a71087415c9acf91b6de933ea0ec6",
+    "aggregate_evaluation.py": "4c552a40115b9eef23c48814bebaf900ba83646e41f41b1f03c13594855ebe84",
+    "csp_tasks.py": "4a49d387687eb15c98cf226980b63b5a786c67a60ec94fa489ad58855b08373e",
+    "reference_worker.py": "17f83d857a820a0dfc8665cd8330a94836d60dbc4b16ea73d4f05433dc49cbe9"
+  },
+  "output": "results/csp-completed-profiles-v1-analysis",
+  "scope": [
+    "Three separate profile reports, no OFF/ON pooling; exact original7 core arms vs8 extended/late arms",
+    "5000 task-cluster replicates; retain all observed seeds per graph",
+    "All-zero empirical intervals can degenerate and do not establish true0success probability",
+    "LateON1464assignmentresponses exhausted4096 completion tokens with reasoning and null answer;72reviews completed; not proof model cannot color",
+    "Original automaticON time-skip remains unchanged; lateON is separate admitted exploratory execution",
+    "Legacy CSP lineage exports cover candidate/review/consensus edges; new program review trace needs separate fullreview-edge adapter, cannot call legacy program DAG complete"
+  ],
+  "model_calls": 0,
+  "bootstrap_or_plot_executed": false
+}

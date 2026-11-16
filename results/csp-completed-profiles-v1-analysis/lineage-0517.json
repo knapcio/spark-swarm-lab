@@ -1,0 +1,3758 @@
+{
+  "nodes": [
+    {
+      "id": "candidate-0",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "fresh",
+      "verification": {
+        "solved": false,
+        "valid_schema": false,
+        "conflicts": null,
+        "violating_edges": [],
+        "error": "assignment must give exactly one color per vertex",
+        "fitness": [
+          0,
+          0
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          1,
+          1,
+          2,
+          0,
+          0,
+          2,
+          1,
+          2,
+          1,
+          0,
+          1,
+          2,
+          1,
+          2,
+          1,
+          0,
+          2,
+          0,
+          1,
+          0,
+          2,
+          1,
+          2
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 1.5360278747975826,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-1",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "fresh",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 18,
+        "violating_edges": [
+          0,
+          1,
+          3,
+          5,
+          6,
+          7,
+          11,
+          12,
+          14,
+          15,
+          16,
+          21,
+          23,
+          24,
+          29,
+          32,
+          34,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -18
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          0,
+          1,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          1,
+          2,
+          0,
+          1,
+          2
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 1.536583499982953,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-2",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "fresh",
+      "verification": {
+        "solved": false,
+        "valid_schema": false,
+        "conflicts": null,
+        "violating_edges": [],
+        "error": "assignment must give exactly one color per vertex",
+        "fitness": [
+          0,
+          0
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          1,
+          2,
+          0,
+          1,
+          2,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          1,
+          0,
+          1,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 1.5340472077950835,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-3",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "fresh",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 7,
+        "violating_edges": [
+          1,
+          2,
+          9,
+          15,
+          23,
+          28,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -7
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 1.5364113748073578,
+      "model_calls": null
+    },
+    {
+      "id": "review-0",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Assignment 0 violates 33 edges (violating_edges 0,1,3,5,6,7,11,12,14,15,16,21,23,24,29,32,36) due to many adjacent vertices sharing colors, indicating insufficient color diversity. Assignment 3 has 7 conflicts (violating_edges 1,2,9,15,23,28,36) but suffers from color overuse (many vertices assigned color 2) and structural bottlenecks; merging colors 0 and 1 or rebalancing the palette could reduce conflicts while respecting the 3-color constraint."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-0",
+      "target_ids": [
+        "candidate-3",
+        "candidate-1"
+      ],
+      "completed_elapsed_seconds": 4.1946487901732326
+    },
+    {
+      "id": "review-1",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Assignment 1 has 18 conflicts from misassignments on edge sets {0,1,3,5,6,7,11,12,14,15,16,21,23,24,29,32,34,36} due to adjacent vertices sharing colors; fix by reassigning vertices 0,1,3,5,6,7,11,12,14,15,16,21,23,24,29,32,34,36 to break all edge conflicts while respecting the 3-color limit. Assignment 2 has 7 conflicts from edge sets {1,2,9,15,23,28,36} where adjacent vertices share colors; repair by recoloring vertices 1,2,9,15,23,28,36 to eliminate all adjacent color clashes within the 3-color constraint."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-2",
+      "target_ids": [
+        "candidate-3",
+        "candidate-1"
+      ],
+      "completed_elapsed_seconds": 4.696896332316101
+    },
+    {
+      "id": "candidate-4",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 7,
+        "violating_edges": [
+          1,
+          2,
+          9,
+          15,
+          23,
+          28,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -7
+        ]
+      },
+      "duplicate_of": "candidate-3",
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 5.915728749707341,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-5",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 12,
+        "violating_edges": [
+          4,
+          7,
+          8,
+          12,
+          13,
+          19,
+          20,
+          21,
+          29,
+          32,
+          34,
+          37
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -12
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          2,
+          0,
+          2,
+          1,
+          2,
+          0,
+          1,
+          0,
+          2,
+          1,
+          0,
+          1,
+          0,
+          2,
+          1,
+          0,
+          2,
+          1,
+          0,
+          2
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 5.92187324911356,
+      "model_calls": null
+    },
+    {
+      "id": "review-2",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Candidate 3 & 4 have 7 conflicts each from repeated colors on edges [1,2,9,15,23,28,36]. The first assignment had 12 conflicts. Repair ideas: ensure no edge connects same-colored vertices; specifically reassign vertices 1,2,9,15,23 to break these clique conflicts while keeping the 3-color limit."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-5",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 8.097237249836326
+    },
+    {
+      "id": "review-3",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both assignments fail to respect the 3-color constraint due to adjacent vertices sharing colors 0 and 1. Candidate 3/4 has 7 conflicts on edges [1,2,9,15,23,28,36] involving colors 0-1 conflicts at vertices 1-2, 9-15, 15-23, and wrap-around 28-36. Critical repairs require recoloring vertex 15 (currently 1) to color 2, vertex 23 (currently 0) to color 2, and vertex 1 (currently 0) to color 2 to break the dense conflict cluster around vertices 1, 15, 23 while preserving the existing color 2 placements at vertices 5, 6, 18."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-1",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 8.58813149947673
+    },
+    {
+      "id": "candidate-6",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 15,
+        "violating_edges": [
+          0,
+          2,
+          9,
+          11,
+          12,
+          14,
+          15,
+          16,
+          17,
+          21,
+          29,
+          31,
+          32,
+          36,
+          37
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -15
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          2,
+          1,
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          1,
+          2,
+          1,
+          0,
+          2,
+          1,
+          0,
+          2,
+          0,
+          1,
+          1,
+          0,
+          2,
+          1,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 9.722986249253154,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-7",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 11,
+        "violating_edges": [
+          2,
+          5,
+          6,
+          8,
+          14,
+          15,
+          16,
+          21,
+          22,
+          23,
+          29
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -11
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          2,
+          1,
+          2,
+          0,
+          1,
+          1,
+          0,
+          2,
+          1,
+          2,
+          1,
+          0,
+          2,
+          1,
+          1,
+          0,
+          1,
+          0,
+          2,
+          0,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 9.73329558223486,
+      "model_calls": null
+    },
+    {
+      "id": "review-4",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "The two provided assignments are identical assignments for candidates 3 and 4, each suffering from 7 edge conflicts. Key issues include: vertices 1 and 2 share color 1 adjacent to vertex 0 (color 0) and vertex 3 (color 1); vertex 9 has color 2 adjacent to vertex 14 (color 1) and 15 (color 1) with conflict on edge 9-15; vertex 15 has color 1 adjacent to multiple same-color neighbors on edges 15-23, 15-19, 15-20; and vertex 23 has color 2 adjacent to vertex 11 (color 2) via edge 11-23. A repair strategy would involve recoloring conflicting vertices (e.g., changing vertex 15 to color 0 or 2, and vertex 23 to color 0 or 1) while ensuring no new adjacency conflicts are introduced, potentially leveraging the available third color to break the identified monochromatic edge clusters."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-7",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 13.161229290999472
+    },
+    {
+      "id": "review-5",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both candidate assignments have 7 conflicts. Candidate-3 and Candidate-4 share the same assignment pattern, causing violations on edges [1,2,9,15,23,28,36] (vertex indices). The color distribution is skewed: color 1 appears 9 times, color 0 appears 8 times, and color 2 only 7 times in a 24-vertex graph with chromatic number 3. The edge [15,23] (colors 1-0) and [15,18] (colors 1-2) are particularly problematic given the high frequency of color 1. A repair strategy would involve recoloring the seven vertices currently in conflict (indices 1,2,9,15,23,28,36) to balance color counts and break the identified edge conflicts, prioritizing moves that reduce color 1 density while maintaining the 3-color constraint."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-5",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 12.882108540274203
+    },
+    {
+      "id": "candidate-8",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 7,
+        "violating_edges": [
+          1,
+          2,
+          9,
+          15,
+          23,
+          28,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -7
+        ]
+      },
+      "duplicate_of": "candidate-3",
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 14.369229957461357,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-9",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 7,
+        "violating_edges": [
+          1,
+          2,
+          9,
+          15,
+          23,
+          28,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -7
+        ]
+      },
+      "duplicate_of": "candidate-3",
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 14.376463915221393,
+      "model_calls": null
+    },
+    {
+      "id": "review-6",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both target assignments use identical logic with 7 conflicts from edges [1,2,9,15,23,28,36] across vertices 0-23. Key problems: edge 1 connects vertices 0 and 3 sharing color 0; edge 2 connects 0 and 1 sharing color 0; edge 9 connects 9 and 14 sharing color 2; edge 15 connects 15 and 18 sharing color 1. Repair ideas: recolor vertex 0 to 1 or 2, vertex 3 to 1 or 2, vertex 14 to 0 or 1, vertex 18 to 0 or 2, and adjust vertices 23/15/18 to break remaining color clashes on edges 23 and 15."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-8",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 16.82987687457353
+    },
+    {
+      "id": "review-7",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "All candidates violate 7 edges (indices 1,2,9,15,23,28,36) causing adjacent vertices to share colors. The assignment uses 3 colors but has a net fitness of -7. Repair requires reassigning conflicting vertices to eliminate adjacency conflicts while maintaining the 3-color constraint across the 24-node graph."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-9",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 16.188082540407777
+    },
+    {
+      "id": "candidate-10",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 13,
+        "violating_edges": [
+          2,
+          8,
+          9,
+          14,
+          16,
+          17,
+          19,
+          23,
+          27,
+          29,
+          30,
+          31,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -13
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          1,
+          0,
+          1,
+          0,
+          2,
+          1,
+          2,
+          0,
+          1,
+          0,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 17.811928249895573,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-11",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 9,
+        "violating_edges": [
+          13,
+          19,
+          22,
+          23,
+          26,
+          27,
+          30,
+          31,
+          35
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -9
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          2,
+          1,
+          0,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          0,
+          2,
+          0,
+          1,
+          1,
+          0,
+          2
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 17.81183174997568,
+      "model_calls": null
+    },
+    {
+      "id": "review-8",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both target assignments are identical and violate 7 edges ([1,2,9,15,23,28,36]), indicating vertex conflicts. Repair ideas: recolor vertices involved in conflicts (e.g., vertices 10, 15, 16, 18, 20, 21, 22) using the 3 colors while respecting edges like [15,16], [15,18], [15,19], [15,20], [17,23]. Ensure no adjacent vertices share the same color, particularly along high-degree nodes (vertex 15 connects to 5,8,16,18,19,20,21)."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-8",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 20.516885915771127
+    },
+    {
+      "id": "review-9",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both target assignments are identical, sharing the same invalid configuration with 7 conflicts. The assignment uses 3 colors on 24 vertices, but edges (0,3), (0,13), (0,23), (1,11), (1,18), (1,19), (1,22), (3,10), (3,20), (5,8), (5,16), (5,19), (5,21), (6,11), (6,14), (6,18), (7,9), (7,21), (8,17), (9,14), (9,15), (9,17), (10,12), (11,13), (11,23), (12,19), (12,21), (12,23), (13,20), (14,18), (14,22), (15,16), (15,18), (15,19), (15,20), (17,23) violate the constraint. Specifically, vertices 1 and 5 share color 2 while connected, vertices 6 and 11 share color 2 while connected, and vertex 15 conflicts with four neighbors (16, 18, 19, 20) all colored 2. A repair requires recoloring at least one vertex per violating edge, prioritizing high-degree vertices like 15 and 1."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-9",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 22.645765790715814
+    },
+    {
+      "id": "candidate-12",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 15,
+        "violating_edges": [
+          3,
+          5,
+          9,
+          14,
+          15,
+          19,
+          22,
+          24,
+          25,
+          26,
+          30,
+          31,
+          32,
+          35,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -15
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          1,
+          2,
+          0,
+          1,
+          0,
+          1,
+          0,
+          1,
+          0,
+          1,
+          0,
+          2,
+          0,
+          1,
+          1,
+          2,
+          0,
+          1
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 23.799441665410995,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-13",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": false,
+        "conflicts": null,
+        "violating_edges": [],
+        "error": "assignment must give exactly one color per vertex",
+        "fitness": [
+          0,
+          0
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          2,
+          1,
+          1,
+          2,
+          0,
+          1,
+          0,
+          2,
+          0,
+          2,
+          1,
+          0,
+          2,
+          2,
+          2,
+          0,
+          1,
+          1,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 23.793537124991417,
+      "model_calls": null
+    },
+    {
+      "id": "review-10",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both candidate assignments are identical and invalid, featuring 7 conflicts across edges [1, 2, 9, 15, 23, 28, 36]. The assignments fail because vertices 1 and 2 share color 1 while connected; vertices 9 and 15 share color 2 while connected; vertex 23 and 0 share color 0 while connected; and vertex 36 exceeds the 24-vertex graph bounds, indicating a schema or data mapping error. Repair ideas: reassign conflicting vertices to the unused color 0 or 1, ensuring no edge connects same-colored vertices; verify edge indices against the 24-vertex schema to correct out-of-bounds references; and apply a greedy or backtracking search to achieve a valid 3-coloring with zero conflicts."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-8",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 26.73130879085511
+    },
+    {
+      "id": "review-11",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both target assignments are identical with 7 edge conflicts. The assignment uses only colors 0,1,2 on 24 vertices, but the conflict count of 7 indicates frequent color clashes on edges like (1,23), (2,22), (9,14), etc. A repair idea: recolor vertices in conflict clusters (e.g., change vertex 5's color from 2 to 0 or 1, and adjust neighbors 8,16,19,21) to break monochromatic edges while maintaining the 3-color constraint across the sparse graph structure."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-9",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 26.2475948324427
+    },
+    {
+      "id": "candidate-14",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 7,
+        "violating_edges": [
+          1,
+          2,
+          9,
+          15,
+          23,
+          28,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -7
+        ]
+      },
+      "duplicate_of": "candidate-3",
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 28.975097040645778,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-15",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 9,
+        "violating_edges": [
+          0,
+          2,
+          12,
+          15,
+          19,
+          26,
+          27,
+          29,
+          35
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -9
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          1,
+          0,
+          2,
+          2,
+          0,
+          1,
+          0,
+          2,
+          1,
+          0,
+          0,
+          1,
+          1,
+          0,
+          2,
+          1,
+          2,
+          0,
+          2,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 28.981353290379047,
+      "model_calls": null
+    },
+    {
+      "id": "review-12",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both target assignments are identical and share 7 conflicts. The assignment uses colors 0, 1, and 2 on 24 vertices. Conflicts occur on edges [1,2,9,15,23,28,36] (0-indexed). These edges connect vertices with identical colors: edge 1 (vertices 0,1 both color 0), edge 2 (vertices 1,2 both color 2), edge 9 (vertices 9,10 both color 2), edge 15 (vertices 15,16 both color 1), edge 23 (vertices 23,0 both color 0), edge 28 (vertices 4,5 both color 2), edge 36 (vertices 12,13 both color 1). A repair strategy involves reassigning conflicting vertices to the third available color while checking neighbor constraints, particularly for high-degree vertices like 5 (neighbors 8,16,19,21) and 15 (neighbors 4,16,18,19,20)."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-8",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 32.34314045775682
+    },
+    {
+      "id": "review-13",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both candidates violate edge 36 ([17,23]) assigning color 0 to both nodes, and the repeated pattern [0,1,2,1,0,2,2,0,1,2,0,2,1,0,1,1,0,2,0,0,1,1,2,0] creates 7 total conflicts. Nodes 10 and 12 both have color 0 but are connected by edge [10,12], creating a direct conflict. A repair strategy involves recoloring node 12 to color 1 or 2 while checking adjacent nodes 19 and 23 (both color 2) to avoid new clashes, and adjusting nodes 10 and 14 to resolve the cascade of violations across edges 1, 2, 9, 15, 23, 28, 36."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-9",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 32.34323412459344
+    },
+    {
+      "id": "candidate-16",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 7,
+        "violating_edges": [
+          1,
+          2,
+          9,
+          15,
+          23,
+          28,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -7
+        ]
+      },
+      "duplicate_of": "candidate-3",
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 33.270687874406576,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-17",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 9,
+        "violating_edges": [
+          3,
+          9,
+          11,
+          15,
+          19,
+          25,
+          26,
+          30,
+          34
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -9
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          1,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          2,
+          0,
+          1
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 33.27714395802468,
+      "model_calls": null
+    },
+    {
+      "id": "review-14",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "The assignments are identical across all three entities (two targets and one earlier attempt), showing a complete lack of differentiation. All 24 vertices receive the assignment [0,1,2,1,0,2,2,0,1,2,0,2,1,0,1,1,0,2,0,0,1,1,2,0]. Verification confirms 7 conflicts across edges [1,2,9,15,23,28,36] with fitness [1,-7]. The core problem is a systematic failure to respect edge constraints, likely due to a greedy or random initialization that never incorporated conflict resolution. A useful repair idea is to implement a proper graph-coloring heuristic (e.g., Welsh-Powell or backtracking with MRV) starting from the given ordering, or to reassign vertices in conflict by iteratively swapping colors to minimize violating edges while strictly respecting the 3-color limit."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-8",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 36.59813495725393
+    },
+    {
+      "id": "review-15",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both assignments contain the exact same coloring [0,1,2,1,0,2,2,0,1,2,0,2,1,0,1,1,0,2,0,0,1,1,2,0], each producing 7 conflicts on edges [1,2,9,15,23,28,36]. The coloring violates adjacency constraints on edges 1-2 and 2-9, indicating vertices 1, 2, and 9 all share color 1. A repair strategy requires recoloring vertex 2 to color 0 or 2 to break the color-1 cluster, then resolving cascading conflicts on edges 15, 23, 28, and 36 while ensuring no new adjacency violations emerge."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-9",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 36.23389316536486
+    },
+    {
+      "id": "candidate-18",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": false,
+        "conflicts": null,
+        "violating_edges": [],
+        "error": "assignment must give exactly one color per vertex",
+        "fitness": [
+          0,
+          0
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 37.87246129103005,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-19",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 7,
+        "violating_edges": [
+          1,
+          2,
+          9,
+          15,
+          23,
+          28,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -7
+        ]
+      },
+      "duplicate_of": "candidate-3",
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 37.87253920733929,
+      "model_calls": null
+    },
+    {
+      "id": "review-16",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "The target assignments copy the same flawed candidate from earlier attempts, inheriting 7 conflicts on edges [1,2,9,15,23,28,36]. The color distribution is unbalanced (12 zeros vs 5 twos) and the repeated pattern fails to respect graph structure. Repair ideas: rebalance colors to 8 per hue, locally recolor vertices in conflict clusters (e.g., vertex 15 connecting to 16/18/19/20), and apply a greedy recoloring pass starting from highest-degree vertices to break the periodic pattern causing clique overlaps."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-8",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 40.801534415222704
+    },
+    {
+      "id": "review-17",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both target assignments contain 7 color conflicts across 7 edges, indicating the greedy pattern [0,1,2,...] fails on this dense graph. The repeated assignment [0,0] on vertices 19-20 and [0,0] on 22-23 are explicit violations. Repair ideas: swap colors 1 and 2 on vertices {1,11,13,23} to break triangles; recolor vertex 15 (currently 1) to 2 while adjusting neighbors 5,9,16,18,19,20 to resolve the high-degree conflicts; or apply a backtracking DSATUR heuristic prioritizing vertices 5, 9, 15 due to degree 6+ to achieve a valid 3-coloring."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-9",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 41.53142437431961
+    },
+    {
+      "id": "candidate-20",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 7,
+        "violating_edges": [
+          1,
+          2,
+          9,
+          15,
+          23,
+          28,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -7
+        ]
+      },
+      "duplicate_of": "candidate-3",
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 42.602081624791026,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-21",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 7,
+        "violating_edges": [
+          1,
+          2,
+          9,
+          15,
+          23,
+          28,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -7
+        ]
+      },
+      "duplicate_of": "candidate-3",
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 42.53651391528547,
+      "model_calls": null
+    },
+    {
+      "id": "review-18",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both candidate assignments (IDs: candidate-3, candidate-4) are identical with 7 conflicts. The assignment [0,1,2,1,0,2,2,0,1,2,0,2,1,0,1,1,0,2,0,0,1,1,2,0] has duplicate vertex 0 and 20 sharing color 0, and vertices 9 and 14 sharing color 1. Critical repair ideas: reassign vertex 20 from color 0 to color 1 (or 2) to resolve edge [3,20]; reassign vertex 14 from color 1 to color 2 to resolve edges [6,14] and [9,14]; and adjust vertices 9/15 to break the [9,15] conflict while maintaining the 3-color constraint across the dense subgraph."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-8",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 45.66543841548264
+    },
+    {
+      "id": "review-19",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "The candidate assignment has 7 conflicts on edges [1,2,9,15,23,28,36] involving vertices with repeated colors 0 and 1. Repair ideas: swap color 1 and 2 for vertices {0,3,5,6,9,11,14} to break adjacent conflicts; reassign vertex 5 from color 2 to 0 if edge [5,8] is non-conflicting; recolor vertex 15 (currently 1) to 2, but verify edges [15,16],[15,18],[15,19],[15,20] avoid conflicts with neighbors' new colors."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-9",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 45.65830024983734
+    },
+    {
+      "id": "candidate-22",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 13,
+        "violating_edges": [
+          1,
+          2,
+          14,
+          16,
+          19,
+          21,
+          22,
+          25,
+          26,
+          27,
+          30,
+          32,
+          35
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -13
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          2,
+          1,
+          1,
+          0,
+          2,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          0,
+          1,
+          1,
+          0,
+          2,
+          0,
+          1,
+          0,
+          2,
+          1,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 46.77501520793885,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-23",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 7,
+        "violating_edges": [
+          1,
+          2,
+          9,
+          15,
+          23,
+          28,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -7
+        ]
+      },
+      "duplicate_of": "candidate-3",
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 46.766958540305495,
+      "model_calls": null
+    },
+    {
+      "id": "review-20",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both assignments violate the same 7 edges ([1,2,9,15,23,28,36]) due to repeated color assignments on adjacent vertices. Edge 2 (0-1) and edge 9 (3-10) create fundamental conflicts, while edges 15, 23, 28, 36 involve vertices sharing color 0 or 2 adjacent to each other. Repair requires reassigning colors to vertices 0, 3, 5, 6, 9, 10, 13, 14, 18, 19, 20, 21, 22, 23 to eliminate adjacent same-color pairs, particularly targeting the high-degree vertex 15 (currently color 1) which conflicts with vertices 4, 16, 18, 19, 20."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-8",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 49.92397562414408
+    },
+    {
+      "id": "review-21",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both candidates share the identical assignment and produce 7 conflicts on edges 1,2,9,15,23,28,36. Conflicts occur at vertices 0,1,2,5,6,9,15 where adjacent vertices share colors. A repair strategy involves reassigning vertices from color 0 to colors 1 or 2 on edges [0,3],[0,13],[0,23] and vertices [1,11],[1,18],[1,19],[1,22] to break the dense clusters, then propagating changes to resolve transitive conflicts on edges [3,20],[5,19],[6,18] etc., aiming for a valid 3-coloring with 0 conflicts."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-9",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 49.91582904011011
+    },
+    {
+      "id": "candidate-24",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 7,
+        "violating_edges": [
+          1,
+          2,
+          9,
+          16,
+          23,
+          28,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -7
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          2,
+          2,
+          1,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 50.87469433248043,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-25",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 15,
+        "violating_edges": [
+          0,
+          2,
+          5,
+          8,
+          9,
+          11,
+          12,
+          15,
+          16,
+          22,
+          24,
+          25,
+          29,
+          32,
+          35
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -15
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          1,
+          2,
+          0,
+          1,
+          0,
+          1,
+          0,
+          0,
+          1,
+          2,
+          1,
+          0,
+          1,
+          0,
+          0,
+          2,
+          1,
+          0,
+          1,
+          2,
+          1,
+          2,
+          0,
+          1
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 50.88672433234751,
+      "model_calls": null
+    },
+    {
+      "id": "review-22",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both assignments are identical and share the same critical flaw: the color mapping [0,1,2,1,0,2,2,0,1,2,0,2,1,0,1,1,0,2,0,0,1,1,2,0] has 7 conflicts across edges [1,2,9,15,23,28,36], primarily caused by adjacent vertices sharing colors 0 and 2. A repair strategy is to recolor vertex 19 from 1 to 2 to break the [12,19] conflict, then adjust vertex 11 from 2 to 1 to resolve [11,13] and [6,11], potentially reducing the conflict count to 5."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-8",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 53.456867499276996
+    },
+    {
+      "id": "review-23",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both candidates share the exact same flawed assignment [0,1,2,1,0,2,2,0,1,2,0,2,1,0,1,1,0,2,0,0,1,1,2,0] with 7 edge conflicts. The assignment violates constraints at edges 1, 2, 9, 15, 23, 28, and 36, yielding a fitness of [1,-7]. A critical structural issue is the repeated color assignment of 0 to adjacent vertices 17 and 18 (conflict at edge 17-18) and the repeated color 2 at vertices 6 and 7 (conflict at edge 6-7). Repair ideas: enforce a proper 3-coloring by systematically swapping colors along conflict paths or applying a backtracking algorithm to reassign vertices involved in the 7 violating edges, particularly focusing on the dense subgraph involving vertices 5, 15, 19, and 20 which contain multiple conflicts."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-9",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 54.36109170783311
+    },
+    {
+      "id": "candidate-26",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 7,
+        "violating_edges": [
+          1,
+          2,
+          9,
+          15,
+          23,
+          28,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -7
+        ]
+      },
+      "duplicate_of": "candidate-3",
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          1,
+          0,
+          2,
+          0,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 55.48601704090834,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-27",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 13,
+        "violating_edges": [
+          1,
+          2,
+          3,
+          4,
+          9,
+          11,
+          15,
+          17,
+          20,
+          22,
+          32,
+          34,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -13
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          1,
+          0,
+          2,
+          1,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          2,
+          1,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 55.6982693746686,
+      "model_calls": null
+    },
+    {
+      "id": "review-24",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both candidates share identical flawed assignment [0,1,2,1,0,2,2,0,1,2,0,2,1,0,1,1,0,2,0,0,1,1,2,0] with 7 conflicts on edges 1,2,9,15,23,28,36. The repeated 0-0 assignments on vertices 18 and 19 violate the 3-color constraint for edge [14,18] and [15,19]. Repair: swap vertex 18's color to 1 and vertex 19's color to 2 to eliminate adjacent conflicts while maintaining the existing color distribution balance."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-8",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 58.161784957163036
+    },
+    {
+      "id": "review-25",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both targets share the exact same flawed assignment with 7 conflicts on edges [1,2,9,15,23,28,36]. The core problem is insufficient color distribution: color 0 appears 5 times, color 1 appears 6 times, and color 2 appears only 5 times on 24 vertices, creating imbalance. Additionally, edges 1 (0-3) and 2 (0-13) both connect vertex 0 (color 0) to vertices 3 and 13 (both color 1), forming a recurring pattern where color-0 vertices consistently connect to color-1 vertices. A repair strategy involves redistributing colors to achieve an 8-8-8 split and ensuring no color-0 vertex connects exclusively to color-1 vertices, particularly addressing the [0,3] and [0,13] conflicts first."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-9",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 58.76937195751816
+    },
+    {
+      "id": "candidate-28",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 9,
+        "violating_edges": [
+          0,
+          1,
+          2,
+          6,
+          8,
+          21,
+          28,
+          31,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -9
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          1,
+          1,
+          0,
+          2,
+          0,
+          2,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          1,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 60.748524999246,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-29",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 11,
+        "violating_edges": [
+          1,
+          2,
+          4,
+          9,
+          13,
+          15,
+          23,
+          28,
+          31,
+          34,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -11
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          1,
+          0,
+          2,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          1,
+          0,
+          2,
+          1,
+          2,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 60.741775665432215,
+      "model_calls": null
+    },
+    {
+      "id": "review-26",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both target assignments use identical invalid state with 7 conflicts across edges [1,2,9,15,23,28,36]. Edges 1,2,9,23 conflict due to same-color adjacencies (vertices 0-1 and 3-10 both red). Edge 15 and 28 indicate structural overlap where vertex 15's red neighbors violate constraints. Repair requires reassigning vertices 0,1,3,10,15 and their connected components to break monochromatic adjacencies while maintaining the 3-color limit across the dense 24-node graph."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-8",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 63.16972916573286
+    },
+    {
+      "id": "review-27",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "The two target assignments are identical and share 7 edge conflicts across edges 1, 2, 9, 15, 23, 28, 36. Key issues: vertices 11 and 13 share color 0 while connected; vertices 21 and 23 share color 0 while connected; vertices 5 and 16 share color 2 while connected. Repair ideas: recolor vertex 23 to color 1 (breaking edges 23,28,36) and vertex 13 to color 2 (breaking edge 1), then resolve remaining conflicts at edges 9 and 15 through local adjustments."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-9",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 63.15416687447578
+    },
+    {
+      "id": "candidate-30",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 14,
+        "violating_edges": [
+          2,
+          3,
+          5,
+          6,
+          7,
+          8,
+          11,
+          14,
+          15,
+          16,
+          21,
+          23,
+          29,
+          32
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -14
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          1,
+          0,
+          1,
+          2,
+          0,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          1,
+          0,
+          1,
+          2,
+          0,
+          1
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 64.2915158746764,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-31",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 14,
+        "violating_edges": [
+          3,
+          4,
+          10,
+          11,
+          12,
+          18,
+          19,
+          21,
+          23,
+          25,
+          26,
+          28,
+          30,
+          35
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -14
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          2,
+          0,
+          1,
+          0,
+          2,
+          1,
+          2,
+          0,
+          1,
+          2,
+          1,
+          2,
+          0,
+          1,
+          2,
+          1,
+          0,
+          1,
+          2,
+          0,
+          1
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 64.19629224948585,
+      "model_calls": null
+    },
+    {
+      "id": "review-28",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both candidate assignments are identical and produce 7 conflicts, all located within vertices {1,2,9,15,23,28,36}. The current 3-coloring fails because adjacent vertices repeatedly share the same color (e.g., 1-2, 9-15). A repair strategy is to recolor vertex 15 from color 1 to color 2, which resolves conflicts on edges [15,16], [15,18], [15,19], [15,20] while maintaining consistency with neighbors 5 and 17. Additionally, vertices 23 and 28 require attention as they conflict with multiple high-degree neighbors."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-8",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 66.69162429030985
+    },
+    {
+      "id": "review-29",
+      "kind": "review",
+      "verified_fact": false,
+      "valid_schema": true,
+      "payload": {
+        "critique": "Both target candidates share the same assignment and exhibit 7 conflicts on edges 1, 2, 9, 15, 23, 28, 36. Edges 1 and 2 (vertices 0-1 and 0-3) conflict because vertex 0 and vertex 1/3 share color 0. Edges 9 and 15 involve vertex 9 (color 1) conflicting with vertices 14/15 (color 1) on edges [9,14] and [9,15]. Edge 23 (vertices 11-23) and edge 28 (vertices 13-20) conflict due to color repetition. A repair strategy is to recolor vertex 0 to color 1 or 2, and adjust vertices 11, 13, 14, 15, 20, 23 to break the color clashes while maintaining the 3-color constraint."
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": null,
+      "model_calls": null,
+      "reviewer_candidate_id": "candidate-9",
+      "target_ids": [
+        "candidate-3",
+        "candidate-4"
+      ],
+      "completed_elapsed_seconds": 67.1826611245051
+    },
+    {
+      "id": "candidate-32",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 13,
+        "violating_edges": [
+          0,
+          2,
+          11,
+          14,
+          15,
+          16,
+          21,
+          23,
+          26,
+          28,
+          30,
+          36,
+          37
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -13
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          1,
+          2,
+          0,
+          2,
+          1,
+          0,
+          2,
+          1,
+          0,
+          2,
+          0,
+          1,
+          1,
+          0,
+          1,
+          2,
+          0,
+          2,
+          0,
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 68.4928619991988,
+      "model_calls": null
+    },
+    {
+      "id": "candidate-33",
+      "kind": "candidate",
+      "origin": "model",
+      "operation": "review_guided_repair",
+      "verification": {
+        "solved": false,
+        "valid_schema": true,
+        "conflicts": 12,
+        "violating_edges": [
+          1,
+          2,
+          6,
+          11,
+          14,
+          16,
+          18,
+          20,
+          21,
+          22,
+          32,
+          36
+        ],
+        "error": null,
+        "fitness": [
+          1,
+          -12
+        ]
+      },
+      "duplicate_of": null,
+      "payload": {
+        "assignment": [
+          0,
+          2,
+          1,
+          1,
+          0,
+          1,
+          2,
+          2,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          2,
+          2,
+          0,
+          1,
+          0,
+          0,
+          2,
+          1,
+          2,
+          0
+        ]
+      },
+      "ballot": null,
+      "verified_elapsed_seconds": 68.51360095757991,
+      "model_calls": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "candidate-0",
+      "target": "review-0",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-0",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-1",
+      "target": "review-0",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-2",
+      "target": "review-1",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-1",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-1",
+      "target": "review-1",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-4",
+      "relation": "parent"
+    },
+    {
+      "source": "review-0",
+      "target": "candidate-4",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-1",
+      "target": "candidate-4",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-1",
+      "target": "candidate-5",
+      "relation": "parent"
+    },
+    {
+      "source": "review-0",
+      "target": "candidate-5",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-1",
+      "target": "candidate-5",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-5",
+      "target": "review-2",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-2",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-2",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-1",
+      "target": "review-3",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-3",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-3",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-6",
+      "relation": "parent"
+    },
+    {
+      "source": "review-2",
+      "target": "candidate-6",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-3",
+      "target": "candidate-6",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-4",
+      "target": "candidate-7",
+      "relation": "parent"
+    },
+    {
+      "source": "review-2",
+      "target": "candidate-7",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-3",
+      "target": "candidate-7",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-7",
+      "target": "review-4",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-4",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-4",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-5",
+      "target": "review-5",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-5",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-5",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-8",
+      "relation": "parent"
+    },
+    {
+      "source": "review-4",
+      "target": "candidate-8",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-5",
+      "target": "candidate-8",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-4",
+      "target": "candidate-9",
+      "relation": "parent"
+    },
+    {
+      "source": "review-4",
+      "target": "candidate-9",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-5",
+      "target": "candidate-9",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-8",
+      "target": "review-6",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-6",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-6",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-9",
+      "target": "review-7",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-7",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-7",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-10",
+      "relation": "parent"
+    },
+    {
+      "source": "review-6",
+      "target": "candidate-10",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-7",
+      "target": "candidate-10",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-4",
+      "target": "candidate-11",
+      "relation": "parent"
+    },
+    {
+      "source": "review-6",
+      "target": "candidate-11",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-7",
+      "target": "candidate-11",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-8",
+      "target": "review-8",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-8",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-8",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-9",
+      "target": "review-9",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-9",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-9",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-12",
+      "relation": "parent"
+    },
+    {
+      "source": "review-8",
+      "target": "candidate-12",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-9",
+      "target": "candidate-12",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-4",
+      "target": "candidate-13",
+      "relation": "parent"
+    },
+    {
+      "source": "review-8",
+      "target": "candidate-13",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-9",
+      "target": "candidate-13",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-8",
+      "target": "review-10",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-10",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-10",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-9",
+      "target": "review-11",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-11",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-11",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-14",
+      "relation": "parent"
+    },
+    {
+      "source": "review-10",
+      "target": "candidate-14",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-11",
+      "target": "candidate-14",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-4",
+      "target": "candidate-15",
+      "relation": "parent"
+    },
+    {
+      "source": "review-10",
+      "target": "candidate-15",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-11",
+      "target": "candidate-15",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-8",
+      "target": "review-12",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-12",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-12",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-9",
+      "target": "review-13",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-13",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-13",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-16",
+      "relation": "parent"
+    },
+    {
+      "source": "review-12",
+      "target": "candidate-16",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-13",
+      "target": "candidate-16",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-4",
+      "target": "candidate-17",
+      "relation": "parent"
+    },
+    {
+      "source": "review-12",
+      "target": "candidate-17",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-13",
+      "target": "candidate-17",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-8",
+      "target": "review-14",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-14",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-14",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-9",
+      "target": "review-15",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-15",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-15",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-18",
+      "relation": "parent"
+    },
+    {
+      "source": "review-14",
+      "target": "candidate-18",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-15",
+      "target": "candidate-18",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-4",
+      "target": "candidate-19",
+      "relation": "parent"
+    },
+    {
+      "source": "review-14",
+      "target": "candidate-19",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-15",
+      "target": "candidate-19",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-8",
+      "target": "review-16",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-16",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-16",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-9",
+      "target": "review-17",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-17",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-17",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-20",
+      "relation": "parent"
+    },
+    {
+      "source": "review-16",
+      "target": "candidate-20",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-17",
+      "target": "candidate-20",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-4",
+      "target": "candidate-21",
+      "relation": "parent"
+    },
+    {
+      "source": "review-16",
+      "target": "candidate-21",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-17",
+      "target": "candidate-21",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-8",
+      "target": "review-18",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-18",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-18",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-9",
+      "target": "review-19",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-19",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-19",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-22",
+      "relation": "parent"
+    },
+    {
+      "source": "review-18",
+      "target": "candidate-22",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-19",
+      "target": "candidate-22",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-4",
+      "target": "candidate-23",
+      "relation": "parent"
+    },
+    {
+      "source": "review-18",
+      "target": "candidate-23",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-19",
+      "target": "candidate-23",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-8",
+      "target": "review-20",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-20",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-20",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-9",
+      "target": "review-21",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-21",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-21",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-24",
+      "relation": "parent"
+    },
+    {
+      "source": "review-20",
+      "target": "candidate-24",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-21",
+      "target": "candidate-24",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-4",
+      "target": "candidate-25",
+      "relation": "parent"
+    },
+    {
+      "source": "review-20",
+      "target": "candidate-25",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-21",
+      "target": "candidate-25",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-8",
+      "target": "review-22",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-22",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-22",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-9",
+      "target": "review-23",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-23",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-23",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-26",
+      "relation": "parent"
+    },
+    {
+      "source": "review-22",
+      "target": "candidate-26",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-23",
+      "target": "candidate-26",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-4",
+      "target": "candidate-27",
+      "relation": "parent"
+    },
+    {
+      "source": "review-22",
+      "target": "candidate-27",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-23",
+      "target": "candidate-27",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-8",
+      "target": "review-24",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-24",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-24",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-9",
+      "target": "review-25",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-25",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-25",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-28",
+      "relation": "parent"
+    },
+    {
+      "source": "review-24",
+      "target": "candidate-28",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-25",
+      "target": "candidate-28",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-4",
+      "target": "candidate-29",
+      "relation": "parent"
+    },
+    {
+      "source": "review-24",
+      "target": "candidate-29",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-25",
+      "target": "candidate-29",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-8",
+      "target": "review-26",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-26",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-26",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-9",
+      "target": "review-27",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-27",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-27",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-30",
+      "relation": "parent"
+    },
+    {
+      "source": "review-26",
+      "target": "candidate-30",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-27",
+      "target": "candidate-30",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-4",
+      "target": "candidate-31",
+      "relation": "parent"
+    },
+    {
+      "source": "review-26",
+      "target": "candidate-31",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-27",
+      "target": "candidate-31",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-8",
+      "target": "review-28",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-28",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-28",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-9",
+      "target": "review-29",
+      "relation": "reviewer"
+    },
+    {
+      "source": "candidate-3",
+      "target": "review-29",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-4",
+      "target": "review-29",
+      "relation": "review_target"
+    },
+    {
+      "source": "candidate-3",
+      "target": "candidate-32",
+      "relation": "parent"
+    },
+    {
+      "source": "review-28",
+      "target": "candidate-32",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-29",
+      "target": "candidate-32",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "candidate-4",
+      "target": "candidate-33",
+      "relation": "parent"
+    },
+    {
+      "source": "review-28",
+      "target": "candidate-33",
+      "relation": "review_guidance"
+    },
+    {
+      "source": "review-29",
+      "target": "candidate-33",
+      "relation": "review_guidance"
+    }
+  ],
+  "selections": [
+    {
+      "event_id": 33,
+      "timestamp": "2026-11-16T02:15:17.083070+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 1,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-5",
+        "candidate-1"
+      ],
+      "pruned_ids": [
+        "candidate-0",
+        "candidate-2"
+      ],
+      "elapsed_seconds": 5.922048999927938
+    },
+    {
+      "event_id": 49,
+      "timestamp": "2026-11-16T02:15:20.894508+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 2,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-7",
+        "candidate-5"
+      ],
+      "pruned_ids": [
+        "candidate-1",
+        "candidate-6"
+      ],
+      "elapsed_seconds": 9.733445500023663
+    },
+    {
+      "event_id": 65,
+      "timestamp": "2026-11-16T02:15:25.537727+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 3,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-8",
+        "candidate-9"
+      ],
+      "pruned_ids": [
+        "candidate-7",
+        "candidate-5"
+      ],
+      "elapsed_seconds": 14.376615249551833
+    },
+    {
+      "event_id": 81,
+      "timestamp": "2026-11-16T02:15:28.973279+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 4,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-8",
+        "candidate-9"
+      ],
+      "pruned_ids": [
+        "candidate-10",
+        "candidate-11"
+      ],
+      "elapsed_seconds": 17.812129624187946
+    },
+    {
+      "event_id": 97,
+      "timestamp": "2026-11-16T02:15:34.960894+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 5,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-8",
+        "candidate-9"
+      ],
+      "pruned_ids": [
+        "candidate-12",
+        "candidate-13"
+      ],
+      "elapsed_seconds": 23.799680165946484
+    },
+    {
+      "event_id": 113,
+      "timestamp": "2026-11-16T02:15:40.142764+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 6,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-8",
+        "candidate-9"
+      ],
+      "pruned_ids": [
+        "candidate-14",
+        "candidate-15"
+      ],
+      "elapsed_seconds": 28.98149437457323
+    },
+    {
+      "event_id": 129,
+      "timestamp": "2026-11-16T02:15:44.438782+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 7,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-8",
+        "candidate-9"
+      ],
+      "pruned_ids": [
+        "candidate-16",
+        "candidate-17"
+      ],
+      "elapsed_seconds": 33.27746483217925
+    },
+    {
+      "event_id": 145,
+      "timestamp": "2026-11-16T02:15:49.034081+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 8,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-8",
+        "candidate-9"
+      ],
+      "pruned_ids": [
+        "candidate-18",
+        "candidate-19"
+      ],
+      "elapsed_seconds": 37.87271616514772
+    },
+    {
+      "event_id": 161,
+      "timestamp": "2026-11-16T02:15:53.763766+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 9,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-8",
+        "candidate-9"
+      ],
+      "pruned_ids": [
+        "candidate-20",
+        "candidate-21"
+      ],
+      "elapsed_seconds": 42.602348832413554
+    },
+    {
+      "event_id": 177,
+      "timestamp": "2026-11-16T02:15:57.936768+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 10,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-8",
+        "candidate-9"
+      ],
+      "pruned_ids": [
+        "candidate-22",
+        "candidate-23"
+      ],
+      "elapsed_seconds": 46.7753059156239
+    },
+    {
+      "event_id": 193,
+      "timestamp": "2026-11-16T02:16:02.048672+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 11,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-8",
+        "candidate-9"
+      ],
+      "pruned_ids": [
+        "candidate-24",
+        "candidate-25"
+      ],
+      "elapsed_seconds": 50.887164833024144
+    },
+    {
+      "event_id": 209,
+      "timestamp": "2026-11-16T02:16:06.860209+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 12,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-8",
+        "candidate-9"
+      ],
+      "pruned_ids": [
+        "candidate-26",
+        "candidate-27"
+      ],
+      "elapsed_seconds": 55.69865087419748
+    },
+    {
+      "event_id": 225,
+      "timestamp": "2026-11-16T02:16:11.910302+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 13,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-8",
+        "candidate-9"
+      ],
+      "pruned_ids": [
+        "candidate-28",
+        "candidate-29"
+      ],
+      "elapsed_seconds": 60.74868949968368
+    },
+    {
+      "event_id": 241,
+      "timestamp": "2026-11-16T02:16:15.453493+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 14,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-8",
+        "candidate-9"
+      ],
+      "pruned_ids": [
+        "candidate-30",
+        "candidate-31"
+      ],
+      "elapsed_seconds": 64.29184233210981
+    },
+    {
+      "event_id": 257,
+      "timestamp": "2026-11-16T02:16:19.675564+00:00",
+      "run_id": "da8563b7d63a",
+      "method": "review_elites4",
+      "type": "selection",
+      "puzzle_id": "eva-csp-ff5c8ad4abdab670",
+      "generation": 15,
+      "survivor_ids": [
+        "candidate-3",
+        "candidate-4",
+        "candidate-8",
+        "candidate-9"
+      ],
+      "pruned_ids": [
+        "candidate-32",
+        "candidate-33"
+      ],
+      "elapsed_seconds": 68.51386745739728
+    }
+  ],
+  "selected_program": null,
+  "program_grades": [],
+  "scope": "Lineage DAG, not proof that a parent/review caused improvement; derived consensuses are not model samples.",
+  "case_outcome": {
+    "solved": false,
+    "status": "complete",
+    "deadline": false,
+    "time_to_verified_solution_seconds": null
+  }
+}

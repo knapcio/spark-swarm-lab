@@ -1,0 +1,28 @@
+flowchart TD
+  n0["candidate-0 / candidate / fresh"]
+  n1["candidate-1 / candidate / fresh"]
+  n2["candidate-2 / candidate / fresh"]
+  n3["candidate-3 / candidate / fresh"]
+  n4["candidate-4 / candidate / mutation"]
+  n5["candidate-5 / candidate / mutation"]
+  n6["candidate-6 / candidate / mutation"]
+  n7["candidate-7 / candidate / immigrant"]
+  n8["candidate-8 / candidate / mutation"]
+  n9["candidate-9 / candidate / mutation"]
+  n10["candidate-10 / candidate / crossover"]
+  n11["candidate-11 / candidate / immigrant"]
+  n12["candidate-12 / candidate / mutation"]
+  n13["candidate-13 / candidate / mutation"]
+  n14["candidate-14 / candidate / crossover"]
+  n15["candidate-15 / candidate / immigrant"]
+  n2 -->|parent| n4
+  n2 -->|parent| n5
+  n2 -->|parent| n6
+  n6 -->|parent| n8
+  n5 -->|parent| n9
+  n6 -->|parent| n10
+  n5 -->|parent| n10
+  n6 -->|parent| n12
+  n8 -->|parent| n13
+  n6 -->|parent| n14
+  n9 -->|parent| n14

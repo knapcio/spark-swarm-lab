@@ -1,0 +1,29 @@
+flowchart TD
+  n0["candidate-0 / candidate / fresh"]
+  n1["candidate-1 / candidate / fresh"]
+  n2["candidate-2 / candidate / fresh"]
+  n3["candidate-3 / candidate / fresh"]
+  n4["candidate-4 / candidate / fresh"]
+  n5["candidate-5 / candidate / fresh"]
+  n6["candidate-6 / candidate / fresh"]
+  n7["candidate-7 / candidate / fresh"]
+  n8["candidate-8 / candidate / fresh"]
+  n9["candidate-9 / candidate / fresh"]
+  n10["candidate-10 / candidate / fresh"]
+  n11["candidate-11 / candidate / fresh"]
+  n12["derived-consensus-2 / derived_candidate / consensus"]
+  n13["candidate-12 / candidate / consensus_guided_repair"]
+  n14["candidate-13 / candidate / consensus_guided_repair"]
+  n15["candidate-14 / candidate / consensus_guided_repair"]
+  n16["candidate-15 / candidate / consensus_guided_repair"]
+  n17["derived-consensus-3 / derived_candidate / consensus"]
+  n10 -->|parent| n12
+  n8 -->|parent| n13
+  n12 -->|parent| n13
+  n9 -->|parent| n14
+  n12 -->|parent| n14
+  n10 -->|parent| n15
+  n12 -->|parent| n15
+  n11 -->|parent| n16
+  n12 -->|parent| n16
+  n15 -->|parent| n17
