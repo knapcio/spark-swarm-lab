@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "created_before_census_utc": "2026-11-16T07:01:45.595777+00:00",
+  "parser_sha256": "cf4d641689836e629c5ad4bba1785b980915e7c90c5b4f2263ff8b552604621f",
+  "tests_sha256": "4f70b10de6ed312e879f9fba5f592cf5d893fd15e0f4bd7633c1769d128f5dab",
+  "frozen_apply_action_source_sha256": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+  "authored_tests_passed": 22,
+  "grammar": "Maximal physically contiguous standalone Move N: a op b = c or Step N: a op b = c lines, ASCII signed integer or fraction literals, operator + - * /. Require same label and numbering exactly 1..N; N <= min(5, input_count-1).",
+  "semantics": "Replay literal equations in stated order from initial multiset using frozen apply_action with allow_fractions=False. Never correct, skip, reorder, search or execute candidate source. Every equation in whole block must be valid, including any after first target occurrence.",
+  "unsupported": "Bullets, bold labels, bare numbered lines, decimals, Unicode operators, explanatory suffixes, blank-separated steps, inline/chained equations and other formats are unsupported or not detected; this does not imply reasoning lacks a solution.",
+  "offsets": "Zero-based end-exclusive Python character offsets in retained reasoning; not tokens.",
+  "request_binding": "SHA256 of exact retained request_start JSONL line bytes including newline; original HTTP request body not captured.",
+  "scope": "Already-seen exploratory census, all 449 retained responses of direct/E2/E4/strong-solo; 292 length responses. Original metrics unchanged. No omitted response recovery.",
+  "baseline": "Replay all 449 accepted-content fields independently and require agreement with retained verified reward.",
+  "evidence_policy": "Exact extracted spans retained as audit evidence only, never used as future model input."
+}
