@@ -4,6 +4,8 @@ The owner requested a new phase targeting 72/72 on the original arithmetic suite
 
 [Actual Claude Fable 5.2 high-effort review](results/fable52-advisory-20261116/README.md) · [independent failure diagnostic](results/nemotron72-diagnostic-v1/NOTES.md) · [strict reasoning census](results/nemotron72-strict-census-v1/NOTES.md) · [frozen protocol](FOLLOWUP72_DEVELOPMENT_PLAN.json) · [final precall audit](results/nemotron72-precall-audit-v1/FINAL_PRECALL.json).
 
+**Current stage:** the frozen 168-case development driver started at 08:57 Europe/Warsaw on 16 November 2026. Four unchanged Nemotron replicas passed fresh qualification; native DeepSeek is temporarily stopped with owned guards during this follow-up window. Raw cases and independent audits are being recorded. No complete new quality aggregate is available yet.
+
 ## Why this experiment
 
 The diagnostic confirms that answer emission is a useful hypothesis to test. Of 54 unsuccessful direct cases, 52 returned no answer after using 8,192 tokens in reasoning. The 23 unsuccessful E4 cases contain 91 such responses and one legal-but-unsuccessful emitted plan. All 27 unsuccessful sequential-refinement cases hit 180 seconds during the third request; none dispatched a fourth.

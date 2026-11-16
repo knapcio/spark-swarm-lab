@@ -41,7 +41,7 @@ API seeds do not guarantee identical GPU execution.
 
 The separate native DeepSeek TP4 reference completed **72/72 arithmetic and 54/54 coding attempts**, on the same 24/18 tasks and three repetitions, with independent verification. This is a pinned custom abliterated checkpoint and a different serving/compute recipe, not an equal-cost model ranking. Native client usage is complete; global server token cost is unknown. [Reference comparison and limitations](results/reference-deepseek-v1-analysis/REPORT.md) · [independent audit](results/reference-deepseek-v1-audit/AUDIT.json). The planned Opus reference was unavailable because the account hit its weekly usage limit; the optional GLM hybrid was not run.
 
-**Nemotron study runtime: vLLM 0.32.0 ARM64, DSpark3, four independent replicas.** These replicas are now stopped and retained; the saved native DeepSeek TP4 production service is restored after completing the separate quality reference. The uniform runtime-v2 study completed **900 primary attempts**, **80 supplemental solo-control attempts** (8 development and 72 evaluation), and **45 corrected loaded-queue cohorts / 2,016 attempts** (36 development batches and 9 evaluation batches). [Progress and exclusions](EVALUATION_PROGRESS.md).
+**Nemotron study runtime: vLLM 0.32.0 ARM64, DSpark3, four independent replicas.** At the overnight study closure these replicas were stopped and retained, and native DeepSeek TP4 was restored. The new follow-up runs in a separate coordinated window; see [current follow-up status](FOLLOWUP72.md). The uniform runtime-v2 study completed **900 primary attempts**, **80 supplemental solo-control attempts** (8 development and 72 evaluation), and **45 corrected loaded-queue cohorts / 2,016 attempts** (36 development batches and 9 evaluation batches). [Progress and exclusions](EVALUATION_PROGRESS.md).
 
 The arithmetic primary four-sample reasoning ensemble solved **49/72 attempts (68.1%)**; sequential own-feedback refinement solved **45/72 (62.5%; task-cluster 95% interval 47.2–77.8%)**, versus **18/72 (25.0%)** for one reasoning call. The paired ensemble-minus-refinement difference is **+5.56 percentage points (95% interval −5.56 to +16.67)**, spanning zero. These are repeated attempts on **24 distinct tasks**, with separate execution schedules and different realized costs. [Completed stronger-solo comparison](results/solo-control-v2/complete-comparison/solo-comparison/REPORT.md).
 
@@ -88,7 +88,7 @@ budget and reputation-pipeline checks.
 
 ## Quick start
 
-Published evidence can be replayed without live models; see [REPRODUCING.md](REPRODUCING.md). The live-play commands below describe an active Nemotron study window. Its containers are currently stopped, and a new deployment window is required before those model endpoints can serve requests.
+Published evidence can be replayed without live models; see [REPRODUCING.md](REPRODUCING.md). The live-play commands below describe the historical interactive prototype. A separate fixed follow-up is currently running; avoid adding interactive requests to its measurement endpoints.
 
 Run commands from this repository directory (`cd apps/swarm-lab` in the original workspace).
 
@@ -111,7 +111,7 @@ python3 server.py --port 18777
 100 separate agents. `SWARM_SEED=2` changes seeded sampling. New runs appear in
 the viewer. Weighted play accepts its calibration file as the fourth argument.
 
-Fleet-specific operational note: the Nemotron experiment is closing and its containers are stopped. `fleet.sh` is the historical deployment adapter for this study; its `restore` path targets an older service and must not be used to restore the current native pico/dsgb10 production service. The verified native restoration uses the saved native service settings and an owner-checked release of the two study guard files after all reference work finishes. Fresh deployments require an explicitly scheduled fleet window.
+Fleet-specific operational note: the original overnight experiment has closed; the follow-up uses a separately admitted measurement window. `fleet.sh` is the historical deployment adapter for this study; its `restore` path targets an older service and must not be used to restore the current native pico/dsgb10 production service. The verified native restoration uses the saved native service settings and an owner-checked release of the two study guard files after all reference work finishes. Fresh deployments require an explicitly scheduled fleet window.
 
 Historical study configuration: `fleet.sh start` selected DSpark3 with the pinned draft (`download_draft.py`, 1.35 GB of weight files per node); `SWARM_SPECULATION=none` selected the target-only configuration. NFS and Spark_05–06 were preserved throughout the study.
 
