@@ -1,0 +1,56 @@
+{
+  "protocol": "nemotron72-known-agents-v2",
+  "study": "depth-vs-breadth-hard-dev",
+  "status": "FROZEN",
+  "scope": "Exploratory, arithmetic-hard-v1 DEVELOPMENT split only (16 tasks x 3 seeds = 48 cases); evaluation split untouched by this study.",
+  "question": "At equal completion budget, is one agent thinking up to ~15K tokens better than two agents of 8K on hard tasks? Does the original prompt help on 4-number all-numbers tasks?",
+  "agent_variants": [
+    "long_forced_explicit",
+    "long_forced_explicit",
+    "forced_explicit",
+    "forced_explicit",
+    "forced_explicit",
+    "forced_explicit",
+    "long_forced_original",
+    "long_forced_original"
+  ],
+  "workers": {
+    "long_forced_explicit": "forced72_worker.py",
+    "forced_explicit": "forced72_worker.py",
+    "long_forced_original": "forced72_worker.py"
+  },
+  "extra_worker_args": [],
+  "agent_seed_offset": 600,
+  "source_revision": "ce6c0b6e583596faf15e4f556b0d73f09fb0b6a4",
+  "source_branch": "research/nemotron-long-v1",
+  "source_path": ".runtime/nemotron-long-source",
+  "matrix": {
+    "dataset": "datasets/arithmetic-hard-v1/tasks.json",
+    "dataset_protocol": "arithmetic-hard-v1",
+    "split": "development",
+    "tasks": 16,
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "cases": 48,
+    "agent_runs": 384
+  },
+  "limits": {
+    "long_agent": "14848 thinking + forced end + continuation within 16000",
+    "short_agent": "7168 + continuation within 8192",
+    "idle_timeout_seconds": 120,
+    "agent_wall_deadline_seconds": 3600
+  },
+  "scheduling": {
+    "concurrent_agents_per_node": 10,
+    "note": "Lower than 20 so 16K-token sequences do not force KV preemption pauses that could trip the 120 s idle detector."
+  },
+  "comparisons": [
+    "1 long (16K) vs any-of-2 short (16K)",
+    "any-of-2 long (32K) vs any-of-4 short (32K)",
+    "long explicit vs long original prompt, split by 4/6-number tasks"
+  ],
+  "runner": "run_agents72.py (split taken from plan)"
+}

@@ -152,7 +152,7 @@ def main(argv=None):
     else:  # fresh corpus in the main repo; its protocol is pinned and its hash is recorded
         dataset = HERE / plan['matrix']['dataset']
         require(read(dataset).get('protocol') == plan['matrix']['dataset_protocol'], 'Wrong corpus protocol')
-    tasks = [t for t in read(dataset)['tasks'] if t['split'] == 'evaluation']
+    tasks = [t for t in read(dataset)['tasks'] if t['split'] == plan['matrix'].get('split', 'evaluation')]
     endpoints = [f'http://127.0.0.1:{port}/v1' for port in range(18081, 18085)]
     jobs = make_jobs(tasks, output, endpoints, source, plan)
     per_node = plan['scheduling']['concurrent_agents_per_node']
