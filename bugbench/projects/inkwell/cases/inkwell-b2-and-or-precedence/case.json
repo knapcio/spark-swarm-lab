@@ -1,0 +1,47 @@
+{
+ "case_id": "inkwell-b2-and-or-precedence",
+ "project": "inkwell",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "medium",
+ "bug_class": "parser_precedence",
+ "mutations": [
+  {
+   "file": "inkwell/expr.py",
+   "old": "    \"and\": 2,\n",
+   "new": "    \"and\": 1,\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "inkwell/expr.py"
+  ],
+  "functions": [
+   "inkwell/expr.py::<module>"
+  ],
+  "claim_aliases": [
+   "inkwell/expr.py::PRECEDENCE",
+   "inkwell/expr.py::ExpressionParser._binary"
+  ]
+ },
+ "symptom_files": [
+  "inkwell/render.py",
+  "inkwell/parser.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "inkwell/expr.py::ExpressionParser._binary (any parser where and binds tighter than or)"
+ ],
+ "target_probes": [
+  "probe_or_and_precedence_output",
+  "probe_or_and_in_conditions",
+  "probe_or_not_and_mixed"
+ ],
+ "notes": "and/or share one precedence level, so `a or b and c` groups as `(a or b) and c`. `a and b or c` is unaffected (public test passes). README states the Python grouping explicitly. Probes cover output, if/elif, for-if filters, set, not and comparisons.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 3d81b6e4-bugbench-inkwell-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

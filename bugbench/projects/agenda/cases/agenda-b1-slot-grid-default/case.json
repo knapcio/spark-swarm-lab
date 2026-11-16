@@ -1,0 +1,43 @@
+{
+ "case_id": "agenda-b1-slot-grid-default",
+ "project": "agenda",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "easy",
+ "bug_class": "wrong_default",
+ "mutations": [
+  {
+   "file": "agenda/availability.py",
+   "old": "def free_slots(calendar, people, day, duration, step=15, hours=None):",
+   "new": "def free_slots(calendar, people, day, duration, step=30, hours=None):"
+  }
+ ],
+ "gold": {
+  "files": [
+   "agenda/availability.py"
+  ],
+  "functions": [
+   "agenda/availability.py::free_slots"
+  ]
+ },
+ "symptom_files": [
+  "agenda/availability.py",
+  "agenda/schedule.py"
+ ],
+ "call_hops_symptom_to_bug": 0,
+ "alternative_fix_sites": [
+  "agenda/availability.py::first_common_slot and agenda/schedule.py::execute only together with free_slots; passing step=15 from callers alone leaves direct free_slots calls wrong"
+ ],
+ "target_probes": [
+  "probe_free_slots_default_grid",
+  "probe_first_common_slot_default_grid",
+  "probe_free_command_default_grid"
+ ],
+ "notes": "Default grid step is 30 instead of the documented 15 minutes. Explicit step values work (public test passes). Probes cover direct calls with custom hours, first_common_slot and the schedule free command, so patching only the caller in the report fails.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 9b52e0c7-bugbench-agenda-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

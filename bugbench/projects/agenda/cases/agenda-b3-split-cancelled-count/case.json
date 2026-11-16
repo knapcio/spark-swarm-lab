@@ -1,0 +1,41 @@
+{
+ "case_id": "agenda-b3-split-cancelled-count",
+ "project": "agenda",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "hard",
+ "bug_class": "state_bookkeeping",
+ "mutations": [
+  {
+   "file": "agenda/calendar.py",
+   "old": "        done = len(generated)\n",
+   "new": "        done = len([moment for moment in generated if moment not in event.cancelled])\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "agenda/calendar.py"
+  ],
+  "functions": [
+   "agenda/calendar.py::Calendar.split"
+  ]
+ },
+ "symptom_files": [
+  "agenda/reports.py",
+  "agenda/schedule.py"
+ ],
+ "call_hops_symptom_to_bug": 1,
+ "alternative_fix_sites": [],
+ "target_probes": [
+  "probe_split_after_cancellation_count",
+  "probe_split_after_cancellation_until",
+  "probe_split_after_cancellation_schedule"
+ ],
+ "notes": "Split counts only non-cancelled occurrences before the split point, contradicting the documented count semantics (cancelled occurrences still count). The old series is truncated too early and, with a count, the new series gets extra occurrences. Needs a repeating event + a cancellation before the split + split; splits without earlier cancellations are correct (public test and regression probe pass). Works for until-rules too.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 9b52e0c7-bugbench-agenda-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

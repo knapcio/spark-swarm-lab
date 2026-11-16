@@ -1,0 +1,42 @@
+{
+ "case_id": "inkwell-b1-round-half-even",
+ "project": "inkwell",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "easy",
+ "bug_class": "unit_rounding",
+ "mutations": [
+  {
+   "file": "inkwell/filters.py",
+   "old": "rounding=decimal.ROUND_HALF_UP",
+   "new": "rounding=decimal.ROUND_HALF_EVEN"
+  }
+ ],
+ "gold": {
+  "files": [
+   "inkwell/filters.py"
+  ],
+  "functions": [
+   "inkwell/filters.py::_quantize"
+  ]
+ },
+ "symptom_files": [
+  "inkwell/filters.py"
+ ],
+ "call_hops_symptom_to_bug": 1,
+ "alternative_fix_sites": [
+  "inkwell/filters.py::do_round/do_number/do_percent (only if every rounding filter rounds half up)"
+ ],
+ "target_probes": [
+  "probe_round_half_up_ties",
+  "probe_number_half_up_ties",
+  "probe_percent_half_up_ties"
+ ],
+ "notes": "Banker's rounding in the shared quantize helper. Only exact ties whose kept digit is even round the wrong way; the report quotes number(), the probes also cover round() and percent(), negative values, other precision and custom separators, so fixing only the number filter fails two targets.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 3d81b6e4-bugbench-inkwell-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

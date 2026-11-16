@@ -1,0 +1,45 @@
+{
+ "case_id": "agenda-b2-weekday-order",
+ "project": "agenda",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "medium",
+ "bug_class": "cross_module_contract",
+ "mutations": [
+  {
+   "file": "agenda/recurrence.py",
+   "old": "            weekdays = tuple(sorted(set(weekdays)))\n",
+   "new": "            weekdays = tuple(dict.fromkeys(weekdays))\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "agenda/recurrence.py"
+  ],
+  "functions": [
+   "agenda/recurrence.py::Rule.__init__"
+  ]
+ },
+ "symptom_files": [
+  "agenda/calendar.py",
+  "agenda/reports.py",
+  "agenda/schedule.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "agenda/recurrence.py::Rule._dates (iterate weekdays in sorted order)"
+ ],
+ "target_probes": [
+  "probe_weekly_unsorted_days_count",
+  "probe_weekly_unsorted_days_until_and_window",
+  "probe_weekly_unsorted_days_calendar",
+  "probe_weekly_unsorted_days_schedule"
+ ],
+ "notes": "Weekday list keeps the caller's order, so Rule.starts yields out of chronological order; count, until, between() and is_start() all assume chronological order. Sorted weekday lists work (public test passes). Sorting in Calendar.series/occurrences hides the order but still fails count/until/is_start probes.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 9b52e0c7-bugbench-agenda-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

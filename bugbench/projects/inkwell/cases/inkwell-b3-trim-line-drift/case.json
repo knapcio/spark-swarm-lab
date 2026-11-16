@@ -1,0 +1,45 @@
+{
+ "case_id": "inkwell-b3-trim-line-drift",
+ "project": "inkwell",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "hard",
+ "bug_class": "lexer_line_tracking",
+ "mutations": [
+  {
+   "file": "inkwell/lexer.py",
+   "old": "        line += source.count(\"\\n\", pos, stop)\n",
+   "new": "        line += text.count(\"\\n\")\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "inkwell/lexer.py"
+  ],
+  "functions": [
+   "inkwell/lexer.py::tokenize"
+  ]
+ },
+ "symptom_files": [
+  "inkwell/parser.py",
+  "inkwell/context.py",
+  "inkwell/environment.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "inkwell/lexer.py::tokenize (count newlines of the untrimmed text, or derive lines from source offsets)"
+ ],
+ "target_probes": [
+  "probe_trim_syntax_error_line",
+  "probe_trim_undefined_line_strict",
+  "probe_trim_error_in_include",
+  "probe_trim_token_lines"
+ ],
+ "notes": "Line counter advances by the newlines of the whitespace-trimmed text instead of the original source, so every token after a dash delimiter that ate newlines reports a too-small line. Rendered output is correct; errors without whitespace control and inside multi-line tags/comments are correct (public tests pass). Symptom surfaces in parser, strict-undefined and include errors.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 3d81b6e4-bugbench-inkwell-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

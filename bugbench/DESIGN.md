@@ -1,14 +1,22 @@
 # bugbench: finding and fixing planted bugs in projects larger than one context
 
-Status: **design + offline prototype (1 project, 3 cases)**. No model has been
-run on it. Nothing here is a result.
+Status: **design + offline prototype (3 projects, 9 cases)**. No model has been
+run on it. Nothing here is a result. The Docker grading adapter is implemented
+and tested offline with a fake `ssh`; it has not yet been run against a real
+host.
+
+| Project | Domain | Modules / lines / ~tokens | Cases (easy / medium / hard) |
+|---|---|---|---|
+| `stockroom` | warehouse ledger, FIFO lots, orders, journal DSL | 10 / 1,413 / 14.2K | tier boundary / snapshot alias / rollback order |
+| `inkwell` | text template engine: lexer, precedence parser, filters, includes, autoescape | 10 / 1,411 / 13.4K | round half-even / `and`-`or` precedence / line drift after whitespace trim |
+| `agenda` | calendar: recurrence rules, cancel/move/split, free slots, reports, schedule DSL | 8 / 942 / 10.6K | free-slot grid default / weekday order contract / split count after cancellation |
 
 ## 1. Why this benchmark
 
 The arithmetic and function-level coding tasks in this repository are mostly
 solved, and every task there fits into a single prompt. In bugbench each task is
 a complete multi-module Python project, bigger than one Nemotron call can read.
-The prototype package is about 14K tokens, plus about 2K of tests and README,
+The prototype packages are 10.6K–14.2K tokens, plus about 2K of tests and README,
 against a prompt budget of about 7.5K. An agent therefore has to choose what to
 read. Splitting reading, localization, fixing and review across agents becomes a
 real design choice rather than a re-labelled ensemble.
@@ -30,7 +38,7 @@ A **case** is a project, one or more planted mutations, and one public bug repor
 bugbench/
   bugbench_grader.py            offline grader, materializer, CLI
   test_bugbench.py              offline tests of grader and prototype invariants
-  projects/<project>/
+  projects/<project>/             stockroom, inkwell, agenda
     project.json                package name, editable globs, canary
     clean/                      reference project (agents never see it unmodified)
     hidden/probes.py            behavioural probes, no expected values      [hidden]
@@ -67,12 +75,36 @@ case that behaves correctly when that helps exclude wrong hypotheses.
 | Off-by-one / boundary | `>=`→`>`, `range(n)`→`range(n-1)`, half-open vs closed ranges | `stockroom-b1-tier-boundary` (easy) |
 | State mutation / aliasing | shallow copy, shared default, returning internal list | `stockroom-b2-snapshot-alias` (medium) |
 | Error-path / rollback | partial update before raise, rollback in wrong order or position | `stockroom-b3-rollback-order` (hard) |
-| Ordering without concurrency | FIFO/LIFO swap, unstable sort, wrong insert position | (b3 is also an ordering bug) |
+| Ordering without concurrency | FIFO/LIFO swap, unstable sort, wrong insert position | (stockroom b3 is also an ordering bug) |
 | Wrong tie-break | `>` vs `>=` on equal scores, ascending vs descending secondary key | planned |
-| Unit / rounding | per-line vs per-total rounding, wrong rounding mode, cents vs units | planned |
-| Wrong default / config | default argument, missing fallback branch | planned |
-| Cross-module contract | caller assumes sorted, inclusive or immutable input that the callee does not guarantee | planned |
-| Parser / lexer | escape handling, token boundary, line-number off-by-one | planned |
+| Unit / rounding | per-line vs per-total rounding, wrong rounding mode, cents vs units | `inkwell-b1-round-half-even` (easy) |
+| Wrong default / config | default argument, missing fallback branch | `agenda-b1-slot-grid-default` (easy) |
+| Cross-module contract | caller assumes sorted, inclusive or immutable input that the callee does not guarantee | `agenda-b2-weekday-order` (medium) |
+| Parser / lexer | escape handling, token boundary, precedence, line-number tracking | `inkwell-b2-and-or-precedence` (medium), `inkwell-b3-trim-line-drift` (hard) |
+| Semantic bookkeeping | a count or total computed under the wrong documented definition | `agenda-b3-split-cancelled-count` (hard) |
+
+Case summaries for the two newer projects:
+
+- `inkwell-b1`: the shared quantize helper uses `ROUND_HALF_EVEN`, so
+  `12.345|number(2)` prints 12.34 (12.355 is right). Probes cover `round`,
+  `number` and `percent`; fixing only `number` fails `round`.
+- `inkwell-b2`: `and` and `or` share a precedence level, so
+  `a or b and c` groups as `(a or b) and c`; `a and b or c` is unaffected.
+- `inkwell-b3`: the lexer advances its line counter by the newlines of the
+  whitespace-trimmed text, so every error after a `{%-`/`-%}` that ate
+  newlines reports a too-small line. Output is correct. The symptom surfaces in
+  parser, strict-undefined and include errors (2 hops from the lexer).
+- `agenda-b1`: `free_slots` defaults to a 30-minute grid instead of the
+  documented 15. Probes also cover `first_common_slot` and the `free` command,
+  so patching one caller fails.
+- `agenda-b2`: weekly weekdays are de-duplicated but not sorted, so
+  `Rule.starts` yields out of order and `count`, `until`, `between` and
+  `is_start` (which assume chronological order) go wrong. Sorting in the
+  calendar listing hides the order but still fails every target.
+- `agenda-b3`: `Calendar.split` counts only non-cancelled occurrences before
+  the split point, against the documented rule that cancelled occurrences
+  still count. Needs a repeating event, a cancellation before the split and
+  a split; the old series loses a session and the new one gains one.
 
 Excluded: concurrency and timing bugs (non-deterministic grading), performance
 bugs, security bugs, and anything needing network, files outside the tree or
@@ -123,13 +155,25 @@ results and never retune a case after evaluation outcomes are known.
    alternative-fix analysis, and difficulty labels. Record the reviewer in
    `case.json.review`. The prototype cases are author-reviewed only.
 
-The prototype includes an ad-hoc measure of hidden-suite strength. There are
-114 single-operator mutants of the clean package (comparison flips, `and`/`or`,
-`[0]`/`[-1]`, removed `.copy()`, and so on). The probes kill 92. Of the 22
-survivors, 17 only change docstrings and 2 are equivalent. That leaves
-**92/95 (~97%)** of behaviour-changing mutants caught. The 3 real gaps are two
-journal mutants for a backslash at the end of a line and a rejected zero list
-price. Add this check as a reusable `mutants` command before scaling the corpus.
+**Probe strength** is measured with the `mutants` command
+(`mutation_score`): every single-site mutant of the clean package under 28
+operators (comparison flips, `and`/`or`, `[0]`/`[-1]`, `±1`, removed `.copy()`,
+`True`/`False`, `sorted`→`list`, removed `not`, `min`/`max`, `break`/`continue`,
+`lstrip`/`rstrip`, `is None`, rounding mode, and so on). Mutants that change only
+comments, docstrings, string literals or f-strings are skipped, because
+exception messages are not graded. A mutant is killed when any probe
+observation differs or the child fails. Survivors need human review.
+
+| Project | Mutants | Killed | Survivors reviewed |
+|---|---|---|---|
+| `inkwell` | 302 | 272 (90%) | 17 `frozen=True`→`False` (immutability is not observable through the documented API); 12 equivalent or reachable only with input rejected earlier (e.g. `index < best` for distinct openers, `targets[0]`/`[-1]` with one target); 1 real gap: `{#-#}` (empty comment with a dash) trims differently, undocumented |
+| `agenda` | 317 | 293–294 (92–93%) | 2 `frozen`; 21 equivalent (9 `[0]`→`[-1]` on one-element lists, `sorted(set(ints))`→`list(set(ints))` which CPython already orders, zero durations rejected by `Interval` anyway, ...); 1 probabilistic: `sorted`→`list` of a shared-attendee set is killed only when the hash seed orders the set non-alphabetically |
+| `stockroom` | 172 | 140 (81%) | 11 `frozen`; most others are unprobed type-validation branches (`bool`/`str` quantities, wrong-currency costs). The earlier ad-hoc count (92/95 of 114) used a narrower operator set |
+
+For the two newer projects, about 99% of behaviour-changing, non-equivalent
+mutants are killed. Edge probes were added after the first run (inkwell 78%→90%,
+agenda 82%→93%), before any case was frozen for evaluation. Stockroom probes
+were left unchanged; add type-validation probes before using it for evaluation.
 
 ## 6. Ambiguity control
 
@@ -152,6 +196,16 @@ reference patch is required. To make that fair:
   fails because `Inventory.snapshot` documents the same guarantee, and sorting
   inside `_take` fails because `Inventory.lots()` documents FIFO order. Both
   outcomes are pinned in tests and explained in `case.json.notes`.
+  Pinned for the newer projects: a hand-written half-up quantizer (inkwell b1),
+  lowering `or` instead of raising `and` (b2) and deriving lines from source
+  offsets (b3) pass; a `number`-only rounding fix fails `round`. In agenda,
+  `step=None` → 15 (b1) and sorting inside `Rule._dates` (b2) pass; passing
+  `step=15` from callers only, sorting the calendar listing, and fixing only
+  the old series' count after a split all fail.
+- **Defects outside a function.** `inkwell-b2` lives in a module-level
+  precedence table. Its gold function is `inkwell/expr.py::<module>`, and
+  `gold.claim_aliases` lets a localization claim name `PRECEDENCE` or
+  `ExpressionParser._binary`.
 - **Exceptions are compared by type only**, not message. Values use exact JSON
   types: int ≠ float ≠ bool, as in the existing coding grader.
 
@@ -199,8 +253,9 @@ to the raw-vs-JSON calibration in `CODING_EXPERIMENT.md`.
 2. Compute the diff, changed lines, touched functions (AST segment diff),
    gold-file and gold-function hits, and the elision flag.
 3. Send `{mode, package, files, probes, probe_names, probe_timeout}` over stdin
-   to a fresh `python3 -I -S -c CHILD`. **Expected values are never sent**, and
-   a test checks the payload keys and contents. The child writes the files into
+   to a fresh `python3 -I -S -c CHILD`, locally or in the container (below).
+   **Expected values are never sent**, and tests check the payload keys and
+   contents for both backends. The child writes the files into
    its own temporary directory and imports the package. Before each probe it
    purges the package from `sys.modules`, then runs the probe under a per-probe
    `SIGALRM` deadline (default 5 s). It returns only observations, as values,
@@ -208,23 +263,52 @@ to the raw-vs-JSON calibration in `CODING_EXPERIMENT.md`.
    candidate stdout and stderr go to `/dev/null`.
 4. The **outer parent** compares observations with `expected.json` and reports
    `status` (`passed`/`failed`/`invalid_patch`/`timeout`/`error`),
-   `hidden`/`target`/`regression` counts, broken regression probes, the import
-   error, timed-out probes, duration and payload hash.
+   `failure_kind`, `provenance`, `hidden`/`target`/`regression` counts, broken
+   regression probes, the import error, timed-out probes, execution metadata,
+   duration and payload hash. `passed`/`failed`/`timeout` are candidate
+   outcomes (`failure_kind` e.g. `candidate_probe_failure`, `candidate_oom`,
+   `candidate_signal`, `candidate_runtime`, `candidate_protocol`);
+   `error` means the grading infrastructure failed (`provenance:
+   infrastructure`) and the patch must be re-graded, never scored.
 
 `run_public_tests` is the only execution feedback agents may receive. It runs
 the visible tests on a patched copy through the same child. Because public
 tests pass on the buggy tree, this feedback cannot reveal the bug. It only
 catches patches that break documented, visible behaviour.
 
-**Docker TODO.** `container_argv()` builds the same pinned ARM64
-`python@sha256:c61c…` command with the isolation flags of
-`independent_code_grader.py`: runc, no network, read-only root, `/tmp` tmpfs
-16 MiB, 256 MiB memory with no swap, 64 PIDs, 1 CPU, UID 65534, dropped
-capabilities, no-new-privileges. The payload is identical, so only the
-transport changes. Ownership-labelled inspection, OOM classification and
-cleanup should be reused from `independent_code_grader.py` when this is wired
-up. Until then, local mode is for authored fixtures and offline development
-only. **Model-generated patches must not be graded locally.**
+**Docker executor (implemented, offline-tested).** `DockerExecutor(host)`
+mirrors `sandbox_code.py`: `ssh -o BatchMode=yes -o ConnectTimeout=10 -- host
+docker run --pull never --runtime runc -i --network none --read-only --cap-drop
+ALL --security-opt no-new-privileges --pids-limit 64 --memory 256m
+--memory-swap 256m --cpus 1 --user 65534:65534 --tmpfs
+/tmp:rw,noexec,nosuid,nodev,size=16m ... python@sha256:c61c… -I -S -c CHILD`
+with the payload on stdin. The image is pinned to the same digest as
+`sandbox_code.py` (a test checks it). The command has no `--rm`. Each run gets
+a unique name and two owned labels (`swarm-lab.code-owner=swarm-lab-bugbench-eval`,
+`swarm-lab.code-task=<uuid>`). After the run, including a controller timeout,
+the container is inspected only if both labels match, then removed by a
+label-guarded `sh -c` cleanup. Classification:
+
+- OOM-killed → `candidate_oom`;
+- controller timeout with container evidence → `candidate_timeout`;
+- exit ≥ 128 → `candidate_signal`; other exits → `candidate_runtime`;
+- malformed or oversized output, or the wrong number of observations →
+  `candidate_protocol`;
+- ssh 255 or `OSError` → `ssh_infrastructure`; docker 125/126/127 or a state
+  `Error` → `docker_infrastructure`;
+- failed or foreign-label inspection → `inspection_infrastructure`;
+- failed cleanup → `cleanup_infrastructure`, which keeps
+  `original_failure_kind` and discards the result.
+
+`grade(..., executor=DockerExecutor(host))`,
+`run_public_tests(..., executor=...)` and the CLI `--docker-host` use it. The
+patched code still shares an interpreter with the trusted probe runner inside
+the container, exactly as in local mode: it can read the probe source, but no
+expected value is ever sent. A fake `ssh` that runs the real CHILD locally tests
+success (identical grades to local mode), timeout, OOM exit 137, signal,
+cleanup failure, malformed output, ssh/docker/inspection failures and host
+validation. Local mode remains for authored fixtures and offline development
+only. **Grade model-generated patches only with `--docker-host`.**
 
 ## 9. Contamination and originality
 
@@ -271,13 +355,15 @@ Secondary:
 
 ## 11. Context budgets
 
-| Item | Approx. tokens (prototype) |
-|---|---|
-| Package (10 modules, 1,413 lines) | ~14.2K |
-| Largest module (`inventory.py`, 232 lines) | ~2.4K |
-| Public tests + README | ~2.1K |
-| Repo map (all signatures + first doc lines) | ~3.2K (compress to ~1.5K by dropping dunders/errors for fixers) |
-| Bug report | 0.2–0.3K |
+| Item | stockroom | inkwell | agenda |
+|---|---|---|---|
+| Package | ~14.2K (10 modules, 1,413 lines) | ~13.4K (10 modules, 1,411 lines) | ~10.6K (8 modules, 942 lines) |
+| Largest module | `journal.py` 256 lines, ~2.3K | `filters.py` 259 lines, ~2.3K | `calendar.py` 227 lines, ~2.7K |
+| Public tests + README | ~2.1K | ~2.0K | ~2.2K |
+| Repo map | ~3.2K | ~2.7K | ~2.0K |
+| Bug reports | 0.2–0.3K | 0.2–0.4K | 0.2–0.3K |
+
+Compress the repo map to ~1.5K for fixers by dropping dunders and errors.
 
 Per call: **prompt ≤ 7.5K, completion ≤ 8K** (thinking on, so reasoning and
 answer share the cap), 16K window. A scout prompt (instructions 0.6K, report,
@@ -344,11 +430,13 @@ compute.
 
 ## 14. Recommended first experiment
 
-1. **Development (now possible with this prototype)**: 3 cases, a few seeds.
+1. **Development (now possible with this prototype)**: 9 cases, a few seeds.
    Calibrate the patch format (full-file vs search/replace), thinking budget,
    scout JSON schema and the repo-map size. Fix prompt bugs. Not reportable.
 2. **Corpus**: 8 new projects × 3 cases = **24 evaluation cases** (8 easy, 8
-   medium, 8 hard), plus the 3 prototype cases kept as development. Each case
+   medium, 8 hard), plus the prototype cases kept as development. `inkwell` and
+   `agenda` may instead count as 2 of the 8 projects, if a frozen manifest says
+   so before any model sees them; stockroom stays development. Each case
    gets independent review and a frozen manifest with hashes before any
    evaluation call.
 3. **Arms**: S2 (budget-matched sequential), S3 (independent-8), W1 (sharding)
@@ -371,21 +459,28 @@ compute.
 
 ## 15. Risks and open questions
 
-- **Prototype only.** It has one project and 3 author-reviewed cases. The
-  difficulty labels are guesses until calibrated.
+- **Prototype only.** It has three projects and 9 author-reviewed cases. The
+  difficulty labels are guesses until calibrated. All three projects were
+  written by one author (with model assistance) on the same day, so their
+  style is more uniform than real code.
 - **Authoring cost.** Each project is about 1.5K lines plus probes and review.
   24 cases need about 8 projects. Model-assisted authoring is possible, but it
   must be reviewed for originality and must not use DeepSeek or Nemotron
   outputs that later appear as evaluation inputs.
-- **Hidden-suite adequacy.** The prototype kills ~97% of behaviour-changing
-  single-operator mutants. A fix could still break unprobed behaviour. Report
-  this limitation, and keep running a mutation-score check per project.
+- **Hidden-suite adequacy.** `mutants` kills 90–93% of all operator mutants in
+  the newer projects (about 99% after removing reviewed equivalents) and 81% in
+  stockroom. A fix could still break unprobed behaviour, especially stockroom
+  type validation. Report this limitation, and re-run `mutants` per project
+  after any probe change.
 - **Spec-entailment judgement** is human and fallible (see the snapshot
   example in §6). Review every target probe against the report and docs.
 - **Full-file output cost** may push thinking-on responses into truncation.
   This is the main reason for the format-calibration cohort.
-- **Local grading is not a sandbox.** Wire `container_argv` up before any model
-  patch is executed.
+- **Local grading is not a sandbox.** The Docker executor is wired up but only
+  tested with a fake `ssh`. Before the first model patch: one real smoke run
+  per host (clean, buggy, OOM and timeout fixtures), and confirm that the
+  pinned image's Python version reproduces `expected.json`. It was frozen
+  with the local interpreter, and probes compare exact values.
 - **Prefill load.** 100 concurrent requests with 6–7K-token prompts is a
   different serving regime from the earlier short-JSON qualification. Measure
   it before committing to a wall-time budget.
@@ -397,11 +492,13 @@ compute.
 
 ```sh
 cd apps/swarm-lab
-python3 -m unittest discover -s bugbench -p 'test_*.py'      # 29 offline tests
-python3 bugbench/bugbench_grader.py verify                     # case invariants
+python3 -m unittest discover -s bugbench -p 'test_*.py'      # 45 offline tests
+python3 bugbench/bugbench_grader.py verify                     # case invariants (all 9 cases)
+python3 bugbench/bugbench_grader.py mutants inkwell            # probe strength (~1 min per project)
 python3 bugbench/bugbench_grader.py materialize stockroom-b3-rollback-order /tmp/case
 python3 bugbench/bugbench_grader.py reference-patch stockroom-b3-rollback-order > fix.txt
 python3 bugbench/bugbench_grader.py grade stockroom-b3-rollback-order fix.txt
+python3 bugbench/bugbench_grader.py grade stockroom-b3-rollback-order fix.txt --docker-host Spark_01   # model patches
 python3 bugbench/bugbench_grader.py selfcheck stockroom-b3-rollback-order fix.txt
 python3 bugbench/bugbench_grader.py freeze stockroom           # deliberate re-freeze only
 ```

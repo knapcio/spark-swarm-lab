@@ -1,0 +1,918 @@
+{
+ "version": 1,
+ "project": "agenda",
+ "canary": "BUGBENCH-HIDDEN-CANARY 9b52e0c7-bugbench-agenda-probes",
+ "clean_tree_sha256": "72fad97b343acd39666257346b0250881cf630148f958883db8b17ec833b0dd8",
+ "probes_sha256": "d94327b18f2b091826927d419ae66e0f606d6309b42018afe58a74dc5db3037b",
+ "frozen_with_python": "3.14.6",
+ "probes": {
+  "probe_time_parsing": {
+   "kind": "value",
+   "value": [
+    "2028-02-29",
+    "07:05:00",
+    120,
+    45,
+    65,
+    "1h",
+    "5m",
+    "10h05m",
+    [
+     6,
+     0,
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    29,
+    28,
+    [
+     "2026-02-28",
+     "2026-03-31",
+     "2025-11-30",
+     "2028-02-29"
+    ],
+    [
+     "2026-06-30",
+     "2026-06-30",
+     "2026-06-29",
+     "2026-06-01",
+     "2026-06-03"
+    ],
+    [
+     "InvalidTime",
+     "InvalidTime",
+     "InvalidTime"
+    ],
+    [
+     "InvalidTime",
+     "InvalidTime"
+    ],
+    [
+     "InvalidTime",
+     "InvalidTime",
+     "InvalidTime",
+     "InvalidTime"
+    ],
+    "InvalidTime"
+   ]
+  },
+  "probe_interval_merge": {
+   "kind": "value",
+   "value": [
+    false,
+    false,
+    true,
+    false,
+    true,
+    60,
+    [
+     [
+      "2026-03-02 09:00",
+      "2026-03-02 11:00"
+     ],
+     [
+      "2026-03-02 12:00",
+      "2026-03-02 13:00"
+     ]
+    ],
+    "InvalidTime"
+   ]
+  },
+  "probe_rule_frequencies": {
+   "kind": "value",
+   "value": [
+    [
+     "2026-02-26 08:00",
+     "2026-03-01 08:00",
+     "2026-03-04 08:00",
+     "2026-03-07 08:00"
+    ],
+    [
+     "2026-03-04 18:30",
+     "2026-03-11 18:30",
+     "2026-03-18 18:30"
+    ],
+    [
+     "2026-03-05 07:00",
+     "2026-03-17 07:00",
+     "2026-03-19 07:00"
+    ],
+    [
+     "2026-01-31 12:00",
+     "2026-02-28 12:00",
+     "2026-03-31 12:00",
+     "2026-04-30 12:00"
+    ],
+    [
+     "2026-01-15 12:00",
+     "2026-02-15 12:00",
+     "2026-03-15 12:00"
+    ],
+    [
+     "2026-08-31 09:00",
+     "2027-01-31 09:00",
+     "2027-06-30 09:00"
+    ],
+    [
+     "2028-02-29 09:00",
+     "2029-02-28 09:00",
+     "2030-02-28 09:00",
+     "2031-02-28 09:00",
+     "2032-02-29 09:00"
+    ],
+    [
+     "2026-03-01 09:00",
+     "2026-03-02 09:00",
+     "2026-03-03 09:00"
+    ],
+    [
+     "2026-03-01 09:00",
+     "2026-03-02 09:00"
+    ],
+    [
+     "2026-03-01 06:00",
+     "2026-03-02 06:00",
+     "2026-03-03 06:00"
+    ],
+    [
+     true,
+     false,
+     true
+    ],
+    [
+     true,
+     false,
+     true,
+     true
+    ]
+   ]
+  },
+  "probe_rule_validation_and_describe": {
+   "kind": "value",
+   "value": [
+    [
+     "InvalidRule",
+     "InvalidRule",
+     "InvalidRule",
+     "InvalidRule",
+     "InvalidRule",
+     "InvalidRule",
+     "InvalidRule",
+     "InvalidRule",
+     "InvalidRule",
+     "InvalidRule"
+    ],
+    "every 2 weeks on tue, thu; 6 times; until 2026-05-01",
+    [
+     1,
+     3
+    ],
+    "every month on day -1",
+    "every 2 years",
+    "every 2 weeks on tue, thu; until 2026-05-01",
+    true,
+    false,
+    true,
+    false
+   ]
+  },
+  "probe_parse_rule": {
+   "kind": "value",
+   "value": [
+    "every day; 3 times",
+    "every 2 weeks on tue, thu; until 2026-06-30",
+    "every month on day -1",
+    "every week on mon, tue, wed, thu, fri",
+    "every 3 months; 4 times; until 2027-01-01",
+    "every year",
+    "InvalidRule",
+    "InvalidRule",
+    "InvalidRule",
+    "InvalidTime",
+    "InvalidRule",
+    "InvalidRule",
+    "InvalidTime",
+    "InvalidRule"
+   ]
+  },
+  "probe_calendar_add_validation": {
+   "kind": "value",
+   "value": [
+    [
+     "ann",
+     "bob"
+    ],
+    [
+     "ALPHA",
+     "ONE",
+     "SYNC"
+    ],
+    "DuplicateEvent",
+    "AgendaError",
+    "AgendaError",
+    "InvalidTime",
+    "InvalidTime",
+    "AgendaError",
+    "InvalidRule",
+    "AgendaError",
+    "UnknownEvent",
+    "UnknownEvent",
+    "InvalidTime"
+   ]
+  },
+  "probe_cancel_move_listing": {
+   "kind": "value",
+   "value": [
+    "NotAnOccurrence",
+    "NotAnOccurrence",
+    "NotAnOccurrence",
+    "InvalidTime",
+    [
+     [
+      "SYNC",
+      "2026-03-02 10:00",
+      "2026-03-02 10:00",
+      false
+     ],
+     [
+      "ALPHA",
+      "2026-03-03 10:00",
+      "2026-03-03 10:00",
+      false
+     ],
+     [
+      "ONE",
+      "2026-03-03 10:00",
+      "2026-03-03 10:00",
+      false
+     ],
+     [
+      "SYNC",
+      "2026-03-03 16:00",
+      "2026-03-03 10:00",
+      true
+     ],
+     [
+      "SYNC",
+      "2026-03-06 10:00",
+      "2026-03-06 10:00",
+      false
+     ],
+     [
+      "SYNC",
+      "2026-03-09 08:00",
+      "2026-03-04 10:00",
+      true
+     ]
+    ],
+    [
+     "08:00-08:30 SYNC Team sync @R1 [ann, bob] (moved from 2026-03-04 10:00)",
+     "10:00-10:15 ALPHA Alpha @R2 [ann]",
+     "16:00-16:30 SYNC Team sync @R1 [ann, bob] (moved from 10:00)"
+    ],
+    [
+     "2026-03-02 10:00",
+     "2026-03-03 10:00",
+     "2026-03-06 10:00"
+    ],
+    [
+     "SYNC"
+    ]
+   ]
+  },
+  "probe_occurrence_window": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      "ALPHA",
+      "2026-03-03 10:00"
+     ],
+     [
+      "ONE",
+      "2026-03-03 10:00"
+     ],
+     [
+      "SYNC",
+      "2026-03-03 10:00"
+     ]
+    ],
+    12,
+    11,
+    "InvalidTime",
+    "InvalidRule",
+    [
+     "2026-03-03 10:00"
+    ]
+   ]
+  },
+  "probe_split_without_cancellations": {
+   "kind": "value",
+   "value": [
+    [
+     "2026-01-31 17:00",
+     "2026-02-28 17:00",
+     "2026-03-31 17:00"
+    ],
+    [
+     "2026-04-30 17:00",
+     "2026-07-01 17:00"
+    ],
+    "every month on day 31; 3 times",
+    "every month on day 31; 3 times",
+    [
+     "Course II",
+     "R3",
+     [
+      "eve"
+     ]
+    ],
+    [
+     "2026-05-31 17:00"
+    ],
+    [
+     "2026-03-02 08:00",
+     "2026-03-03 08:00",
+     "2026-03-04 08:00"
+    ],
+    [
+     "2026-03-05 08:00",
+     "2026-03-06 08:00",
+     "2026-03-07 08:00",
+     "2026-03-08 08:00"
+    ],
+    30,
+    "InvalidRule",
+    "NotAnOccurrence",
+    "NotAnOccurrence",
+    "DuplicateEvent",
+    "InvalidTime",
+    [
+     "2026-03-02 10:00",
+     "2026-03-03 10:00",
+     "2026-03-04 10:00",
+     "2026-03-05 10:00",
+     "2026-03-06 10:00"
+    ]
+   ]
+  },
+  "probe_busy_and_minutes": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      "2026-03-03 00:00",
+      "2026-03-03 10:30"
+     ]
+    ],
+    90,
+    90,
+    60,
+    "InvalidTime"
+   ]
+  },
+  "probe_free_slots_explicit_step": {
+   "kind": "value",
+   "value": [
+    [
+     "09:00",
+     "11:00",
+     "12:00",
+     "13:00",
+     "14:00",
+     "15:00",
+     "16:00"
+    ],
+    [
+     "10:30",
+     "10:50",
+     "11:10"
+    ],
+    [
+     "09:30",
+     "10:30"
+    ],
+    [],
+    [],
+    [
+     "09:00"
+    ],
+    "AgendaError",
+    "InvalidTime",
+    "InvalidTime",
+    "InvalidTime"
+   ]
+  },
+  "probe_reports": {
+   "kind": "value",
+   "value": [
+    [
+     "10:00-10:15 ALPHA Alpha @R2 [ann]",
+     "10:00-11:00 ONE One-off [cy]",
+     "10:00-10:30 SYNC Team sync @R1 [ann, bob]",
+     "10:05-10:35 SYNC Team sync @R1 [ann, bob] (moved from 2026-03-04 10:00)"
+    ],
+    [
+     "10:00-10:15 ALPHA Alpha @R2 [ann]"
+    ],
+    [
+     [
+      "ann",
+      "2h45m"
+     ],
+     [
+      "bob",
+      "2h30m"
+     ],
+     [
+      "cy",
+      "1h"
+     ]
+    ],
+    [],
+    [
+     [
+      "ALPHA",
+      "2026-03-03 10:00",
+      "SYNC",
+      "2026-03-03 10:00",
+      "attendee ann"
+     ],
+     [
+      "ALPHA",
+      "2026-03-03 10:00",
+      "SYNC",
+      "2026-03-03 10:05",
+      "attendee ann"
+     ],
+     [
+      "SYNC",
+      "2026-03-03 10:00",
+      "SYNC",
+      "2026-03-03 10:05",
+      "room R1"
+     ]
+    ],
+    [
+     "2026-03-02 10:00",
+     "2026-03-03 10:00",
+     "2026-03-03 10:05",
+     "2026-03-05 10:00",
+     "2026-03-06 10:00"
+    ]
+   ]
+  },
+  "probe_schedule_replay": {
+   "kind": "value",
+   "value": [
+    [
+     {
+      "command": "holiday",
+      "line": 2
+     },
+     {
+      "event": "SYNC",
+      "command": "event",
+      "line": 3
+     },
+     {
+      "event": "REV",
+      "command": "event",
+      "line": 4
+     },
+     {
+      "command": "cancel",
+      "line": 5
+     },
+     {
+      "command": "move",
+      "line": 6
+     },
+     {
+      "lines": [
+       "15:00-15:30 SYNC Team \"sync\" @R1 [ann, bob] (moved from 10:00)"
+      ],
+      "command": "agenda",
+      "line": 7
+     },
+     {
+      "hours": [
+       [
+        "ann",
+        "2h30m"
+       ],
+       [
+        "bob",
+        "1h30m"
+       ]
+      ],
+      "command": "hours",
+      "line": 8
+     },
+     {
+      "command": "remove",
+      "line": 9
+     },
+     {
+      "lines": [],
+      "command": "agenda",
+      "line": 10
+     }
+    ],
+    [
+     "a",
+     "b c",
+     "",
+     "d"
+    ],
+    [
+     "SYNC"
+    ],
+    [
+     2,
+     "DuplicateEvent"
+    ],
+    [
+     1,
+     "AgendaError"
+    ],
+    [
+     1,
+     null
+    ],
+    [
+     3,
+     "AgendaError"
+    ],
+    [
+     1,
+     "InvalidTime"
+    ],
+    [
+     2,
+     "InvalidRule"
+    ]
+   ]
+  },
+  "probe_validation_and_boundary_edges": {
+   "kind": "value",
+   "value": [
+    [
+     "amy",
+     "bea",
+     "kim",
+     "lou",
+     "zed"
+    ],
+    [],
+    [
+     [
+      "ONE",
+      "2026-03-03 12:00"
+     ],
+     [
+      "REP",
+      "2026-03-03 12:00"
+     ]
+    ],
+    0,
+    450,
+    [
+     "InvalidTime",
+     "InvalidTime",
+     "InvalidTime"
+    ],
+    [
+     "InvalidRule",
+     "InvalidRule",
+     "every month on day -31",
+     "every month on day 31",
+     "InvalidRule",
+     "InvalidRule"
+    ],
+    [
+     false,
+     "NotAnOccurrence"
+    ],
+    [
+     "every 2 days",
+     "InvalidRule",
+     "every month on day 5; 2 times"
+    ],
+    [
+     "23:59:00",
+     31,
+     [
+      [
+       "2026-03-02 09:00",
+       "2026-03-02 10:00"
+      ],
+      [
+       "2026-03-02 11:00",
+       "2026-03-02 13:00"
+      ]
+     ],
+     "InvalidTime",
+     "InvalidTime"
+    ],
+    "InvalidTime"
+   ]
+  },
+  "probe_split_boundary_and_reports_edges": {
+   "kind": "value",
+   "value": [
+    [
+     "2026-03-02 09:00",
+     "2026-03-09 09:00"
+    ],
+    [
+     "2026-03-23 11:00",
+     "2026-03-30 09:00"
+    ],
+    [
+     "2026-03-16 09:00"
+    ],
+    [
+     "2026-03-02 08:00",
+     "2026-03-03 08:00"
+    ],
+    [
+     "2026-03-04 07:00",
+     "2026-03-05 08:00"
+    ],
+    [
+     [
+      "B",
+      "2026-03-02 11:00",
+      "D",
+      "2026-03-02 11:15",
+      "attendee kim"
+     ],
+     [
+      "B",
+      "2026-03-02 11:00",
+      "C",
+      "2026-03-02 11:30",
+      "attendee kim"
+     ],
+     [
+      "D",
+      "2026-03-02 11:15",
+      "C",
+      "2026-03-02 11:30",
+      "attendee amy"
+     ]
+    ],
+    [
+     [
+      "amy",
+      "2h"
+     ],
+     [
+      "kim",
+      "3h"
+     ],
+     [
+      "lou",
+      "2h"
+     ],
+     [
+      "zoe",
+      "1h30m"
+     ]
+    ],
+    [
+     [
+      "x",
+      "",
+      "y"
+     ],
+     [
+      "a bc",
+      "d"
+     ]
+    ]
+   ]
+  },
+  "probe_schedule_usage_errors": {
+   "kind": "value",
+   "value": [
+    [
+     1,
+     "AgendaError"
+    ],
+    [
+     1,
+     "AgendaError"
+    ],
+    [
+     2,
+     "AgendaError"
+    ],
+    [
+     2,
+     "AgendaError"
+    ],
+    [
+     1,
+     "AgendaError"
+    ],
+    [
+     1,
+     "AgendaError"
+    ],
+    [
+     1,
+     "AgendaError"
+    ],
+    [
+     1,
+     "AgendaError"
+    ],
+    [
+     1,
+     "AgendaError"
+    ]
+   ]
+  },
+  "probe_free_slots_default_grid": {
+   "kind": "value",
+   "value": [
+    [
+     "10:15",
+     "10:30"
+    ],
+    [
+     "10:15",
+     "11:45",
+     "12:00",
+     "12:15"
+    ],
+    [
+     "16:15",
+     "16:30"
+    ]
+   ]
+  },
+  "probe_first_common_slot_default_grid": {
+   "kind": "value",
+   "value": [
+    "2026-03-03 10:15",
+    "2026-03-04 16:15",
+    "2026-03-03 11:45"
+   ]
+  },
+  "probe_free_command_default_grid": {
+   "kind": "value",
+   "value": [
+    "10:45",
+    "11:00",
+    "11:15",
+    "11:30",
+    "11:45",
+    "12:00"
+   ]
+  },
+  "probe_weekly_unsorted_days_count": {
+   "kind": "value",
+   "value": [
+    [
+     "2026-03-06 18:00",
+     "2026-03-09 18:00",
+     "2026-03-13 18:00",
+     "2026-03-16 18:00"
+    ],
+    [
+     "2026-03-05 07:00",
+     "2026-03-17 07:00",
+     "2026-03-19 07:00"
+    ],
+    [
+     "2026-03-04 07:00",
+     "2026-03-09 07:00",
+     "2026-03-11 07:00"
+    ]
+   ]
+  },
+  "probe_weekly_unsorted_days_until_and_window": {
+   "kind": "value",
+   "value": [
+    [
+     "2026-03-03 09:00",
+     "2026-03-07 09:00",
+     "2026-03-10 09:00"
+    ],
+    [
+     "2026-03-09 09:00"
+    ],
+    true
+   ]
+  },
+  "probe_weekly_unsorted_days_calendar": {
+   "kind": "value",
+   "value": [
+    [
+     "2026-03-06 18:00",
+     "2026-03-09 18:00",
+     "2026-03-13 18:00",
+     "2026-03-16 18:00",
+     "2026-03-20 18:00"
+    ],
+    null,
+    [
+     "2026-03-06 18:00",
+     "2026-03-13 18:00",
+     "2026-03-16 18:00",
+     "2026-03-20 18:00"
+    ],
+    [
+     "07:00-07:30 RUN Run [ann]"
+    ],
+    [
+     [
+      "ann",
+      "2h"
+     ]
+    ]
+   ]
+  },
+  "probe_weekly_unsorted_days_schedule": {
+   "kind": "value",
+   "value": [
+    [
+     "2026-03-06 18:00",
+     "2026-03-09 18:00",
+     "2026-03-13 18:00",
+     "2026-03-16 18:00"
+    ],
+    [
+     "2026-03-04 07:00",
+     "2026-03-08 07:00",
+     "2026-03-16 07:00",
+     "2026-03-18 07:00",
+     "2026-03-22 07:00",
+     "2026-03-30 07:00"
+    ]
+   ]
+  },
+  "probe_split_after_cancellation_count": {
+   "kind": "value",
+   "value": [
+    [
+     "2026-03-02 13:00",
+     "2026-03-16 13:00"
+    ],
+    [
+     "2026-03-23 13:00",
+     "2026-03-30 13:00",
+     "2026-04-06 13:00"
+    ],
+    3,
+    3
+   ]
+  },
+  "probe_split_after_cancellation_until": {
+   "kind": "value",
+   "value": [
+    [
+     "2026-04-01 08:00",
+     "2026-04-07 08:00"
+    ],
+    [
+     "2026-04-09 08:00",
+     "2026-04-11 08:00",
+     "2026-04-13 08:00",
+     "2026-04-15 08:00"
+    ]
+   ]
+  },
+  "probe_split_after_cancellation_schedule": {
+   "kind": "value",
+   "value": [
+    [
+     "2026-01-15 19:00",
+     "2026-03-16 19:00"
+    ],
+    [
+     "2026-05-15 19:00",
+     "2026-06-15 19:00",
+     "2026-07-15 19:00",
+     "2026-08-15 19:00"
+    ],
+    [
+     [
+      "ann",
+      "2h"
+     ],
+     [
+      "bob",
+      "2h"
+     ]
+    ]
+   ]
+  }
+ }
+}

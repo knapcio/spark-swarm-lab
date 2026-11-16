@@ -6,10 +6,16 @@ source to a fresh ``python3 -I -S`` child over stdin.  The child returns only
 observations; expected values never enter it, and the outer parent alone
 compares them (mirroring ``independent_code_grader.py``).
 
-Local mode is process isolation for authored fixtures and offline development,
-not a sandbox for untrusted model code.  Model-generated patches must be graded
-with the same CHILD inside the pinned CPU-only container; see
-``container_argv`` (TODO: execution is intentionally not wired here).
+Two execution backends run the same CHILD with the same payload:
+
+* local (default): a ``python3 -I -S`` subprocess.  Process isolation for
+  authored fixtures and offline development only, not a sandbox.
+* ``DockerExecutor(host)``: the pinned CPU-only image on a remote host over
+  ``ssh``, with the isolation flags of ``sandbox_code.py`` and
+  ``independent_code_grader.py``, owned labels, inspection before guarded
+  cleanup, and infrastructure-vs-candidate failure classification.  Use it for
+  every model-generated patch.  Its subprocess function is injectable so the
+  protocol is tested offline with a fake ``ssh``.
 """
 import argparse
 import ast
@@ -22,13 +28,21 @@ import os
 import re
 import subprocess
 import sys
+import shlex
 import tempfile
 import time
+import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PROJECTS = os.path.join(ROOT, "projects")
 IMAGE = "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd"
 OWNER = "swarm-lab-bugbench-eval"
+LABEL_OWNER = "swarm-lab.code-owner"
+LABEL_TASK = "swarm-lab.code-task"
+SSH_HOST = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*(?:@[A-Za-z0-9][A-Za-z0-9_.-]*)?")
+MAX_PAYLOAD_BYTES = 1_000_000
+CONTAINER_STARTUP_SLACK = 15  # seconds added to the grading deadline for ssh + container start
 MAX_FILE_BYTES = 65536
 MAX_PATCH_FILES = 3
 MAX_CHILD_OUTPUT = 1_048_576
@@ -396,10 +410,14 @@ def changed_functions(before, after):
 
 
 def score_localization(case, claim):
-    """Score an explicit claim {"file": ..., "function": ...} against the gold location."""
+    """Score an explicit claim {"file": ..., "function": ...} against the gold location.
+
+    ``gold.claim_aliases`` lists equivalent names for a defect outside a function
+    (for example a module-level table and the function that reads it)."""
     file_hit = claim.get("file") in case["gold"]["files"]
     function = f"{claim.get('file')}::{claim.get('function')}"
-    return {"file_hit": file_hit, "function_hit": function in case["gold"]["functions"]}
+    accepted = set(case["gold"]["functions"]) | set(case["gold"].get("claim_aliases", []))
+    return {"file_hit": file_hit, "function_hit": function in accepted}
 
 
 # --- child execution ----------------------------------------------------------------
@@ -419,12 +437,17 @@ def run_child(payload, timeout, python=None):
                                      timeout=timeout, cwd=scratch, env=env)
         except subprocess.TimeoutExpired:
             return None, "controller_timeout"
-    if len(process.stdout) > MAX_CHILD_OUTPUT:
-        return None, "child_output_too_large"
     if process.returncode:
         return None, f"child_exit_{process.returncode}: {process.stderr[-1000:]}"
+    return parse_child_output(process.stdout)
+
+
+def parse_child_output(stdout):
+    """(result, None) for a well-formed CHILD response, else (None, reason)."""
+    if not isinstance(stdout, str) or len(stdout) > MAX_CHILD_OUTPUT:
+        return None, "child_output_too_large"
     try:
-        result = json.loads(process.stdout)
+        result = json.loads(stdout)
     except ValueError:
         return None, "child_protocol"
     if not isinstance(result, dict) or result.get("version") != 1:
@@ -432,13 +455,36 @@ def run_child(payload, timeout, python=None):
     return result, None
 
 
+def _local_failure_kind(error):
+    if error is None:
+        return None
+    if error == "controller_timeout":
+        return "candidate_timeout"
+    if error in ("child_protocol", "child_output_too_large"):
+        return "candidate_protocol"
+    return "candidate_runtime"
+
+
+def _execute(payload, timeout, python=None, executor=None):
+    """Run CHILD with ``payload``; returns (result or None, error or None, execution metadata)."""
+    if executor is None:
+        result, error = run_child(payload, timeout, python)
+        return result, error, {"executor": "local", "failure_kind": _local_failure_kind(error), "provenance": "candidate"}
+    return executor(payload, timeout)
+
+
+# --- docker executor (mirrors sandbox_code.py) ------------------------------------------
 def container_argv(task_id):
-    """TODO(docker): the argv to run CHILD in the pinned CPU-only grader, same flags as
-    independent_code_grader.py.  Not executed by this offline prototype; the payload
-    (files + probes, no expected values) travels over stdin exactly as in local mode."""
+    """The argv that runs CHILD in the pinned CPU-only image, same flags as sandbox_code.py.
+
+    No ``--rm``: the container is inspected for OOM evidence, then removed by a
+    label-guarded cleanup.  The payload (files + probes, never expected values)
+    travels over stdin exactly as in local mode."""
+    if not isinstance(task_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", task_id):
+        raise ValueError("task id must be 1-64 characters of [A-Za-z0-9_-]")
     name = "swarm-bugbench-" + task_id
     return ["docker", "run", "--pull", "never", "--runtime", "runc", "-i", "--name", name,
-            "--label", "swarm-lab.code-owner=" + OWNER, "--label", "swarm-lab.code-task=" + task_id,
+            "--label", f"{LABEL_OWNER}={OWNER}", "--label", f"{LABEL_TASK}={task_id}",
             "--network", "none", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
             "--pids-limit", "64", "--memory", "256m", "--memory-swap", "256m", "--cpus", "1",
             "--user", "65534:65534", "--tmpfs", "/tmp:rw,noexec,nosuid,nodev,size=16m", "--workdir", "/tmp",
@@ -446,24 +492,134 @@ def container_argv(task_id):
             "-I", "-S", "-c", CHILD]
 
 
-def observe(project_name, files, probe_timeout=5.0, timeout=60.0, python=None):
-    """Run every hidden probe against ``files``; returns (child result, names, error)."""
+def _ssh(host, command, payload=None, timeout=15, run=None):
+    return (run or subprocess.run)(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "--", host,
+                                    shlex.join(command)], input=payload, text=True, capture_output=True, timeout=timeout)
+
+
+def _inspect_owned(host, name, task, run=None):
+    """Container state, read only after verifying both unique ownership labels."""
+    try:
+        process = _ssh(host, ["docker", "inspect", "--format", "{{json .}}", name], run=run)
+        if process.returncode:
+            return None, "container inspection failed: " + (process.stderr or "")[-1000:]
+        container = json.loads(process.stdout)
+        labels = container.get("Config", {}).get("Labels") or {}
+        if labels.get(LABEL_OWNER) != OWNER or labels.get(LABEL_TASK) != task:
+            return None, "container ownership mismatch"
+        state = container["State"]
+        return {key: state.get(key) for key in ("OOMKilled", "ExitCode", "Error", "Running")}, None
+    except (subprocess.TimeoutExpired, OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        return None, "container inspection failed: " + type(exc).__name__ + ": " + str(exc)[:500]
+
+
+def _cleanup(host, name, task, run=None):
+    """Remove the container only if both labels match; True when nothing of ours is left."""
+    owner = shlex.join(["docker", "inspect", "--format", '{{index .Config.Labels "%s"}}' % LABEL_OWNER, name])
+    identity = shlex.join(["docker", "inspect", "--format", '{{index .Config.Labels "%s"}}' % LABEL_TASK, name])
+    exists = shlex.join(["docker", "container", "inspect", name])
+    remove = shlex.join(["docker", "rm", "-f", name])
+    command = (f'if {exists} >/dev/null 2>&1; then if [ "$({owner} 2>/dev/null)" = {shlex.quote(OWNER)} ] && '
+               f'[ "$({identity} 2>/dev/null)" = {shlex.quote(task)} ]; then {remove}; else exit 1; fi; fi')
+    try:
+        return _ssh(host, ["sh", "-c", command], timeout=15, run=run).returncode == 0
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+
+
+class DockerExecutor:
+    """Run CHILD in the pinned container on ``host`` (an SSH alias) with the payload on stdin.
+
+    ``run`` replaces ``subprocess.run`` (tests inject a fake ``ssh``).  Returns
+    ``(result, error, meta)``; ``meta.failure_kind`` is one of None,
+    ``candidate_{timeout,oom,signal,runtime,protocol}`` or
+    ``{ssh,docker,inspection,cleanup}_infrastructure``, and ``meta.provenance``
+    says whether a failure is the candidate's or the grading infrastructure's.
+    Results of infrastructure failures are discarded and must be re-graded."""
+
+    def __init__(self, host, run=None, startup_slack=CONTAINER_STARTUP_SLACK):
+        if not isinstance(host, str) or not SSH_HOST.fullmatch(host):
+            raise ValueError("host must be an SSH alias or user@host")
+        self.host, self.run, self.startup_slack = host, run or subprocess.run, startup_slack
+
+    def __call__(self, payload, timeout):
+        wire = json.dumps(payload, allow_nan=False)
+        if len(wire.encode()) > MAX_PAYLOAD_BYTES:
+            raise ValueError(f"grading payload exceeds {MAX_PAYLOAD_BYTES} bytes")
+        task = uuid.uuid4().hex
+        name = "swarm-bugbench-" + task
+        process, failure = None, None
+        try:
+            process = _ssh(self.host, container_argv(task), wire, timeout + self.startup_slack, self.run)
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            failure = exc
+        # --rm would erase the kernel's OOM evidence: inspect first, then always attempt guarded cleanup.
+        state, inspection_error = _inspect_owned(self.host, name, task, self.run)
+        cleanup_ok = _cleanup(self.host, name, task, self.run)
+        meta = {"executor": "docker", "host": self.host, "container": name, "container_state": state,
+                "cleanup_ok": cleanup_ok}
+        result, error, kind = None, None, None
+        if state and state.get("OOMKilled"):
+            error, kind = "container_oom", "candidate_oom"
+        elif isinstance(failure, subprocess.TimeoutExpired):
+            error = "controller_timeout"
+            kind = "candidate_timeout" if state and not state.get("Error") else "ssh_infrastructure"
+        elif failure is not None:
+            error, kind = f"{type(failure).__name__}: {str(failure)[:500]}", "ssh_infrastructure"
+        elif process.returncode:
+            meta["exit_code"] = process.returncode
+            if process.returncode == 255:
+                kind = "ssh_infrastructure"
+            elif not state or state.get("Error") or process.returncode in (125, 126, 127):
+                kind = "docker_infrastructure"
+            else:
+                kind = "candidate_signal" if (state.get("ExitCode") or 0) >= 128 else "candidate_runtime"
+            error = f"exit_{process.returncode}: {(process.stderr or '')[-1000:]}"
+        else:
+            result, error = parse_child_output(process.stdout)
+            kind = "candidate_protocol" if error else None
+        if inspection_error:
+            meta["inspection_error"] = inspection_error
+            if not str(kind).endswith("_infrastructure"):
+                meta["original_failure_kind"], kind = kind, "inspection_infrastructure"
+        if not cleanup_ok:
+            meta.setdefault("original_failure_kind", kind)
+            kind = "cleanup_infrastructure"
+        meta["failure_kind"] = kind
+        meta["provenance"] = "infrastructure" if str(kind).endswith("_infrastructure") else "candidate"
+        if meta["provenance"] == "infrastructure":
+            result, error = None, error or kind
+        return result, error, meta
+
+
+# --- observing probes ----------------------------------------------------------------------
+def probe_payload(project_name, files, probe_timeout=5.0):
+    """The CHILD payload for the hidden probes: files and probe source, never expected values."""
     project = load_project(project_name)
     probes = _read(os.path.join(project["hidden"], "probes.py"))
     names = probe_names(probes)
-    payload = {"mode": "probes", "package": project["package"], "files": files, "probes": probes,
-               "probe_names": names, "probe_timeout": probe_timeout}
-    result, error = run_child(payload, timeout, python)
-    return result, names, error, hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+    return {"mode": "probes", "package": project["package"], "files": files, "probes": probes,
+            "probe_names": names, "probe_timeout": probe_timeout}, names
 
 
-def run_public_tests(project_name, files, timeout=60.0, python=None):
+def _payload_sha(payload):
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+def observe(project_name, files, probe_timeout=5.0, timeout=60.0, python=None, executor=None):
+    """Run every hidden probe against ``files``; returns (child result, names, error, payload sha)."""
+    payload, names = probe_payload(project_name, files, probe_timeout)
+    result, error, _ = _execute(payload, timeout, python, executor)
+    return result, names, error, _payload_sha(payload)
+
+
+def run_public_tests(project_name, files, timeout=60.0, python=None, executor=None):
     """Self-check available to agents: the project's own visible tests on a patched copy."""
     project = load_project(project_name)
-    result, error = run_child({"mode": "public_tests", "package": project["package"], "files": files,
-                               "timeout": timeout - 5}, timeout, python)
-    if error:
-        return {"ok": False, "error": error}
+    result, error, meta = _execute({"mode": "public_tests", "package": project["package"], "files": files,
+                                    "timeout": timeout - 5}, timeout, python, executor)
+    if error or result is None:
+        return {"ok": False, "error": error, "failure_kind": meta.get("failure_kind"), "provenance": meta.get("provenance")}
     return result
 
 
@@ -502,8 +658,13 @@ def compare(expected, names, child):
 
 
 # --- grading --------------------------------------------------------------------------
-def grade(case_id, patch_text, probe_timeout=5.0, timeout=60.0, python=None):
-    """Grade one candidate patch for one case.  Never raises for candidate faults."""
+def grade(case_id, patch_text, probe_timeout=5.0, timeout=60.0, python=None, executor=None):
+    """Grade one candidate patch for one case.  Never raises for candidate faults.
+
+    ``status``: ``passed``/``failed``/``timeout`` are candidate outcomes
+    (``failure_kind`` says why, e.g. ``candidate_oom``); ``error`` means the
+    grading infrastructure failed (``provenance == "infrastructure"``) and the
+    patch must be re-graded; ``invalid_patch`` is never executed."""
     started = time.monotonic()
     case = load_case(case_id)
     project = load_project(case["project"])
@@ -532,27 +693,41 @@ def grade(case_id, patch_text, probe_timeout=5.0, timeout=60.0, python=None):
                               "gold_file_hit": any(p in case["gold"]["files"] and before[p] != patch[p] for p in patch),
                               "gold_function_hit": bool(gold_functions & set(touched))}
     expected = load_expected(case["project"])
-    child, names, error, payload_sha = observe(case["project"], after, probe_timeout, timeout, python)
-    result["child_payload_sha256"] = payload_sha
-    if error:
-        result.update(status="timeout" if error == "controller_timeout" else "error", error=error)
+    payload, names = probe_payload(case["project"], after, probe_timeout)
+    result["child_payload_sha256"] = _payload_sha(payload)
+    if names != list(expected["probes"]):
+        result.update(status="error", error="probe list differs from frozen expected.json; re-freeze deliberately",
+                      failure_kind="grader_infrastructure", provenance="infrastructure")
+        return result
+    child, error, meta = _execute(payload, timeout, python, executor)
+    result["execution"] = {key: value for key, value in meta.items() if key not in ("failure_kind", "provenance")}
+    result.update(failure_kind=meta.get("failure_kind"), provenance=meta.get("provenance"))
+    if error or child is None:
+        if result["provenance"] == "infrastructure":
+            status = "error"
+        else:
+            status = "timeout" if result["failure_kind"] == "candidate_timeout" else "failed"
+        result.update(status=status, error=error)
         result["duration_s"] = round(time.monotonic() - started, 3)
         return result
     try:
         passed = compare(expected, names, child)
     except ValueError as exc:
-        result.update(status="error", error=str(exc))
+        result.update(status="failed", error=str(exc), failure_kind="candidate_protocol")
+        result["duration_s"] = round(time.monotonic() - started, 3)
         return result
     targets = case["target_probes"]
     failed = [name for name, ok in passed.items() if not ok]
     result.update(
         status="passed" if not failed else "failed",
+        failure_kind=None if not failed else "candidate_probe_failure",
         hidden={"passed": len(names) - len(failed), "total": len(names), "failed_probes": failed},
         target={"passed": sum(passed[name] for name in targets), "total": len(targets)},
         regression={"passed": sum(ok for name, ok in passed.items() if name not in targets),
                     "total": len(names) - len(targets), "broken": [name for name in failed if name not in targets]},
         import_error=child.get("import_error"),
-        timed_out_probes=[name for name, obs in zip(names, child["results"]) if obs.get("kind") == "timeout"],
+        timed_out_probes=[name for name, obs in zip(names, child["results"])
+                          if isinstance(obs, dict) and obs.get("kind") == "timeout"],
         duration_s=round(time.monotonic() - started, 3))
     return result
 
@@ -599,6 +774,87 @@ def verify_case(case_id, python=None):
             "public_tests_buggy": run_public_tests(case["project"], buggy, python=python).get("ok")}
 
 
+# --- probe strength: single-operator mutants of the clean package ---------------------------------
+MUTATION_OPERATORS = (
+    (" < ", " <= "), (" <= ", " < "), (" > ", " >= "), (" >= ", " > "), (" == ", " != "), (" != ", " == "),
+    (" and ", " or "), (" or ", " and "), ("[0]", "[-1]"), ("[-1]", "[0]"), (" + 1", " - 1"), (" - 1", " + 1"),
+    (".copy()", ""), ("True", "False"), ("False", "True"), ("sorted(", "list("), ("not ", ""), ("min(", "max("),
+    ("max(", "min("), ("break", "continue"), (".lstrip()", ".rstrip()"), (".rstrip()", ".lstrip()"),
+    (" += ", " -= "), ("ROUND_HALF_UP", "ROUND_HALF_EVEN"), (" is None", " is not None"),
+    (" is not None", " is None"), ("return True", "return False"), ("return False", "return True"),
+)
+
+
+class _BlankStrings(ast.NodeTransformer):
+    def visit_JoinedStr(self, node):
+        return ast.Constant("")
+
+    def visit_Constant(self, node):
+        return ast.Constant("") if isinstance(node.value, str) else node
+
+
+def _code_ast(source):
+    """AST dump with every string literal and f-string blanked.
+
+    Comments, docstrings and exception messages are not graded (exceptions are
+    compared by type), so mutants that only touch them are not counted.  The
+    operators never target semantic string literals."""
+    return ast.dump(_BlankStrings().visit(ast.parse(source)))
+
+
+def operator_mutants(files, paths):
+    """Every single-operator, single-site mutant of ``paths`` that parses and changes the code (not only docs)."""
+    mutants, seen = [], set()
+    for path in paths:
+        source = files[path]
+        baseline, lines = _code_ast(source), source.splitlines(keepends=True)
+        for number, line in enumerate(lines):
+            for old, new in MUTATION_OPERATORS:
+                start = line.find(old)
+                while start != -1:
+                    text = "".join(lines[:number] + [line[:start] + new + line[start + len(old):]] + lines[number + 1:])
+                    start = line.find(old, start + 1)
+                    try:
+                        if _code_ast(text) == baseline:
+                            continue
+                    except SyntaxError:
+                        continue
+                    digest = hashlib.sha256(text.encode()).hexdigest()
+                    if (path, digest) not in seen:
+                        seen.add((path, digest))
+                        mutants.append({"file": path, "line": number + 1, "old": old, "new": new, "text": text,
+                                        "source_line": line.strip()})
+    return mutants
+
+
+def mutation_score(project_name, paths=None, limit=None, workers=8, probe_timeout=1.0, python=None):
+    """Run the hidden probes against operator mutants of the clean tree (trusted code, local child).
+
+    A mutant is killed when any probe observation differs from expected.json or
+    the child fails.  Survivors need human review: some are equivalent mutants."""
+    project = load_project(project_name)
+    clean = clean_files(project_name)
+    expected = load_expected(project_name)
+    mutants = operator_mutants(clean, paths or editable_paths(project, clean))[:limit]
+
+    def killed(mutant):
+        files = dict(clean, **{mutant["file"]: mutant["text"]})
+        child, names, error, _ = observe(project_name, files, probe_timeout, 120.0, python)
+        if error or child.get("import_error"):
+            return True
+        try:
+            return not all(compare(expected, names, child).values())
+        except ValueError:
+            return True
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        outcomes = list(pool.map(killed, mutants))
+    survivors = [{key: mutant[key] for key in ("file", "line", "old", "new", "source_line")}
+                 for mutant, dead in zip(mutants, outcomes) if not dead]
+    total = len(mutants)
+    return {"project": project_name, "mutants": total, "killed": total - len(survivors),
+            "score": round((total - len(survivors)) / total, 4) if total else None, "survivors": survivors}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -611,9 +867,15 @@ def main(argv=None):
     grade_cmd = sub.add_parser("grade")
     grade_cmd.add_argument("case_id")
     grade_cmd.add_argument("patch_file")
+    grade_cmd.add_argument("--docker-host", help="grade in the pinned container on this SSH host (required for model patches)")
     check = sub.add_parser("selfcheck", help="public tests only (agent-visible feedback)")
     check.add_argument("case_id")
     check.add_argument("patch_file", nargs="?")
+    check.add_argument("--docker-host", help="run in the pinned container on this SSH host")
+    mutants = sub.add_parser("mutants", help="probe strength against single-operator mutants of clean/")
+    mutants.add_argument("project")
+    mutants.add_argument("--file", action="append", help="limit to these editable paths")
+    mutants.add_argument("--limit", type=int)
     freeze = sub.add_parser("freeze")
     freeze.add_argument("project")
     sub.add_parser("verify")
@@ -628,7 +890,8 @@ def main(argv=None):
     elif args.command == "reference-patch":
         sys.stdout.write(reference_patch(load_case(args.case_id)))
     elif args.command == "grade":
-        result = grade(args.case_id, _read(args.patch_file))
+        executor = DockerExecutor(args.docker_host) if args.docker_host else None
+        result = grade(args.case_id, _read(args.patch_file), executor=executor)
         result.get("patch", {}).pop("unified_diff", None)
         print(json.dumps(result, indent=1))
         return 0 if result["status"] == "passed" else 1
@@ -639,7 +902,11 @@ def main(argv=None):
             patch = parse_patch(_read(args.patch_file))
             validate_patch(patch, files, load_project(case["project"]))
             files.update(patch)
-        print(json.dumps(run_public_tests(case["project"], files), indent=1))
+        executor = DockerExecutor(args.docker_host) if args.docker_host else None
+        print(json.dumps(run_public_tests(case["project"], files, executor=executor), indent=1))
+    elif args.command == "mutants":
+        report = mutation_score(args.project, paths=args.file, limit=args.limit)
+        print(json.dumps(report, indent=1))
     elif args.command == "freeze":
         data = freeze_expected(args.project)
         print(f"froze {len(data['probes'])} probes for {args.project}")
