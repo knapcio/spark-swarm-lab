@@ -20,6 +20,7 @@ from run_nemotron72_known import REVISION, hashes, validate_source
 
 HERE = Path(__file__).resolve().parent
 PROTOCOL = 'deepseek-fresh-reference-v1'
+STREAM_WORKER = HERE / 'ds_stream_worker.py'
 
 
 def make_jobs(corpora, output, source, plan, endpoint):
@@ -30,10 +31,16 @@ def make_jobs(corpora, output, source, plan, endpoint):
                 for agent, variant in enumerate(plan['agent_variants']):
                     stem = f"{corpus_name}-{task['id']}-s{seed}-a{agent}-{variant}"
                     events = output / (stem + '.jsonl')
-                    command = [sys.executable, str(source / 'followup72_worker.py'), '--run', '--variant', variant,
-                               '--puzzle', ','.join(map(str, task['numbers'])) + ':' + str(task['target']),
-                               '--endpoint', endpoint, '--seed', str(agent_seed(seed, agent, plan['agent_seed_offset'])),
-                               '--events', str(events), '--timeout', '210', '--model', plan['model']]
+                    puzzle = ','.join(map(str, task['numbers'])) + ':' + str(task['target'])
+                    agent_seed_value = str(agent_seed(seed, agent, plan['agent_seed_offset']))
+                    if plan.get('transport') == 'stream':  # same method, streamed, no wall-clock cutoff
+                        command = [sys.executable, str(HERE / 'ds_stream_worker.py'), '--run', '--puzzle', puzzle,
+                                   '--endpoint', endpoint, '--seed', agent_seed_value, '--events', str(events),
+                                   '--model', plan['model']]
+                    else:
+                        command = [sys.executable, str(source / 'followup72_worker.py'), '--run', '--variant', variant,
+                                   '--puzzle', puzzle, '--endpoint', endpoint, '--seed', agent_seed_value,
+                                   '--events', str(events), '--timeout', '210', '--model', plan['model']]
                     jobs.append(dict(task_id=task['id'], corpus=corpus_name, split='evaluation', arm=variant, seed=seed,
                                      agent=agent, endpoint=endpoint, command=command, events=str(events),
                                      stdout=str(output / (stem + '.stdout.log')), stderr=str(output / (stem + '.stderr.log')),
@@ -55,8 +62,12 @@ def main(argv=None):
     source, output = a.source.resolve(), a.output.resolve()
     validate_source(source)
     before = hashes(source)
+    if plan.get('transport') == 'stream':
+        before['ds_stream_worker.py'] = sha(STREAM_WORKER)
     corpora = []
     for name, rel in plan['corpora'].items():
+        if name not in plan.get('run_corpora', plan['corpora']):
+            continue
         data = read(HERE / rel)
         require(sha(HERE / rel) == plan['corpora_sha256'][name], 'Corpus hash differs: ' + name)
         corpora.append((name, [t for t in data['tasks'] if t['split'] == 'evaluation']))
@@ -84,7 +95,10 @@ def main(argv=None):
                 job = next(queue, None)
                 if job is None or stop.is_set():
                     return
-                if hashes(source) != before:
+                current = hashes(source)
+                if plan.get('transport') == 'stream':
+                    current['ds_stream_worker.py'] = sha(STREAM_WORKER)
+                if current != before:
                     stop.set()
                     errors.append(dict(reason='source_changed'))
                     return
@@ -113,7 +127,8 @@ def main(argv=None):
               for name in plan['corpora']}
     meta.update(completed_utc=datetime.now(timezone.utc).isoformat(), batch_wall_seconds=time.monotonic() - start,
                 completed_jobs=len(rows), incomplete=len(rows) != len(jobs), errors=errors, curves=curves,
-                server_after=server_metrics(a.endpoint, timeout=3), final_source_sha256=hashes(source))
+                server_after=server_metrics(a.endpoint, timeout=3),
+                final_source_sha256=dict(hashes(source), **({'ds_stream_worker.py': sha(STREAM_WORKER)} if plan.get('transport') == 'stream' else {})))
     meta['source_changed_during_run'] = before != meta['final_source_sha256']
     write(output / 'metadata.json', meta)
     print(json.dumps(curves))

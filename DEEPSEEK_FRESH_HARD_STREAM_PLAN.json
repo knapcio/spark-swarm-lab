@@ -1,0 +1,48 @@
+{
+  "protocol": "deepseek-fresh-reference-v1",
+  "study": "deepseek-fresh-reference-v1",
+  "status": "FROZEN",
+  "drafted": "2026-11-16 ~11:45 Europe/Warsaw, before any DeepSeek call on the fresh corpora and before Nemotron fresh results.",
+  "question": "Same fresh tasks as CONFIRM_V2_PLAN and CONFIRM_HARD_PLAN: how does the native DeepSeek V4.1 reference (one reasoning call, and any of 2) compare with Nemotron single agents and the 8-agent Nemotron swarm?",
+  "model": "deepseek-v4.1-flash",
+  "agent_variants": [
+    "index_original",
+    "index_original"
+  ],
+  "workers": {
+    "index_original": "followup72_worker.py"
+  },
+  "source": "frozen 638b9f3 (.runtime/nemotron72-followup-source)",
+  "method": "Exactly the earlier DeepSeek reference method: original prompt, one thinking call capped at 8192 completion tokens, chat completions, temperature 0.8, request seed from the frozen client. Two independent calls per case; agent 0 alone = single-call reference.",
+  "agent_seed_offset": 300,
+  "corpora": {
+    "v2": "datasets/arithmetic-v2/tasks.json",
+    "hard": "datasets/arithmetic-hard-v1/tasks.json"
+  },
+  "agent_runs": 288,
+  "transport": "stream",
+  "comparisons": [
+    "DeepSeek single vs Nemotron forced_explicit single vs plain_original single",
+    "DeepSeek any-of-2 vs Nemotron swarm any-of-2/any-of-8 (token budgets reported; GPU cost differs: DeepSeek uses all four nodes per request stream, Nemotron one node per agent)"
+  ],
+  "limits": "Bundled differences (model, serving engine, reasoning implementation); no causal model-size claim. Wall time reported only.",
+  "frozen_note": "Frozen 2026-11-16 ~12:15 Europe/Warsaw before any DeepSeek call on the fresh corpora.",
+  "corpora_sha256": {
+    "v2": "23811fccd011f35fb60b628d3d8cd8d5ef25e79523c5be6815959e61a6332fcd",
+    "hard": "7e2ef08c23d6f2ad6d008c8e8180f055a23cb42d036e1b37b9c92b4c8f9416a3"
+  },
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "concurrency": 8,
+  "agent_wall_deadline_seconds": 480,
+  "concurrency_note": "4 concurrent requests as in the earlier DeepSeek reference (median 18 s, max 115 s per arithmetic call), far below the frozen 210 s HTTP timeout.",
+  "runner": "run_ds_agents.py",
+  "endpoint": "owned loopback tunnel 127.0.0.1:18889 -> Spark_01 127.0.0.1:8888",
+  "run_corpora": [
+    "hard"
+  ],
+  "amendment": "2026-11-16 ~17:20 Europe/Warsaw, after deepseek-fresh-v1 stopped at its first fault: one hard-task call exceeded the frozen worker 210 s HTTP timeout (TimeoutError at 210.0 s; endpoint healthy). v2 corpus 288/288 complete and valid under the original plan. ALL hard-corpus DeepSeek calls are rerun under this amendment with the identical method (prompt, system prompt, 8192 cap, temperature 0.8, request-seed derivation, parser, verifier) but streamed transport: 120 s without any streamed byte = infrastructure fault; no wall-clock quality cutoff (same principle as the Nemotron forced/long agents). Partial hard rows of deepseek-fresh-v1 are kept as diagnostics only. Concurrency 8 (of 16 DeepSeek slots): with no wall-clock cutoff, per-request speed no longer affects outcomes."
+}
