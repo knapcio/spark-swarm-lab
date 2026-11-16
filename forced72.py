@@ -1,0 +1,164 @@
+"""Client-side budget forcing: end the model's own thinking and let it continue the SAME sequence.
+
+Call 1 (thinking on): the chat prompt rendered by the server's own chat template, then raw
+completion up to THINK_CAP tokens. If the model closes its thinking itself, its answer is parsed.
+If it is cut by the cap without closing its thinking, call 2 sends the exact same token sequence
+(prompt + every generated token) followed by "\n</think>\n" and lets the model continue, within the
+remaining completion budget. Nothing is copied into a new user message; the server can reuse its
+prefix cache. Same rules, verifier, parser and Budget(2 calls, 8192 completion tokens) as scribe.
+
+Transport has no wall-clock quality limit: responses stream, and only a gap of IDLE_TIMEOUT seconds
+without any streamed byte (a hung server) or the WALL_LIMIT catastrophe stop counts as a failure.
+No CPU search, teacher, gold answer or cross-case memory.
+"""
+import hashlib
+import json
+import time
+import urllib.request
+import uuid
+
+from direct_solver import replay_plan
+from followup72 import prompt_for, sha
+from harness import parse_json_response
+
+SYSTEM = 'Solve the precise arithmetic task. Return only the requested JSON object. Do not explain or use tools.'
+VARIANTS = {'forced_explicit': 'index_explicit', 'forced_original': 'index_original'}
+THINK_CAP = 7168
+TOTAL = 8192
+END_THINK = '</think>'
+FORCE_TEXT = '\n</think>\n'
+IDLE_TIMEOUT = 120
+WALL_LIMIT = 1800
+
+
+def split_answer(text):
+    """Answer = text after the LAST end-of-thinking marker; None if the model never closed thinking."""
+    if END_THINK not in text:
+        return None, text
+    reasoning, _, answer = text.rpartition(END_THINK)
+    return answer, reasoning
+
+
+def parse_plan(answer):
+    if answer is None:
+        return None
+    try:
+        return parse_json_response(answer)
+    except (ValueError, json.JSONDecodeError):
+        return None
+
+
+class ForcedClient:
+    def __init__(self, endpoint, model, budget, events, seed, idle_timeout=IDLE_TIMEOUT, wall_limit=WALL_LIMIT):
+        self.base = endpoint.rstrip('/').removesuffix('/v1')
+        self.model, self.budget, self.events, self.seed = model, budget, events, seed
+        self.idle_timeout, self.wall_limit = idle_timeout, wall_limit
+        self.infra_failures = self.budget_failures = 0
+
+    def post(self, path, body, timeout):
+        request = urllib.request.Request(self.base + path, data=json.dumps(body).encode(),
+                                         headers={'Content-Type': 'application/json'})
+        return urllib.request.urlopen(request, timeout=timeout)
+
+    def chat_prompt_ids(self, prompt):
+        messages = [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt}]
+        with self.post('/tokenize', dict(model=self.model, messages=messages, add_generation_prompt=True,
+                                         chat_template_kwargs={'enable_thinking': True}), 60) as response:
+            return json.load(response)['tokens']
+
+    def force_ids(self):
+        with self.post('/tokenize', dict(model=self.model, prompt=FORCE_TEXT, add_special_tokens=False), 60) as response:
+            return json.load(response)['tokens']
+
+    def complete(self, agent_id, stage, prompt_ids, max_tokens, **context):
+        request_id = uuid.uuid4().hex[:12]
+        if not self.budget.reserve(max_tokens):
+            self.budget_failures += 1
+            self.events.emit('budget_exhausted', agent_id=agent_id, stage=stage, **context)
+            return dict(request_id=request_id, dispatched=False, response_received=False, text='', token_ids=[],
+                        finish_reason=None, usage={}, error='budget_exhausted')
+        material = f'{self.seed}:{agent_id}:{stage}:{json.dumps(prompt_ids)}'
+        seed = int.from_bytes(hashlib.sha256(material.encode()).digest()[:4], 'big')
+        body = dict(model=self.model, prompt=prompt_ids, max_tokens=max_tokens, temperature=0.8, seed=seed,
+                    stream=True, return_token_ids=True, stream_options={'include_usage': True})
+        wire_sha = hashlib.sha256(json.dumps(body).encode()).hexdigest()
+        self.events.emit('request_start', request_id=request_id, agent_id=agent_id, endpoint_index=0, stage=stage,
+                         request_body={k: v for k, v in body.items() if k != 'prompt'},
+                         prompt_token_count=len(prompt_ids), prompt_ids_sha256=sha(json.dumps(prompt_ids)),
+                         request_body_sha256=wire_sha, request_max_tokens=max_tokens, request_thinking=True, **context)
+        start = time.monotonic()
+        text, token_ids, finish, usage, error, received = '', [], None, {}, None, False
+        try:
+            # Socket timeout applies per read: it detects a silent server, not a slow one.
+            with self.post('/v1/completions', body, self.idle_timeout) as response:
+                for raw in response:
+                    if time.monotonic() - start > self.wall_limit:
+                        raise TimeoutError(f'wall limit {self.wall_limit}s exceeded')
+                    line = raw.decode().strip()
+                    if not line.startswith('data:') or line == 'data: [DONE]':
+                        continue
+                    chunk = json.loads(line[5:])
+                    for choice in chunk.get('choices', []):
+                        text += choice.get('text') or ''
+                        token_ids += choice.get('token_ids') or []
+                        finish = choice.get('finish_reason') or finish
+                    if chunk.get('usage'):
+                        usage = {k: v for k, v in chunk['usage'].items()
+                                 if k in ('prompt_tokens', 'completion_tokens', 'total_tokens') and type(v) is int}
+            received = finish is not None
+            if not received:
+                raise ConnectionError('stream ended without finish_reason')
+        except Exception as exc:
+            error = f'{type(exc).__name__}: {str(exc)[:300]}'
+            self.infra_failures += 1
+        reported = usage.get('completion_tokens')
+        if received and reported is not None and reported != len(token_ids):
+            error = error or f'token id count {len(token_ids)} != reported {reported}'
+        self.budget.settle(max_tokens, reported)
+        usage['estimated'] = reported is None
+        answer, reasoning = split_answer(text)
+        self.events.emit('request_end', request_id=request_id, agent_id=agent_id, endpoint_index=0, stage=stage,
+                         latency_ms=round((time.monotonic() - start) * 1000, 2), usage=usage,
+                         completion_tokens_charged=max_tokens if reported is None else reported, error=error,
+                         response=answer, reasoning=reasoning, finish_reason=finish, response_received=received,
+                         closed_thinking=answer is not None, request_body_sha256=wire_sha, **context)
+        return dict(request_id=request_id, dispatched=True, response_received=received, text=text,
+                    token_ids=token_ids, finish_reason=finish, usage=usage, error=error, answer=answer)
+
+
+def run_forced(experiment, initial, puzzle_id, variant, agent_id=0):
+    if variant not in VARIANTS:
+        raise ValueError('unknown variant')
+    e = experiment
+    client = e.client
+    budget = client.budget.snapshot()
+    if (e.args.allow_fractions or budget['max_calls'] != 2 or budget['max_completion_tokens'] != TOTAL
+            or budget['calls'] != 0 or budget['completion_tokens_reserved'] != 0):
+        raise ValueError('fresh case Budget(2,8192) and integer rules required')
+    root = e.node(initial, None, 0, puzzle_id, agent_id)
+    prompt = prompt_for(e, initial, VARIANTS[variant])
+    prompt_ids = client.chat_prompt_ids(prompt)
+    first = client.complete(agent_id, 'plan', prompt_ids, THINK_CAP, node_id=root, puzzle_id=puzzle_id,
+                            variant=variant, followup_phase='think')
+    plan, second, forced = parse_plan(first['answer']), None, False
+    eligible = (first['response_received'] and first['finish_reason'] == 'length' and first['answer'] is None
+                and len(first['token_ids']) > 0 and first['error'] is None)
+    if eligible:
+        forced = True
+        remaining = TOTAL - client.budget.snapshot()['completion_tokens_charged']
+        e.events.emit('budget_forced', node_id=root, puzzle_id=puzzle_id, variant=variant,
+                      parent_request_id=first['request_id'], forced_after_tokens=len(first['token_ids']),
+                      remaining_completion_tokens=remaining)
+        second = client.complete(agent_id, 'forced_answer', prompt_ids + first['token_ids'] + client.force_ids(),
+                                 remaining, node_id=root, puzzle_id=puzzle_id, variant=variant,
+                                 followup_phase='forced_answer', parent_request_id=first['request_id'])
+        # The continuation may first finish its own thinking and close it again.
+        answer = second['answer'] if second['answer'] is not None else second['text']
+        plan = parse_plan(answer)
+    result = replay_plan(e, initial, root, plan, puzzle_id, agent_id)
+    result.update(method=variant, variant=variant, first_request_id=first['request_id'],
+                  first_finish_reason=first['finish_reason'], first_closed_thinking=first['answer'] is not None,
+                  budget_forced=forced, forced_request_id=second['request_id'] if second else None,
+                  forced_finish_reason=second['finish_reason'] if second else None,
+                  forced_closed_thinking_again=(second['answer'] is not None) if second else None)
+    return result
