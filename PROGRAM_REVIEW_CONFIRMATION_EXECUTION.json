@@ -1,14 +1,14 @@
 {
-  "protocol": "late-review-program-confirmation-v1",
+  "protocol": "late-review-program-confirmation-v1.1",
   "prepared_utc": "2026-11-16T03:46:28.613710+00:00",
   "status": "PLAN_ONLY; no producer outcomes read, no confirmation grades or model calls. Root review and immutable clean source freeze/tag plus fresh manual admission required.",
-  "producer_revision": "d704ae12ad5f78606090d3cb1e151ffbee28eebd",
-  "producer_selection_sha256": "4ead89b088c11f8d39bd052c7d9a9a2ff5f1849639de3a66f96ed0ad919dad68",
+  "producer_revision": "41bd752371847b5ee6d22c59d9f22662c09797fe",
+  "producer_selection_sha256": "a01a1f13b146c04c4435221fea38ff3c0c5e2b53d198ac0d11bd7b79481db0bf",
   "corpus_sha256": "b1267cbd9f371383402ff116a9139c22515c046d924d6b6f6b6df2cee8fda85e",
   "image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
   "source_sha256": {
-    "run_program_review_confirmation.py": "061c14561cfa71b8a1af24dd8c4998ab623811896189bb8137ef6303b8f28375",
-    "test_run_program_review_confirmation.py": "9f95d8b8514f9f0ac18ad0f4a82193bf7afb7d2d582f3802efc32a05260727f1",
+    "run_program_review_confirmation.py": "c117a0c15d705070ebfd9a82cd705b6709eaa6935767492c51c209ee56d7e06f",
+    "test_run_program_review_confirmation.py": "2c0497a86d2248b170cf17842698a2e8a3a0bff7c420151dd3ca3f6633ea3e37",
     "run_program_confirmation.py": "251f01e4b83e4119940f47fcdf66236e074069218bea229aff2fbca8132180af",
     "test_run_program_confirmation.py": "203d8fadc3120892db5a181a5e87e954697d1d8e24efaaf128c1c7b5fc775837",
     "csp_program_grader.py": "7fa45db50bfbef04c868b35ddb3aab67fceab4818ca5820bba2427f14ff6873a",
@@ -33,5 +33,24 @@
     "nodes:4 exact seed/host/endpoint/owner/image/model/draft/runtime/healthy/idle"
   ],
   "execution": "4 fixed host/seed workers,96 exact stored-order grades each, fresh qualified CPU-only256MiB/1CPU/10second child containers; source/input/proof/payload/cleanup bound; stop new dispatch on faults and await already-owned cleanup.",
-  "remote_cpu_seconds": null
+  "remote_cpu_seconds": null,
+  "prospective_identity_amendment": {
+    "recorded_utc": "2026-11-16T04:17:40.248378+00:00",
+    "reason": "Pre-call producer review found missing global-stop check before repair dispatch; producer fixed/published before any variant inference. This helper amendment updates producer identity/default paths/protocol only.",
+    "prior_helper_revision": "94edb757975f392173410cb2f5e7d34e81a75e0d",
+    "prior_producer_revision": "d704ae12ad5f78606090d3cb1e151ffbee28eebd",
+    "prior_producer_selection_sha256": "4ead89b088c11f8d39bd052c7d9a9a2ff5f1849639de3a66f96ed0ad919dad68",
+    "producer_tag": "program-review-elites4-v1.1",
+    "producer_source": ".runtime/program-review-elites4-v1.1-source",
+    "producer_output": "runs/program-review-elites4-v1.1",
+    "variant_model_calls_before_amendment": 0,
+    "confirmation_grades_before_amendment": 0,
+    "unchanged": [
+      "Qualified grader/outer comparator/image/runtime",
+      "Gate and owner/admission checks",
+      "Four eligible programs regardless original12 outcomes",
+      "Existing96 stored graphs and384-grade allocation",
+      "Source/proof/payload/cleanup accounting and candidate failure semantics"
+    ]
+  }
 }

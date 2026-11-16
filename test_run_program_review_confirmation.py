@@ -18,6 +18,14 @@ def bindings(root):
 
 
 class ReviewConfirmationTests(unittest.TestCase):
+    def test_v11_producer_identity_and_configuration_pins_agree(self):
+        cfg=json.loads((r.HERE/r.CONFIG).read_text())
+        self.assertEqual(cfg['protocol'],'late-review-program-confirmation-v1.1')
+        self.assertEqual(cfg['producer_revision'],r.PRODUCER)
+        self.assertEqual(cfg['producer_selection_sha256'],r.SELECTION)
+        self.assertEqual(cfg['prospective_identity_amendment']['prior_helper_revision'],'94edb757975f392173410cb2f5e7d34e81a75e0d')
+        self.assertTrue(all(r.sha(r.HERE/name)==expected for name,expected in cfg['source_sha256'].items()))
+
     def test_default_plan_reads_no_outcomes_calls_no_network_and_writes_nothing(self):
         with tempfile.TemporaryDirectory()as d,patch.object(r,'read')as read,patch.object(r,'admit')as admit,patch.object(r,'execute')as execute,redirect_stdout(io.StringIO())as out:
             self.assertEqual(r.main(['--gate-root',d]),0)
