@@ -1,0 +1,54 @@
+{
+  "protocol": "nemotron72-known-agents-v2",
+  "study": "hard-long-confirmation-v1",
+  "status": "FROZEN",
+  "frozen_note": "Frozen 2026-11-16 ~15:20 Europe/Warsaw after the depth study on the hard DEVELOPMENT split; the agent type was chosen on dev only.",
+  "question": "On the hard evaluation tasks (same 48 x 3 as confirm-hard-v1): do 4 deep agents (long_forced_original, 16K each, 64K ceiling) beat the 8 short forced_explicit agents of confirm-hard-v1 (8K each, 65.5K ceiling; 81/144)?",
+  "selection": {
+    "rule": "best single-agent rate on hard dev (depth-hard-dev-v1)",
+    "evidence": {
+      "long_forced_original": "41/87 at 15:12 interim; final in runs/depth-hard-dev-v1",
+      "long_forced_explicit": "~38%",
+      "forced_explicit": "~22%"
+    },
+    "selected": "long_forced_original"
+  },
+  "agent_variants": [
+    "long_forced_original",
+    "long_forced_original",
+    "long_forced_original",
+    "long_forced_original"
+  ],
+  "workers": {
+    "long_forced_original": "forced72_worker.py"
+  },
+  "extra_worker_args": [],
+  "agent_seed_offset": 700,
+  "source_revision": "ce6c0b6e583596faf15e4f556b0d73f09fb0b6a4",
+  "source_branch": "research/nemotron-long-v1",
+  "source_path": ".runtime/nemotron-long-source",
+  "matrix": {
+    "dataset": "datasets/arithmetic-hard-v1/tasks.json",
+    "dataset_protocol": "arithmetic-hard-v1",
+    "split": "evaluation",
+    "tasks": 48,
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "cases": 144,
+    "agent_runs": 576
+  },
+  "limits": {
+    "per_agent": "14848 thinking + forced end + continuation within 16000",
+    "idle_timeout_seconds": 120,
+    "agent_wall_deadline_seconds": 3600
+  },
+  "scheduling": {
+    "concurrent_agents_per_node": 12
+  },
+  "primary_outcome": "any-of-4 deep agents vs confirm-hard-v1 any-of-8 short agents, paired by case (different run, same tasks and seeds); secondary any-of-k curves, tokens",
+  "caveat": "Cross-run comparison: the short swarm ran earlier the same day under the same runtime; no wall-clock limits in either run.",
+  "runner": "run_agents72.py"
+}
