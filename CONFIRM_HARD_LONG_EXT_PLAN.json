@@ -1,0 +1,45 @@
+{
+  "protocol": "nemotron72-known-agents-v2",
+  "study": "hard-long-extension-v1",
+  "status": "FROZEN",
+  "frozen_note": "Frozen 2026-11-16 ~19:40 Europe/Warsaw. Extension of hard-long-confirmation-v1 with 4 MORE identical deep agents per case (new seeds), so any-of-8 deep can be compared with DeepSeek any-of-2 (107/144).",
+  "question": "Do 8 deep Nemotron agents (the 4 of confirm-hard-long-v1 plus these 4) exceed DeepSeek any-of-2 (107/144) on the hard evaluation tasks?",
+  "agent_variants": [
+    "long_forced_original",
+    "long_forced_original",
+    "long_forced_original",
+    "long_forced_original"
+  ],
+  "workers": {
+    "long_forced_original": "forced72_worker.py"
+  },
+  "extra_worker_args": [],
+  "agent_seed_offset": 800,
+  "source_revision": "ce6c0b6e583596faf15e4f556b0d73f09fb0b6a4",
+  "source_branch": "research/nemotron-long-v1",
+  "source_path": ".runtime/nemotron-long-source",
+  "matrix": {
+    "dataset": "datasets/arithmetic-hard-v1/tasks.json",
+    "dataset_protocol": "arithmetic-hard-v1",
+    "split": "evaluation",
+    "tasks": 48,
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "cases": 144,
+    "agent_runs": 576
+  },
+  "limits": {
+    "per_agent": "14848 thinking + forced end + continuation within 16000",
+    "idle_timeout_seconds": 120,
+    "agent_wall_deadline_seconds": 3600
+  },
+  "scheduling": {
+    "concurrent_agents_per_node": 12
+  },
+  "primary_outcome": "any-of-8 over agents of confirm-hard-long-v1 (offset 700) and this run (offset 800), same agent type and source; compared with DeepSeek any-of-2 107/144 and expected any-of-k curve",
+  "caveat": "Two runs pooled for one agent type (identical source ce6c0b6, plan, runtime, different seeds); no wall-clock limits.",
+  "runner": "run_agents72.py"
+}
