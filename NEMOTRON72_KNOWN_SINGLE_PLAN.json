@@ -1,0 +1,74 @@
+{
+  "protocol": "nemotron72-known-single-v1",
+  "status": "FROZEN",
+  "scope": "Previously seen and development-tuned evaluation suite; not fresh generalization, isolated agent-count evidence, or fleet throughput. No CPU search, retry, or cross-case memory.",
+  "solver_source_revision": "638b9f335a7aa7011a9b7d122abcaa04f45e17a5",
+  "solver_source_default": ".runtime/nemotron72-followup-source",
+  "selected_variant": "scribe_full",
+  "development_selection": {
+    "path": "results/nemotron72-development-v1-analysis/selection.json",
+    "sha256": "1f6096b78a2947cdf6d5693ff6e5eb9d63786ede259c83b3f410b57ddf3c0768",
+    "audit_path": "results/nemotron72-development-v1-audit/FINAL_AUDIT.json",
+    "audit_sha256": "cffdeb17e4499b55a7db2c38e2f25d266b427195b14ed9201b18ecc17434688b"
+  },
+  "matrix": {
+    "dataset": "datasets/arithmetic-v1/tasks.json",
+    "dataset_sha256": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+    "split": "evaluation",
+    "expected_task_ids_in_stored_order": [
+      "eva-c25dd13868a8",
+      "eva-4a5b112b29e0",
+      "eva-91cea8bac1fe",
+      "eva-8955514173a5",
+      "eva-6b194524eb19",
+      "eva-27c0dd95407a",
+      "eva-5f7e8610aa71",
+      "eva-2894f3b286c6",
+      "eva-d75177564d41",
+      "eva-17c359789b49",
+      "eva-f087ad404500",
+      "eva-6ce1a0614ff5",
+      "eva-8c04e7fa4008",
+      "eva-3b1047ffeb08",
+      "eva-f792236a99ed",
+      "eva-e40959c347a7",
+      "eva-66b495db2b77",
+      "eva-3f863b95e0b7",
+      "eva-541797dfa346",
+      "eva-0fdf38eb4f8b",
+      "eva-eea066d2b2d7",
+      "eva-a890436f325f",
+      "eva-ec6b2de6877c",
+      "eva-eca4c7a9c432"
+    ],
+    "tasks": 24,
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "cases": 72
+  },
+  "limits": {
+    "maximum_calls": 2,
+    "global_completion_tokens": 8192,
+    "first_thinking_tokens": 7936,
+    "commit_thinking": false,
+    "commit_tokens": 256,
+    "case_deadline_seconds": 180,
+    "http_timeout_seconds": 210
+  },
+  "scheduling": {
+    "order": "Stored task order within seeds 1,2,3; four persistent host queues, one active case per node.",
+    "slot_formula": "(task_index//2 + 2*(task_index%2) + seed_index)%4",
+    "seed_index": "0-based",
+    "per_node_per_seed": {
+      "four_operand": 3,
+      "six_operand": 3
+    },
+    "per_node_total": 18
+  },
+  "admission": "Fresh UTC age 0..900 seconds; root-verified same runtime, owner/image/model/draft/health/idle; exact runner/protocol/test and frozen 638 source hashes plus four distinct endpoints.",
+  "stop_policy": "A deadline remains an outcome with partial/unknown costs retained. Positive controller, transport, source, counter, or drain faults stop new admission; in-flight owned cases finish/drain. Local exceptions set stop before recording.",
+  "output": "Original traces, request IDs, own reasoning lineage, actual usage, completion caps, controller stops, drain/counter coverage and hashes preserved. No original 900-case source or scores changed."
+}
