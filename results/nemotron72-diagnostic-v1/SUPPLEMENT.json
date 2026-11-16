@@ -1,0 +1,50 @@
+{
+  "verified": true,
+  "already_seen_exploratory": true,
+  "retained_response_field_patterns": {
+    "direct_thinking_8k": {
+      "length_null_content_nonempty_reasoning": 52,
+      "stop_parse_failures": 0
+    },
+    "ensemble2_thinking_8k": {
+      "length_null_content_nonempty_reasoning": 72,
+      "stop_parse_failures": 0
+    },
+    "ensemble4_thinking_8k": {
+      "length_null_content_nonempty_reasoning": 94,
+      "stop_parse_failures": 0
+    },
+    "solo_refine_thinking_8k": {
+      "length_null_content_nonempty_reasoning": 74,
+      "stop_parse_failures": 1
+    }
+  },
+  "unsuccessful_case_patterns": {
+    "ensemble4_thinking_8k": [
+      {
+        "pattern": {
+          "response_parse_error": 4
+        },
+        "cases": 22
+      },
+      {
+        "pattern": {
+          "legal_plan_missed_target": 1,
+          "response_parse_error": 3
+        },
+        "cases": 1
+      }
+    ],
+    "solo_refine_thinking_8k": [
+      {
+        "pattern": {
+          "response_not_retained_at_deadline": 1,
+          "response_parse_error": 2
+        },
+        "cases": 27
+      }
+    ]
+  },
+  "all_four_full_plan_methods_union": 60,
+  "source_diagnostic_sha256": "14953e9743f396f365dd33986ccb05128a03e76ce4bb5a927acfacc3ae0d2bb0"
+}

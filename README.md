@@ -2,6 +2,8 @@
 
 **Completed exploratory overnight study.** [Article draft](ARTICLE_DRAFT.md) · [X draft for the owner to publish](X_POST_DRAFT.md) · [DeepSeek reference](results/reference-deepseek-v1-analysis/REPORT.md) · [Reproduction guide](REPRODUCING.md). [Published raw evidence: 85.9 MB archive, manifests and checksums](EVIDENCE_RELEASE.md).
 
+**Follow-up research is active:** [Claude Fable 5.2 high-effort design review](results/fable52-advisory-20261116/README.md) and [independent truncation/budget diagnostic](results/nemotron72-diagnostic-v1/NOTES.md). No new Nemotron quality score is available yet. Follow-up gains on the already-seen24tasks will be exploratory and separate from the frozen overnight release.
+
 The frozen primary comparison covers 900 attempts:
 24 arithmetic tasks and 18 Python-function tasks, three sampling seeds, and
 strong solo, independent-ensemble, shared-state and voting controls. Repeated
