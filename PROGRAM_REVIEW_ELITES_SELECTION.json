@@ -1,0 +1,155 @@
+{
+  "protocol": "reusable-coloring-program-review-elites4-v1",
+  "prepared_utc": "2026-11-16T03:19:55.108534+00:00",
+  "status": "prospective optional late exploratory branch; not launched; root review and source freeze required",
+  "scope": {
+    "interpretation": "Program-level reuse of bottom-ranked candidate contexts as stateless reviewers, not genuine weaker persistent individuals, and not a pure headcount or memory ablation.",
+    "late_exploratory": true,
+    "original_program_evaluation_outcomes_already_known_to_operators": true,
+    "training": "Original four development graphs only; no evaluation inputs/results/witnesses/advisors enter any author or review prompt.",
+    "evaluation": "Freeze selected source before the original12 graph grades; no model calls after selection. All four selected sources remain eligible for a separately labeled fresh96 followup regardless original12 outcomes; the fresh96 corpus results are already known to operators so this is not untouched confirmation.",
+    "admission": "Optional only after late thinking-ON and complete owned model/CPU drain, before unqualified structured-output probes. Root must give explicit manual fresh exclusive admission. Optional separately admitted384-grade CPU confirmation follows this arm and precedes guided work. Mandatory DeepSeek references/restoration have priority; time permitting only. Not automatic; existing final45/post gates and clean committed snapshot required."
+  },
+  "arms": [
+    "review_elites4"
+  ],
+  "seeds": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "limits": {
+    "max_model_calls": 16,
+    "per_call_max_tokens": 2048,
+    "max_completion_tokens": 32768,
+    "request_timeout_seconds": 210,
+    "graph_timeout_seconds": 10,
+    "memory_limit_mib": 256,
+    "cpu_limit_per_container": 1,
+    "episode_deadline_seconds": null
+  },
+  "model": {
+    "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+    "runtime": "Same pinned DSpark3/vLLM0.32 ARM64 runtime.json",
+    "thinking": false,
+    "temperature": 0.8,
+    "external_runtime_advisor": false
+  },
+  "allocation": {
+    "review_elites4": {
+      "initial_programs": 4,
+      "rounds": 3,
+      "reviews_per_round": 2,
+      "repairs_per_round": 2,
+      "actual_program_candidates": 10,
+      "actual_review_calls": 6,
+      "total_calls": 16,
+      "early_development_success_stop": false,
+      "review_context": "Sort current population by development ranking. Third/fourth candidate contexts review first/second respectively. Include own+target fullsource and development-only feedback. Review identity is candidate context, not a persistent mind.",
+      "repair": "Each top target receives its own source/feedback plus its paired bounded8192-character plaintext critique, explicitly unverified.",
+      "population": "Current4 plus2 repairs; retain best4 by(-development_solved,development_penalty,candidate_index). Not retained does not mean mathematically wrong.",
+      "selection": "Best of all10 by exact original ranking; earliest index breaks ties.16 calls must finish before selection; unchanged original12 evaluation semantics."
+    },
+    "fixed_spend": "All16 model calls remain required even after4/4 development success. Invalid/empty plaintext critiques still count and receive no replacement calls; transport/integrity faults stop with partial evidence. Token caps matched; realized usage measured separately.",
+    "node_pairs": "Seed1..4 own Spark_01..04 and localhost18081..18084/v1 respectively; one new-arm episode per node. Four episodes may run concurrently; never concurrent with another study stage.",
+    "training_batches": "Finish all4 initial authors before serial development grading; every review pair finishes and review SYSTEM resets before repair pair starts; repairs finish before serial development grading. One CPU grader active per host.",
+    "programs": 4,
+    "evaluation_graph_results": 48,
+    "maximum_training_graph_grades": 160,
+    "evaluation_graph_grades": 48,
+    "qualification_graph_grades": 3
+  },
+  "author_information": {
+    "api": "solve(n,k,edges)->{'assignment':[integer colors]}",
+    "contract": "Colorable undirected graphs n<=64, k in{3,4}; standard library, no files/network/tools; do not mutate input edges.",
+    "development_graphs": 4,
+    "evaluation_graphs": 12,
+    "public_tasks": "datasets/csp-v1/tasks.json",
+    "forbidden_inputs": [
+      "reference witnesses",
+      "evaluation graph inputs or outcomes during writing",
+      "CPU baseline algorithm source",
+      "stronger model advice",
+      "other sources/feedback except the explicitly paired reviewer/target contexts"
+    ],
+    "development_feedback": "Same original per-graph compact verified feedback. Reviewer sees paired own+target sources and feedback; author repair sees own target source/feedback plus unverified critique.",
+    "source_parsing": "AST parsing only on administration host. Optional code fence stripped; one top-level solve with three positional parameters required. Never execute generated source locally. Invalid source remains retained and receives error penalty; selected invalid source, if all proposals fail, remains a negative program evaluated in the sandbox.",
+    "randomness": "Model request seeds use existing Client derivation. Program-internal randomness is whatever the generated program implements; no hidden seed injection or post-evaluation retry."
+  },
+  "selection": {
+    "fitness": "Development graphs solved descending; remaining conflict/error penalty ascending; earliest candidate index as final tie.",
+    "penalty": "Solved graph0; valid unsolved assignment on unmutated input uses exact conflict count; parse/runtime/timeout/OOM/protocol/mutation failure uses edge_count+1. Sum over the four fixed development graphs.",
+    "retention": "Keep all10 actual program proposals and6 raw plaintext reviews, full sources/feedback, duplicate and worse candidates, plus round population membership.",
+    "freeze": "Write selected.py and selection.json with sourceSHA and evaluation_seen=false, emit program_selected before any evaluation graph grading. Verify selected file SHA before each evaluation and afterward.",
+    "evaluation": "Evaluate all12 graphs once in fresh containers; no evaluation model calls, repair, candidate reselection or task filtering. Candidate failures remain in the12-graph denominator. True infrastructure faults halt and preserve partial results."
+  },
+  "grader": {
+    "implementation": "csp_program_grader.evaluate_program(code,task,host,timeout=10)",
+    "qualified_transport": "Private function-global clone of independent_code_grader.evaluate_code; original module unchanged.",
+    "authority": "New outer comparator checks exact assignment against original outer graph; expected=None is only an adapter placeholder, never a success oracle.",
+    "proofs": "Persist candidate_output plus full exact proof, graph/input/source hashes; independently replay every returned proof in program_search. Reject unproven successes.",
+    "isolation": "One fresh pinned CPU-only256MiB/1CPU container per graph; no GPU, network or host mounts. Existing qualified10second child alarm and bounded transport/cleanup guards unchanged.",
+    "qualification": "After final45 and completed postcontroller gate, all4 endpoints must be idle. OnSpark04 run three authored tiny-graph valid/wrong/forged-grade CPU smokes, verify classification/proof/cleanup and persist receipt before any writing calls. No qualifier source or outputs go to authors.",
+    "wall_and_cpu": "Wall includes SSH/container startup and cleanup. Actual remote solver CPU time is not instrumented and remains null. Parent process CPU reports are local and can overlap across concurrent threads; they are not remote solver cost."
+  },
+  "gates": {
+    "throughput": "reference_worker.verify_gate(original gate root), full45 verified cohorts plus900+80.",
+    "postcontroller": "Original .runtime/post-throughput-overnight-v1/state.json must be complete and hash-linked to a ledger containing each of the exact10 expected stage names once. All6 mandatory stages require verified completion/returncode0; only4 declared optional stages may be time-skipped.",
+    "source": "All source/data/protocol hashes pinned, clean tracked source required; later parent creates immutable tag/worktree. No edits to existing sealed sources.",
+    "ownership": "One endpoint/node per pair. No simultaneous episodes per endpoint; four initial idle checks before qualification and per-episode idle checks/drains.",
+    "launch": "Default plan-only; --run must be explicit. New output directory only; no overwrite/resume. No automatic launch after original phases."
+  },
+  "accounting": {
+    "model": "64 model calls if all4 new-arm episodes finish:16 per episode (10 programs and6 reviews), including every development success.32768 completion-token ceiling per episode; input and output separate; unknown usage retained as lower bounds.",
+    "serving": "Per-episode idle-delimited endpoint counter deltas; server costs null when unknown, no zero substitution.",
+    "compute": "Record every fresh-container grade, wall time, constraints checked, candidate resource failures and separately named local parent CPU observations. CPU evaluation is not equivalent to one model call.",
+    "partial": "Stop dispatch after true infrastructure/integrity failures, finish already dispatched model batches and owned cleanup; retain raw events/code/results and missing evaluation counts.",
+    "reporting": "One new-arm episode for each of four seed/node assignments. Evaluation reuses the same12 graph instances across four selected programs:48 program-graph outcomes, not48 independent graph tasks. This single-arm late exploratory extension does not itself provide a randomized paired-arm contrast. Report training model cost and evaluation CPU/wall costs separately.",
+    "claim": "Any all-pass statement refers only to the finite12 original graphs and48 selected-program/graph outcomes within fixed limits. The optional separate96-graph followup would add384 outcomes across all4 selected programs, with0 model calls. Neither finite suite proves generic solver correctness; the same trained programs and repeated graph instances induce dependence."
+  },
+  "source_sha256": {
+    "program_search.py": "b1876ef9e713f1721fb543f3ca9a3783fc701644a0db165f5caa88e70dba1845",
+    "test_program_search.py": "ad3aebbb7eef01d01454576e49335f7a5792d4cf27ff317ced5d716bdb652871",
+    "csp_program_grader.py": "7fa45db50bfbef04c868b35ddb3aab67fceab4818ca5820bba2427f14ff6873a",
+    "test_csp_program_grader.py": "1ab51b9ead1dde2b36c73dd51da6c6024f77bd6b1d4bf36539e196346f41daa3",
+    "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+    "csp_tasks.py": "4a49d387687eb15c98cf226980b63b5a786c67a60ec94fa489ad58855b08373e",
+    "independent_code_grader.py": "c4324123bb75a8712150adb3e06e1da4e1e44a7d91516597d9a35caa372c2726",
+    "reference_worker.py": "17f83d857a820a0dfc8665cd8330a94836d60dbc4b16ea73d4f05433dc49cbe9",
+    "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+    "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+    "datasets/csp-v1/tasks.json": "29d659bbc7b4b819ea7d572db073459eb30d6c19f7fda2114e7c174c375de960",
+    "test_program_review_elites.py": "ac6a9d7d93c67ce2eff2d15bb789c937d19576fc28d278fa3b770dcef2dd594b",
+    "PROGRAM_REVIEW_ELITES.md": "73f4e7745cf9d3c371da0e50240b578762d23db12998decdf9b0180de6bf5935"
+  },
+  "schedule": {
+    "initial_programs": 4,
+    "rounds": 3,
+    "reviews_per_round": 2,
+    "repairs_per_round": 2,
+    "actual_program_candidates": 10,
+    "actual_review_calls": 6,
+    "total_calls": 16,
+    "early_development_success_stop": false,
+    "review_context": "Sort current population by development ranking. Third/fourth candidate contexts review first/second respectively. Include own+target fullsource and development-only feedback. Review identity is candidate context, not a persistent mind.",
+    "repair": "Each top target receives its own source/feedback plus its paired bounded8192-character plaintext critique, explicitly unverified.",
+    "population": "Current4 plus2 repairs; retain best4 by(-development_solved,development_penalty,candidate_index). Not retained does not mean mathematically wrong.",
+    "selection": "Best of all10 by exact original ranking; earliest index breaks ties.16 calls must finish before selection; unchanged original12 evaluation semantics."
+  },
+  "baseline_source": {
+    "revision": "c5ed1190",
+    "worktree_base": "0091fb1",
+    "original_selection_preserved": "PROGRAM_SEARCH_SELECTION.json"
+  },
+  "inherited_gate_provenance": "The existing exact-stage postcontroller gate is reused unchanged from the qualified original program source. Its historical pre-call amendment remains documented in the original PROGRAM_SEARCH_SELECTION.json; it is not a new amendment or a claim that the original program experiment has not run.",
+  "optional_fresh96_followup": {
+    "automatic": false,
+    "selected_programs": 4,
+    "graphs": 96,
+    "maximum_cpu_grades": 384,
+    "model_calls": 0,
+    "inclusion": "All four selected programs regardless of their original12 outcomes. Requires separate prospective execution configuration, root review/admission and sufficient remaining time; no followup is dispatched by this source.",
+    "scope": "Late exploratory reuse of already operator-observed corpus; do not pool with the original8-program confirmation or call it untouched confirmation."
+  }
+}

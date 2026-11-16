@@ -21,6 +21,9 @@ from run_benchmark import drain, read_trace, server_cost
 
 HERE = Path(__file__).resolve().parent
 ARMS = ("sequential16", "independent4")
+REVIEW_ARM = "review_elites4"
+PLAN_FILE = "PROGRAM_REVIEW_ELITES_SELECTION.json"
+REVIEW_SYSTEM = "Review the supplied Python coloring solver. Return plaintext criticism and repair suggestions only. Do not use tools."
 SEEDS = (1, 2, 3, 4)
 POST_REQUIRED_STAGES = frozenset(("coding-confirmation-v1", "csp-classical-v1",
     "csp-core_off16-development-s1", "csp-core_off16-evaluation-s1",
@@ -34,7 +37,7 @@ SYSTEM = "Write a complete standalone Python program defining solve(n,k,edges). 
 FILES = ("program_search.py", "test_program_search.py", "csp_program_grader.py",
          "test_csp_program_grader.py", "harness.py", "csp_tasks.py", "independent_code_grader.py",
          "reference_worker.py", "run_benchmark.py", "runtime.json", "datasets/csp-v1/tasks.json",
-         "PROGRAM_SEARCH_SELECTION.json")
+         "test_program_review_elites.py", "PROGRAM_REVIEW_ELITES.md", PLAN_FILE)
 
 
 def sha(path): return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -69,6 +72,9 @@ def source_identity():
 
 def parse_program(content, stage=None):
     """Syntax inspection only. Generated Python is NEVER executed on this host."""
+    if stage and stage.startswith("review-"):
+        raw = content if isinstance(content, str) else None
+        return dict(raw=raw, critique=(raw or "")[:8192], truncated=len(raw or "") > 8192)
     raw = content if isinstance(content, str) else None
     code = raw.strip() if raw is not None else ""
     if code.startswith("```python\n") and code.endswith("```"):
@@ -131,7 +137,7 @@ def penalty(task, report):
 def run_episode(development, evaluation, arm, seed, host, client, events, directory,
                 evaluator, stop=None):
     """Sixteen calls including every development success; one frozen final program."""
-    require(arm in ARMS and len(development) == 4 and len(evaluation) == 12, "Expected fixed arm and4/12 split")
+    require(arm in (*ARMS, REVIEW_ARM) and len(development) == 4 and len(evaluation) == 12, "Expected fixed arm and4/12 split")
     stop = stop or threading.Event()
     directory = Path(directory)
     candidates, evaluation_rows = [], []
@@ -177,42 +183,106 @@ def run_episode(development, evaluation, arm, seed, host, client, events, direct
         parsed = value if isinstance(value, dict) and set(value) == {"raw", "code", "parse_error"} else parse_program(None)
         return dict(index=index, chain=agent, parent_index=previous["index"] if previous else None, **parsed)
 
+    def score_rows(rows):
+        for row in rows:
+            with (directory / f"candidate-{row['index']:02d}.raw.txt").open("x") as stream:
+                stream.write(row["raw"] or "")
+            with (directory / f"candidate-{row['index']:02d}.py").open("x") as stream:
+                stream.write(row["code"])
+            row["code_sha256"] = text_sha(row["code"])
+            events.emit("program_candidate", **row)
+        if getattr(client, "infra_failures", 0) or getattr(client, "budget_failures", 0):
+            stop.set(); raise RuntimeError("model transport or budget dispatch failure")
+        for row in rows:
+            feedback, reports = [], []
+            for task in development:
+                if row["parse_error"]:
+                    report = dict(status="error", solved=False, proof=None, failure_kind="candidate_parse",
+                                  error=row["parse_error"], grading_performed=False)
+                    events.emit("program_grade_skipped", candidate_index=row["index"], task_id=task["id"],
+                                phase="development", reason="candidate_parse", code_sha256=row["code_sha256"])
+                else:
+                    report = grade(row["code"], task, "development", row["index"])
+                feedback.append(compact_feedback(task, report)); reports.append(report)
+            row.update(feedback=feedback, development_solved=sum(r.get("solved") is True for r in reports),
+                       development_penalty=sum(penalty(t, r) for t, r in zip(development, reports)))
+            candidates.append(row)
+            events.emit("development_candidate_scored", candidate_index=row["index"], chain=row["chain"],
+                        solved=row["development_solved"], penalty=row["development_penalty"], feedback=feedback)
+    rank = lambda row: (-row["development_solved"], row["development_penalty"], row["index"])
+
+    def review_round(population, generation):
+        ordered = sorted(population, key=rank)
+        pairs = list(zip(ordered[2:], ordered[:2]))
+        events.emit("review_population", generation=generation,
+                    candidate_indices=[r["index"] for r in ordered], ranking="development only")
+        def review(pair):
+            reviewer, target = pair
+            review_id = f"r{generation}-c{reviewer['index']}-t{target['index']}"
+            prompt = ("Critique the target generic solver using only the following four development graphs. "
+                      "Your own source is candidate context, not an autonomous persistent identity. "
+                      "Neither your criticism nor suggestions are verified facts. No evaluation data are available.\n"
+                      + canonical_json(development) + "\nYour context source:\n" + reviewer["code"]
+                      + "\nIts development feedback:\n" + canonical_json(reviewer["feedback"])
+                      + "\nTarget source:\n" + target["code"] + "\nTarget development feedback:\n"
+                      + canonical_json(target["feedback"]) + "\nReturn plaintext critique only; do not return replacement code.")
+            value = client.call(reviewer["index"], "review-" + review_id, prompt, phase="development_review",
+                                review_id=review_id, reviewer_candidate_index=reviewer["index"],
+                                target_candidate_index=target["index"], candidate_index=None)
+            value = value if isinstance(value, dict) and "critique" in value else dict(raw=None, critique="", truncated=False)
+            events.emit("program_review", review_id=review_id, generation=generation,
+                        reviewer_candidate_index=reviewer["index"], target_candidate_index=target["index"],
+                        reviewer_sha256=reviewer["code_sha256"], target_sha256=target["code_sha256"],
+                        critique_verified=False, **value)
+            write_new(directory / ("review-" + review_id + ".json"), value)
+            return target, review_id, value["critique"]
+        original_system = getattr(client, "system_prompt", SYSTEM)
+        client.system_prompt = REVIEW_SYSTEM
+        try:
+            with ThreadPoolExecutor(max_workers=2) as pool: reviews = list(pool.map(review, pairs))
+        finally: client.system_prompt = original_system
+        require(not getattr(client, "infra_failures", 0) and not getattr(client, "budget_failures", 0),
+                "model review transport or budget dispatch failure")
+        def repair(job):
+            index, (target, review_id, critique) = job
+            prompt = author_prompt(development, target) + "\nUnverified peer critique (may be wrong):\n" + critique
+            value = client.call(target["chain"], "program-" + str(index), prompt, candidate_index=index,
+                                chain=target["chain"], phase="development", previous_candidate_index=target["index"],
+                                review_id=review_id, repair_target_index=target["index"])
+            parsed = value if isinstance(value, dict) and set(value) == {"raw", "code", "parse_error"} else parse_program(None)
+            return dict(index=index, chain=target["chain"], parent_index=target["index"], review_id=review_id, **parsed)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            rows = list(pool.map(repair, enumerate(reviews, start=4 + (generation-1)*2)))
+        score_rows(rows)
+        # The old four plus two repairs compete; no reviewer is globally declared wrong.
+        retained = sorted(population + rows, key=rank)[:4]
+        events.emit("review_population_selected", generation=generation,
+                    retained_indices=[r["index"] for r in retained],
+                    not_retained_indices=[r["index"] for r in population + rows if r not in retained],
+                    reason="development_rank_not_mathematical_incorrectness")
+        return retained
+
     try:
-        width = 1 if arm == "sequential16" else 4
-        previous = [None] * width
-        for generation in range(16 // width):
-            require(not stop.is_set(), "global infrastructure stop")
-            jobs = [(generation * width + chain, chain, previous[chain]) for chain in range(width)]
-            with ThreadPoolExecutor(max_workers=width) as pool:
-                rows = list(pool.map(lambda job: propose(*job), jobs))
-            # All dispatched model calls finish before any development grading.
-            for row in rows:
-                with (directory / f"candidate-{row['index']:02d}.raw.txt").open("x") as stream:
-                    stream.write(row["raw"] or "")
-                with (directory / f"candidate-{row['index']:02d}.py").open("x") as stream:
-                    stream.write(row["code"])
-                row["code_sha256"] = text_sha(row["code"])
-                events.emit("program_candidate", **row)
-            if getattr(client, "infra_failures", 0) or getattr(client, "budget_failures", 0):
-                stop.set(); raise RuntimeError("model transport or budget dispatch failure")
-            for row in rows:
-                feedback, reports = [], []
-                for task in development:
-                    if row["parse_error"]:
-                        report = dict(status="error", solved=False, proof=None, failure_kind="candidate_parse",
-                                      error=row["parse_error"], grading_performed=False)
-                        events.emit("program_grade_skipped", candidate_index=row["index"], task_id=task["id"],
-                                    phase="development", reason="candidate_parse", code_sha256=row["code_sha256"])
-                    else:
-                        report = grade(row["code"], task, "development", row["index"])
-                    feedback.append(compact_feedback(task, report)); reports.append(report)
-                row.update(feedback=feedback, development_solved=sum(r.get("solved") is True for r in reports),
-                           development_penalty=sum(penalty(t, r) for t, r in zip(development, reports)))
-                candidates.append(row); previous[row["chain"]] = row
-                events.emit("development_candidate_scored", candidate_index=row["index"], chain=row["chain"],
-                            solved=row["development_solved"], penalty=row["development_penalty"], feedback=feedback)
-        require(len(candidates) == 16 and not stop.is_set(), "incomplete training episode")
-        selected = min(candidates, key=lambda row: (-row["development_solved"], row["development_penalty"], row["index"]))
+        if arm == REVIEW_ARM:
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                population = list(pool.map(lambda i: propose(i, i, None), range(4)))
+            score_rows(population)
+            for generation in range(1, 4):
+                require(not stop.is_set(), "global infrastructure stop")
+                population = review_round(population, generation)
+            require(len(candidates) == 10 and not stop.is_set(), "incomplete10-candidate/6-review episode")
+        else:
+            width = 1 if arm == "sequential16" else 4
+            previous = [None] * width
+            for generation in range(16 // width):
+                require(not stop.is_set(), "global infrastructure stop")
+                jobs = [(generation * width + chain, chain, previous[chain]) for chain in range(width)]
+                with ThreadPoolExecutor(max_workers=width) as pool:
+                    rows = list(pool.map(lambda job: propose(*job), jobs))
+                score_rows(rows)
+                for row in rows: previous[row["chain"]] = row
+            require(len(candidates) == 16 and not stop.is_set(), "incomplete training episode")
+        selected = min(candidates, key=rank)
         selected_path = directory / "selected.py"
         with selected_path.open("x") as stream: stream.write(selected["code"])
         selection = dict(arm=arm, seed=seed, candidate_index=selected["index"], code_sha256=selected["code_sha256"],
@@ -252,22 +322,22 @@ def run_episode(development, evaluation, arm, seed, host, client, events, direct
 
 
 def load_plan(gate_root, output):
-    selection = json.loads((HERE / "PROGRAM_SEARCH_SELECTION.json").read_text())
-    require(selection["protocol"] == "reusable-coloring-program-search-v1", "unexpected program protocol")
-    require(selection.get("limits") == LIMITS and selection.get("arms") == list(ARMS)
+    selection = json.loads((HERE / PLAN_FILE).read_text())
+    require(selection["protocol"] == "reusable-coloring-program-review-elites4-v1", "unexpected program protocol")
+    require(selection.get("limits") == LIMITS and selection.get("arms") == [REVIEW_ARM]
             and selection.get("seeds") == list(SEEDS), "program allocation differs from fixed implementation")
-    require(set(selection["source_sha256"]) == set(FILES) - {"PROGRAM_SEARCH_SELECTION.json"}, "incomplete program source pin set")
+    require(set(selection["source_sha256"]) == set(FILES) - {PLAN_FILE}, "incomplete program source pin set")
     for name, digest in selection["source_sha256"].items():
         require(sha(HERE / name) == digest, "program source pin changed: " + name)
     dataset = HERE / "datasets/csp-v1/tasks.json"
     development, evaluation = load_tasks(dataset, "development"), load_tasks(dataset, "evaluation")
     require(len(development) == 4 and len(evaluation) == 12, "fixed4/12 corpus required")
     pairs = [dict(seed=seed, host=f"Spark_{seed:02d}", endpoint=f"http://127.0.0.1:{18080+seed}/v1",
-                  arms=list(ARMS if seed % 2 else reversed(ARMS))) for seed in SEEDS]
-    return dict(protocol=selection["protocol"], selection_sha256=sha(HERE / "PROGRAM_SEARCH_SELECTION.json"),
+                  arms=[REVIEW_ARM]) for seed in SEEDS]
+    return dict(protocol=selection["protocol"], selection_sha256=sha(HERE / PLAN_FILE),
                 dataset_sha256=sha(dataset), development_tasks=4, evaluation_tasks=12, pairs=pairs,
                 output=str(Path(output).resolve()), gate_root=str(Path(gate_root).resolve()),
-                planned_selected_programs=8, planned_evaluation_results=96,
+                planned_selected_programs=4, planned_evaluation_results=48,
                 source=source_identity(), runtime=json.loads((HERE / "runtime.json").read_text()),
                 limits=selection["limits"], scope=selection["scope"]), development, evaluation
 
@@ -398,7 +468,7 @@ def run_master(plan, development, evaluation, gate):
             except Exception as exc:
                 stop.set(); faults.append(type(exc).__name__ + ": " + str(exc)[:500])
     final = source_identity()
-    verified = (len(rows) == 8 and all(r["complete"] for r in rows) and not faults
+    verified = (len(rows) == sum(len(pair["arms"]) for pair in plan["pairs"]) and all(r["complete"] for r in rows) and not faults
                 and final == plan["source"] and not stop.is_set())
     meta.update(completed_utc=now(), wall_seconds=time.monotonic()-began, source_after=final,
                 recorded_episodes=len(rows), completed_programs=sum(r["complete"] for r in rows),
@@ -422,7 +492,7 @@ def main(argv=None):
     parser.add_argument("--run", action="store_true")
     args = parser.parse_args(argv)
     root = args.gate_root.resolve()
-    output = (args.output or root / "runs/program-search-v1").resolve()
+    output = (args.output or root / "runs/program-review-elites4-v1").resolve()
     plan, development, evaluation = load_plan(root, output)
     if not args.run:
         print(json.dumps(dict(plan, mode="plan"), indent=2)); return 0
