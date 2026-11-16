@@ -1,6 +1,8 @@
-# Swarm Lab: exact arithmetic, visible decisions
+# Swarm Lab: verified agent search on four DGX Sparks
 
-**Research in progress.** The frozen primary comparison covers 900 attempts:
+**Completed exploratory overnight study.** [Article draft](ARTICLE_DRAFT.md) · [X draft for the owner to publish](X_POST_DRAFT.md) · [DeepSeek reference](results/reference-deepseek-v1-analysis/REPORT.md) · [Reproduction guide](REPRODUCING.md). Raw release packaging is being finalized.
+
+The frozen primary comparison covers 900 attempts:
 24 arithmetic tasks and 18 Python-function tasks, three sampling seeds, and
 strong solo, independent-ensemble, shared-state and voting controls. Repeated
 seeds remain clustered by task. See [EVALUATION_SELECTION.json](EVALUATION_SELECTION.json)
@@ -35,7 +37,9 @@ API seeds do not guarantee identical GPU execution.
 
 ## Current evidence
 
-**Current runtime: vLLM 0.32.0 ARM64, DSpark3, four independent replicas.** The uniform runtime-v2 study completed **900 primary attempts**, **80 supplemental solo-control attempts** (8 development and 72 evaluation), and **45 corrected loaded-queue cohorts / 2,016 attempts** (36 development batches and 9 evaluation batches). [Progress and exclusions](EVALUATION_PROGRESS.md).
+The separate native DeepSeek TP4 reference completed **72/72 arithmetic and 54/54 coding attempts**, on the same 24/18 tasks and three repetitions, with independent verification. This is a pinned custom abliterated checkpoint and a different serving/compute recipe, not an equal-cost model ranking. Native client usage is complete; global server token cost is unknown. [Reference comparison and limitations](results/reference-deepseek-v1-analysis/REPORT.md) · [independent audit](results/reference-deepseek-v1-audit/AUDIT.json). The planned Opus reference was unavailable because the account hit its weekly usage limit; the optional GLM hybrid was not run.
+
+**Nemotron study runtime: vLLM 0.32.0 ARM64, DSpark3, four independent replicas.** These replicas are now stopped and retained; the saved native DeepSeek TP4 production service is restored and running the separate quality reference. The uniform runtime-v2 study completed **900 primary attempts**, **80 supplemental solo-control attempts** (8 development and 72 evaluation), and **45 corrected loaded-queue cohorts / 2,016 attempts** (36 development batches and 9 evaluation batches). [Progress and exclusions](EVALUATION_PROGRESS.md).
 
 The arithmetic primary four-sample reasoning ensemble solved **49/72 attempts (68.1%)**; sequential own-feedback refinement solved **45/72 (62.5%; task-cluster 95% interval 47.2–77.8%)**, versus **18/72 (25.0%)** for one reasoning call. The paired ensemble-minus-refinement difference is **+5.56 percentage points (95% interval −5.56 to +16.67)**, spanning zero. These are repeated attempts on **24 distinct tasks**, with separate execution schedules and different realized costs. [Completed stronger-solo comparison](results/solo-control-v2/complete-comparison/solo-comparison/REPORT.md).
 
@@ -82,6 +86,8 @@ budget and reputation-pipeline checks.
 
 ## Quick start
 
+Published evidence can be replayed without live models; see [REPRODUCING.md](REPRODUCING.md). The live-play commands below describe an active Nemotron study window. Its containers are currently stopped, and a new deployment window is required before those model endpoints can serve requests.
+
 Run commands from this repository directory (`cd apps/swarm-lab` in the original workspace).
 
 The read-only tree viewer is at http://127.0.0.1:18777 while `server.py` runs.
@@ -103,11 +109,9 @@ python3 server.py --port 18777
 100 separate agents. `SWARM_SEED=2` changes seeded sampling. New runs appear in
 the viewer. Weighted play accepts its calibration file as the fourth argument.
 
-Fleet control: `fleet.sh status`, `fleet.sh start`, `fleet.sh stop`, and
-`fleet.sh restore`. Start replaces the current DeepSeek service on Spark_01–04;
-restore stops only the prototype containers and restores the saved current
-DeepSeek via `~/dsgb10/window.sh prod`. NFS and Spark_05–06 are untouched.
-`fleet.sh start` now selects DSpark3 and requires the pinned draft prepared on each node (`download_draft.py`, 1.35GB of weight files per node). To switch an existing replica, stop it first; a running mode mismatch is rejected. `SWARM_SPECULATION=none ./fleet.sh start` selects the original target-only fallback. Both modes retain the same restoration command.
+Fleet-specific operational note: the Nemotron experiment is closing and its containers are stopped. `fleet.sh` is the historical deployment adapter for this study; its `restore` path targets an older service and must not be used to restore the current native pico/dsgb10 production service. The verified native restoration uses the saved native service settings and an owner-checked release of the two study guard files after all reference work finishes. Fresh deployments require an explicitly scheduled fleet window.
+
+Historical study configuration: `fleet.sh start` selected DSpark3 with the pinned draft (`download_draft.py`, 1.35 GB of weight files per node); `SWARM_SPECULATION=none` selected the target-only configuration. NFS and Spark_05–06 were preserved throughout the study.
 
 Prototype containers use restart=no; start them explicitly after a reboot.
 `connect.sh disconnect` closes only this prototype's four SSH forwards.

@@ -12,7 +12,7 @@ Python 3.10 and 3.12. These commands do not contact a model or change a server:
 ```sh
 git clone https://github.com/knapcio/spark-swarm-lab.git
 cd spark-swarm-lab
-git checkout e2cbdf6
+git checkout study-20261116
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-plot.txt
 .venv/bin/python -m unittest -q

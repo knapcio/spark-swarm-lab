@@ -1,0 +1,3096 @@
+{
+  "schema_version": 1,
+  "domain": "arithmetic",
+  "split": "evaluation",
+  "dataset_sha256": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+  "tasks": 24,
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "source_cohorts": [
+    {
+      "directory": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/evaluation-v2/arithmetic-s1",
+      "label": "",
+      "metadata_sha256": "bc5b6a2e1b12e15ab628c86d2e02bbff1b1edc4326606b3688f0a8ffa8d21d44",
+      "summary_sha256": "d3843a538f8cd98319dd4031e4e4a4f0bb713952ac7e62ffe2b9b66ca1bfaac3",
+      "source_commit": "cbcde299716b7842536b008880a089590e9816f8",
+      "source_hashes": {
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "final_source_hashes": {
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "configuration": {
+        "budget": "1280 calls/32768 completion tokens per case; prompt usage measured, no input-token cap",
+        "temperature": 0.8,
+        "controller_deadline_seconds": 180,
+        "scheduling": "Fixed endpoint per persistent slot; each task's rotated arms run sequentially on its assigned slot",
+        "scope": "Latency/quality calibration with four job slots; NOT a saturated fleet-throughput measurement",
+        "stop_on_solution": true,
+        "server_metrics": true,
+        "code_format": null,
+        "selection_policy": null
+      },
+      "mixed_arm_queue_wall_seconds": 2169.8596010832116,
+      "ledger_verification": {
+        "entry": {
+          "name": "evaluation-v2-arithmetic-s1",
+          "domain": "arithmetic",
+          "seed": 1,
+          "split": "evaluation",
+          "dataset": "datasets/arithmetic-v1/tasks.json",
+          "arms": [
+            "direct_thinking_8k",
+            "ensemble2_thinking_8k",
+            "ensemble4_thinking_8k",
+            "independent32",
+            "independent100",
+            "democracy32",
+            "shared8",
+            "cascade32"
+          ],
+          "selection_sha256": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
+          "serving_runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+          "fresh_v2": true,
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/evaluation-v2-source/run_benchmark.py",
+            "--dataset",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/evaluation-v2-source/datasets/arithmetic-v1/tasks.json",
+            "--split",
+            "evaluation",
+            "--arms",
+            "direct_thinking_8k,ensemble2_thinking_8k,ensemble4_thinking_8k,independent32,independent100,democracy32,shared8,cascade32",
+            "--seed",
+            "1",
+            "--output",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/evaluation-v2-arithmetic-s1",
+            "--run",
+            "--stop-on-solution"
+          ],
+          "source_revision": "cbcde299716b7842536b008880a089590e9816f8",
+          "source_path": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/evaluation-v2-source",
+          "started_utc": "2026-11-15T16:49:07.176454+00:00",
+          "status": "verified",
+          "controller_pid": 39831,
+          "returncode": 0,
+          "completed_utc": "2026-11-15T17:25:17.163675+00:00",
+          "audit": {
+            "metadata_sha256": "1a856256372a0ea9eda2d77f1b4775783dd20c4b38f9448f1fc62a5c6f7ed60c",
+            "summary_sha256": "17125de66ac40b496509fb9296835b42c4857d395e7efe6d0241bf0e3ef41ec3",
+            "completed_cases": 192,
+            "incomplete": false,
+            "source_changed": false,
+            "known_diagnostic_races": [],
+            "null_infrastructure_trace_reviews": [
+              {
+                "trace_sha256": "48cad18c3829d785062cfe69f29abf88c39945c89e0dd5cafcfafad80538f603",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "39b69ab70f25cd0d28489ab4e1c33cf48a7a6865bf8ff2cf8805c4d08540416b",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "819549f10997e2c20aec66a7d89a53e65037029372daac834a34a7f90736f225",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "c36bcbb010d0b4b743914dec572c736a758a605e8d0ce4b22fc669b2b0881185",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "cd83997f0bc797a0522c6e27cae5099ea43fcf4eefc193b2b9ea71380e0e014b",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "8823cddc3cd5e0a452630af015ce26ceca3dd74fd2b01c90f84859dab2ad5d68",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "a52027d951c7bdfcef7a02bac45492b729d9079328a0736ab4cad8ccfe6708f2",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "d3536bf7ac6198787e57e3f5e177d319aac57943cb13409ec9de68e40ca8aa50",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "66829b6e74e1b8753c78743a7d8c369b117228a8baf4a6efa912676762269820",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "5449e84a434cb6131461fc0962144b51fd5da603e96d0f6145b36ac0349c88af",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "ace0d4caa8d08e291929d003c2155490c4d822f3ecd77e4bd0135e42514d93bb",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "f6f83b92d19bf8f75a1955616f3802bdf0d84cadf0592bf5c889d6d0157b48e2",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "ad0861fe8340a7e6ee144a11caa7e984bd043423d3632203f6ee4d6f0c76cd4b",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "77d88cb24f5594631b9c525d0ebfdfcb496fa3fa9fe37ed3b91052f86c50ebfe",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "296f42f00c29fc708488079df85439d0da1b77b4e108d2acffdb0c2f12c7c5c5",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "e8b7a40f8e32feaad9f135c8b23e86dc13fb0f95ed5f9baaff44054eb91917e9",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "9a82f361c2c3f835e7377856afe73dc3a813d0a0243eee7e466d0a562bb201fa",
+                "unfinished_calls": 17
+              },
+              {
+                "trace_sha256": "178305611fd2291a9aaa3554fef779ac9c178f4c5e87c28bef5dde6f5f8329f8",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "bb9c0ed3034d30d6897f79ad168021379b922480c99956f382386adcbef17d1f",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "679a37d96beaa8e01d4f876450e7e3bd3dad0363ba00f8fd8ff34e5b4b168238",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "5d8ba4e42a5e01e60e609b61340237710f1aa906382f2703c86bd5ee3a52fe62",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "659dc8b3063860bcaa5e6a705be2b73d1bdd80cd117b8e332064616bbdbcdba6",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "5e2412b0ab5e7b4061dc8b6d33601af0b6913628425ae885533cfe7d508de6d0",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "2a98e5b3fce783b0864bb8c1cff3a907b12916a18f2a551041835c5611ea57fd",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "035f0887238c61d0cdd42ab6e20a53202d5fc620ac0f8fab685481ee466da33a",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "ea430c1bd6ab7b166af59f30c39c9bc8825abc99f259a60ce60ea442fa88c52b",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "e46b0cc055f276a1798eb896a91c5ff89b820e5ff99f66fc2f56b98f492faffb",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "337397e0a4c9c11a6f4e925f1b0e955b5eeba24edba766bdd380c153257ca4aa",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "4c40bdda8ccb1d0e3ba4438f183d69f716a71a6bd7a2e63686dc0c56ae5f6925",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "2fe98b3be3b9c432e62396532d66036cff2e896b1fcc42e06bdb3db786f57da0",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "bd6bdff85a40dd3ca44aed8e0d28c507ea160808785e5bdecdd9fc0f84903483",
+                "unfinished_calls": 24
+              },
+              {
+                "trace_sha256": "e07ecd57f328e660d97df3a87902244ac438775be0da77e8383dc20720338847",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "d55141a971591c0a3446a977c5ffc2e69f790121cf48185e72d1f49332eac3ce",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "62caa567519b2d847281ec231198f75ad2ca1e0fadffd5e116d4dd9f6030f142",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "a699d7dc8d0e0e816088ee039184a6a1155cea589846d76c9bd8bd05aac6d063",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "78d23d2548b5264c281276bc5fcae982b9d1da3188864c9cf1e6eee8fa58e773",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "e75c498d5c4db1d3a73625ef7a9525f5ce8ab93942ebf1a2f2455552498139cc",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "97432c8ff3aa439af628d47db046cddd6215d76f688799c68595b3a64550b063",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "31499f8518433ad991f0eb3156c0e022df9aba339073f0721d12e8b2375537cb",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "701effe9eb94d480bba1504c4a2895887aa3864231f751c7e8a90af4d1231fe9",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "3e8d69dd5ae10475f111473ad0f05c4a20271e0a0a0892ab90a82b14f5e53a3b",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "0bc7ca7d470bf9b767ea0bfa2a11ab80774f1274140a4a13e5bc6b216892859f",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "ba2eb3f5be5e4d014156b6d12c0be2a5706e30993e9260df16c84c279661d6a8",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "f85f02a4f75f41b3c0f8b577e74e2cbee90ea14845c20f3d5a19cce0e995e121",
+                "unfinished_calls": 3
+              }
+            ],
+            "infrastructure_review": "passed"
+          },
+          "verified": true,
+          "valid_for_aggregation": true,
+          "completed_cases": 192,
+          "incomplete": false,
+          "source_changed": false
+        },
+        "identity_manifest_sha256": "b9180a2908b0df38f2c7ca13f400552e26704f53ae05b51c29bd6df22de22da3"
+      }
+    },
+    {
+      "directory": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/evaluation-v2/arithmetic-s2",
+      "label": "",
+      "metadata_sha256": "4fb43a710a92ad651420285d06ab070da4dc5379b7a5d2edb8db5d98be06aaa8",
+      "summary_sha256": "0311c304adbd2a51936289d06f811e176d9b5fd97d2415279b18629be283d8c8",
+      "source_commit": "cbcde299716b7842536b008880a089590e9816f8",
+      "source_hashes": {
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "final_source_hashes": {
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "configuration": {
+        "budget": "1280 calls/32768 completion tokens per case; prompt usage measured, no input-token cap",
+        "temperature": 0.8,
+        "controller_deadline_seconds": 180,
+        "scheduling": "Fixed endpoint per persistent slot; each task's rotated arms run sequentially on its assigned slot",
+        "scope": "Latency/quality calibration with four job slots; NOT a saturated fleet-throughput measurement",
+        "stop_on_solution": true,
+        "server_metrics": true,
+        "code_format": null,
+        "selection_policy": null
+      },
+      "mixed_arm_queue_wall_seconds": 2395.9506356660277,
+      "ledger_verification": {
+        "entry": {
+          "name": "evaluation-v2-arithmetic-s2",
+          "domain": "arithmetic",
+          "seed": 2,
+          "split": "evaluation",
+          "dataset": "datasets/arithmetic-v1/tasks.json",
+          "arms": [
+            "cascade32",
+            "shared8",
+            "democracy32",
+            "independent100",
+            "independent32",
+            "ensemble4_thinking_8k",
+            "ensemble2_thinking_8k",
+            "direct_thinking_8k"
+          ],
+          "selection_sha256": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
+          "serving_runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+          "fresh_v2": true,
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/evaluation-v2-source/run_benchmark.py",
+            "--dataset",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/evaluation-v2-source/datasets/arithmetic-v1/tasks.json",
+            "--split",
+            "evaluation",
+            "--arms",
+            "cascade32,shared8,democracy32,independent100,independent32,ensemble4_thinking_8k,ensemble2_thinking_8k,direct_thinking_8k",
+            "--seed",
+            "2",
+            "--output",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/evaluation-v2-arithmetic-s2",
+            "--run",
+            "--stop-on-solution"
+          ],
+          "source_revision": "cbcde299716b7842536b008880a089590e9816f8",
+          "source_path": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/evaluation-v2-source",
+          "started_utc": "2026-11-15T17:32:53.306400+00:00",
+          "status": "verified",
+          "controller_pid": 84245,
+          "returncode": 0,
+          "completed_utc": "2026-11-15T18:12:49.252048+00:00",
+          "audit": {
+            "metadata_sha256": "86e7e9693db78ed897ba058f45f29d7d1fe19055d97fb35030a5aaf6d0a8781a",
+            "summary_sha256": "a8f14dae77ba2918abbdd96a980c47e48f9d0cafc2c8c7cd29031eafb0d8fedf",
+            "completed_cases": 192,
+            "incomplete": false,
+            "source_changed": false,
+            "known_diagnostic_races": [],
+            "null_infrastructure_trace_reviews": [
+              {
+                "trace_sha256": "0cea006be5050c28de255956f4dddd50eeef75ab61420bbf06945bea74f0efc8",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "89ccfd5444d442b8d9b575cd353e4380b3f501cd0649829b7ee32464dd88605b",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "8474920b13a92c87e38160557b8cdaed9da16edbcee2022a718084f67faf42e4",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "140a93cb51ed2d9e07277381b511158be0e200d361cfd8effb9b55d39c594fba",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "49dffde44d22a1e16bea1bfeb76f8b969638fbcf0af4171a259a4965e6539997",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "49220c7920f542934d2dd5f6b7c9fc8a49bb5a31e59c6f8766607b885dd43fa9",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "e431dfddd8776c200cbc70f4cc1752ccf7d20a9dbd7ee34bb142de3f818b7dfe",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "2b9a7163509a46d8d7561977e2cee523cc3290a7102063e40bb0a2a41e991d30",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "10c395485406bfd677ddd0338eade603c8bd2db5b0828cd207afecd83dc8c628",
+                "unfinished_calls": 2
+              },
+              {
+                "trace_sha256": "eddab9178db83a2b4591477613095fc150908192e63b5b3c8fa70f426970f61f",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "38b8c9fa8ac61163e53d04cc3956f0ff66f4af4dd8047e80359c0b8e79d921a7",
+                "unfinished_calls": 2
+              },
+              {
+                "trace_sha256": "e7cc58cf12837c080f2849cdc3ccd57dd6b7237684d0219be02cb154f1c14223",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "067e54fce07ff943fa426fdaafc89f0980014476cc83b532ab2d2998e39ac662",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "6ef22a808acf70bd32426ecb5e1ffcc65bec6b6a1e26664b039def9febe1d820",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "f8385ad76cc101219974c3f4976b368f828294f779b221d7d415496baef86f1c",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "cdf49b278b7662749a8bb2a7711bc11589d74ff44db839001c9e8f1ab0b4dbb5",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "8817b84dd947f5ddb1168426ca6f0baa4300a3140a34bcfcb466da4e0a5ad245",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "dbedf9318bbe6dd1dadc88b6e49086a12c4fe2e64e2caf73c2427fcd4e32a27c",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "1ac2a4d63be8cb1ca80183c2467ecce6379d3a6864f2f77088491ff024f5bf22",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "03774474d11c8acf2163b70057ee09c95931b4a47cba8961ff03371f9f99b295",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "7273563e879103ae0ae47c55c76aec82b8089634e239b74b4fc31360e2ebf729",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "c8210270117edd0d35891419a12ef1e97cd2d2f62deebe189e69a8839f4c4a1e",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "aaa48f8b17d0c062de7b3b0f418ad2167bb164b4e329ec05d5348126b0b72f75",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "a1c60509311150a1be2220352d82613e09aa83c26df4dc95256ab3610625f2d6",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "5502c88e6f959e984b1c2d5e96c8f3eca0d7bbbe04ae954905f257f69b6e5219",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "51c7ce1d424874e4887b5d4b4c21043e03e024c40fcc3285ca3b15b28f65a747",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "0a0f654c081fcec909d88c427c99030763c7ab865952bc8c2292d1be9bfd5193",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "bfa8b02e71503482f32726a2648069bf9218533159364ee06727e080100e37e7",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "063638c8b42e40e58810314b49c275604181e4fc6465ae19790376105577c614",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "66654d48987fb173f7fc48e7ff120d4738387f6fa62bb9163a5f12cc53e10e09",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "45a47127c1f56d79c58f33f22600aecab20c720c657bbd0af42545931967d68f",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "918f8b0dd4cfd3220b31c4072cc4e4ae8dc7817a63a7b26abf0e1f5c0602f8b5",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "b3e7dbbc49609e418adae82fd83facd35010255e0c4486569bc57d6ed8d41420",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "5a28657888f90e9401a18ea4bfbf051c7bc5dc63c3fc51afde17dad11ed3b5a7",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "9832363c87e5afc8a707df1c93844fa4af2c7c0369c614c1f51e5794086c263a",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "e8c8cbc5857fe6e55e048ee4553615042ed6ba6d9b4aedb5af15312e2202989a",
+                "unfinished_calls": 1
+              }
+            ],
+            "infrastructure_review": "passed"
+          },
+          "verified": true,
+          "valid_for_aggregation": true,
+          "completed_cases": 192,
+          "incomplete": false,
+          "source_changed": false
+        },
+        "identity_manifest_sha256": "460a556bb2014cb00dc99f969ef2fe5a00213f166994b1d0c77f4aa5c7060125"
+      }
+    },
+    {
+      "directory": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/evaluation-v2/arithmetic-s3",
+      "label": "",
+      "metadata_sha256": "a83ca6bcd04dd1e915e9450956f21bc78283962f886845792c08861313c19e05",
+      "summary_sha256": "327f9b37bb1ba206fcc0898a20b20a62b33eb82e6e0c489487a95c4aff13f6fb",
+      "source_commit": "cbcde299716b7842536b008880a089590e9816f8",
+      "source_hashes": {
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "final_source_hashes": {
+        "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+        "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+        "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "configuration": {
+        "budget": "1280 calls/32768 completion tokens per case; prompt usage measured, no input-token cap",
+        "temperature": 0.8,
+        "controller_deadline_seconds": 180,
+        "scheduling": "Fixed endpoint per persistent slot; each task's rotated arms run sequentially on its assigned slot",
+        "scope": "Latency/quality calibration with four job slots; NOT a saturated fleet-throughput measurement",
+        "stop_on_solution": true,
+        "server_metrics": true,
+        "code_format": null,
+        "selection_policy": null
+      },
+      "mixed_arm_queue_wall_seconds": 2015.2580907922238,
+      "ledger_verification": {
+        "entry": {
+          "name": "evaluation-v2-arithmetic-s3",
+          "domain": "arithmetic",
+          "seed": 3,
+          "split": "evaluation",
+          "dataset": "datasets/arithmetic-v1/tasks.json",
+          "arms": [
+            "independent100",
+            "democracy32",
+            "shared8",
+            "cascade32",
+            "direct_thinking_8k",
+            "ensemble2_thinking_8k",
+            "ensemble4_thinking_8k",
+            "independent32"
+          ],
+          "selection_sha256": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
+          "serving_runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+          "fresh_v2": true,
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/evaluation-v2-source/run_benchmark.py",
+            "--dataset",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/evaluation-v2-source/datasets/arithmetic-v1/tasks.json",
+            "--split",
+            "evaluation",
+            "--arms",
+            "independent100,democracy32,shared8,cascade32,direct_thinking_8k,ensemble2_thinking_8k,ensemble4_thinking_8k,independent32",
+            "--seed",
+            "3",
+            "--output",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/evaluation-v2-arithmetic-s3",
+            "--run",
+            "--stop-on-solution"
+          ],
+          "source_revision": "cbcde299716b7842536b008880a089590e9816f8",
+          "source_path": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/evaluation-v2-source",
+          "started_utc": "2026-11-15T18:19:14.888181+00:00",
+          "status": "verified",
+          "controller_pid": 32239,
+          "returncode": 0,
+          "completed_utc": "2026-11-15T18:52:50.115170+00:00",
+          "audit": {
+            "metadata_sha256": "40aebd6e453d490380fdf6e253bac6e5fc7c0938702654a3f037ecbc2f44c168",
+            "summary_sha256": "5a3307f96e020d7dfc5abf40b0bf79dfcf99866ee3d815cc1ec21f1a47099909",
+            "completed_cases": 192,
+            "incomplete": false,
+            "source_changed": false,
+            "known_diagnostic_races": [],
+            "null_infrastructure_trace_reviews": [
+              {
+                "trace_sha256": "2bc9d2738f823d4a9ac4740158dd873b90006f32988d5394687ca6c2b63a9b90",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "165863f877c9c78847b11f10f05ecf8eac1d518d2e5fabbd9aba8d8d671a6287",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "cf4ae87c206315192dae45829b25d2732b4dda1c28281be35b132b7988543c89",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "8a22cf0c160b46d4b191bc52cb51098200393c51f455dae6f3aa8f0dfb9c4a51",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "905fcebcd8ac21d398dd406312ebdb1a3850ddad43c6dd82a098600a9f789b12",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "1eade926c568132c038df18c2febcdc3e864ac0ff73e798a4b1df824cffbdd89",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "ab265800580baf6b4e609344b7b47870ead42dc529e1531fe3c2312e867ce5d7",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "486c175f3993ff127c7875dea178614c7798df4439cf695d1f707c4dc59b1557",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "ca3244b79c8eeab57bafb8900c61405021776a48e238b5aceea135696c1f48cd",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "4e552329ec2fabaa38a692915eed9379403a834e7699bef6a497a90f8bb4c2b8",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "750091acf5c5782a5b5bf3cd002fda3ba8195655e751efa8a19cae813619d24c",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "befcddb25f73b386ab448ca112c302f25c35cde8ed43634cd9aa6ff134c481ca",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "5ba2c2dc076f7b4d5299ec0b8d58b4197b6a89cf68296bfb06ec12c36f3e18af",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "23d8c1be647c560e27eb8384d3334403976876f62c0d0a9982a5a2d684ed19bf",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "176faa7d3bc10e336aac4da0620f5f8d6ea0526b97bf88929feb50c67667eb6b",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "885fca9562f29103cea0e4e8fb45db596b7a03419b2fd3e9976cbb3d8b3819fd",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "9d9c3f222428e049261ebb0196bc721ce5a31aaf9d79d826f7e3a53dc97e2348",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "dee87bc1ace73f12283d7760931d633e90c8eae6c0da0ce69fd567253f2e0e0c",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "bf336a84f0445adea727aa02184b4bf098f65a7e86bb0745d98f7b4fb7a02e7f",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "5385f857ab2333b748e5753187d97d7af40b6998a5918381867023c6f1e88baa",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "9022554b4682df5a7b0d28f14838aaa8306bdbd92bbd8641e55315ffa666408c",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "0ea5ce21891d4cc43198777cadccf5ff7d43a50e1dfa0c7140af3d5e71ca4919",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "38bdaec0da41ffd4dfa0f508e0cfac5b2d91d50063e6608bd32c5a1eed0e623a",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "ea0011250a707d11deeadc69fe4368299a99f2a443ee4d7282d6ae39d5732a6e",
+                "unfinished_calls": 2
+              },
+              {
+                "trace_sha256": "687794038d056d9f1b0f39327c2fe3c2f675bd9d1ceedd56915c519ed5e495f6",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "11d283c478615609191934ed5ccdaf5bbed9004782403eeae5f267106a3820dd",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "fe947ea033a59cdedf0224ada4130cc49eef2a02a2aaa10f324e1c7bf8b1be2b",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "f336a7f9bb5faef64f364fadfd0a7a602d50ce37c75bf41ef45dc75ef06de912",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "f986308971af117477864bdebaede9af60d568f7fcbecea9356efb2720ebc42e",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "e7b6a316ab20cd0c6b85bd7cb7a15b30a6f997e0a577c4e5089ad0e79d956402",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "a1d863bb8e0116872c8ca24702d1c1dddc89102076a2cdc89928263f13f52613",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "261d7945282f008d8bc841e5f42352788896cb342ea2b0348a576f9d4093fb4e",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "9e7f5cf13f5f35b69b75c51369ff37f25db5cc462fcba0bfb324ab700d7a9711",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "d91b72b4875debf30a6c82ced619e47dcb5aca779bf82338d2c00d7057bc76da",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "da9b485c06d0396a88306bc97ba9080f0ad90ca62ecb709b6d9ab60e8f1f5f94",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "652a5405e2163a18330cb57f199d3ef207ef24a5b9b9b81efd3662c8fb564910",
+                "unfinished_calls": 21
+              },
+              {
+                "trace_sha256": "2ba9ea4119e8529d54e466078737023cdad6a8ebcce736315f9c9c566124c33b",
+                "unfinished_calls": 25
+              },
+              {
+                "trace_sha256": "6d4672dba69997da4817d405566152cf2e5c414199b7c68a6a1ab3a278776523",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "c98e107f9fd0a6636fa24fb7b1e91f2337af2478fc1b78ec99d282673643b951",
+                "unfinished_calls": 3
+              },
+              {
+                "trace_sha256": "cf2f5d3b64e6d6b7d87d7da5bfd040d877259175e32dc7a8c815cab81bb5dae3",
+                "unfinished_calls": 1
+              }
+            ],
+            "infrastructure_review": "passed"
+          },
+          "verified": true,
+          "valid_for_aggregation": true,
+          "completed_cases": 192,
+          "incomplete": false,
+          "source_changed": false
+        },
+        "identity_manifest_sha256": "c0d7077e64b5455e88eec5c50b4ff7d77bfb93030e62a5b32575021d91d3f600"
+      }
+    },
+    {
+      "directory": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/solo-control-v2/evaluation-s1",
+      "label": "",
+      "metadata_sha256": "8c809fa8c2ec4e9172152cf97de7fc91f567b509354e6867aec5e024a74d975c",
+      "summary_sha256": "355f661707726c446ad1e2f0177dd6791d6127bce5952adf84be1e1a473fb187",
+      "source_commit": "a8adff19f690e90aec5705c373a82005e869f1f2",
+      "source_hashes": {
+        "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+        "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+        "direct_solver.py": "c7e97bff83adf52cfb056ac2ab994d4854aa6ab4f703d07ab86e48111c5d83cb",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "6e0f1c368d294780b3b2a6694c831d0d96694beaaa923879a4b8a8501bcd05c9",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "final_source_hashes": {
+        "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+        "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+        "direct_solver.py": "c7e97bff83adf52cfb056ac2ab994d4854aa6ab4f703d07ab86e48111c5d83cb",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "6e0f1c368d294780b3b2a6694c831d0d96694beaaa923879a4b8a8501bcd05c9",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "configuration": {
+        "budget": "1280 calls/32768 completion tokens per case; prompt usage measured, no input-token cap",
+        "temperature": 0.8,
+        "controller_deadline_seconds": 180,
+        "scheduling": "Fixed endpoint per persistent slot; each task's rotated arms run sequentially on its assigned slot",
+        "scope": "Latency/quality calibration with four job slots; NOT a saturated fleet-throughput measurement",
+        "stop_on_solution": true,
+        "server_metrics": true,
+        "code_format": null,
+        "selection_policy": null
+      },
+      "mixed_arm_queue_wall_seconds": 876.0609937496483,
+      "ledger_verification": {
+        "entry": {
+          "name": "solo-control-v2-evaluation-s1",
+          "domain": "arithmetic",
+          "seed": 1,
+          "split": "evaluation",
+          "dataset": "datasets/arithmetic-v1/tasks.json",
+          "arms": [
+            "solo_refine_thinking_8k"
+          ],
+          "serving_runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+          "fresh_v2": true,
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/solo-control-v2-source/run_benchmark.py",
+            "--dataset",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/solo-control-v2-source/datasets/arithmetic-v1/tasks.json",
+            "--split",
+            "evaluation",
+            "--arms",
+            "solo_refine_thinking_8k",
+            "--seed",
+            "1",
+            "--stop-on-solution",
+            "--output",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/solo-control-v2-evaluation-s1",
+            "--run"
+          ],
+          "source_revision": "a8adff19f690e90aec5705c373a82005e869f1f2",
+          "source_path": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/solo-control-v2-source",
+          "started_utc": "2026-11-15T19:07:14.720080+00:00",
+          "status": "verified",
+          "controller_pid": 81016,
+          "returncode": 0,
+          "completed_utc": "2026-11-15T19:21:50.893501+00:00",
+          "audit": {
+            "metadata_sha256": "14f017d1ae336a193d3722e4767dafe1c3f43a7e2cdbcc51d2baef207a558578",
+            "summary_sha256": "ef889dfb6f0e067889dc4494dd9432b10db0ee8882572455bf23104398433f69",
+            "completed_cases": 24,
+            "incomplete": false,
+            "source_changed": false,
+            "known_diagnostic_races": [],
+            "null_infrastructure_trace_reviews": [
+              {
+                "trace_sha256": "3fb0fc575639e5ac5d1de067c1aa76a4fb200baf97789aed4dd36bf91418407a",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "dd36edca64c96ec29a59ff2826216b2f7636dd537e300f0965f7af29d8e7a132",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "504f6fec1c20286f4a81c17c87e9abbee469c81a01be9e2d3fe7529347f13d18",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "e02ab0aed0afe7c555c6347792918a438c0c343e6f88a4dee4240fce71766f53",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "44e2e5f23a3bef5429119a3944d537e82d413529afba427adfff1b98f9d35b6e",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "e25daf79d457c63cb258b3b774bdec2d81c6afc04f1118de8b055d44f96ba57a",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "9d3118214b8bd85058e4b8ce24d54c78267ebec121ef5f6d8ed9413782fdae42",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "7d2126d01dde8c2189d96e4bf86a2b414c36dc469a7686790fa10a04953d8995",
+                "unfinished_calls": 1
+              }
+            ],
+            "infrastructure_review": "passed"
+          },
+          "verified": true,
+          "valid_for_aggregation": true,
+          "completed_cases": 24,
+          "incomplete": false,
+          "source_changed": false
+        },
+        "identity_manifest_sha256": "6450f3d9254a4944b25a68db3a36745ac16ac388867f6ca21e95d43a09301fa6"
+      }
+    },
+    {
+      "directory": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/solo-control-v2/evaluation-s2",
+      "label": "",
+      "metadata_sha256": "7e4d8067d6fd68a536fb6d0aaa8aa4c46648eff3564aac603ca77d924be2556c",
+      "summary_sha256": "219e16e7c5fdf9992950b81da4f1937fdf428def9d876cc2223f348be693cd16",
+      "source_commit": "a8adff19f690e90aec5705c373a82005e869f1f2",
+      "source_hashes": {
+        "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+        "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+        "direct_solver.py": "c7e97bff83adf52cfb056ac2ab994d4854aa6ab4f703d07ab86e48111c5d83cb",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "6e0f1c368d294780b3b2a6694c831d0d96694beaaa923879a4b8a8501bcd05c9",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "final_source_hashes": {
+        "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+        "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+        "direct_solver.py": "c7e97bff83adf52cfb056ac2ab994d4854aa6ab4f703d07ab86e48111c5d83cb",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "6e0f1c368d294780b3b2a6694c831d0d96694beaaa923879a4b8a8501bcd05c9",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "configuration": {
+        "budget": "1280 calls/32768 completion tokens per case; prompt usage measured, no input-token cap",
+        "temperature": 0.8,
+        "controller_deadline_seconds": 180,
+        "scheduling": "Fixed endpoint per persistent slot; each task's rotated arms run sequentially on its assigned slot",
+        "scope": "Latency/quality calibration with four job slots; NOT a saturated fleet-throughput measurement",
+        "stop_on_solution": true,
+        "server_metrics": true,
+        "code_format": null,
+        "selection_policy": null
+      },
+      "mixed_arm_queue_wall_seconds": 1010.7083358326927,
+      "ledger_verification": {
+        "entry": {
+          "name": "solo-control-v2-evaluation-s2",
+          "domain": "arithmetic",
+          "seed": 2,
+          "split": "evaluation",
+          "dataset": "datasets/arithmetic-v1/tasks.json",
+          "arms": [
+            "solo_refine_thinking_8k"
+          ],
+          "serving_runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+          "fresh_v2": true,
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/solo-control-v2-source/run_benchmark.py",
+            "--dataset",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/solo-control-v2-source/datasets/arithmetic-v1/tasks.json",
+            "--split",
+            "evaluation",
+            "--arms",
+            "solo_refine_thinking_8k",
+            "--seed",
+            "2",
+            "--stop-on-solution",
+            "--output",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/solo-control-v2-evaluation-s2",
+            "--run"
+          ],
+          "source_revision": "a8adff19f690e90aec5705c373a82005e869f1f2",
+          "source_path": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/solo-control-v2-source",
+          "started_utc": "2026-11-15T19:21:51.028977+00:00",
+          "status": "verified",
+          "controller_pid": 95503,
+          "returncode": 0,
+          "completed_utc": "2026-11-15T19:38:41.847683+00:00",
+          "audit": {
+            "metadata_sha256": "971e924a1db9c1c1e9edeee14c6f99fb147ac1cffd6b8d6f9290f1e870fd4082",
+            "summary_sha256": "08448ddb16efb7088f2b24587201d72c722155d25d648ac08556d1a683c95a4e",
+            "completed_cases": 24,
+            "incomplete": false,
+            "source_changed": false,
+            "known_diagnostic_races": [],
+            "null_infrastructure_trace_reviews": [
+              {
+                "trace_sha256": "be56f309b1db63e95af4e36eb411c220e22bcdab36970596a9218f116196cbbe",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "e9a836b2d61f0757c084b72fdb87d23ebabd356b2f104b9c41c6edc1adc107b4",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "70a2612350152ed70171f64228be19c7abbb350effd27f43ae5220c6b4b5cbbe",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "99f7f3015f609a67a81151cd87c561bf8f95a29e8cffa6f3e0c9f39a4c4835d8",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "2ca93cb04c597c5839f9460ab20c1e61b7f75680843d4457b127035a6b388dcd",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "ae05a06e12962b3acb7cae3959a569c2b53fd41e784760866dcf3ee32a6765f1",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "0f7e058e33f51be6552a332f2d112d33a16f3a15b831b7e44907076456bcd191",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "d31bce036b0a846940179cd89fd6cdb324b8f2b9ee4058feb2eea9a09063793f",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "710e9c128648ffee8afe8da26467890f5bcf477b0012ab5a2e504485a50206a9",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "d2b305c14ba383e7d342080fd74d43a6f3c107480bc8c7c07bbdf10124a2a036",
+                "unfinished_calls": 1
+              }
+            ],
+            "infrastructure_review": "passed"
+          },
+          "verified": true,
+          "valid_for_aggregation": true,
+          "completed_cases": 24,
+          "incomplete": false,
+          "source_changed": false
+        },
+        "identity_manifest_sha256": "39323401c024032fa4437284f10c22ec815ede904c1c5415f3909da0b1447869"
+      }
+    },
+    {
+      "directory": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/solo-control-v2/evaluation-s3",
+      "label": "",
+      "metadata_sha256": "9efa8d291e3475948d0424c814641ef759202f5270e2b34986664539624d5eb1",
+      "summary_sha256": "ddcfcb21389cb72227c970ca5a7a2da42f9cf9dbc1a9a77616b5ed1a1ff2a353",
+      "source_commit": "a8adff19f690e90aec5705c373a82005e869f1f2",
+      "source_hashes": {
+        "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+        "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+        "direct_solver.py": "c7e97bff83adf52cfb056ac2ab994d4854aa6ab4f703d07ab86e48111c5d83cb",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "6e0f1c368d294780b3b2a6694c831d0d96694beaaa923879a4b8a8501bcd05c9",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "final_source_hashes": {
+        "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+        "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+        "direct_solver.py": "c7e97bff83adf52cfb056ac2ab994d4854aa6ab4f703d07ab86e48111c5d83cb",
+        "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+        "ensemble_solver.py": "6e0f1c368d294780b3b2a6694c831d0d96694beaaa923879a4b8a8501bcd05c9",
+        "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+        "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8"
+      },
+      "runtime": {
+        "model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4",
+        "model_revision": "bee7596271d1495f6992ae224aefde4410e816b8",
+        "model_weight_bytes": 21561882284,
+        "model_shards": 52,
+        "image": "vllm/vllm-openai:v0.32.0",
+        "arm64_manifest_digest": "sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "served_model_name": "nemotron-lightning",
+        "deployment": "4 independent TP1 replicas on GB10",
+        "baseline": {
+          "max_model_len": 16384,
+          "max_num_seqs": 25,
+          "max_num_batched_tokens": 4096,
+          "gpu_memory_utilization": 0.7,
+          "moe_backend": "marlin",
+          "kv_cache_dtype": "fp8",
+          "mamba_backend": "flashinfer",
+          "mamba_cache_mode": "align",
+          "prefix_caching": true,
+          "speculative_decoding": false
+        },
+        "request_defaults": {
+          "temperature": 0.8,
+          "max_tokens": 192,
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "active_recipe": "dspark3-runtime-v2",
+        "dspark": {
+          "status": "Runtime-v2 configuration. Canary qualification and four-replica deployment health are separate receipts; this file is not a live health probe.",
+          "selection_environment": "SWARM_SPECULATION=dspark (default); SWARM_SPECULATION=none restores the target-only serving configuration",
+          "draft_model": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4-DSpark",
+          "draft_revision": "6d127b50ecd98562cea85d0087680b7d86091fb0",
+          "draft_weight_bytes": 1349057504,
+          "draft_weight_files": 1,
+          "draft_mount": "~/swarm-lab/draft:/draft:ro",
+          "method": "dspark",
+          "num_speculative_tokens": 3
+        },
+        "note": "Same pinned target/draft, request defaults and serving limits as v1; vLLM implementation upgraded to0.32.0. Full900 primary and80solo rerun under one runtime; never pool v1 quality/latency rows. CPU grading uses pinned Python3.12-slim with all357 trusted cases reverified; see CPU_GRADER_AMENDMENT.json, RUNTIME_V2_AMENDMENT.json and serving receipts.",
+        "cache_directory": "~/swarm-lab/cache-v032",
+        "cpu_grader_image": "python@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd",
+        "cpu_grader_python": "3.12.16"
+      },
+      "configuration": {
+        "budget": "1280 calls/32768 completion tokens per case; prompt usage measured, no input-token cap",
+        "temperature": 0.8,
+        "controller_deadline_seconds": 180,
+        "scheduling": "Fixed endpoint per persistent slot; each task's rotated arms run sequentially on its assigned slot",
+        "scope": "Latency/quality calibration with four job slots; NOT a saturated fleet-throughput measurement",
+        "stop_on_solution": true,
+        "server_metrics": true,
+        "code_format": null,
+        "selection_policy": null
+      },
+      "mixed_arm_queue_wall_seconds": 844.4244748745114,
+      "ledger_verification": {
+        "entry": {
+          "name": "solo-control-v2-evaluation-s3",
+          "domain": "arithmetic",
+          "seed": 3,
+          "split": "evaluation",
+          "dataset": "datasets/arithmetic-v1/tasks.json",
+          "arms": [
+            "solo_refine_thinking_8k"
+          ],
+          "serving_runtime_sha256": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+          "fresh_v2": true,
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/solo-control-v2-source/run_benchmark.py",
+            "--dataset",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/solo-control-v2-source/datasets/arithmetic-v1/tasks.json",
+            "--split",
+            "evaluation",
+            "--arms",
+            "solo_refine_thinking_8k",
+            "--seed",
+            "3",
+            "--stop-on-solution",
+            "--output",
+            "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/solo-control-v2-evaluation-s3",
+            "--run"
+          ],
+          "source_revision": "a8adff19f690e90aec5705c373a82005e869f1f2",
+          "source_path": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/.runtime/solo-control-v2-source",
+          "started_utc": "2026-11-15T19:38:41.980910+00:00",
+          "status": "verified",
+          "controller_pid": 12332,
+          "returncode": 0,
+          "completed_utc": "2026-11-15T19:52:46.486866+00:00",
+          "audit": {
+            "metadata_sha256": "b772880ea2b466f5de9891d73a5132805025dd9e645240b199c49716f080da56",
+            "summary_sha256": "87801e9bfe49c3acb1320746d37cdc8d8070bcbeb155f58f7e637ce00ae9ec8a",
+            "completed_cases": 24,
+            "incomplete": false,
+            "source_changed": false,
+            "known_diagnostic_races": [],
+            "null_infrastructure_trace_reviews": [
+              {
+                "trace_sha256": "123b57faff15d58a583fc85a48d4295d95d552a597adf5502c37ce6491b17964",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "ad07f1fb098182f8cf70036292a579d29eaa5944c737d431e726f0edd6c82226",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "1923956c4c4123433f5e7a6124ba421bb8614260e515b18c369eff09539a455e",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "28aa78453a4c724f5e498423335a3d9a152b3678f3190d969a4b65ba83a981c1",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "195b2c2d281f54c69300d3f384c851b930d0b2d3eccd8a250666b86459152f36",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "e6c404cdae36654a8d15a03b230a224fb640ebe335ac75860c81e4461fe70951",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "605198ebfc88391a398e5fcf95cd0bae686bd7cdba5871cb4a7c35cc3b72fd75",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "59aafd50dda74b60e4c551075dcaa413cd0da3449874822434246e068e8770e9",
+                "unfinished_calls": 1
+              },
+              {
+                "trace_sha256": "0970dedf12afdd2dd7c87278b331063ed3340804d4240f93dbae3a21128188bf",
+                "unfinished_calls": 1
+              }
+            ],
+            "infrastructure_review": "passed"
+          },
+          "verified": true,
+          "valid_for_aggregation": true,
+          "completed_cases": 24,
+          "incomplete": false,
+          "source_changed": false
+        },
+        "identity_manifest_sha256": "cc53057edc7d55941210e2d07773a449ed37cf3680142e2125ef5bbe39de50e3"
+      }
+    },
+    {
+      "directory": "runs/reference-deepseek-v1",
+      "source_commit": "6307012",
+      "provider": "native DeepSeek TP4",
+      "source": {
+        "revision": "cbcde299716b7842536b008880a089590e9816f8",
+        "sha256": {
+          ".gitignore": "285047f7c32dac961b1d251e6584f232c40f0c4aff080a216ab53ce68dca01dc",
+          "CODING_EXPERIMENT.md": "6a263d3ec51b835dba9857a465ede666cef3ea7c17e08065f435e0a6f9647858",
+          "CPU_GRADER_AMENDMENT.json": "91b246e5ca02691444edca06009b70a6121231d965615a5e03c8515c6107e331",
+          "DEVELOPMENT.md": "f0545583c4f9ef304425fafdbbd76affdafd5b2a931e432f9abe0174534ed871",
+          "EVALUATION_SELECTION.json": "318f1bfd698415ec8d530d9a26b52326cfd44ddcba5b84ff7231452b86e8191e",
+          "EXPERIMENT_PLAN.md": "a9607ad61f7a20848ffddb0ed62847f49ba64291fdd6f0a5f51c90d628b26fe8",
+          "GOVERNANCE.md": "8cdbd4f2f3d7c9377e509afd50cc9b492373cd41ee3bf7a4a1e502879697f59f",
+          "INSTRUMENTATION_FIX.json": "c9ed225dc63e8ca7a62ce60366ffe4dcf0d1738f35c5051243f00e419eb4b6db",
+          "PILOT.md": "3ff067082f52061ec97b7ca176f09b2f4aa01e4bf3077baa93eec360096dd015",
+          "PROMPT_CALIBRATION.md": "d48a31181362f7b0f1150ba9163127da16a257613f825a82a75cb9032dda1150",
+          "PRUNING_AUDIT.md": "9ff8435f15994f68059fcd24583cc5a40462505c4491938465bad814b72a17fb",
+          "README.md": "1f874ef25a30c4206a83be595e613f179a8b206c052623b8208323ed860a7114",
+          "RECIPE_RESEARCH.md": "a73d74fededd7b6a8987fa9951a04991ab008b4d1cad97f42d476d9aaaa2b92c",
+          "RUNTIME_V2_AMENDMENT.json": "a64ac723b1755ac23cdb26d0799c1bd53f2404310d5ed50b423a91745428bcbb",
+          "SERVING.md": "2dc240254a4d48e44f44ee1244789ad67925ab9c8cb30eec5808942a9c7398fb",
+          "analysis.py": "463c06c3b2eede8910f4cc8ebab219e7d1954019c534b1ea1647bf2f9eee0aa6",
+          "bench_serving.py": "3ee55dead5c73a0c7d5b02d1fb14f15d010ec527abc7ac158e4b7aded5549527",
+          "coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2",
+          "coding_tasks.py": "f3aa9d658f59b410b9c039885983dd151219a21680f1c7f108ee84fbeead4ee6",
+          "connect.sh": "6e2973eb35c169e681f0411e617d0909afb3f22c581600d27f1d30a96b3fe52e",
+          "datasets/arithmetic-v1/reference-witnesses.json": "e55deae9b59cc503afa77d0a1df1bc87bb92505b023e13723b15204f16115b17",
+          "datasets/arithmetic-v1/tasks.json": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+          "datasets/coding-v1/hidden-tests.json": "2a097aca427cd9d3449e2965d59668bc6c9ed131fd9c84ceb812796e80c13e5c",
+          "datasets/coding-v1/tasks.json": "42dbc85ee3f87f476460ce9bb5448b65e1bceb551cbc9ebd48134644e7b9bdc3",
+          "direct_solver.py": "cfd6b2937f3b62ddbfbe8ee3676d7c6f59791549ba7bd79b89e638e653652070",
+          "download_draft.py": "81979ccd89077c233b7e78e458b670032e86a8af67dc0a5280e132533e808b9d",
+          "download_model.py": "2062a02f3cf70568b01ba363e66d5813400ae1b4b0fa84d1ede22b689f011195",
+          "ensemble_solver.py": "e7c9b5cfb3dd2741bc63153819d6f9b14bbda548624616a9351bdcc26af0764b",
+          "export_benchmark.py": "0d4f2cf803943a43a78e4d7a070c44f3a6bb4079ab0aaa33d9f9722cad6a9019",
+          "fleet.sh": "16beec5fec2e3c29078249307cfd7018215eaeba5927c81d91b8e6c921276686",
+          "harness.py": "f5607b0a55a45c263f043d92f6ed9dca13b04d9056224e72dfae3c4f6455b0b1",
+          "make_tasks.py": "9603c7dfc8facae2fe7755d2ae34dbf9911f2dcc345761fe67493ca9e53a31b8",
+          "play.sh": "89171f43bf9197a10cba9936617fec9b1d8616f353bc5aa2e4ffde72046be012",
+          "probe.py": "67f43ff6edf9340b9b9339975eae95d56b10451b45cbe9cc2786471be4aa6348",
+          "requirements-plot.txt": "8a8a4569b82e49189280709da96a113dc686f632fd91b4872b59a555d48b2e9c",
+          "results/development-20261115/base/analysis/accuracy-wilson95.png": "2122de74b3f2fd5ec31908e57fe9780d394f6c3610ac497ed1928be6ba662eef",
+          "results/development-20261115/base/analysis/accuracy-wilson95.svg": "61795c9603ce107a43a28e1a7bab84bc330196c9b7556693cb4c1b2c67ff653f",
+          "results/development-20261115/base/analysis/analysis.json": "826d88a643cd83058fd0ecdae39eb1d123f1874fed36319bd891ffa2fae9ef42",
+          "results/development-20261115/base/analysis/case-latency.png": "fe281aaf9a6b3969f26637cbc4f2e6c1b6c9a9a07fd61dfec2406eb0aa288029",
+          "results/development-20261115/base/analysis/case-latency.svg": "b4af5f67d226b9ccfe02e352c64460ba2ec66a46b9cb3d1440ac17d822b2f09a",
+          "results/development-20261115/base/analysis/paired-results.csv": "4101ac232bdf7674ef065e6f6f7f663e30b52237c442008c7514cae39499df45",
+          "results/development-20261115/base/analysis/success-vs-completion-cost.png": "44e44a5ed278b1b7b7a7f68c459a21439db5e592e93402bfec9c25d53e8aabd9",
+          "results/development-20261115/base/analysis/success-vs-completion-cost.svg": "96acc50a7b3f72c7107f2c892ef4ec260b5897b30195fff634e994489c93a990",
+          "results/development-20261115/base/analysis/summary.csv": "2c73f0be462c1fabfba4e1af56b06efd1faa188dcf754deff002884700fe1be9",
+          "results/development-20261115/base/dev-33afb93cb351-democracy8-s1.jsonl": "72d296e3836356a31a94b6d4c1b55c31f116459fb868ca53d8d2dfadc174fd39",
+          "results/development-20261115/base/dev-33afb93cb351-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-33afb93cb351-democracy8-s1.stdout.log": "5f9312db09379509b3d036a0279e41642bc5ed826886d94c0bd46271a67c28fa",
+          "results/development-20261115/base/dev-33afb93cb351-direct_off-s1.jsonl": "4a096873766f72d410fe6e718ad21b30627f569cd3adec330c038a0940c8313d",
+          "results/development-20261115/base/dev-33afb93cb351-direct_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-33afb93cb351-direct_off-s1.stdout.log": "54002d2f0627d76123892ac59f4bb15583f0d72db054d64c865907ffcfd05a2d",
+          "results/development-20261115/base/dev-33afb93cb351-direct_thinking-s1.jsonl": "de6a3439e7d2277bbaa395880b72f5a75ce394c965507744792d75214bfb4deb",
+          "results/development-20261115/base/dev-33afb93cb351-direct_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-33afb93cb351-direct_thinking-s1.stdout.log": "fd8c1593d56ba4d3d8209e6d72f4f0563d21bd29343244651104609b6827a1f3",
+          "results/development-20261115/base/dev-33afb93cb351-independent8-s1.jsonl": "f00970455fab34b2e92b6a1c6ae47cd2b36ea2b8bb584d7925384c21c4c1cb3f",
+          "results/development-20261115/base/dev-33afb93cb351-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-33afb93cb351-independent8-s1.stdout.log": "aa28e538c8854cf12eb6d716591bdb5b3ad076ed0074867062afdf6f1ec34adb",
+          "results/development-20261115/base/dev-33afb93cb351-independent_rounds8-s1.jsonl": "3da512150305aa9142782bc3e886a7e0a9aa0aec4e6e95d0fb6f31ef21eb05be",
+          "results/development-20261115/base/dev-33afb93cb351-independent_rounds8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-33afb93cb351-independent_rounds8-s1.stdout.log": "65708c20999683213414942742b7c4cdceaa59fb989f6b27a39f7c04a4530af6",
+          "results/development-20261115/base/dev-33afb93cb351-shared8-s1.jsonl": "4ee87371016331e7e454275db88f22ccce0e81763ae1e96d37d768c1384781a6",
+          "results/development-20261115/base/dev-33afb93cb351-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-33afb93cb351-shared8-s1.stdout.log": "ecbd0d921a08e3c74fbe33d62900cf5e80a131f899f5e9bfde14a78627f5ec38",
+          "results/development-20261115/base/dev-33afb93cb351-solo_steps_off-s1.jsonl": "39a7d2908eec1a15eb6564cde8f1a49c0f5ddeafe622a1264186a1e7affaa480",
+          "results/development-20261115/base/dev-33afb93cb351-solo_steps_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-33afb93cb351-solo_steps_off-s1.stdout.log": "cb91c15f6d0b672659ad29f044449509f8e15d076545c1806bdd0e37a9294ad7",
+          "results/development-20261115/base/dev-33afb93cb351-solo_steps_thinking-s1.jsonl": "6001c180c24838e543871969bf865dbf06e8035c44536e6c5adb1a788e15da97",
+          "results/development-20261115/base/dev-33afb93cb351-solo_steps_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-33afb93cb351-solo_steps_thinking-s1.stdout.log": "dcecdc5cc4a9365649d13c6670070bfadde315a8dbf5d84af19bb55288bfb7b6",
+          "results/development-20261115/base/dev-53da8851d38e-democracy8-s1.jsonl": "4b2e8343261caa3c19c997f9155da0c4e30937e1a1bc3d101b8a051974389288",
+          "results/development-20261115/base/dev-53da8851d38e-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-53da8851d38e-democracy8-s1.stdout.log": "084af9da2258b0763d86b95d44925c0f6963fe3232870860f1e96af80752b621",
+          "results/development-20261115/base/dev-53da8851d38e-direct_off-s1.jsonl": "b6621412d6b47e2767ef3346c884d8533502e6eb9e9a259eab575e015f27f8a7",
+          "results/development-20261115/base/dev-53da8851d38e-direct_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-53da8851d38e-direct_off-s1.stdout.log": "7da877abe5cf73372274ef42fb1dc6b6fa8a2b3d4b2b8541ec5a1345a2ba9552",
+          "results/development-20261115/base/dev-53da8851d38e-direct_thinking-s1.jsonl": "39251c3d2074c1fc578676570683b882e44845bd77e009315a85aa24e2c29dcd",
+          "results/development-20261115/base/dev-53da8851d38e-direct_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-53da8851d38e-direct_thinking-s1.stdout.log": "4a2df21f86d0777bbb6300871df9ebed54b3e0afa548e4993953dba20c0616fb",
+          "results/development-20261115/base/dev-53da8851d38e-independent8-s1.jsonl": "b7c2b759162378521bb47f154405e01b870dee718ff2338f0fa2500456e88bd4",
+          "results/development-20261115/base/dev-53da8851d38e-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-53da8851d38e-independent8-s1.stdout.log": "f06c2ddea44184d9299d1a7cfd96d8260fbc8bbe2206c0985ecbe1891c1d1afb",
+          "results/development-20261115/base/dev-53da8851d38e-independent_rounds8-s1.jsonl": "3ec3d9ddfe393de4ce61a8f032d52fb2350e23493c98c43fe3a3e8852b7d13b7",
+          "results/development-20261115/base/dev-53da8851d38e-independent_rounds8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-53da8851d38e-independent_rounds8-s1.stdout.log": "ec5f454ba7f5e1530fbb760b816e653360d43d7e620b2899a54867cca937729d",
+          "results/development-20261115/base/dev-53da8851d38e-shared8-s1.jsonl": "293a687462bf0691e1cb33e83c9cc01d06eaea8472f30a43c6d6b2b890d587c3",
+          "results/development-20261115/base/dev-53da8851d38e-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-53da8851d38e-shared8-s1.stdout.log": "2256f09154b831dd175e781a28981a343492509fa1854b7c2fa6906c97e06644",
+          "results/development-20261115/base/dev-53da8851d38e-solo_steps_off-s1.jsonl": "9afaa2cdfa58dd87c493d1fcd22654558db5f3c2f1fb8af84d253bbbff202864",
+          "results/development-20261115/base/dev-53da8851d38e-solo_steps_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-53da8851d38e-solo_steps_off-s1.stdout.log": "9d718df1a13297db623e435c02b4581068d08bac768c5ca3c458ed78b6be24ff",
+          "results/development-20261115/base/dev-53da8851d38e-solo_steps_thinking-s1.jsonl": "90e604753863146aa7da06036e16c5377991d4a5ed1f3290c5907a70fb30bc5d",
+          "results/development-20261115/base/dev-53da8851d38e-solo_steps_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-53da8851d38e-solo_steps_thinking-s1.stdout.log": "697bb0cd21cf2eda8541c50243e513d085e3e873af67ad313d25d2a1716cd661",
+          "results/development-20261115/base/dev-705fbd047ebe-democracy8-s1.jsonl": "ec77f3baf647451ef6f52632b68965c1f2edea26e470c629550c26c11015dc46",
+          "results/development-20261115/base/dev-705fbd047ebe-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-705fbd047ebe-democracy8-s1.stdout.log": "5c5be2a4c7ca4ccf162c81273b06cd70197fba652cf33f0155e2e6f43f929fe7",
+          "results/development-20261115/base/dev-705fbd047ebe-direct_off-s1.jsonl": "cf1c6abbc8d8de17076520b570fa919ea36ea811a1bbfc2d3c659499bb65bc8a",
+          "results/development-20261115/base/dev-705fbd047ebe-direct_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-705fbd047ebe-direct_off-s1.stdout.log": "440f8cd766871c727b02b421fd59573a662cf1dc5cd60e52f1eae2a58a758787",
+          "results/development-20261115/base/dev-705fbd047ebe-direct_thinking-s1.jsonl": "1d8a492b5db18b4b1f1b836e1429f30ed46bbc1ae27fa34bed6b33ea30107a26",
+          "results/development-20261115/base/dev-705fbd047ebe-direct_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-705fbd047ebe-direct_thinking-s1.stdout.log": "10f0e58c7e434ded7ad978561775795e8a0ac09a42d148e22c9a52831c7e5193",
+          "results/development-20261115/base/dev-705fbd047ebe-independent8-s1.jsonl": "0494af452a83b214d9c2835f922138ec66f918dc6c9ef26be7f5fc4afefe0358",
+          "results/development-20261115/base/dev-705fbd047ebe-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-705fbd047ebe-independent8-s1.stdout.log": "08cd38249dc8fd766c1af226af4593e01117fff06d597fc5131106ec51dd475b",
+          "results/development-20261115/base/dev-705fbd047ebe-independent_rounds8-s1.jsonl": "dc8b001aeb07673e3e214d0458c7fcbf6b7aaefe3a7c4b9c407ecd25d7753b5d",
+          "results/development-20261115/base/dev-705fbd047ebe-independent_rounds8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-705fbd047ebe-independent_rounds8-s1.stdout.log": "bae3ce72777f1c4f56c81bf2079bd56b8e86609529532199da5303548b1af78b",
+          "results/development-20261115/base/dev-705fbd047ebe-shared8-s1.jsonl": "4fee4ad3acd6e1a73ad68c5d4d69922ad74ead20d1b9557027b4be98bd29dd98",
+          "results/development-20261115/base/dev-705fbd047ebe-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-705fbd047ebe-shared8-s1.stdout.log": "a057c71828494332f670d168520d5f2e9d72a4677d402084e04c2ca8c2a9ca63",
+          "results/development-20261115/base/dev-705fbd047ebe-solo_steps_off-s1.jsonl": "aee13301b2888a4082caf0bf9a8f8e96dd10632526d09b7f2bc88965e94d6498",
+          "results/development-20261115/base/dev-705fbd047ebe-solo_steps_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-705fbd047ebe-solo_steps_off-s1.stdout.log": "935fd0d19bad94807a70990f9fda211524d707acecf80772b767bc973dbc9e90",
+          "results/development-20261115/base/dev-705fbd047ebe-solo_steps_thinking-s1.jsonl": "1f5762756d58a352babe5d2e00a3a096931407d8a505f7a7ca824798e254eba7",
+          "results/development-20261115/base/dev-705fbd047ebe-solo_steps_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-705fbd047ebe-solo_steps_thinking-s1.stdout.log": "d480a43c876a4fe4b3090fa27a424bb7a267c8ae76963a6fe2438271ad6fbc8d",
+          "results/development-20261115/base/dev-7880a6de7cc2-democracy8-s1.jsonl": "bd0934ec035ae6e5ac5d7c6cab7fefbcfb4b1c674a2a1176b16c0f6c384f583b",
+          "results/development-20261115/base/dev-7880a6de7cc2-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-7880a6de7cc2-democracy8-s1.stdout.log": "924928d640b509aa5dd05c941801366cc37a1c3de7199746953d9e661f842d66",
+          "results/development-20261115/base/dev-7880a6de7cc2-direct_off-s1.jsonl": "d9204c82b637a08d5c9f828cfb5b6c6923a2c8404b069736ddd12fb2a34ca270",
+          "results/development-20261115/base/dev-7880a6de7cc2-direct_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-7880a6de7cc2-direct_off-s1.stdout.log": "dae010cc7a653a9365dbcc4c25893d785871ab51583804001e05f29dbf9d2486",
+          "results/development-20261115/base/dev-7880a6de7cc2-direct_thinking-s1.jsonl": "a57a82bb89705aaca8c66e28a7a7f13c281c30177ce048e82ca154ad2cff9c9f",
+          "results/development-20261115/base/dev-7880a6de7cc2-direct_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-7880a6de7cc2-direct_thinking-s1.stdout.log": "a36b9257dbad38e3e8d51a18a8b71d54ac59ab3d5ca829825d126b9e60715a73",
+          "results/development-20261115/base/dev-7880a6de7cc2-independent8-s1.jsonl": "8cea4a748ec73d97a96cf76d436895f3febd37ba55ec2746f55c68dc1dba8167",
+          "results/development-20261115/base/dev-7880a6de7cc2-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-7880a6de7cc2-independent8-s1.stdout.log": "2104eeecc2eed7d0c69fee328135a50a0e1b51c97f613ef99610ae877382e5cd",
+          "results/development-20261115/base/dev-7880a6de7cc2-independent_rounds8-s1.jsonl": "5b4049bd7788b9b0396394a05d4ee87d7edaed8ab11b7dbf1301a1bee24f579d",
+          "results/development-20261115/base/dev-7880a6de7cc2-independent_rounds8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-7880a6de7cc2-independent_rounds8-s1.stdout.log": "e095a6c65e02f2f81a3faa8d6857d96ab879e8fe7751670ac245463ac9f9e678",
+          "results/development-20261115/base/dev-7880a6de7cc2-shared8-s1.jsonl": "8475d550dcac3353e2beb4d9a6d0f7234f52e70d2881950219aed01c5af05f43",
+          "results/development-20261115/base/dev-7880a6de7cc2-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-7880a6de7cc2-shared8-s1.stdout.log": "3c11aaf06820521bd37bfc0afe3fe2ef4a893f3d2e5d4194a8b7e7c3e848de29",
+          "results/development-20261115/base/dev-7880a6de7cc2-solo_steps_off-s1.jsonl": "a16d14d2b39051f218158fabcdc166ee8cbdd5e6d6e4b0fc64b82eeabb3da47d",
+          "results/development-20261115/base/dev-7880a6de7cc2-solo_steps_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-7880a6de7cc2-solo_steps_off-s1.stdout.log": "a6d1c2763fb38b59c8dfe636b4be617d90189d0e3ca1d18399ef0f14fd89611f",
+          "results/development-20261115/base/dev-7880a6de7cc2-solo_steps_thinking-s1.jsonl": "e3920621c0892816792316f771320a7fefdfc71a0094d5bd04e4b19b9dee696b",
+          "results/development-20261115/base/dev-7880a6de7cc2-solo_steps_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-7880a6de7cc2-solo_steps_thinking-s1.stdout.log": "d5b338bffb4e4da4f528f54c0c556cd629957912cad684c39e865b5418cde9cb",
+          "results/development-20261115/base/dev-82ea75b5370a-democracy8-s1.jsonl": "ebafe848d1bd0c86d54a38c6521ef95c13ae79a2fed39145c434f586a25eb270",
+          "results/development-20261115/base/dev-82ea75b5370a-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-82ea75b5370a-democracy8-s1.stdout.log": "83dc5d17e39ffc3d29f58c3a166c624ca795a9b37854f1221ae5490526969f8a",
+          "results/development-20261115/base/dev-82ea75b5370a-direct_off-s1.jsonl": "dd2209f48256e59806736c8e11eba8b55a21cb6fbe6eab96aa7bf7b5db6ed2b1",
+          "results/development-20261115/base/dev-82ea75b5370a-direct_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-82ea75b5370a-direct_off-s1.stdout.log": "b3096ddbec48a2657e63d4acc348628a18531b00a63161fbbb441b8f7829bfbb",
+          "results/development-20261115/base/dev-82ea75b5370a-direct_thinking-s1.jsonl": "3cb2d2a3a6d3deccd58cdfc721190663eca62e38499ba8ee34f1e61f36c34eae",
+          "results/development-20261115/base/dev-82ea75b5370a-direct_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-82ea75b5370a-direct_thinking-s1.stdout.log": "bfcdb064b22231d834b60f56c7b0015c9af603b80c04e61f2ea1fd4f8e7406bf",
+          "results/development-20261115/base/dev-82ea75b5370a-independent8-s1.jsonl": "42652bb757cbf9bf40d8e46fc2e2d7fc65bc0e78ea4aa1e62724768bac79d16c",
+          "results/development-20261115/base/dev-82ea75b5370a-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-82ea75b5370a-independent8-s1.stdout.log": "174d06a01ea7034f3d2662d9b3ee4346adb9f04d9180a2ab031c838693eb02ab",
+          "results/development-20261115/base/dev-82ea75b5370a-independent_rounds8-s1.jsonl": "bf9b45b5f21245847d322708ab5c5cf2ac23ad770fed12e19611c22cef609e51",
+          "results/development-20261115/base/dev-82ea75b5370a-independent_rounds8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-82ea75b5370a-independent_rounds8-s1.stdout.log": "01fc1889b33ea8322b3b3c4fde4d3ea8bf571e9994c835873e073c95f5a76549",
+          "results/development-20261115/base/dev-82ea75b5370a-shared8-s1.jsonl": "62b38d1df32f2987133a3d885ce4a4d70f59bb9b166b2b72655ee1ce20d7c9d2",
+          "results/development-20261115/base/dev-82ea75b5370a-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-82ea75b5370a-shared8-s1.stdout.log": "7bb37d3c1a5a8166dcbb440adf1204ea622a9631c41ccaa9b2dc90a75d88697a",
+          "results/development-20261115/base/dev-82ea75b5370a-solo_steps_off-s1.jsonl": "3e887f7d9235898998a12a9a4385882d569cbd081c84be41e8e31b2884a4c002",
+          "results/development-20261115/base/dev-82ea75b5370a-solo_steps_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-82ea75b5370a-solo_steps_off-s1.stdout.log": "320c343baf19a2df634614baa496d8d41082481dac525c5080bd7d52773f3833",
+          "results/development-20261115/base/dev-82ea75b5370a-solo_steps_thinking-s1.jsonl": "0b65f26c353ef276082d0ee04bcae4fb2c51a7956267ed6469025919b8b9a8a5",
+          "results/development-20261115/base/dev-82ea75b5370a-solo_steps_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-82ea75b5370a-solo_steps_thinking-s1.stdout.log": "5c1340c251bca67ae7c382097dea1b9d468d11ae2a1523f6533086be34fc7ce1",
+          "results/development-20261115/base/dev-98afa92166b7-democracy8-s1.jsonl": "9a593191b7147295fe50ee08351098de009edd67961a4a2005dbbf810a455a0b",
+          "results/development-20261115/base/dev-98afa92166b7-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-98afa92166b7-democracy8-s1.stdout.log": "363c1d7c8af2784bfeb4e484ee9764ef2e6b85f7b8ec8739de60a5d0465ad5ea",
+          "results/development-20261115/base/dev-98afa92166b7-direct_off-s1.jsonl": "e3fc337737f4332f55937c8d00cc46d039c2d2a74ae0a96c5e51db278601c2df",
+          "results/development-20261115/base/dev-98afa92166b7-direct_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-98afa92166b7-direct_off-s1.stdout.log": "26a1ae9f5dda67451e7881fd5f5605d0c3f0ac2bea5b4529d7f4191629969f3e",
+          "results/development-20261115/base/dev-98afa92166b7-direct_thinking-s1.jsonl": "14444bb3c56e5ffa78f7941a22946f17e05e9d7149321e29dd7b42dd47f25b51",
+          "results/development-20261115/base/dev-98afa92166b7-direct_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-98afa92166b7-direct_thinking-s1.stdout.log": "661e3cf4d82b50670d5065b98b9d31857e62942d3761516498c5bf06dc077e87",
+          "results/development-20261115/base/dev-98afa92166b7-independent8-s1.jsonl": "1992ed0e356d48a828d1730ca1fee3facc09644abce4734b7c78f0e858a96d74",
+          "results/development-20261115/base/dev-98afa92166b7-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-98afa92166b7-independent8-s1.stdout.log": "5396e9d1d5e503302771c1380565c6af38af8f658d3fe7eab7cba31b4ead0326",
+          "results/development-20261115/base/dev-98afa92166b7-independent_rounds8-s1.jsonl": "0c78e07762134679570ca5ca70dc4a809cec4a6a332bd18dc357a00c0c133009",
+          "results/development-20261115/base/dev-98afa92166b7-independent_rounds8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-98afa92166b7-independent_rounds8-s1.stdout.log": "bf2f1ae90232a5860551b3cb9140e38cd1ad2a1b6ffbe2c5a3d9bd1c9bba833a",
+          "results/development-20261115/base/dev-98afa92166b7-shared8-s1.jsonl": "72062393ab327f1291c6a997fdcf2b59b2107837784cd994b4c02cd579aca5ce",
+          "results/development-20261115/base/dev-98afa92166b7-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-98afa92166b7-shared8-s1.stdout.log": "c69beb37e94978120038dca509f5304f3db6e530cc7b77c98079ec23e10682cd",
+          "results/development-20261115/base/dev-98afa92166b7-solo_steps_off-s1.jsonl": "cfb9c99280a83b1566bcc7d6db08d6bbceefc09e435fb2f98300827921627aed",
+          "results/development-20261115/base/dev-98afa92166b7-solo_steps_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-98afa92166b7-solo_steps_off-s1.stdout.log": "b25c53eb04dfa0d76de55b2537d7e25525189f38ef987b1b6d2d8412ee9459e0",
+          "results/development-20261115/base/dev-98afa92166b7-solo_steps_thinking-s1.jsonl": "31b7c9370462078c1ed47fbb98dae2055684d4ffe9911b07c3dbbd4549528b8e",
+          "results/development-20261115/base/dev-98afa92166b7-solo_steps_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-98afa92166b7-solo_steps_thinking-s1.stdout.log": "3e1855a31fdf30796487ff9aa7997536468893ee894f235710b1b3699a1fd84d",
+          "results/development-20261115/base/dev-a333e0dae70f-democracy8-s1.jsonl": "8ebd386174e581e218e66a3c274215b382a793beeb9b298ee8d8c54e30594237",
+          "results/development-20261115/base/dev-a333e0dae70f-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-a333e0dae70f-democracy8-s1.stdout.log": "2f13ee5ab09b0de5fb132da891bf6a9248cc432f148a02a997dc43044cf55a7b",
+          "results/development-20261115/base/dev-a333e0dae70f-direct_off-s1.jsonl": "a618efc1c78b2a600935144c053a3912153930665852449c3e34901b2ef67b2f",
+          "results/development-20261115/base/dev-a333e0dae70f-direct_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-a333e0dae70f-direct_off-s1.stdout.log": "ec40d22e4ab4924c844ff874bd81b2498d3bbded21a44850c86ab1bbdd88f250",
+          "results/development-20261115/base/dev-a333e0dae70f-direct_thinking-s1.jsonl": "1660c2f158f0e85b60d1b56f3e086ad660255e2f1ae057c36304e628f7ed46ae",
+          "results/development-20261115/base/dev-a333e0dae70f-direct_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-a333e0dae70f-direct_thinking-s1.stdout.log": "56718a65363247b3b4cd71b3aa7e33804776723508ac1cda56060f091796c29b",
+          "results/development-20261115/base/dev-a333e0dae70f-independent8-s1.jsonl": "fe0121719255663eda45a6cd3626856040a3511ef65975ea8c285ff5e59df57e",
+          "results/development-20261115/base/dev-a333e0dae70f-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-a333e0dae70f-independent8-s1.stdout.log": "84500bbf00d965498b8b683bcc1fd26847831893658dc7ddb7965d9f5ccf4eb1",
+          "results/development-20261115/base/dev-a333e0dae70f-independent_rounds8-s1.jsonl": "5076660eb119f9c2e6cc21fdae6192eab938f79650d8cbc0247d14df64d62483",
+          "results/development-20261115/base/dev-a333e0dae70f-independent_rounds8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-a333e0dae70f-independent_rounds8-s1.stdout.log": "4998d365e7727d590d372bde0ba6e92857a9fbdb0b6f3add6a15a46341990c31",
+          "results/development-20261115/base/dev-a333e0dae70f-shared8-s1.jsonl": "3270fda00c7921e7e4b0468ffb06cfdc740435e6fdec001adb496cca2538e427",
+          "results/development-20261115/base/dev-a333e0dae70f-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-a333e0dae70f-shared8-s1.stdout.log": "d5803ffca57b9a00e823e8a6829b7c69f90138f6105936dd1cd6781df226791c",
+          "results/development-20261115/base/dev-a333e0dae70f-solo_steps_off-s1.jsonl": "a71cafc8ce6f1063f868141473eeb8ac157e05223a840661e2c26870e4795c6d",
+          "results/development-20261115/base/dev-a333e0dae70f-solo_steps_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-a333e0dae70f-solo_steps_off-s1.stdout.log": "ec230ba2dd69f516987c2bceb65b801c511da2820cbf9f54064eed0eb753ca43",
+          "results/development-20261115/base/dev-a333e0dae70f-solo_steps_thinking-s1.jsonl": "59d6f5ff5b4c9623045405eca4ba003eee45dabc38a2495c7defc46d60e2d816",
+          "results/development-20261115/base/dev-a333e0dae70f-solo_steps_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-a333e0dae70f-solo_steps_thinking-s1.stdout.log": "32d5a36fa290f97e2e30e5b2a36c26c57cb59da1aaa67d51f227b550f6c310ec",
+          "results/development-20261115/base/dev-c5f3655022a0-democracy8-s1.jsonl": "41473483c5c5cbdf60580a8afe3bf9650b861b0dc4a515f0fd70c8923556bc14",
+          "results/development-20261115/base/dev-c5f3655022a0-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-c5f3655022a0-democracy8-s1.stdout.log": "8f9a0665e1ccc86d667fec51ae6a966646fcc22f7c23956b04f7e68f83755917",
+          "results/development-20261115/base/dev-c5f3655022a0-direct_off-s1.jsonl": "083ae16324834869804eae77b194889da2f58d217344cff1142918ec59d5a2e2",
+          "results/development-20261115/base/dev-c5f3655022a0-direct_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-c5f3655022a0-direct_off-s1.stdout.log": "3b364d21edce5cc027b1617d9ab977e137c5e36a07eb0ae8506dc39b2e1a8a73",
+          "results/development-20261115/base/dev-c5f3655022a0-direct_thinking-s1.jsonl": "2345f0fd78ddf06c7dde1e458e00884975b4d8d8bce819c6ddd342a5f1551661",
+          "results/development-20261115/base/dev-c5f3655022a0-direct_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-c5f3655022a0-direct_thinking-s1.stdout.log": "9008386e2c5e041227672dcd66571e0e63875f5ee1ae1c5396d32e295a2784c4",
+          "results/development-20261115/base/dev-c5f3655022a0-independent8-s1.jsonl": "cbf6fcd53054197db59d9898a30f0172dad207226e03d608b9ed4dc3c0fd2618",
+          "results/development-20261115/base/dev-c5f3655022a0-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-c5f3655022a0-independent8-s1.stdout.log": "c59e2d81af54e035587aec94242667c97fba3e4869a50815c30d056e0f07961d",
+          "results/development-20261115/base/dev-c5f3655022a0-independent_rounds8-s1.jsonl": "5c55b9a47a9cae858e8708c3940e0b2c04df61e88808120f6905d14f27250a40",
+          "results/development-20261115/base/dev-c5f3655022a0-independent_rounds8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-c5f3655022a0-independent_rounds8-s1.stdout.log": "b3936d36e1d19a39081a56a4ba1e4343ac0da50197acac2fb0cbaa7604a1e557",
+          "results/development-20261115/base/dev-c5f3655022a0-shared8-s1.jsonl": "2ff4f1cd1245a353e91a7895b87ae9ec3e1ad3a39c91359e0998fe1a15aca8cd",
+          "results/development-20261115/base/dev-c5f3655022a0-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-c5f3655022a0-shared8-s1.stdout.log": "299fc4ca5aa797a77e279a0cd2e40985906ba527537218e2b26bf6b441a03189",
+          "results/development-20261115/base/dev-c5f3655022a0-solo_steps_off-s1.jsonl": "4d82fcb557b13e6809885eae9290b7d8df8ab8ebbdf6556e996a51045072edd3",
+          "results/development-20261115/base/dev-c5f3655022a0-solo_steps_off-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-c5f3655022a0-solo_steps_off-s1.stdout.log": "97be9c8631946bfd45828a084b5b50645d1b06314b0f053506f455e0421a5481",
+          "results/development-20261115/base/dev-c5f3655022a0-solo_steps_thinking-s1.jsonl": "7b28bc7cdb88beeb39ddee05e85f77dbdf25517e29e709f9f95e3499e1ceb2c2",
+          "results/development-20261115/base/dev-c5f3655022a0-solo_steps_thinking-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/base/dev-c5f3655022a0-solo_steps_thinking-s1.stdout.log": "39946d8c2c319a27bc9c2928e0e199d67867a9cee3ab387421bc54822c010c20",
+          "results/development-20261115/base/manifest.json": "20bf02c42c2a912278a0a9908ce52c08929dce8d52d28bbafd20e023846e02a3",
+          "results/development-20261115/base/metadata.json": "e1dc96e327c718a915ed5624d63000330818d2d7d8cc414f0ad28642dfd17535",
+          "results/development-20261115/base/summary.csv": "1c63c5540444bc1ee5a7e61d5891d50b54a0fc587c1206d725a1ce7a34134bd3",
+          "results/development-20261115/base/summary.json": "614fc134b4c2a645ae9350dcf3c3cd5f6d4902008a558e77994d87573b31d56c",
+          "results/development-20261115/scale/analysis/accuracy-wilson95.png": "3d9d6ae820f8f84541bc8af5f0c7e65effd385c9de98b6e70e3170536eab7613",
+          "results/development-20261115/scale/analysis/accuracy-wilson95.svg": "ce00ac90de24b653dd2a70ccd58799beda97b8aad9971bc5e1ed64d9e0e0b2c9",
+          "results/development-20261115/scale/analysis/analysis.json": "5148d89feafa444e5f2f58d8d89db1a88ab773aa8444ffbf5ac68d34cbc125be",
+          "results/development-20261115/scale/analysis/case-latency.png": "7757234e07e1cf08c0e004757a1a3846de6074524f4de320456b1164a742dd64",
+          "results/development-20261115/scale/analysis/case-latency.svg": "d03f88603d6a077afd1a295a0dc1b608df48698c50d06da9ffa745c925c8cffc",
+          "results/development-20261115/scale/analysis/paired-results.csv": "27b4934765345125da0166e44c151f49a7c13c89e70c195163765050f40aa543",
+          "results/development-20261115/scale/analysis/success-vs-completion-cost.png": "7876294838df580aa094f46f8571b80002293ac51e36bbc5145d8df4f43ad9a6",
+          "results/development-20261115/scale/analysis/success-vs-completion-cost.svg": "a10f58db31d05b352fcbf11b050fb228f62999c6c2f0e1c9114f67544b3a3ff9",
+          "results/development-20261115/scale/analysis/summary.csv": "d078eaa35c13c29f9212f077e16e27f43a9f19ad73f7993972d01a2e698a0858",
+          "results/development-20261115/scale/dev-33afb93cb351-democracy100-s1.jsonl": "648e08fe3db17c21561598555dd8cb3b7c541ea41e60f94c6e4266ee9bd3aef3",
+          "results/development-20261115/scale/dev-33afb93cb351-democracy100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-33afb93cb351-democracy100-s1.stdout.log": "974226b5e7ee3cbcf577e5f7d9e5157dfd4a500e029c351c064f2de329939c49",
+          "results/development-20261115/scale/dev-33afb93cb351-democracy32-s1.jsonl": "10b1c0ecaa343f185ea6c89ce597d65b396cc88e7019f6032518b9fc4bd6bb62",
+          "results/development-20261115/scale/dev-33afb93cb351-democracy32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-33afb93cb351-democracy32-s1.stdout.log": "ffbc46590cf0c0bdeadfd10e31fec79664d44b03a4eec04d931e6fdb9582dc2b",
+          "results/development-20261115/scale/dev-33afb93cb351-democracy8-s1.jsonl": "c7eaa840d018ac467937dce508362e6e26712598feee17652a05716dc7f8dfc4",
+          "results/development-20261115/scale/dev-33afb93cb351-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-33afb93cb351-democracy8-s1.stdout.log": "c7d93cf433bd67f373bea4296a70021c4210d2e77ecb48f42a238de95afeb9bd",
+          "results/development-20261115/scale/dev-33afb93cb351-independent100-s1.jsonl": "89a7ecbb062c5cb15d823206e81891d6bc1095fb6b2a8485a8e17d7c3ba62838",
+          "results/development-20261115/scale/dev-33afb93cb351-independent100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-33afb93cb351-independent100-s1.stdout.log": "50f13b86f9a999d8baa6c8827dc855056f0ee2e9d0047d49378601de06833563",
+          "results/development-20261115/scale/dev-33afb93cb351-independent32-s1.jsonl": "a31f1c8067549f7812363ed21336b21c4bf01f392053b11cd3f973f29a0ab19a",
+          "results/development-20261115/scale/dev-33afb93cb351-independent32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-33afb93cb351-independent32-s1.stdout.log": "3b0277c7a1d6c50ed0fe87f9750b07eaba4313f1970a88117f3d07bc204a19e1",
+          "results/development-20261115/scale/dev-33afb93cb351-independent8-s1.jsonl": "b963261030326513f1ce1c7f58f35866d44c7eff230107f4c8acbaf79d66cc67",
+          "results/development-20261115/scale/dev-33afb93cb351-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-33afb93cb351-independent8-s1.stdout.log": "63ee44bc76030b3721f4643c386eb6bab8d26f66299548d1a9ffcad43fc0aed4",
+          "results/development-20261115/scale/dev-33afb93cb351-shared100-s1.jsonl": "8126273937b71517da4dfa83a1d9475125c390ecac8aff48dfab70c48b97575b",
+          "results/development-20261115/scale/dev-33afb93cb351-shared100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-33afb93cb351-shared100-s1.stdout.log": "49788457d4bee3758b2ff26cb5a8a6342407316bee65968ce6420be02d0b601f",
+          "results/development-20261115/scale/dev-33afb93cb351-shared32-s1.jsonl": "1cfacaef5fad9b34a4b3cec25551280681ba7f3d88451801a2dc8c5ec0c8282f",
+          "results/development-20261115/scale/dev-33afb93cb351-shared32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-33afb93cb351-shared32-s1.stdout.log": "c8abef66a49a6911b24a557cea4e6be47ab35e1a8a8fe320ab90e9de7ec98685",
+          "results/development-20261115/scale/dev-33afb93cb351-shared8-s1.jsonl": "07791bd218a5b004a178fe07284d33aa161bda8753968a01184443260fba2e93",
+          "results/development-20261115/scale/dev-33afb93cb351-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-33afb93cb351-shared8-s1.stdout.log": "8e123a2d9e9d9a813e535a6385cad5954b421aa56bb74d97d4a06428c576ab93",
+          "results/development-20261115/scale/dev-53da8851d38e-democracy100-s1.jsonl": "85d2797820c3849315a6a7fb1606ee00280bf4810aee69533138f79f643d3676",
+          "results/development-20261115/scale/dev-53da8851d38e-democracy100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-53da8851d38e-democracy100-s1.stdout.log": "20a66dfd78452d1b59916025480090ff138f5b4032d7304857897fef64d0b089",
+          "results/development-20261115/scale/dev-53da8851d38e-democracy32-s1.jsonl": "e2e8a7f88d624aabd83bba2a7fa7f35b2df327f8dfe4b0214cbbf64d4e19f18b",
+          "results/development-20261115/scale/dev-53da8851d38e-democracy32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-53da8851d38e-democracy32-s1.stdout.log": "9066d5c0693a6b7248f4bc911e458bb7a0276dd75d9f6daa6f17cd3c52882cad",
+          "results/development-20261115/scale/dev-53da8851d38e-democracy8-s1.jsonl": "0f7e24d938ca74beed67c64ac5dee20c9255ea13b41205e46228a2bb32a27f39",
+          "results/development-20261115/scale/dev-53da8851d38e-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-53da8851d38e-democracy8-s1.stdout.log": "af807208a91e53f6b2547cc517e15012809cf3a58594d5cc8ebebbc0b3bbe96d",
+          "results/development-20261115/scale/dev-53da8851d38e-independent100-s1.jsonl": "12dccaad28e419868af3e600c9af0219bfcc972b8c6ffbb93f0e691ae435072f",
+          "results/development-20261115/scale/dev-53da8851d38e-independent100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-53da8851d38e-independent100-s1.stdout.log": "8bfcb226b6f613ed6db67e5ea32f8dd7ffab2f54c39e605eb653da2b74c1fb26",
+          "results/development-20261115/scale/dev-53da8851d38e-independent32-s1.jsonl": "195da955c3ab7b9fc9ca86ddd14ad7130f983b0a4d414c1108dd167442646a74",
+          "results/development-20261115/scale/dev-53da8851d38e-independent32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-53da8851d38e-independent32-s1.stdout.log": "f3bf22a611fd477e1cd5c86b810d19f4cc139a96b2f341f153f4876c5d56f131",
+          "results/development-20261115/scale/dev-53da8851d38e-independent8-s1.jsonl": "579ab7662fb47ea440d3ad2e5801cf7fc72d71e342d245b560493bf66f59400c",
+          "results/development-20261115/scale/dev-53da8851d38e-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-53da8851d38e-independent8-s1.stdout.log": "e8e94a62799dab5d4557946cf3820d784a8e73425014da6114b91864276daa8b",
+          "results/development-20261115/scale/dev-53da8851d38e-shared100-s1.jsonl": "ba490d48267071b2fb51a516c05dfbfa64b5ece9fa8fe8350504230a202d7879",
+          "results/development-20261115/scale/dev-53da8851d38e-shared100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-53da8851d38e-shared100-s1.stdout.log": "0f4f4443a633124a2379913fc0e443105296aed09c7174b05604946edd00ce36",
+          "results/development-20261115/scale/dev-53da8851d38e-shared32-s1.jsonl": "3393c878e04c9629bd9ac25c08127fdc8d1f75153e8ae9caa9c49641c3dd95a6",
+          "results/development-20261115/scale/dev-53da8851d38e-shared32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-53da8851d38e-shared32-s1.stdout.log": "45637ffcf79953695e639cf717f6accdc6a6f7caf7e467c062df1f10c0d11b9d",
+          "results/development-20261115/scale/dev-53da8851d38e-shared8-s1.jsonl": "80849c7da108acaeda2b7581f5e60af97326eb5706987a188ce2a0c5262d03c2",
+          "results/development-20261115/scale/dev-53da8851d38e-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-53da8851d38e-shared8-s1.stdout.log": "d1ed581cf9c341c2b00891523fdb83e9d05840a6aee1ea0b9d664b0b8e82bdcc",
+          "results/development-20261115/scale/dev-705fbd047ebe-democracy100-s1.jsonl": "300c8ef306569f3f3d03734738c371e3a868ddc62957ddeed6a5bd60b66039b1",
+          "results/development-20261115/scale/dev-705fbd047ebe-democracy100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-705fbd047ebe-democracy100-s1.stdout.log": "e7d5afffd0518078b5d9eb8ec4cc1d093384f18dd24432267d25b3843423722b",
+          "results/development-20261115/scale/dev-705fbd047ebe-democracy32-s1.jsonl": "86a503fe867ecaa69d2e6f7887f72a21062baa91668ca85ef161210344d9c880",
+          "results/development-20261115/scale/dev-705fbd047ebe-democracy32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-705fbd047ebe-democracy32-s1.stdout.log": "ac6d611660695132cebaffda4bb55b81a85e9dd9ab0966b91e50aaee79760a94",
+          "results/development-20261115/scale/dev-705fbd047ebe-democracy8-s1.jsonl": "2ac051015de0bc88bacea24968e26333cc87d71710544ad64fea07d2849b2881",
+          "results/development-20261115/scale/dev-705fbd047ebe-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-705fbd047ebe-democracy8-s1.stdout.log": "c3bbc95b752714630b433f0265f3184a5441e87aa7e390473836aa78aa7c6312",
+          "results/development-20261115/scale/dev-705fbd047ebe-independent100-s1.jsonl": "8fd3025fcc9fbcaab791efd874e9a2388025514883566ea97c0fc6610f145477",
+          "results/development-20261115/scale/dev-705fbd047ebe-independent100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-705fbd047ebe-independent100-s1.stdout.log": "91f53bf4d8a5d43d2a0ea227fc619eccd068d34625c832633f57d087914c2924",
+          "results/development-20261115/scale/dev-705fbd047ebe-independent32-s1.jsonl": "cd8988eb49098734008e3de3b18b37ba79260b7aa2bd4849abf30c0d85c459ba",
+          "results/development-20261115/scale/dev-705fbd047ebe-independent32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-705fbd047ebe-independent32-s1.stdout.log": "fa356b4251c6891e4a16c80fb10754ae2397efed6da01f5cb4b610adf3d1d398",
+          "results/development-20261115/scale/dev-705fbd047ebe-independent8-s1.jsonl": "c7eba4c57021eb8b335daa61d0395d510e3aebfda6a0ace17b11edb030fb9187",
+          "results/development-20261115/scale/dev-705fbd047ebe-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-705fbd047ebe-independent8-s1.stdout.log": "c875d12321b811b7fed8aea35cd929217ceb11f1484e7f3ff8b17adebd58e64c",
+          "results/development-20261115/scale/dev-705fbd047ebe-shared100-s1.jsonl": "dd795a88e47d6356fc4fe1ebb92df7066aca560082900ef7cdd60fc960f7e960",
+          "results/development-20261115/scale/dev-705fbd047ebe-shared100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-705fbd047ebe-shared100-s1.stdout.log": "617957563c40b17d77d134add34f7f7bed579eb8427d1103fdbf0a8df5253f9d",
+          "results/development-20261115/scale/dev-705fbd047ebe-shared32-s1.jsonl": "46f902ae877d42cda7d734b67be523f20cae0bd54531b71df70612a8f0d7baf7",
+          "results/development-20261115/scale/dev-705fbd047ebe-shared32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-705fbd047ebe-shared32-s1.stdout.log": "42081d60a7dda8dee6fdd95fa9407f0a6fa0412af64e357467b8c38040fe760a",
+          "results/development-20261115/scale/dev-705fbd047ebe-shared8-s1.jsonl": "50d7bc10cca05b4672de3211f038ff43117262fb3a3189a894025de641802c64",
+          "results/development-20261115/scale/dev-705fbd047ebe-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-705fbd047ebe-shared8-s1.stdout.log": "c9559ed772064b045a179c2cb12d2962d7f22564e13a66a4c3250e2ab32ab20d",
+          "results/development-20261115/scale/dev-7880a6de7cc2-democracy100-s1.jsonl": "962e8481f29b1d9363f22b7a7ee8ca803f1484c0d483c611c45a30ffb96654c1",
+          "results/development-20261115/scale/dev-7880a6de7cc2-democracy100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-7880a6de7cc2-democracy100-s1.stdout.log": "01747a2c779d91d19231e5f5db61c8394f7417482a9de7134a005133d1fe913e",
+          "results/development-20261115/scale/dev-7880a6de7cc2-democracy32-s1.jsonl": "484cee47c1813b78d4d94bde37e4a1f433b462f47ec09300f489ee85c77083d2",
+          "results/development-20261115/scale/dev-7880a6de7cc2-democracy32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-7880a6de7cc2-democracy32-s1.stdout.log": "4e16d4089257e550e623db90aad257b9ee19da9aa2c52bcf363db50852ce4c3e",
+          "results/development-20261115/scale/dev-7880a6de7cc2-democracy8-s1.jsonl": "c2767fe63b25068ebc2dca6bebd352c0f96b9c830fd3fdfe11a56400740491d9",
+          "results/development-20261115/scale/dev-7880a6de7cc2-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-7880a6de7cc2-democracy8-s1.stdout.log": "7082ed1d39808c3940c435e6be680817f70c790230d24f1a8dc803b984b1387a",
+          "results/development-20261115/scale/dev-7880a6de7cc2-independent100-s1.jsonl": "9dd6a442c42b31f96f0f9f148c7de05f8c46c9004c8f82c93c4fe142a02f6db2",
+          "results/development-20261115/scale/dev-7880a6de7cc2-independent100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-7880a6de7cc2-independent100-s1.stdout.log": "3c0f52d3abb96877f5db8933c7c2cd23fce573b1ea6ab20bfedfdd7804fbbaa3",
+          "results/development-20261115/scale/dev-7880a6de7cc2-independent32-s1.jsonl": "910228d39bd4b1bee61a15d5a9b9c2cef065b15f08f76cda7f0e0e031e0f654e",
+          "results/development-20261115/scale/dev-7880a6de7cc2-independent32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-7880a6de7cc2-independent32-s1.stdout.log": "00cc1cfead3b732579eda2a9998042f32f4611b417bba61071edc899da2e90f9",
+          "results/development-20261115/scale/dev-7880a6de7cc2-independent8-s1.jsonl": "8758b5a431684316c88921a56388f471424d496ff263a20fbb1656a57246a15e",
+          "results/development-20261115/scale/dev-7880a6de7cc2-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-7880a6de7cc2-independent8-s1.stdout.log": "5725da141ba40c82906a5849d575e2b1b968eb81a541f3dfca177f52e65ceb3e",
+          "results/development-20261115/scale/dev-7880a6de7cc2-shared100-s1.jsonl": "e84c727ad79a8b67d28869fd47630879c1dacb0abc1a85b0dbd168e220a513f6",
+          "results/development-20261115/scale/dev-7880a6de7cc2-shared100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-7880a6de7cc2-shared100-s1.stdout.log": "7fad97982150fc0bc0210c44478ffd1576d15356b35d9d7ec6f74fc05b3eac67",
+          "results/development-20261115/scale/dev-7880a6de7cc2-shared32-s1.jsonl": "a3b3b8cbea9a0a274a1503e423e6d6231c383fb722b5efecd7f3522dc3f6bf7b",
+          "results/development-20261115/scale/dev-7880a6de7cc2-shared32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-7880a6de7cc2-shared32-s1.stdout.log": "9bafa744b52e936f71e55657098401c1206179ed4bfaeb22c3ca7d994618d3cb",
+          "results/development-20261115/scale/dev-7880a6de7cc2-shared8-s1.jsonl": "80f3c9c00608835d4a2d233536fc3cf4e3a73b21b3e3289401e069f40af2a841",
+          "results/development-20261115/scale/dev-7880a6de7cc2-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-7880a6de7cc2-shared8-s1.stdout.log": "bb89c8a818a166eb76aff737f4e33bed61fc359f8181fc2e4b21003307cdd6d5",
+          "results/development-20261115/scale/dev-82ea75b5370a-democracy100-s1.jsonl": "21d7cc851cd4da759c23ce203a1e7460ef47b2c9f5e12263ecf38eb3a6abe4b3",
+          "results/development-20261115/scale/dev-82ea75b5370a-democracy100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-82ea75b5370a-democracy100-s1.stdout.log": "f9be9894b4da3e55478b6871a4ba0e7981f69c8b42abdfdfeea32377f76b6401",
+          "results/development-20261115/scale/dev-82ea75b5370a-democracy32-s1.jsonl": "8a126b98c73ad9147368473e02c5fb80f50e3cf067b03fee78704b6723595843",
+          "results/development-20261115/scale/dev-82ea75b5370a-democracy32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-82ea75b5370a-democracy32-s1.stdout.log": "b54bbb7635f85bbf4278a1100b397b180a94a0a7bc2a94a702bd4ddca83d1cf0",
+          "results/development-20261115/scale/dev-82ea75b5370a-democracy8-s1.jsonl": "c979f27455f19478edc4f3b5f42a05a9507a450f4b95775f3941b3f0945a5c68",
+          "results/development-20261115/scale/dev-82ea75b5370a-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-82ea75b5370a-democracy8-s1.stdout.log": "395c4d8c7ac77afb0f13036c7037e4140611837cc7491d30c1153ba53759488f",
+          "results/development-20261115/scale/dev-82ea75b5370a-independent100-s1.jsonl": "1e008cc537746fcb8c3458f4dda99a8cffe17591085ed4f439e694e5e1559e60",
+          "results/development-20261115/scale/dev-82ea75b5370a-independent100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-82ea75b5370a-independent100-s1.stdout.log": "c2cae471efec112ae74dcf802b84a28be125ef710bd129a713d205553854374e",
+          "results/development-20261115/scale/dev-82ea75b5370a-independent32-s1.jsonl": "7b56cae59252581fa949a5c47eedb639a9e2c27345b16ddd28e3012a2e6821db",
+          "results/development-20261115/scale/dev-82ea75b5370a-independent32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-82ea75b5370a-independent32-s1.stdout.log": "64c90779a8b08bac2e6f76077ac874734aba0f90b47c63caad7dbabd14f6229e",
+          "results/development-20261115/scale/dev-82ea75b5370a-independent8-s1.jsonl": "44be0e0b2631a42d5554b24bd007fcbffac618a860510bf5a9a0d6d5c9a3c044",
+          "results/development-20261115/scale/dev-82ea75b5370a-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-82ea75b5370a-independent8-s1.stdout.log": "6cf77b3531194aaa3f436b9e9e33765a6003722fbc79a5acdecade2c9f809dcb",
+          "results/development-20261115/scale/dev-82ea75b5370a-shared100-s1.jsonl": "06ef8f714bf194f6c1438d0cc8e9ea9e53ff822e8bc1f22e835b2caf839d2bed",
+          "results/development-20261115/scale/dev-82ea75b5370a-shared100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-82ea75b5370a-shared100-s1.stdout.log": "936bc27b9e555a3355970153c0c1abc3d64fa0a0907cf3eaa310a51b78f5ab23",
+          "results/development-20261115/scale/dev-82ea75b5370a-shared32-s1.jsonl": "3efbf980b97bb875e71e3acb7d716b3818b08dcb12b3ebcf43a1215b2b74fad1",
+          "results/development-20261115/scale/dev-82ea75b5370a-shared32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-82ea75b5370a-shared32-s1.stdout.log": "2afb6240690205a39c351c2f74ba7209269c3683f1280d1d22a70e0984b06411",
+          "results/development-20261115/scale/dev-82ea75b5370a-shared8-s1.jsonl": "5985d17d652290161a827d6d39f56b655bb6b0f4487c32c29118d1fa16ae815a",
+          "results/development-20261115/scale/dev-82ea75b5370a-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-82ea75b5370a-shared8-s1.stdout.log": "86fb8b221e5c467fb8545020c6f2bbb716cc0470f9d8b0886bbd672bd63d41e9",
+          "results/development-20261115/scale/dev-98afa92166b7-democracy100-s1.jsonl": "9c4894b6d05784b06d490fff36c59b38f236c6b7639d41053af742b034a239f5",
+          "results/development-20261115/scale/dev-98afa92166b7-democracy100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-98afa92166b7-democracy100-s1.stdout.log": "76454e7ba7ac374d6ebc043fcc3980ba27e95869e85aceb91becf1ab9c3d7852",
+          "results/development-20261115/scale/dev-98afa92166b7-democracy32-s1.jsonl": "2faa1b9bf0936fdd0bb39235a9beece79201aff0938dd5720959944ee9b533b9",
+          "results/development-20261115/scale/dev-98afa92166b7-democracy32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-98afa92166b7-democracy32-s1.stdout.log": "89f67d29e6e7598bcce51e33435bfe607f98d74dd81cc63f328bef980372e84a",
+          "results/development-20261115/scale/dev-98afa92166b7-democracy8-s1.jsonl": "14a65c9e07be95aa504a0928c2c0cdf2f62bb854d8c140c4e5cf04efb7934172",
+          "results/development-20261115/scale/dev-98afa92166b7-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-98afa92166b7-democracy8-s1.stdout.log": "d2331f4a838647b2438d736ac8d94753529c45af98575d6fbdf8ebc0b5e3aafc",
+          "results/development-20261115/scale/dev-98afa92166b7-independent100-s1.jsonl": "a589cf3215ab9b8bafeb49806ab70d10447a75432c050c774a44c9cf4b21d38c",
+          "results/development-20261115/scale/dev-98afa92166b7-independent100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-98afa92166b7-independent100-s1.stdout.log": "33e5e635cd6b4cf13cbcc62bd25e93b91e62cc445978f9f7c3d9302a57394e75",
+          "results/development-20261115/scale/dev-98afa92166b7-independent32-s1.jsonl": "89d49575600a12ca7ae479dacbc9ca13e4eb61eac931c91c443e057516b8a706",
+          "results/development-20261115/scale/dev-98afa92166b7-independent32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-98afa92166b7-independent32-s1.stdout.log": "16145d04341e9563f16245e16cf3101463848c008c12283c159d70e1cef22be4",
+          "results/development-20261115/scale/dev-98afa92166b7-independent8-s1.jsonl": "9c4cebfa8d5c629a9b5fa75dfc58eab3b4f0ae1bb746a98ea0f333c4880af9a3",
+          "results/development-20261115/scale/dev-98afa92166b7-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-98afa92166b7-independent8-s1.stdout.log": "f3df6a8a2bc0aedd8fbfb3e4ac8229222b35f16e3ed61eb79d7675b06533e744",
+          "results/development-20261115/scale/dev-98afa92166b7-shared100-s1.jsonl": "8ac5400aa5bf70e371323359c8d829118c9014c58d256744e38e8c5ce4a2b237",
+          "results/development-20261115/scale/dev-98afa92166b7-shared100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-98afa92166b7-shared100-s1.stdout.log": "69f0a9cfef8953a9d8fec6548d5a7e7f020aefe6e48a78ce0a91537d5a0080e5",
+          "results/development-20261115/scale/dev-98afa92166b7-shared32-s1.jsonl": "140080ccbb52963c7390bb4722b8405cec7bcabab0b32cf4d57ab2915d14b3c9",
+          "results/development-20261115/scale/dev-98afa92166b7-shared32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-98afa92166b7-shared32-s1.stdout.log": "58a347282f2dc579e612130420fbda0f8ff2f20a2d9f07188fe50cf223967702",
+          "results/development-20261115/scale/dev-98afa92166b7-shared8-s1.jsonl": "2f795c9d890972d2503662a3e4b35e83c0365000ad9cbaf0464f1fc8277a00ad",
+          "results/development-20261115/scale/dev-98afa92166b7-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-98afa92166b7-shared8-s1.stdout.log": "dde195c157183f5edc304efb3547fb4a7b8d93091b623174f9ae54512b1c6d28",
+          "results/development-20261115/scale/dev-a333e0dae70f-democracy100-s1.jsonl": "e1190bed63e0e1109a38845ab6b877963061480e80c7c46eba1a6cacc296a83c",
+          "results/development-20261115/scale/dev-a333e0dae70f-democracy100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-a333e0dae70f-democracy100-s1.stdout.log": "8e57726875f74ca9e0275bc5c684cd143353726a0723b24f19d237ce8ed62f42",
+          "results/development-20261115/scale/dev-a333e0dae70f-democracy32-s1.jsonl": "553ca1fe396ba223535c3fce6853d470d9e3c2d02465cd57b2cd11de5e212794",
+          "results/development-20261115/scale/dev-a333e0dae70f-democracy32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-a333e0dae70f-democracy32-s1.stdout.log": "ee6736b439459c58b549f0216669aad277d2597fb389f702d81dfd8e0c21c7ae",
+          "results/development-20261115/scale/dev-a333e0dae70f-democracy8-s1.jsonl": "ccf77bae3cdef37d4f965a53ffe87d4b35ac0e3f2bb045e558a77d354626130b",
+          "results/development-20261115/scale/dev-a333e0dae70f-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-a333e0dae70f-democracy8-s1.stdout.log": "40a4556558e67ea5d6dcac5fb07cd0b8d9e672ccbe48e26e8bbcdf6a9198d841",
+          "results/development-20261115/scale/dev-a333e0dae70f-independent100-s1.jsonl": "f0ea5683c385ca5fd076120d4c8bc1c1b8345e61bc8a57c7668bce802a075211",
+          "results/development-20261115/scale/dev-a333e0dae70f-independent100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-a333e0dae70f-independent100-s1.stdout.log": "18791ac17fa833aa42915eb707ecabeacedf0b8fae072a43866f44ec3181eb0b",
+          "results/development-20261115/scale/dev-a333e0dae70f-independent32-s1.jsonl": "8dfd739b603ec014678a0c637d7c3ab2b0c61f29205b0c64a1d3515c0121a20f",
+          "results/development-20261115/scale/dev-a333e0dae70f-independent32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-a333e0dae70f-independent32-s1.stdout.log": "83a40c5ddff4105f247bf2b6001ed34f1ed12182ecbb9bfa782fdc80ce761edd",
+          "results/development-20261115/scale/dev-a333e0dae70f-independent8-s1.jsonl": "a339e2a93aac93900af6ffe04a0acadbf1f11aee6bd43c0cc2e7f13f932b8e99",
+          "results/development-20261115/scale/dev-a333e0dae70f-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-a333e0dae70f-independent8-s1.stdout.log": "bafffbeb5c37e2740633e7a527e76629688ca66bffcb7b2b84872a4e66ec7af2",
+          "results/development-20261115/scale/dev-a333e0dae70f-shared100-s1.jsonl": "5ad9e91da9d8801ab79e8ceb876b2b7109c32c073ce0ad642582c8da3d777345",
+          "results/development-20261115/scale/dev-a333e0dae70f-shared100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-a333e0dae70f-shared100-s1.stdout.log": "5fe476cf2475c073586e127974dbcbf43af00220b13e103e646ddc3239f183d1",
+          "results/development-20261115/scale/dev-a333e0dae70f-shared32-s1.jsonl": "1f13477c8a15945f2184bea055874100dc7d31b47c61b1ee9960e419d898b5f1",
+          "results/development-20261115/scale/dev-a333e0dae70f-shared32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-a333e0dae70f-shared32-s1.stdout.log": "128f7ae5601f5ab118c275220de609e20f01860f9a55166464c54e6530e7c23d",
+          "results/development-20261115/scale/dev-a333e0dae70f-shared8-s1.jsonl": "9245965c746b5766b1b593e04f9ba88bcf41d57b42598de1575225de0adcd410",
+          "results/development-20261115/scale/dev-a333e0dae70f-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-a333e0dae70f-shared8-s1.stdout.log": "86bc382e126bd946f9a0d41a6b004b88ad2bcd7d021638ffb65ac10b1ac9e386",
+          "results/development-20261115/scale/dev-c5f3655022a0-democracy100-s1.jsonl": "a42bb6a14d1f54e40b932a6a8470215746fd1265c9f8756b12b8152b8782addd",
+          "results/development-20261115/scale/dev-c5f3655022a0-democracy100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-c5f3655022a0-democracy100-s1.stdout.log": "b74aa1e8841d0f01a2a139f26ad6a8781f190600a4b4ad00af2f3faf0510190c",
+          "results/development-20261115/scale/dev-c5f3655022a0-democracy32-s1.jsonl": "99b9300fdc7c5ebeda9caa42006e54c0985a22d8f91aaa8f1f861cc0f46d076c",
+          "results/development-20261115/scale/dev-c5f3655022a0-democracy32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-c5f3655022a0-democracy32-s1.stdout.log": "1f4b57c3281520fe022485f998faacbb9c533e1cabeb0acaa79df41d737d18b8",
+          "results/development-20261115/scale/dev-c5f3655022a0-democracy8-s1.jsonl": "097187d91dddf7c5982c43078b74f51396642d8e26775c453d45ce1bcda25604",
+          "results/development-20261115/scale/dev-c5f3655022a0-democracy8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-c5f3655022a0-democracy8-s1.stdout.log": "fe0ef0ed76f9cdb825b1a15f7bfbc152ac1049f890e94c8d41224f771d10c9e9",
+          "results/development-20261115/scale/dev-c5f3655022a0-independent100-s1.jsonl": "dc07216da613211611244c0b2417c10bdf707c5da80b10022dbd25308051928a",
+          "results/development-20261115/scale/dev-c5f3655022a0-independent100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-c5f3655022a0-independent100-s1.stdout.log": "0a435100720a2692ed72f2e9a8a9e5a4d63f5dc4e05a6cf6273473d425c32b00",
+          "results/development-20261115/scale/dev-c5f3655022a0-independent32-s1.jsonl": "01a4d245fb50987d996826be1445acae87985f2b743bba86b3a134f1af5471ba",
+          "results/development-20261115/scale/dev-c5f3655022a0-independent32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-c5f3655022a0-independent32-s1.stdout.log": "5590c100f5ff279fb42e6f73bfd215bbf9f5faf8a54ecd9af6822faf61a58fab",
+          "results/development-20261115/scale/dev-c5f3655022a0-independent8-s1.jsonl": "2985eb6d3405aa6b265e119e9eb03c7761f5a2c6568b0b248ad1bd28b306d764",
+          "results/development-20261115/scale/dev-c5f3655022a0-independent8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-c5f3655022a0-independent8-s1.stdout.log": "7716c74715e81d59f320029d22543da65774364db106b9e8d060841023e5828a",
+          "results/development-20261115/scale/dev-c5f3655022a0-shared100-s1.jsonl": "0932837235c0891500ee9b94300d534ded9b5ed09e86b043d267561454d90ee1",
+          "results/development-20261115/scale/dev-c5f3655022a0-shared100-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-c5f3655022a0-shared100-s1.stdout.log": "6249917c5d2f7cd424427502d5ef11eb1bbf7060a1a1194a5153701146127925",
+          "results/development-20261115/scale/dev-c5f3655022a0-shared32-s1.jsonl": "83deea20f8dae61138e46195be19c6e79ce760a3e204107205772cafd173e47f",
+          "results/development-20261115/scale/dev-c5f3655022a0-shared32-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-c5f3655022a0-shared32-s1.stdout.log": "f0977737a8bf1f15c35851ab7ac740f53f2ac92f5effad26012779dbb532b1f9",
+          "results/development-20261115/scale/dev-c5f3655022a0-shared8-s1.jsonl": "cead75223d4ad3190cf6fd7a42f058a5bc4c9f87ace8022d2339b3d3e22f552c",
+          "results/development-20261115/scale/dev-c5f3655022a0-shared8-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/scale/dev-c5f3655022a0-shared8-s1.stdout.log": "9c319979ed51aef1047e1055211648b09260886ff535ab95368e432f1e878ba5",
+          "results/development-20261115/scale/manifest.json": "68688b2483fdc5acd72379f228b4ed011c2506cc36860c241cfc63b9ab35698f",
+          "results/development-20261115/scale/metadata.json": "ab9fdfe0d798fd3d3061573f619088fd91ec0290485efb0627c613b66b9b0531",
+          "results/development-20261115/scale/summary.csv": "9653edd456426db9d7c95b9d47d13e2f41b327685de62fb9d24cacede8a6a4e5",
+          "results/development-20261115/scale/summary.json": "7b128d00f8e266dc3cde01030929c9ff3d2754a897d66a38b1f11b06a6b5b12d",
+          "results/development-20261115/thinking-8k/analysis/accuracy-wilson95.png": "fa6187e5ac5723f3836fe0ddc7f3c255bb2bbafda15ac2db85c306b1cee88606",
+          "results/development-20261115/thinking-8k/analysis/accuracy-wilson95.svg": "634c4ac5176ce11e31a9022882814fa715d8a6998df8eefa8094fb6d2457a160",
+          "results/development-20261115/thinking-8k/analysis/analysis.json": "b3b1ef7130ab1e2265c1ebfd5b7935a8580d46fa705e7ae59cb21a1821d3739d",
+          "results/development-20261115/thinking-8k/analysis/case-latency.png": "a36e7bc49be10afe800e279273c7ceb3189ee3b7574466e6b7db851668cfca48",
+          "results/development-20261115/thinking-8k/analysis/case-latency.svg": "bbba5b7ce67ffdca9ec920580eb10cd914f705e66c4a6e04f828c14c33799de6",
+          "results/development-20261115/thinking-8k/analysis/paired-results.csv": "7f463676844239125682d22a9a75261d73c4056126dcf81ce593eac7d2fbe3e6",
+          "results/development-20261115/thinking-8k/analysis/success-vs-completion-cost.png": "0bf3d3cc7d96cd69e6a5417e4805a00f1d6422687e0ef25924cc9206d48f0d0c",
+          "results/development-20261115/thinking-8k/analysis/success-vs-completion-cost.svg": "5be98f2c7e775f3bcd1b32184d23b0bd978fba154ac4345930bc7e30a98fd093",
+          "results/development-20261115/thinking-8k/analysis/summary.csv": "6d8cd0b0615cbc488d293bc2ea849588c04764ceb52f9dcd47ed70ee8ae51f34",
+          "results/development-20261115/thinking-8k/dev-33afb93cb351-direct_thinking_8k-s1.jsonl": "9f12259b1d25ab27e0dd6741e597f9cb2728122a5e7f64cf55fc40406a3ee77a",
+          "results/development-20261115/thinking-8k/dev-33afb93cb351-direct_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-33afb93cb351-direct_thinking_8k-s1.stdout.log": "c159e27b072e3ac3e3f8b2c4529311ac6532968b7c1ccf90499d99cf0fe6e9e4",
+          "results/development-20261115/thinking-8k/dev-33afb93cb351-solo_steps_thinking_8k-s1.jsonl": "129251853aeb57c2038cc73184ba68a6dec4cc8e95c650766e5caca5ca495a4f",
+          "results/development-20261115/thinking-8k/dev-33afb93cb351-solo_steps_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-33afb93cb351-solo_steps_thinking_8k-s1.stdout.log": "b2379b311a9850d8c79c8ae54508ba8f922561141902002670dc3048849e4715",
+          "results/development-20261115/thinking-8k/dev-53da8851d38e-direct_thinking_8k-s1.jsonl": "04597377b704a7c186c1ac398a74aa5b8f7019a29cd268ef2b939fc1d3684c59",
+          "results/development-20261115/thinking-8k/dev-53da8851d38e-direct_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-53da8851d38e-direct_thinking_8k-s1.stdout.log": "84b5d0b0fbdef3ad3fa3a65ec472725665f6ce8fa67b14df177bb4fdb100c2ea",
+          "results/development-20261115/thinking-8k/dev-53da8851d38e-solo_steps_thinking_8k-s1.jsonl": "596e18c60c657f749b823ea18e690ab2cbfc9a7e9a91e4267a92d225411ae25f",
+          "results/development-20261115/thinking-8k/dev-53da8851d38e-solo_steps_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-53da8851d38e-solo_steps_thinking_8k-s1.stdout.log": "cbdf455a58f7b5a9e1280aad4ae4f06b182236ad5fe818c0487b3da479a90117",
+          "results/development-20261115/thinking-8k/dev-705fbd047ebe-direct_thinking_8k-s1.jsonl": "47ff1d4c52195be59984afba558bbdf796450695ffeed6937885ea7465c04925",
+          "results/development-20261115/thinking-8k/dev-705fbd047ebe-direct_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-705fbd047ebe-direct_thinking_8k-s1.stdout.log": "393f61762361d2d932f6a511571c02b3b640bc3927547a2fe05690b1437559d3",
+          "results/development-20261115/thinking-8k/dev-705fbd047ebe-solo_steps_thinking_8k-s1.jsonl": "bf51cb24a031a0a9047bd54580fb1fcc653745a6387ba1ce0e461ed98ef17bc0",
+          "results/development-20261115/thinking-8k/dev-705fbd047ebe-solo_steps_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-705fbd047ebe-solo_steps_thinking_8k-s1.stdout.log": "9305547310bf344e0cce4d976c5c13d566b304b6252e66b0a8648cb834a89cb2",
+          "results/development-20261115/thinking-8k/dev-7880a6de7cc2-direct_thinking_8k-s1.jsonl": "c91b14e7720163095344dc8e9939fb69d506cf2ddf9910c40099a17ea3008b68",
+          "results/development-20261115/thinking-8k/dev-7880a6de7cc2-direct_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-7880a6de7cc2-direct_thinking_8k-s1.stdout.log": "b8e3faa0da296bc0df6645abcbf2f66ec78e2d0e6bcdb72549ba4b49dbf67f13",
+          "results/development-20261115/thinking-8k/dev-7880a6de7cc2-solo_steps_thinking_8k-s1.jsonl": "20e0760d4108396d6e290e3ae17d030fc2d10b78c56850102b85e771b17c931c",
+          "results/development-20261115/thinking-8k/dev-7880a6de7cc2-solo_steps_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-7880a6de7cc2-solo_steps_thinking_8k-s1.stdout.log": "5273150e1b19646a96270dd1afbc76aba4856bee6f1ec076f3426344090b07d7",
+          "results/development-20261115/thinking-8k/dev-82ea75b5370a-direct_thinking_8k-s1.jsonl": "0cce3de41dd3c5c9af09ec7baf52f83180fc6d59008b85033f8c288d3df3dcb6",
+          "results/development-20261115/thinking-8k/dev-82ea75b5370a-direct_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-82ea75b5370a-direct_thinking_8k-s1.stdout.log": "71ae86eb1c76a317cd9c3e57e4f922cf7f8ae6cf9f87cd27a177681dc4c4fe97",
+          "results/development-20261115/thinking-8k/dev-82ea75b5370a-solo_steps_thinking_8k-s1.jsonl": "1025637d5f20a44954de52d00d629ad5570d04e9899774558f137c9a1aab5aa9",
+          "results/development-20261115/thinking-8k/dev-82ea75b5370a-solo_steps_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-82ea75b5370a-solo_steps_thinking_8k-s1.stdout.log": "333ca7f24769c7fbdcd835954a6fef33ca561ccf6821039f139a13ed4226095c",
+          "results/development-20261115/thinking-8k/dev-98afa92166b7-direct_thinking_8k-s1.jsonl": "e95eedb931725abd179410eafe0f93ab1dfb520a296b7cf147d64cbfd4fd1881",
+          "results/development-20261115/thinking-8k/dev-98afa92166b7-direct_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-98afa92166b7-direct_thinking_8k-s1.stdout.log": "aacf1531dfe1f276df6977ead7a0a777863f2e0d5c77a716e83637824079b9f0",
+          "results/development-20261115/thinking-8k/dev-98afa92166b7-solo_steps_thinking_8k-s1.jsonl": "b8f1bf48a61b3be6afeb85903cdd501c9ef2677a874329455d984cb5f340983b",
+          "results/development-20261115/thinking-8k/dev-98afa92166b7-solo_steps_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-98afa92166b7-solo_steps_thinking_8k-s1.stdout.log": "91f1b1bbbdde300ed0ce0f9f7674c82520db1a94d7cc4d6dcf407b601639cebc",
+          "results/development-20261115/thinking-8k/dev-a333e0dae70f-direct_thinking_8k-s1.jsonl": "d0903105fc3cc9bdb4042bcf26ea41ab9d9a294b2e68bf120e3d17c6515fa5d2",
+          "results/development-20261115/thinking-8k/dev-a333e0dae70f-direct_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-a333e0dae70f-direct_thinking_8k-s1.stdout.log": "6c74979c4cec361a02e7d132ce61d78435766c87f65b556ba613a04a165522bb",
+          "results/development-20261115/thinking-8k/dev-a333e0dae70f-solo_steps_thinking_8k-s1.jsonl": "f2fbc2049c2abbef93d4af94db09d1b021b6539b891e79ed293c8c3a45544fea",
+          "results/development-20261115/thinking-8k/dev-a333e0dae70f-solo_steps_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-a333e0dae70f-solo_steps_thinking_8k-s1.stdout.log": "10b304e5c2b4c31e62b92843f923cb8917a9b074b6a77754a530e23b910ee461",
+          "results/development-20261115/thinking-8k/dev-c5f3655022a0-direct_thinking_8k-s1.jsonl": "b39de4b670fb2c7dc7e69787233b9dd8ff67264dd696bc19a12b35b0a62a0156",
+          "results/development-20261115/thinking-8k/dev-c5f3655022a0-direct_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-c5f3655022a0-direct_thinking_8k-s1.stdout.log": "f10b36b726c4dbe9f4eecaca7d906929bf4fb4f5a716bf48a678031b4ab87131",
+          "results/development-20261115/thinking-8k/dev-c5f3655022a0-solo_steps_thinking_8k-s1.jsonl": "05b67a5f6c07a86051e9b11e0abc601e7fd15c215d7401c37f65ab953ccf92d4",
+          "results/development-20261115/thinking-8k/dev-c5f3655022a0-solo_steps_thinking_8k-s1.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "results/development-20261115/thinking-8k/dev-c5f3655022a0-solo_steps_thinking_8k-s1.stdout.log": "094450d7446f66607e1d669f3d3f08cdd7d804f62da4135242be9a61e4fe358d",
+          "results/development-20261115/thinking-8k/manifest.json": "93472b24d1a78b714ea19210b37559be89dc594e5be2f3f8559b423db1a064b0",
+          "results/development-20261115/thinking-8k/metadata.json": "a80c7e3c90689301371da46e678c2e3f03db45441e67296142ed642468a7f722",
+          "results/development-20261115/thinking-8k/summary.csv": "fd0b50272fb3f0b113f20181ad428116b1802969c9b3564ddc7b1ed02b8adc84",
+          "results/development-20261115/thinking-8k/summary.json": "dbbb2d3d877b46846a44b72800cc907a328fbc6e8af2c85de8e7c2a8342d1da7",
+          "results/governance-20261115/baseline/manifest.json": "9ba31d580704b136efa8bbf5a97645737c86ff2fbb1a63bfc48f4bbc2077cd40",
+          "results/governance-20261115/baseline/metadata.json": "1f0545faacba24f4198aa1192b7adffde0fe98051830f3c9e2a4ec036cb33abf",
+          "results/governance-20261115/baseline/p1-s1-democracy.jsonl": "54b35a7bb13ca22fab34fd07a78c3dc76df842bea042b7f4a3424263a87fdf2c",
+          "results/governance-20261115/baseline/p1-s1-independent.jsonl": "6f170d637dd564405748bfd02469cd94849eacb9c1ad9f920bb0f73de2b6610c",
+          "results/governance-20261115/baseline/p1-s2-democracy.jsonl": "0413ff27d21a14c5b6b8b0a87a067eb1579a0fe9af3e05e774910f3464f87335",
+          "results/governance-20261115/baseline/p1-s2-independent.jsonl": "a184d5a8bbd81221c19c5c687a317c39cb6f6cf38d0fef684272e444bb859477",
+          "results/governance-20261115/baseline/p2-s1-democracy.jsonl": "e7a4d7fa0602932271d5b79408b7b6bd207714efceb559760c6799f8f9b4e20a",
+          "results/governance-20261115/baseline/p2-s1-independent.jsonl": "955919901db54990b2a6fe3c615a1f6ec1df9eefcd97d2621d2249f4d73d21b3",
+          "results/governance-20261115/baseline/p2-s2-democracy.jsonl": "1e38eb5f7ea709ec9e0911d517647252f80916773d2b5ca529a1e23a8c09cd10",
+          "results/governance-20261115/baseline/p2-s2-independent.jsonl": "4f19b393306f41d946782f9ab02f60f58f5acf94982d770b8a4eb8ecc120488c",
+          "results/governance-20261115/baseline/p3-s1-democracy.jsonl": "a059b70688824ed10d653f5c0bf566d553fcbf95a2c03b62115b78ae4ec085cb",
+          "results/governance-20261115/baseline/p3-s1-independent.jsonl": "c20cb994da28c6ba7d8993bbae2c581ff739d10748c70b151b8efaadd74bfbb1",
+          "results/governance-20261115/baseline/p3-s2-democracy.jsonl": "ff70e964a7d9eb2f21c1e49b3d3893513c951b152a1614f475fe27f75015d266",
+          "results/governance-20261115/baseline/p3-s2-independent.jsonl": "00387ca61ecce1385e81a0ea2fcc270c1a260eccf3218ce5b374f462715f2ae3",
+          "results/governance-20261115/baseline/summary.json": "3d5ac46e2a830fcc143a4ec64eeb8c573c18a7fa09b70c836e5e29b493a157e1",
+          "results/governance-20261115/guarded/manifest.json": "d8aec7cfcc0f447415a14730da2da2cbbcd42a20b25484ea6e412b36894b4c9c",
+          "results/governance-20261115/guarded/metadata.json": "be41775ab32af3ddcc2987e217c6a0a2c0fd73bc9ce034a1c74dce038d8ef86e",
+          "results/governance-20261115/guarded/p1-s1-democracy.jsonl": "5520f5b3d3b661173a19cd1459c6017a38619190b48776a264a91c70498f7521",
+          "results/governance-20261115/guarded/p1-s2-democracy.jsonl": "2a83100cee2af37650a4d13fc8de8559af50d0506bef979c08b7478917485ada",
+          "results/governance-20261115/guarded/p2-s1-democracy.jsonl": "b994cb4b7f20f86cb1ded090c1435fff8ab80b24791d5591b0f34748e5081835",
+          "results/governance-20261115/guarded/p2-s2-democracy.jsonl": "50334d28f6fd1ea986cde280e933a81a6ca804b34db1f1280f91150de555b760",
+          "results/governance-20261115/guarded/p3-s1-democracy.jsonl": "0f3a6e0ef3f4d67bdb325774f6b5ff34ce634c83092348fce82090e073fbc9a8",
+          "results/governance-20261115/guarded/p3-s2-democracy.jsonl": "0bcde29e2aec34c21467ef4401d76477d50b0d64318acbfd592f65148ddf851a",
+          "results/governance-20261115/guarded/summary.json": "c62078403144ca4e74a753a86d1579a59dab201f102899db8c25da50931fc7ed",
+          "results/governance-20261115/stable-ids/manifest.json": "fd4e489a32a42663ecec2473bfd5dbcc0fc9ffcd8a1ca82bd413fa5faf51d798",
+          "results/governance-20261115/stable-ids/metadata.json": "148b8ff431234bd97c7b51969e50bda40eb3ed1af0f65eec09b61b0b8078b42c",
+          "results/governance-20261115/stable-ids/p1-s1-democracy-guarded.jsonl": "af81942a5a27fc54cb7c08aa172a7b831638e5c97500c6300749e10db8e4e7bc",
+          "results/governance-20261115/stable-ids/p1-s1-democracy.jsonl": "5b1414559b02a4db86f4a3161e057b65c95d3523df7b5a0fb763471c5c6a0380",
+          "results/governance-20261115/stable-ids/p1-s1-independent.jsonl": "14c30bb32b096d65da548772fdb7792fae5bc9d429b6018dc618ed5913fa15f8",
+          "results/governance-20261115/stable-ids/p1-s2-democracy-guarded.jsonl": "00241af7d964a52791e8ab04dd1fd464bdcb4646c0d1c4f741071cf90c83efd2",
+          "results/governance-20261115/stable-ids/p1-s2-democracy.jsonl": "a604d62f9a2614ddef4c82cd11268dd896ae3c73fe7a6a7b01295cf6662e63da",
+          "results/governance-20261115/stable-ids/p1-s2-independent.jsonl": "f04aadbe963f28cc3ce1669db7494fa55fdfb1693f21fa3b2fe7c37d21dc1194",
+          "results/governance-20261115/stable-ids/p2-s1-democracy-guarded.jsonl": "2b21deda77d92fdd7b6fd2f0b8c0c6197bfabccfc02c18438a9e95b5a280af6c",
+          "results/governance-20261115/stable-ids/p2-s1-democracy.jsonl": "26eac7deaf38fbb152eba643fc340f59a52f63777283c02d7d558a4ce11194fb",
+          "results/governance-20261115/stable-ids/p2-s1-independent.jsonl": "0119d28926e0b96379019d76c1f3c886406827ccf4394c56670e6deafb2100f4",
+          "results/governance-20261115/stable-ids/p2-s2-democracy-guarded.jsonl": "c1356d5b810c43a827a434f0e52d43ff32727a3fbd059327c8676ccc7cc8dc2d",
+          "results/governance-20261115/stable-ids/p2-s2-democracy.jsonl": "f3eaaa67d9fd061fbd17875b5165b5ce583c3111e8efe9a8dce179120b6b35e0",
+          "results/governance-20261115/stable-ids/p2-s2-independent.jsonl": "cab3f8cc504a8eb28717ece8bf31caeaa435ba8add573510ae2c965f8847e8b7",
+          "results/governance-20261115/stable-ids/p3-s1-democracy-guarded.jsonl": "052cffc872b79f7abfa41281490627a7c96894a92a25404393021a0b9d392b48",
+          "results/governance-20261115/stable-ids/p3-s1-democracy.jsonl": "786bdcdb574bea2554fe34b483a51f469b058c836a9e4c205e7e3b92b73f136e",
+          "results/governance-20261115/stable-ids/p3-s1-independent.jsonl": "7b3f1d0d4bdf6b06b2f9dcf717de999d0e63c443f2e56dae419bb247d042d16c",
+          "results/governance-20261115/stable-ids/p3-s2-democracy-guarded.jsonl": "da12689c46b7ba6ec49d83f37a4adc2f5a9e0113a1f0b256d9da1dbdfa5a6058",
+          "results/governance-20261115/stable-ids/p3-s2-democracy.jsonl": "db31c2375f095e450554e0466f8bca07e515928c335ef5f694fcba7d9633a2d6",
+          "results/governance-20261115/stable-ids/p3-s2-independent.jsonl": "a59074900b6405cbaf3d03298c907f3dce5468c928664916ac06513affba113f",
+          "results/governance-20261115/stable-ids/summary.json": "e738f92b78a482cd1a22434c59baff4d3e3b7bc83ce4e5f74d09935f7500d67f",
+          "results/pilot-20261115.json": "7bc5ea0b782d949f48b6480f571aa9b6658d93bea21bd772cc4718c2ac5b3dfc",
+          "results/prompt-calibration-20261115/REPORT.md": "873068c356aa73b97cb7a726c881c0a68aff8494323b674d3536e623cb34eb5f",
+          "results/prompt-calibration-20261115/archived-source.py": "e02477b6587b274c9229d7318406e71e9aa0a085e03857babc0e064e11313aa7",
+          "results/prompt-calibration-20261115/events.jsonl": "2b9648a9d04019d2b973842f101c3a8c1436dc9b98c23b852aea074ca0b8a6b9",
+          "results/prompt-calibration-20261115/manifest.json": "9aaac03abc9a8d567b201437b91c18495e28333cd28d500e9fbad76e1b82ba3f",
+          "results/prompt-calibration-20261115/metadata.json": "8f2816b9b9d6aa5e3c17365b330d10a10b66eb0487fd514415e399f1753a9021",
+          "results/prompt-calibration-20261115/provenance.json": "06800bb5eeaedf60ed4ca38e53a910df7d8ea9cf8ab17c9eeab9b9a45bc4a2dc",
+          "results/prompt-calibration-20261115/summary.json": "d2a8d09883b214546a8127cb02cb9c0857d92bccab6fc53640d20d4823ccde7c",
+          "results/reputation-smoke-20261115.json": "0528878bb72df3c2f804a5485c0b7d63c8245c16c9653fb4aace5e42608e6576",
+          "results/serving-20261115/dspark-baseline-mixed-c1-node03.json": "b15e6833a782b7084228e01a660527c22b8ced2e76cf31b27c685be1235c3103",
+          "results/serving-20261115/dspark-baseline-mixed-c25-2.json": "ae927ce9776d4e8f0f1ab6517ba62bc9c66f88a0a17c45942edf3faaa80df74e",
+          "results/serving-20261115/dspark-baseline-mixed-c25-3.json": "1f914cb37bb909ac79f0576210029511cc3519731a3953b581746772b81ab286",
+          "results/serving-20261115/dspark-baseline-mixed-c25-4.json": "270e98fb757bb48cbbbe535ee309ea689550698224d2a4c74c554a5b8d768627",
+          "results/serving-20261115/dspark-four-mixed-01.json": "672e0d4b1e5a5278acaa1c26e1b3007dbfe8b86afb9e106fc9b1f9ba65490fb3",
+          "results/serving-20261115/dspark-four-mixed-02.json": "1234310c8e4bb113036b35238e4b96c3d34ddb11f61a5f29f0baad090b0109eb",
+          "results/serving-20261115/dspark-four-mixed-03.json": "3e8104b8f05b6770424ab82516073e1c1633f91b1254612324e7a1710202ff9b",
+          "results/serving-20261115/dspark-four-mixed-04.json": "c674a829b21b2db2f0e312bd41d9776212df2651d0e77b3d1ea44e543e085b03",
+          "results/serving-20261115/dspark-four-mixed-summary.json": "91faf01ea45bb4feda35d0c984fff54986b8c366cef4c07f710146e5c73e6d50",
+          "results/serving-20261115/dspark-mixed-c1-node03.json": "20788c8a1872cba68e78b0e9e64ba7e609c571673e35ed9ab21cf1cc36e1f005",
+          "results/serving-20261115/dspark-mixed-c25-1.json": "6c62d92cc579ae554b2ed1ee6d764e02cd7a65050b9c6d9bbd41b392f22357be",
+          "results/serving-20261115/dspark-mixed-c25-2.json": "81520bcfa8af472e86ddf1736d87ebbb5f6908fceca9a2faa9ab913c3afa12cd",
+          "results/serving-20261115/dspark-mixed-c25-3.json": "a2ff73ad0e5a9d801e309f88c350739231208a13a7b9fc7a81542657cdf2bf09",
+          "results/serving-20261115/dspark-sampling-warmup-100.json": "9e06672bbb559c759df519ce33ed33a337bb1a220401f2e05cc08438a2b71ef2",
+          "results/serving-20261115/dspark-short-100.json": "840e4428fbd6f600c3334883ccafc2b97ac9a042008b9867aa7ff8675dc52c7c",
+          "results/serving-20261115/summary.json": "077a199268fdeb27e398442423250132251804735d812d9cc2ab386c74dd24c3",
+          "results/thinking-budget-20261115.json": "0bdf439da79c35fbd8264b325765366e594dfb110fe67161a3ba0c20f6cabd81",
+          "results/traces/baseline-thinking-off4096-proposals-4.jsonl": "2b76ffc5f26af1004be723404d074b79aec4be5a62b6a546bb07905e9e248335",
+          "results/traces/baseline-thinking4096-proposals-4.jsonl": "8cf40fdb4345616b39c03e5fba26cd44585df0040eb17519eb92867d1b635bbf",
+          "results/traces/democracy-100-10.jsonl": "26a51cb808485e2635bf3c8297fcad6a12c937201bc4cf7db24d94d6f06235d5",
+          "results/traces/democracy-100-952.jsonl": "478bc622b111df0f824b6ed081621674d0fb6f3e414f8187d69bed418fbaa6b9",
+          "results/traces/dspark-calibration-100-20261115.jsonl": "8c7fa1efc0a2b4ad31d6a9d0c9c9196c054133737cdcca0da6a5e103320a8dab",
+          "results/traces/dspark-thinking4096-proposals-4.jsonl": "71d95cbba28c945c1412c1a4dc080a6423541373f3f4fbd14ffea625c7d08a25",
+          "results/traces/dspark-weighted-100-20261115.jsonl": "48d82ed10a1055a80fb7de83f5fca2bcb9730a368d8205bad9d94a878a464289",
+          "results/traces/independent-100-952.jsonl": "bda0296166114e848b00f0d26de39923c9ab80fcb288fc1ace84f8b43b6da0b9",
+          "results/traces/reputation-100-20261115.json": "c6552faa08ffbff4aef1808dc793ddb2eecf9c24e738f3d7cfcc9f1be3d08116",
+          "results/traces/thinking-4-24-truncated.jsonl": "8ce1a44e076a08a75bcc7c5829011ef2448eb42de9946a694305e06511c5b547",
+          "run_benchmark.py": "0fcc9a8043080002e7a78c31cb168023637103cb67da887851b2ea114f384ef0",
+          "run_coding_benchmark.py": "a5db3962a67c64f762a95a9e6b2b7539035b2f11185c9ec56d028e6326fea493",
+          "run_study.py": "00a4fe82d5ebca28234b40a7e2298a76689449b649fbc69bfe619aa532d0efd9",
+          "runs/.gitkeep": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+          "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+          "sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+          "server.py": "3047737578a430c9ea1743a147d702bf96bba9bbb1c49525d9bba4bf1010aebd",
+          "shared_search.py": "6e049475c32372deb40dc2b236ca2024913775433ca0239760dddb4eb041b54b",
+          "test_analysis.py": "69068cff324ca25614a151c1cc2990720d2eec9867343f12fac8d9fa66c1bb6a",
+          "test_coding_harness.py": "aa60ed2aa4f09f742a463c3fbf7e088e2c739ba1c5ef53f4f708d7a5e4792a6b",
+          "test_direct_solver.py": "a94382f78001cefce466b54904afbe160ecda80c3febfd2ff389f39eaaa43e10",
+          "test_ensemble_solver.py": "72e2a97742f4a664a9f09be3d38183d94fcd72e3d7178d9aa8dad307ed392168",
+          "test_harness.py": "073570e38d2ea558669da9579cea094e6b3b29b200a9eaa5c4482f1402a1023b",
+          "test_run_benchmark.py": "47052640b05f9836a5f72d52417dcd9fdd0371837cf1c2cdab04b03546888ee0",
+          "test_sandbox_code.py": "f02090e4c71f2a38e80fc9abd1cc9fc9d5465c237842d831edf053a1cf8f12f8",
+          "test_shared_search.py": "d28a348fc61864cbf9876444650c06c053b70de5c867e20a3a4503e7510d4e58",
+          "tool_smoke.py": "d0a000107dcd5b983a5ece6fc338443224c96f7f910a0f22bb64d993f8417e0c",
+          "viewer.html": "198abeffc0c1db88880f4ed4f46215d910b0e310ca34adf332961b7a58418a07"
+        }
+      },
+      "adapter_sha256": {
+        "reference_worker.py": "17f83d857a820a0dfc8665cd8330a94836d60dbc4b16ea73d4f05433dc49cbe9",
+        "reference_grade_worker.py": "523cb0b71cf465ac11c9bfbcd979cd9bd3e329f3e5dc888412909c77b4922d36",
+        "independent_code_grader.py": "c4324123bb75a8712150adb3e06e1da4e1e44a7d91516597d9a35caa372c2726",
+        "run_references.py": "a22fa9f1b0236cd8799d48f57f57ea9a9b75aef7ec71868d6f8b2e055b56195c",
+        "REFERENCE_BASELINES_PLAN.json": "1bc807a36f490bf9232a787c4222875ec3716d03b058403e0b9ddfa87bb2f492"
+      }
+    }
+  ],
+  "script_sha256": "4c552a40115b9eef23c48814bebaf900ba83646e41f41b1f03c13594855ebe84",
+  "bootstrap": {
+    "unit": "task cluster, all seeds retained",
+    "repetitions": 5000,
+    "seed": 20261115,
+    "interval": "percentile 95%"
+  },
+  "scope": "Separate fixed-suite quality reference: custom abliterated DeepSeek517efa TP4/native effort75/defaulttop_p.95 vs single-replica Nemotron/variousrecipes. Not equal reasoning/compute, not causal headcount/model isolation; task-cluster intervals retain3seeds, pointwise paired contrasts do not assume identical sampling. Empirical all-pass intervals may collapse and do not imply general100% correctness. Native client usage/case wall only; global/server cost unknown, no fleet-throughput/billed-cost claim. Opus unavailable and GLM notrun are missing providers, never zero scores. Coding uses independently confirmed ORIGINAL holdout outcomes, never posthoc robustness substitution.",
+  "notes": [
+    "Accuracy is the equally weighted mean of per-task seed success rates.",
+    "Paired deltas match task/seed and use task-cluster bootstrap; trajectories need not be identical.",
+    "Pairwise intervals are pointwise, unadjusted for multiple comparisons; no automatic winner labels.",
+    "Known server totals are subtotals over known cases only; unknowns remain null, never zero.",
+    "Client tokens with unfinished/missing usage or deadlines are lower bounds, not GPU-equivalent cost.",
+    "Time-success denominators include every case; missing proof timestamps make curves lower bounds.",
+    "Occupied case wall includes controller/metrics/drain overhead; first-proof latency is solved-only.",
+    "Mixed-arm queue wall is recorded separately per cohort, never per-arm fleet throughput."
+  ],
+  "arms": [
+    {
+      "arm": "Native DeepSeek direct 8K",
+      "tasks": 24,
+      "cases": 72,
+      "solved": 72,
+      "accuracy": 1,
+      "cluster95_low": 1.0,
+      "cluster95_high": 1.0,
+      "median_occupied_case_wall_seconds": 18.285683499999998,
+      "p95_occupied_case_wall_seconds": 66.48201090000012,
+      "solved_only_first_proof_n": 72,
+      "solved_only_median_first_proof_seconds": 18.285475000739098,
+      "solved_only_p95_first_proof_seconds": 66.48180692899052,
+      "missing_solved_proof_times": 0,
+      "calls": 72,
+      "prompt_tokens": 12528,
+      "completion_tokens": 79386,
+      "unfinished_calls": 0,
+      "length_finishes": 0,
+      "budget_denials": 0,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "client_cost_is_lower_bound": false,
+      "deadline_cases": 0,
+      "infrastructure_failures": 0,
+      "missing_infrastructure_counts": 0,
+      "controller_error_cases": 0,
+      "unexpected_process_error_cases": 0,
+      "server_cost_known_cases": 0,
+      "server_cost_unknown_cases": 72,
+      "server_counter_floor_failures": 0,
+      "server_prompt_tokens_known": null,
+      "server_completion_tokens_known": null,
+      "source_variants": [
+        "runs/reference-deepseek-v1"
+      ]
+    },
+    {
+      "arm": "Nemotron four full plans",
+      "tasks": 24,
+      "cases": 72,
+      "solved": 49,
+      "accuracy": 0.6805555555555556,
+      "cluster95_low": 0.5416666666666666,
+      "cluster95_high": 0.8055555555555555,
+      "median_occupied_case_wall_seconds": 94.3606335,
+      "p95_occupied_case_wall_seconds": 131.4017438,
+      "solved_only_first_proof_n": 49,
+      "solved_only_median_first_proof_seconds": 68.9767659585923,
+      "solved_only_p95_first_proof_seconds": 109.42695421669629,
+      "missing_solved_proof_times": 0,
+      "calls": 288,
+      "prompt_tokens": 23747,
+      "completion_tokens": 993520,
+      "unfinished_calls": 144,
+      "length_finishes": 94,
+      "budget_denials": 0,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "client_cost_is_lower_bound": true,
+      "deadline_cases": 0,
+      "infrastructure_failures": 0,
+      "missing_infrastructure_counts": 49,
+      "controller_error_cases": 0,
+      "unexpected_process_error_cases": 0,
+      "server_cost_known_cases": 72,
+      "server_cost_unknown_cases": 0,
+      "server_counter_floor_failures": 0,
+      "server_prompt_tokens_known": 47640,
+      "server_completion_tokens_known": 1631105,
+      "source_variants": [
+        "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/evaluation-v2/arithmetic-s1",
+        "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/evaluation-v2/arithmetic-s2",
+        "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/evaluation-v2/arithmetic-s3"
+      ]
+    },
+    {
+      "arm": "Nemotron sequential refinement",
+      "tasks": 24,
+      "cases": 72,
+      "solved": 45,
+      "accuracy": 0.625,
+      "cluster95_low": 0.47222222222222215,
+      "cluster95_high": 0.7777777777777777,
+      "median_occupied_case_wall_seconds": 120.3242085,
+      "p95_occupied_case_wall_seconds": 182.08343090000002,
+      "solved_only_first_proof_n": 45,
+      "solved_only_median_first_proof_seconds": 58.723825208842754,
+      "solved_only_p95_first_proof_seconds": 150.7958485661074,
+      "missing_solved_proof_times": 0,
+      "calls": 150,
+      "prompt_tokens": 24310,
+      "completion_tokens": 837867,
+      "unfinished_calls": 27,
+      "length_finishes": 74,
+      "budget_denials": 0,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "client_cost_is_lower_bound": true,
+      "deadline_cases": 27,
+      "infrastructure_failures": 0,
+      "missing_infrastructure_counts": 27,
+      "controller_error_cases": 0,
+      "unexpected_process_error_cases": 0,
+      "server_cost_known_cases": 72,
+      "server_cost_unknown_cases": 0,
+      "server_counter_floor_failures": 0,
+      "server_prompt_tokens_known": 30842,
+      "server_completion_tokens_known": 980664,
+      "source_variants": [
+        "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/solo-control-v2/evaluation-s1",
+        "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/solo-control-v2/evaluation-s2",
+        "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/solo-control-v2/evaluation-s3"
+      ]
+    },
+    {
+      "arm": "Nemotron single full plan 8K",
+      "tasks": 24,
+      "cases": 72,
+      "solved": 18,
+      "accuracy": 0.25,
+      "cluster95_low": 0.15277777777777776,
+      "cluster95_high": 0.34722222222222215,
+      "median_occupied_case_wall_seconds": 68.9454375,
+      "p95_occupied_case_wall_seconds": 74.15437505,
+      "solved_only_first_proof_n": 18,
+      "solved_only_median_first_proof_seconds": 41.424745604395866,
+      "solved_only_p95_first_proof_seconds": 60.39918632949701,
+      "missing_solved_proof_times": 0,
+      "calls": 72,
+      "prompt_tokens": 11910,
+      "completion_tokens": 516134,
+      "unfinished_calls": 0,
+      "length_finishes": 52,
+      "budget_denials": 0,
+      "missing_prompt_usage": 0,
+      "missing_completion_usage": 0,
+      "client_cost_is_lower_bound": false,
+      "deadline_cases": 0,
+      "infrastructure_failures": 0,
+      "missing_infrastructure_counts": 0,
+      "controller_error_cases": 0,
+      "unexpected_process_error_cases": 0,
+      "server_cost_known_cases": 72,
+      "server_cost_unknown_cases": 0,
+      "server_counter_floor_failures": 0,
+      "server_prompt_tokens_known": 11910,
+      "server_completion_tokens_known": 516134,
+      "source_variants": [
+        "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/evaluation-v2/arithmetic-s1",
+        "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/evaluation-v2/arithmetic-s2",
+        "/Users/zbizbi/Projects/sparks/apps/swarm-lab/results/evaluation-v2/arithmetic-s3"
+      ]
+    }
+  ],
+  "paired_cases": [
+    {
+      "task_id": "eva-0fdf38eb4f8b",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-0fdf38eb4f8b",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-0fdf38eb4f8b",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-17c359789b49",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-17c359789b49",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-17c359789b49",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-27c0dd95407a",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-27c0dd95407a",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-27c0dd95407a",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-2894f3b286c6",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-2894f3b286c6",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-2894f3b286c6",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-3b1047ffeb08",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-3b1047ffeb08",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-3b1047ffeb08",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-3f863b95e0b7",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-3f863b95e0b7",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-3f863b95e0b7",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-4a5b112b29e0",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-4a5b112b29e0",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-4a5b112b29e0",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-541797dfa346",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-541797dfa346",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-541797dfa346",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-5f7e8610aa71",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-5f7e8610aa71",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-5f7e8610aa71",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-66b495db2b77",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-66b495db2b77",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-66b495db2b77",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-6b194524eb19",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-6b194524eb19",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-6b194524eb19",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-6ce1a0614ff5",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-6ce1a0614ff5",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-6ce1a0614ff5",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-8955514173a5",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-8955514173a5",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-8955514173a5",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-8c04e7fa4008",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-8c04e7fa4008",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-8c04e7fa4008",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-91cea8bac1fe",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-91cea8bac1fe",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-91cea8bac1fe",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-a890436f325f",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-a890436f325f",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-a890436f325f",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-c25dd13868a8",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-c25dd13868a8",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-c25dd13868a8",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-d75177564d41",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-d75177564d41",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-d75177564d41",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-e40959c347a7",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-e40959c347a7",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-e40959c347a7",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-ec6b2de6877c",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-ec6b2de6877c",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-ec6b2de6877c",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-eca4c7a9c432",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-eca4c7a9c432",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-eca4c7a9c432",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-eea066d2b2d7",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-eea066d2b2d7",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-eea066d2b2d7",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": false,
+      "Nemotron sequential refinement": false,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-f087ad404500",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-f087ad404500",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    },
+    {
+      "task_id": "eva-f087ad404500",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-f792236a99ed",
+      "seed": 1,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-f792236a99ed",
+      "seed": 2,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": true
+    },
+    {
+      "task_id": "eva-f792236a99ed",
+      "seed": 3,
+      "Native DeepSeek direct 8K": true,
+      "Nemotron four full plans": true,
+      "Nemotron sequential refinement": true,
+      "Nemotron single full plan 8K": false
+    }
+  ],
+  "paired_deltas": [
+    {
+      "arm_a": "Native DeepSeek direct 8K",
+      "arm_b": "Nemotron four full plans",
+      "direction": "a_minus_b",
+      "tasks": 24,
+      "matched_task_seed_pairs": 72,
+      "accuracy_delta": 0.3194444444444445,
+      "cluster95_low": 0.19444444444444445,
+      "cluster95_high": 0.4583333333333333
+    },
+    {
+      "arm_a": "Native DeepSeek direct 8K",
+      "arm_b": "Nemotron sequential refinement",
+      "direction": "a_minus_b",
+      "tasks": 24,
+      "matched_task_seed_pairs": 72,
+      "accuracy_delta": 0.375,
+      "cluster95_low": 0.22222222222222224,
+      "cluster95_high": 0.5277777777777778
+    },
+    {
+      "arm_a": "Native DeepSeek direct 8K",
+      "arm_b": "Nemotron single full plan 8K",
+      "direction": "a_minus_b",
+      "tasks": 24,
+      "matched_task_seed_pairs": 72,
+      "accuracy_delta": 0.75,
+      "cluster95_low": 0.6527777777777778,
+      "cluster95_high": 0.8472222222222223
+    },
+    {
+      "arm_a": "Nemotron four full plans",
+      "arm_b": "Nemotron sequential refinement",
+      "direction": "a_minus_b",
+      "tasks": 24,
+      "matched_task_seed_pairs": 72,
+      "accuracy_delta": 0.05555555555555555,
+      "cluster95_low": -0.05555555555555557,
+      "cluster95_high": 0.16666666666666666
+    },
+    {
+      "arm_a": "Nemotron four full plans",
+      "arm_b": "Nemotron single full plan 8K",
+      "direction": "a_minus_b",
+      "tasks": 24,
+      "matched_task_seed_pairs": 72,
+      "accuracy_delta": 0.4305555555555556,
+      "cluster95_low": 0.2916666666666667,
+      "cluster95_high": 0.5694444444444445
+    },
+    {
+      "arm_a": "Nemotron sequential refinement",
+      "arm_b": "Nemotron single full plan 8K",
+      "direction": "a_minus_b",
+      "tasks": 24,
+      "matched_task_seed_pairs": 72,
+      "accuracy_delta": 0.375,
+      "cluster95_low": 0.23576388888888897,
+      "cluster95_high": 0.513888888888889
+    }
+  ],
+  "success_by_time": [
+    {
+      "arm": "Native DeepSeek direct 8K",
+      "seconds": 5,
+      "solved_by_time": 0,
+      "cases": 72,
+      "fraction": 0.0,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Native DeepSeek direct 8K",
+      "seconds": 10,
+      "solved_by_time": 0,
+      "cases": 72,
+      "fraction": 0.0,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Native DeepSeek direct 8K",
+      "seconds": 30,
+      "solved_by_time": 60,
+      "cases": 72,
+      "fraction": 0.8333333333333334,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Native DeepSeek direct 8K",
+      "seconds": 60,
+      "solved_by_time": 68,
+      "cases": 72,
+      "fraction": 0.9444444444444444,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Native DeepSeek direct 8K",
+      "seconds": 120,
+      "solved_by_time": 72,
+      "cases": 72,
+      "fraction": 1.0,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Native DeepSeek direct 8K",
+      "seconds": 180,
+      "solved_by_time": 72,
+      "cases": 72,
+      "fraction": 1.0,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron four full plans",
+      "seconds": 5,
+      "solved_by_time": 0,
+      "cases": 72,
+      "fraction": 0.0,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron four full plans",
+      "seconds": 10,
+      "solved_by_time": 0,
+      "cases": 72,
+      "fraction": 0.0,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron four full plans",
+      "seconds": 30,
+      "solved_by_time": 0,
+      "cases": 72,
+      "fraction": 0.0,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron four full plans",
+      "seconds": 60,
+      "solved_by_time": 23,
+      "cases": 72,
+      "fraction": 0.3194444444444444,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron four full plans",
+      "seconds": 120,
+      "solved_by_time": 49,
+      "cases": 72,
+      "fraction": 0.6805555555555556,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron four full plans",
+      "seconds": 180,
+      "solved_by_time": 49,
+      "cases": 72,
+      "fraction": 0.6805555555555556,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron sequential refinement",
+      "seconds": 5,
+      "solved_by_time": 0,
+      "cases": 72,
+      "fraction": 0.0,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron sequential refinement",
+      "seconds": 10,
+      "solved_by_time": 0,
+      "cases": 72,
+      "fraction": 0.0,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron sequential refinement",
+      "seconds": 30,
+      "solved_by_time": 8,
+      "cases": 72,
+      "fraction": 0.1111111111111111,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron sequential refinement",
+      "seconds": 60,
+      "solved_by_time": 23,
+      "cases": 72,
+      "fraction": 0.3194444444444444,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron sequential refinement",
+      "seconds": 120,
+      "solved_by_time": 36,
+      "cases": 72,
+      "fraction": 0.5,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron sequential refinement",
+      "seconds": 180,
+      "solved_by_time": 45,
+      "cases": 72,
+      "fraction": 0.625,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron single full plan 8K",
+      "seconds": 5,
+      "solved_by_time": 0,
+      "cases": 72,
+      "fraction": 0.0,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron single full plan 8K",
+      "seconds": 10,
+      "solved_by_time": 0,
+      "cases": 72,
+      "fraction": 0.0,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron single full plan 8K",
+      "seconds": 30,
+      "solved_by_time": 6,
+      "cases": 72,
+      "fraction": 0.08333333333333333,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron single full plan 8K",
+      "seconds": 60,
+      "solved_by_time": 17,
+      "cases": 72,
+      "fraction": 0.2361111111111111,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron single full plan 8K",
+      "seconds": 120,
+      "solved_by_time": 18,
+      "cases": 72,
+      "fraction": 0.25,
+      "missing_solved_proof_times": 0
+    },
+    {
+      "arm": "Nemotron single full plan 8K",
+      "seconds": 180,
+      "solved_by_time": 18,
+      "cases": 72,
+      "fraction": 0.25,
+      "missing_solved_proof_times": 0
+    }
+  ]
+}
