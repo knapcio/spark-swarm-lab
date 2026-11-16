@@ -43,5 +43,8 @@
   "transport": "budget-forcing client, no wall-clock cutoff, 120 s idle timeout = infrastructure fault",
   "grading": "pinned python@c61cffc3 container via ssh on Spark_04",
   "scheduling": "--per-endpoint 8 --parallel-attempts 6; concurrent owned runs allowed (outcomes load-independent)",
-  "primary_outcome": "hidden-grade fix rate per policy over 36 attempts; paired by case; plus oracle gap, calls and tokens"
+  "primary_outcome": "hidden-grade fix rate per policy over 36 attempts; paired by case; plus oracle gap, calls and tokens",
+  "amendments": [
+    "2026-11-16 ~23:55: eval18-v1 stopped admitting after two T3 attempts hit SSH connection-setup failures to the single grading host (sshd MaxStartups bursts; \"banner exchange\" timeouts). Transport-only fix: <=6 concurrent SSH sessions per host, retry only SSH connection-setup failures before any container exists, round-robin grading over Spark_01-04. Continuation run eval18-v2 executes the 107 never-started attempts plus the 2 infrastructure-faulted ones (rerun). Agent prompts, policies, budgets and selection unchanged; the 35 completed eval18-v1 attempts are kept."
+  ]
 }

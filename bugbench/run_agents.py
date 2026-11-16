@@ -46,6 +46,14 @@ def build_plan(args):
     # seed-major order: a partial run still covers every case and policy evenly
     matrix = [dict(id=attempt_id(c, p, s), case_id=c, policy=p, seed=s)
               for s in args.seeds for c in cases for p in policies]
+    if getattr(args, "skip_completed", None):  # continuation: keep attempts that already finished (not infra faults)
+        finished = set()
+        with open(os.path.join(args.skip_completed, "attempts.jsonl")) as stream:
+            for line in stream:
+                row = json.loads(line)
+                if row.get("status") != "infrastructure_fault":
+                    finished.add(row.get("attempt_id") or attempt_id(row["case_id"], row["policy"], int(row["seed"])))
+        matrix = [item for item in matrix if item["id"] not in finished]
     default_calls = 48 if args.max_calls is None else args.max_calls
     default_tokens = 256_000 if args.max_completion_tokens is None else args.max_completion_tokens
 
@@ -187,6 +195,7 @@ def main(argv=None):
     parser.add_argument("--model", default=a.MODEL)
     parser.add_argument("--per-endpoint", type=int, default=8, help="concurrent requests per replica")
     parser.add_argument("--parallel-attempts", type=int, default=4)
+    parser.add_argument("--skip-completed", help="previous run dir: skip its finished (non-infrastructure-fault) attempts")
     parser.add_argument("--idle-timeout", type=float, default=a.IDLE_TIMEOUT)
     parser.add_argument("--max-calls", type=int, default=None,
                         help="per-attempt logical call cap (default 48; T3 64 and V3 56 unless given)")

@@ -1362,3 +1362,43 @@ class MutantToolTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DockerRetryTests(unittest.TestCase):
+    """Transport-only: SSH connection-setup failures are retried; candidate outcomes never are."""
+
+    def fake(self, outcomes):
+        calls = []
+
+        def run(argv, **kwargs):
+            calls.append(argv)
+            remote = argv[-1]
+            kind = outcomes[0] if ' run ' in f' {remote} ' and 'docker run' in remote else 'meta'
+            if 'docker run' in remote:
+                outcomes.pop(0)
+                if kind == 'banner':
+                    return subprocess.CompletedProcess(argv, 255, '', 'Connection timed out during banner exchange')
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'ok': True}), '')
+            if remote.startswith('sh -c'):  # guarded cleanup: nothing of ours exists
+                return subprocess.CompletedProcess(argv, 0, '', '')
+            if 'docker inspect' in remote:
+                return subprocess.CompletedProcess(argv, 1, '', 'No such object')
+            return subprocess.CompletedProcess(argv, 0, '', '')
+        return run, calls
+
+    def test_banner_timeout_is_retried_on_next_host(self):
+        import bugbench_grader as g
+        run, calls = self.fake(['banner', 'ok'])
+        executor = g.DockerExecutor('Spark_01,Spark_02', run=run, backoff=(0,))
+        executor._once = executor._once  # real path
+        result, error, meta = executor({'x': 1}, 5)
+        hosts = [c[c.index('--') + 1] for c in calls if 'docker run' in c[-1]]
+        self.assertEqual(hosts, ['Spark_01', 'Spark_02'])
+        self.assertEqual(len(meta.get('connection_retries', [])), 1)
+
+    def test_retry_budget_exhausts_as_infrastructure(self):
+        import bugbench_grader as g
+        run, calls = self.fake(['banner'] * 4)
+        result, error, meta = g.DockerExecutor('Spark_01', run=run, retries=3, backoff=(0,))({'x': 1}, 5)
+        self.assertEqual(meta['provenance'], 'infrastructure')
+        self.assertEqual(sum('docker run' in c[-1] for c in calls), 4)

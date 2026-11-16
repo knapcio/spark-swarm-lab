@@ -27,6 +27,7 @@ import math
 import os
 import re
 import subprocess
+import threading
 import sys
 import shlex
 import tempfile
@@ -492,9 +493,31 @@ def container_argv(task_id):
             "-I", "-S", "-c", CHILD]
 
 
+# sshd's default MaxStartups (10) drops bursts of new connections ("banner exchange" timeouts), so
+# limit concurrent SSH sessions per grading host. Transport-only; grading semantics are unchanged.
+SSH_SLOTS_PER_HOST = 6
+_SSH_SLOTS = {}
+_SSH_SLOTS_LOCK = threading.Lock()
+
+
+def _ssh_slot(host):
+    with _SSH_SLOTS_LOCK:
+        return _SSH_SLOTS.setdefault(host, threading.BoundedSemaphore(SSH_SLOTS_PER_HOST))
+
+
 def _ssh(host, command, payload=None, timeout=15, run=None):
-    return (run or subprocess.run)(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "--", host,
-                                    shlex.join(command)], input=payload, text=True, capture_output=True, timeout=timeout)
+    with _ssh_slot(host):
+        return (run or subprocess.run)(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "--", host,
+                                        shlex.join(command)], input=payload, text=True, capture_output=True,
+                                       timeout=timeout)
+
+
+def _connection_refused(process):
+    """True only for SSH connection-setup failures (the remote command never started)."""
+    text = (process.stderr or "") if process is not None else ""
+    return process is not None and process.returncode == 255 and any(
+        marker in text for marker in ("banner exchange", "Connection timed out", "Connection refused",
+                                      "Connection reset", "kex_exchange_identification"))
 
 
 def _inspect_owned(host, name, task, run=None):
@@ -537,12 +560,34 @@ class DockerExecutor:
     says whether a failure is the candidate's or the grading infrastructure's.
     Results of infrastructure failures are discarded and must be re-graded."""
 
-    def __init__(self, host, run=None, startup_slack=CONTAINER_STARTUP_SLACK):
-        if not isinstance(host, str) or not SSH_HOST.fullmatch(host):
-            raise ValueError("host must be an SSH alias or user@host")
-        self.host, self.run, self.startup_slack = host, run or subprocess.run, startup_slack
+    def __init__(self, host, run=None, startup_slack=CONTAINER_STARTUP_SLACK, retries=3, backoff=(2, 5, 10)):
+        hosts = host.split(",") if isinstance(host, str) else []
+        if not hosts or not all(SSH_HOST.fullmatch(h) for h in hosts):
+            raise ValueError("host must be an SSH alias or user@host (comma-separated list allowed)")
+        self.hosts, self.run, self.startup_slack = hosts, run or subprocess.run, startup_slack
+        self.host = hosts[0]
+        self.retries, self.backoff, self._next = retries, backoff, 0
+        self._lock = threading.Lock()
 
     def __call__(self, payload, timeout):
+        """Round-robin over hosts; retry only SSH connection-setup failures before any container ran."""
+        with self._lock:
+            host = self.hosts[self._next % len(self.hosts)]
+            self._next += 1
+        attempts = []
+        for attempt in range(self.retries + 1):
+            result, error, meta = self._once(host, payload, timeout)
+            if not meta.pop("_retryable", False) or attempt == self.retries:
+                if attempts:
+                    meta["connection_retries"] = attempts
+                return result, error, meta
+            attempts.append(dict(host=host, error=(error or "")[:200]))
+            time.sleep(self.backoff[min(attempt, len(self.backoff) - 1)])
+            with self._lock:
+                host = self.hosts[self._next % len(self.hosts)]
+                self._next += 1
+
+    def _once(self, host, payload, timeout):
         wire = json.dumps(payload, allow_nan=False)
         if len(wire.encode()) > MAX_PAYLOAD_BYTES:
             raise ValueError(f"grading payload exceeds {MAX_PAYLOAD_BYTES} bytes")
@@ -550,14 +595,16 @@ class DockerExecutor:
         name = "swarm-bugbench-" + task
         process, failure = None, None
         try:
-            process = _ssh(self.host, container_argv(task), wire, timeout + self.startup_slack, self.run)
+            process = _ssh(host, container_argv(task), wire, timeout + self.startup_slack, self.run)
         except (subprocess.TimeoutExpired, OSError) as exc:
             failure = exc
         # --rm would erase the kernel's OOM evidence: inspect first, then always attempt guarded cleanup.
-        state, inspection_error = _inspect_owned(self.host, name, task, self.run)
-        cleanup_ok = _cleanup(self.host, name, task, self.run)
-        meta = {"executor": "docker", "host": self.host, "container": name, "container_state": state,
+        state, inspection_error = _inspect_owned(host, name, task, self.run)
+        cleanup_ok = _cleanup(host, name, task, self.run)
+        meta = {"executor": "docker", "host": host, "container": name, "container_state": state,
                 "cleanup_ok": cleanup_ok}
+        # Retry is safe only when SSH never connected and no container of ours exists.
+        meta["_retryable"] = bool(failure is None and _connection_refused(process) and state is None and cleanup_ok)
         result, error, kind = None, None, None
         if state and state.get("OOMKilled"):
             error, kind = "container_oom", "candidate_oom"
