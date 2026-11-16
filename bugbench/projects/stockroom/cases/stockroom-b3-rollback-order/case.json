@@ -1,0 +1,44 @@
+{
+ "case_id": "stockroom-b3-rollback-order",
+ "project": "stockroom",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "hard",
+ "bug_class": "error_path_ordering",
+ "mutations": [
+  {
+   "file": "stockroom/inventory.py",
+   "old": "                lot = Lot(item.lot_id, item.sku, 0, item.unit_cost, item.received_on, item.seq)\n                self._insert_lot(lot)\n",
+   "new": "                lot = Lot(item.lot_id, item.sku, 0, item.unit_cost, item.received_on, item.seq)\n                self._lots.setdefault(item.sku, []).append(lot)\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "stockroom/inventory.py"
+  ],
+  "functions": [
+   "stockroom/inventory.py::Inventory.restore"
+  ]
+ },
+ "symptom_files": [
+  "stockroom/orders.py",
+  "stockroom/journal.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "stockroom/inventory.py::Inventory.restore (any implementation that restores FIFO order, e.g. append then sort)"
+ ],
+ "target_probes": [
+  "probe_failed_shipment_then_cogs",
+  "probe_failed_shipment_restores_lot_order",
+  "probe_failed_shipment_three_lots",
+  "probe_failed_shipment_via_journal"
+ ],
+ "notes": "Rollback re-creates fully consumed lots at the end of the FIFO queue. Only reachable through a failed multi-line shipment that used up a whole lot; a partially consumed lot is restored correctly (public test passes). Sorting lots inside Inventory._take hides the COGS symptom but still fails probe_failed_shipment_restores_lot_order: Inventory.lots documents FIFO order.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 7f3c2a91-bugbench-stockroom-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

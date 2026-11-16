@@ -1,0 +1,40 @@
+{
+ "case_id": "stockroom-b1-tier-boundary",
+ "project": "stockroom",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "easy",
+ "bug_class": "off_by_one_boundary",
+ "mutations": [
+  {
+   "file": "stockroom/pricing.py",
+   "old": "            if quantity >= tier.min_quantity:\n",
+   "new": "            if quantity > tier.min_quantity:\n"
+  }
+ ],
+ "gold": {
+  "files": [
+   "stockroom/pricing.py"
+  ],
+  "functions": [
+   "stockroom/pricing.py::PricingEngine.unit_price"
+  ]
+ },
+ "symptom_files": [
+  "stockroom/pricing.py"
+ ],
+ "call_hops_symptom_to_bug": 0,
+ "alternative_fix_sites": [],
+ "target_probes": [
+  "probe_tier_exact_boundaries",
+  "probe_tier_boundary_other_product",
+  "probe_tier_boundary_via_journal"
+ ],
+ "notes": "Boundary comparison. Report gives one boundary; hidden probes cover other tiers, another product/currency and the journal path, so hard-coding 10 fails.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 7f3c2a91-bugbench-stockroom-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

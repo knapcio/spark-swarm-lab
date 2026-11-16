@@ -1,0 +1,43 @@
+{
+ "case_id": "stockroom-b2-snapshot-alias",
+ "project": "stockroom",
+ "hint_variant": "a_user_report",
+ "report": "report.md",
+ "difficulty": "medium",
+ "bug_class": "state_aliasing",
+ "mutations": [
+  {
+   "file": "stockroom/inventory.py",
+   "old": "lots={sku: [lot.copy() for lot in lots] for sku, lots in self._lots.items() if lots},",
+   "new": "lots={sku: list(lots) for sku, lots in self._lots.items() if lots},"
+  }
+ ],
+ "gold": {
+  "files": [
+   "stockroom/inventory.py"
+  ],
+  "functions": [
+   "stockroom/inventory.py::Inventory.snapshot"
+  ]
+ },
+ "symptom_files": [
+  "stockroom/reports.py",
+  "stockroom/store.py"
+ ],
+ "call_hops_symptom_to_bug": 2,
+ "alternative_fix_sites": [
+  "stockroom/inventory.py::Inventory._take (copy-on-write: replace a Lot with a copy before mutating it)"
+ ],
+ "target_probes": [
+  "probe_snapshot_after_shipment",
+  "probe_snapshot_after_writeoff",
+  "probe_snapshot_survives_direct_issue"
+ ],
+ "notes": "Shallow list copy shares mutable Lot objects. Symptom appears in a report; receipts after a snapshot do not trigger it (public test passes). A Store-only deep copy fails probe_snapshot_survives_direct_issue, because Inventory.snapshot documents the same guarantee.",
+ "canary": "BUGBENCH-HIDDEN-CANARY 7f3c2a91-bugbench-stockroom-probes",
+ "created": "2026-11-16",
+ "review": {
+  "planted_by": "hand-written mutation",
+  "status": "author-reviewed; independent review pending"
+ }
+}

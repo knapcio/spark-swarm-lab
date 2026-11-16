@@ -1,0 +1,662 @@
+{
+ "version": 1,
+ "project": "stockroom",
+ "canary": "BUGBENCH-HIDDEN-CANARY 7f3c2a91-bugbench-stockroom-probes",
+ "clean_tree_sha256": "e37cd78cd1eeb12f0ec0a5569307f6db58bd4ddb814da4f3a22e5a0a6652b4c7",
+ "probes_sha256": "d48c64df503e5eea89c8cd155f486c3f9b655776ad4f336b683796a5041adc99",
+ "frozen_with_python": "3.12.14",
+ "probes": {
+  "probe_money_rounding_and_parse": {
+   "kind": "value",
+   "value": [
+    "0.01 PLN",
+    "-0.01 PLN",
+    "2.68 EUR",
+    "12 JPY",
+    "1.001 KWD",
+    "12.50 USD",
+    320,
+    "-12.34 PLN",
+    "59.97 PLN",
+    "0.58 PLN",
+    "InvalidAmount",
+    "InvalidAmount",
+    "InvalidAmount"
+   ]
+  },
+  "probe_money_allocate": {
+   "kind": "value",
+   "value": [
+    [
+     "33.34 PLN",
+     "33.33 PLN",
+     "33.33 PLN"
+    ],
+    [
+     "0.02 PLN",
+     "0.02 PLN",
+     "0.01 PLN"
+    ],
+    [
+     "-0.02 PLN",
+     "-0.02 PLN",
+     "-0.01 PLN"
+    ],
+    [
+     "7.50 PLN",
+     "0.00 PLN",
+     "2.50 PLN"
+    ],
+    [
+     "0.50 PLN",
+     "0.25 PLN",
+     "0.25 PLN"
+    ],
+    [
+     "2 JPY",
+     "2 JPY",
+     "2 JPY",
+     "1 JPY"
+    ],
+    "InvalidAmount"
+   ]
+  },
+  "probe_money_compare_and_mismatch": {
+   "kind": "value",
+   "value": [
+    false,
+    true,
+    "CurrencyMismatch",
+    "CurrencyMismatch",
+    [
+     "-1.00 PLN",
+     "2.50 PLN",
+     "3.00 PLN"
+    ],
+    false,
+    "AttributeError",
+    [
+     false,
+     true,
+     true,
+     false
+    ]
+   ]
+  },
+  "probe_catalog_validation": {
+   "kind": "value",
+   "value": [
+    "UnknownProduct",
+    "InvalidAmount",
+    "InvalidQuantity",
+    "InvalidAmount",
+    "InvalidQuantity",
+    "0.90 PLN",
+    "DuplicateProduct",
+    [
+     "WID-001"
+    ],
+    "UnknownProduct"
+   ]
+  },
+  "probe_tier_below_and_above_boundaries": {
+   "kind": "value",
+   "value": [
+    [
+     1,
+     "2.50 PLN"
+    ],
+    [
+     2,
+     "2.50 PLN"
+    ],
+    [
+     9,
+     "2.50 PLN"
+    ],
+    [
+     11,
+     "2.30 PLN"
+    ],
+    [
+     49,
+     "2.30 PLN"
+    ],
+    [
+     51,
+     "2.10 PLN"
+    ],
+    [
+     500,
+     "2.10 PLN"
+    ]
+   ]
+  },
+  "probe_tier_exact_boundaries": {
+   "kind": "value",
+   "value": [
+    [
+     10,
+     "2.30 PLN"
+    ],
+    [
+     50,
+     "2.10 PLN"
+    ]
+   ]
+  },
+  "probe_tier_boundary_other_product": {
+   "kind": "value",
+   "value": [
+    "0.95 EUR",
+    "0.50 EUR",
+    "11.81 EUR",
+    [
+     [
+      "PEN-010",
+      12,
+      "0.80 EUR",
+      "9.60 EUR",
+      null,
+      "0.00 EUR",
+      "0.00 EUR",
+      "9.60 EUR",
+      "2.21 EUR"
+     ]
+    ]
+   ]
+  },
+  "probe_tier_boundary_via_journal": {
+   "kind": "value",
+   "value": "177.12 PLN"
+  },
+  "probe_promotion_tie_and_bundle": {
+   "kind": "value",
+   "value": [
+    [
+     "GAD-002",
+     4,
+     "40.00 PLN",
+     "160.00 PLN",
+     "FIRST",
+     "40.00 PLN",
+     "0.00 PLN",
+     "120.00 PLN",
+     "27.60 PLN"
+    ],
+    [
+     "BOK-003",
+     2,
+     "30.00 PLN",
+     "60.00 PLN",
+     "FIRST",
+     "15.00 PLN",
+     "0.00 PLN",
+     "45.00 PLN",
+     "3.60 PLN"
+    ],
+    [
+     "WID-001",
+     8,
+     "2.50 PLN",
+     "20.00 PLN",
+     null,
+     "0.00 PLN",
+     "0.00 PLN",
+     "20.00 PLN",
+     "4.60 PLN"
+    ],
+    [
+     [
+      "GAD-002",
+      4,
+      "40.00 PLN",
+      "160.00 PLN",
+      "B3G1",
+      "40.00 PLN",
+      "0.00 PLN",
+      "120.00 PLN",
+      "27.60 PLN"
+     ]
+    ],
+    "PromotionError",
+    "PromotionError"
+   ]
+  },
+  "probe_coupon_allocation_and_vat": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      "GAD-002",
+      1,
+      "40.00 PLN",
+      "40.00 PLN",
+      null,
+      "0.00 PLN",
+      "5.01 PLN",
+      "34.99 PLN",
+      "8.05 PLN"
+     ],
+     [
+      "BOK-003",
+      1,
+      "30.00 PLN",
+      "30.00 PLN",
+      null,
+      "0.00 PLN",
+      "3.75 PLN",
+      "26.25 PLN",
+      "2.10 PLN"
+     ],
+     [
+      "FOO-004",
+      1,
+      "9.99 PLN",
+      "9.99 PLN",
+      null,
+      "0.00 PLN",
+      "1.24 PLN",
+      "8.75 PLN",
+      "0.00 PLN"
+     ]
+    ],
+    "69.99 PLN",
+    "10.15 PLN",
+    "80.14 PLN",
+    "9.99 PLN",
+    "0.00 PLN",
+    "InvalidQuantity",
+    "InvalidQuantity"
+   ]
+  },
+  "probe_fifo_and_backdated_receipt": {
+   "kind": "value",
+   "value": [
+    [
+     "WID-001#2",
+     5,
+     "10.00 PLN"
+    ],
+    [
+     "WID-001#1",
+     2,
+     "2.00 PLN"
+    ],
+    [
+     "WID-001#1",
+     3
+    ],
+    [
+     "WID-001#3",
+     5
+    ]
+   ]
+  },
+  "probe_reservations": {
+   "kind": "value",
+   "value": [
+    2,
+    "InsufficientStock",
+    3,
+    "ReservationError",
+    [
+     2,
+     3
+    ],
+    [
+     1,
+     2,
+     0
+    ],
+    0
+   ]
+  },
+  "probe_snapshot_after_receipt": {
+   "kind": "value",
+   "value": [
+    "10.00 PLN",
+    "30.00 PLN",
+    "StockroomError",
+    "StockroomError"
+   ]
+  },
+  "probe_snapshot_after_shipment": {
+   "kind": "value",
+   "value": [
+    [
+     "BOK-003",
+     4,
+     "50.00 PLN"
+    ],
+    [
+     "WID-001",
+     10,
+     "10.00 PLN"
+    ],
+    14,
+    "60.00 PLN",
+    "4.00 PLN"
+   ]
+  },
+  "probe_snapshot_after_writeoff": {
+   "kind": "value",
+   "value": [
+    3,
+    3,
+    1
+   ]
+  },
+  "probe_snapshot_survives_direct_issue": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      "FOO-004#1",
+      4
+     ],
+     [
+      "FOO-004#2",
+      4
+     ]
+    ],
+    8,
+    2
+   ]
+  },
+  "probe_accessors_and_validation_edges": {
+   "kind": "value",
+   "value": [
+    "2.50 PLN",
+    "InvalidAmount",
+    3,
+    [
+     "0.00 PLN",
+     "3.08 PLN",
+     "KeyError"
+    ],
+    [
+     [
+      "O-2"
+     ],
+     [
+      "O-1"
+     ],
+     []
+    ],
+    [
+     [
+      "receive",
+      "WID-001",
+      3,
+      "WID-001#1"
+     ],
+     [
+      "issue",
+      "WID-001",
+      -1,
+      "O-1"
+     ]
+    ],
+    3
+   ]
+  },
+  "probe_order_lifecycle": {
+   "kind": "value",
+   "value": [
+    "OrderStateError",
+    "128.66 PLN",
+    "OrderStateError",
+    18,
+    "O-1/1",
+    "5.00 PLN",
+    "partially_shipped",
+    "InvalidQuantity",
+    "InvalidQuantity",
+    {
+     "WID-001": 7,
+     "GAD-002": 2
+    },
+    "shipped",
+    "2026-03-04",
+    "52.00 PLN",
+    "OrderStateError",
+    0
+   ]
+  },
+  "probe_cancel_after_partial_shipment": {
+   "kind": "value",
+   "value": [
+    "cancelled",
+    4,
+    8,
+    8,
+    "OrderStateError"
+   ]
+  },
+  "probe_place_rolls_back_on_shortage": {
+   "kind": "value",
+   "value": [
+    "InsufficientStock",
+    "cancelled",
+    0,
+    "OrderStateError",
+    "InvalidQuantity"
+   ]
+  },
+  "probe_failed_shipment_partial_lot": {
+   "kind": "value",
+   "value": [
+    "InsufficientStock",
+    [
+     [
+      "WID-001#1",
+      10
+     ]
+    ],
+    4,
+    "confirmed"
+   ]
+  },
+  "probe_failed_shipment_then_cogs": {
+   "kind": "value",
+   "value": [
+    "InsufficientStock",
+    "5.00 PLN",
+    [
+     "WID-001#1"
+    ]
+   ]
+  },
+  "probe_failed_shipment_restores_lot_order": {
+   "kind": "value",
+   "value": [
+    true,
+    [
+     [
+      "WID-001#1",
+      10,
+      "2026-03-01"
+     ],
+     [
+      "WID-001#2",
+      10,
+      "2026-03-02"
+     ]
+    ],
+    10
+   ]
+  },
+  "probe_failed_shipment_three_lots": {
+   "kind": "value",
+   "value": [
+    "8.70 PLN",
+    [
+     [
+      "FOO-004#1",
+      3
+     ],
+     [
+      "FOO-004#2",
+      3
+     ],
+     [
+      "FOO-004#3",
+      2
+     ]
+    ]
+   ]
+  },
+  "probe_failed_shipment_via_journal": {
+   "kind": "value",
+   "value": [
+    9,
+    "InsufficientStock",
+    "20.00 PLN",
+    4
+   ]
+  },
+  "probe_reports": {
+   "kind": "value",
+   "value": [
+    [
+     [
+      "GAD-002",
+      4,
+      "80.00 PLN"
+     ],
+     [
+      "WID-001",
+      4,
+      "4.00 PLN"
+     ]
+    ],
+    [
+     [
+      "WID-001",
+      5
+     ],
+     [
+      "BOK-003",
+      4
+     ]
+    ],
+    [
+     [
+      "BOK-003",
+      4
+     ],
+     [
+      "WID-001",
+      1
+     ]
+    ],
+    {
+     "draft": 1,
+     "confirmed": 1,
+     "partially_shipped": 0,
+     "shipped": 2,
+     "cancelled": 0
+    },
+    {
+     "sku": "FOO-004",
+     "on_hand": 0,
+     "reserved": 0,
+     "available": 0
+    },
+    [
+     "2027-01-01",
+     "2026-03-01"
+    ],
+    "StockroomError"
+   ]
+  },
+  "probe_journal_parsing": {
+   "kind": "value",
+   "value": [
+    [
+     "product",
+     "X",
+     "say \"hi\"",
+     "1"
+    ],
+    [
+     "a",
+     ":",
+     "b",
+     ",",
+     "c"
+    ],
+    [
+     "JournalError",
+     1,
+     null
+    ],
+    [
+     "JournalError",
+     1,
+     null
+    ],
+    [
+     "JournalError",
+     2,
+     null
+    ],
+    [
+     "JournalError",
+     1,
+     null
+    ],
+    [
+     "JournalError",
+     4,
+     null
+    ],
+    [
+     "JournalError",
+     4,
+     "InsufficientStock"
+    ],
+    [
+     [
+      1,
+      "product"
+     ],
+     [
+      2,
+      "promo"
+     ],
+     [
+      3,
+      "promo"
+     ],
+     [
+      4,
+      "receive"
+     ],
+     [
+      5,
+      "order"
+     ],
+     [
+      6,
+      "confirm"
+     ],
+     [
+      7,
+      "snapshot"
+     ],
+     [
+      8,
+      "cancel"
+     ]
+    ],
+    [
+     "23.51 PLN",
+     "Wide widget",
+     "ACME"
+    ]
+   ]
+  }
+ }
+}
