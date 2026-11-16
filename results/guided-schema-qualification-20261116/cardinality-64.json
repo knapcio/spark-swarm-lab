@@ -1,0 +1,96 @@
+{
+  "id": "cardinality-64",
+  "request": {
+    "model": "nemotron-lightning",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Return only the requested JSON object. Do not use tools."
+      },
+      {
+        "role": "user",
+        "content": "API-format qualification only, not a graph problem. Return only a JSON object with key assignment containing exactly ONE integer zero."
+      }
+    ],
+    "max_tokens": 512,
+    "temperature": 0.8,
+    "seed": 1670857506,
+    "stream": false,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "structured_outputs": {
+      "json": {
+        "type": "object",
+        "properties": {
+          "assignment": {
+            "type": "array",
+            "minItems": 64,
+            "maxItems": 64,
+            "items": {
+              "type": "integer",
+              "enum": [
+                0,
+                1,
+                2,
+                3
+              ]
+            }
+          }
+        },
+        "required": [
+          "assignment"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "request_sha256": "5c994dbcadf460b7fdf4ee5ab91abf75bf8d2c65e806c02568004b4ab4a19f5c",
+  "schema_valid": false,
+  "http_status": 200,
+  "response": {
+    "id": "chatcmpl-97a2ef81ec0c3c87",
+    "object": "chat.completion",
+    "created": 1794806732,
+    "model": "nemotron-lightning",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"assignment\":                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          ",
+          "refusal": null,
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "reasoning": null
+        },
+        "logprobs": null,
+        "finish_reason": "length",
+        "stop_reason": null,
+        "token_ids": null,
+        "routed_experts": null
+      }
+    ],
+    "service_tier": null,
+    "system_fingerprint": "vllm-0.32.0-d4cc5b20",
+    "usage": {
+      "prompt_tokens": 52,
+      "total_tokens": 564,
+      "completion_tokens": 512,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "prompt_logprobs": null,
+    "prompt_token_ids": null,
+    "prompt_text": null,
+    "kv_transfer_params": null,
+    "ec_transfer_params": null,
+    "metrics": null
+  },
+  "response_sha256": "e7860738761c7839df87c80982d3e5e4250f9b734f13da5cbf15d3ea6796ccb2",
+  "error_classification": "JSONDecodeError",
+  "wall_seconds": 4.75887225009501
+}

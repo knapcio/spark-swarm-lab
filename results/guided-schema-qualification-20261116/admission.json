@@ -1,0 +1,137 @@
+{
+  "source_revision": "4b7258ee9c660659ad04fa3baddee9535da214fd",
+  "source_sha256": {
+    "run_csp_search.py": "d91a2ffab486df047a33604114a814803100c7769f53d5b37795e0d884c83d8d",
+    "csp_search.py": "9b13817cc29f952292cd947cf5545619855bf937370d6f068d2eb32a9cd90689",
+    "csp_social.py": "50e899aa980bc5fbf613ed2b2c4bda711b1cf273a5fceb3779b138573650d999",
+    "csp_tasks.py": "4a49d387687eb15c98cf226980b63b5a786c67a60ec94fa489ad58855b08373e",
+    "harness.py": "64777f393822f558a8f3ffd544abdecb314c692041a7bad13e78564995e61002",
+    "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+    "reference_worker.py": "17f83d857a820a0dfc8665cd8330a94836d60dbc4b16ea73d4f05433dc49cbe9",
+    "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
+    "SEARCH_SELECTION.json": "480fd7bcf2de0e3a707be284f4306fb9b297b521088fc5a71ca22657fdee71af",
+    "datasets/csp-v1/tasks.json": "29d659bbc7b4b819ea7d572db073459eb30d6c19f7fda2114e7c174c375de960",
+    "datasets/csp-v1/reference-witnesses.json": "b02be9c50fecf0c779d2959b15e00d145bfbceedecbdab25beb21643c6a9a40c",
+    "test_run_csp_search.py": "6a68873a3214d8a73fbcaf934c8e446fec5facdca73f9591d3f5654097bd08a7",
+    "test_csp_search.py": "e9a655124ae9bc946d48c68471937aa0ebb4e5a8cd7653348fe301d289c1ceeb",
+    "test_csp_social.py": "17ac98240889d0bcb9390e05187478a681dbc711bc9170c7b1b4c0203b874552",
+    "test_csp_tasks.py": "b66ed7be0f6f906f8adf843d668820e2291190ac28f072808ed768aee8578b11",
+    "csp_classical.py": "5a7f9388728a710cdf2d842f0ff35a4517f9612589fc0b2b93a471873c710c10",
+    "test_csp_classical.py": "0a1de0bf061bd0320cd0569af56372abef8c3459ca44447b60ab4fb696eba37f",
+    "test_csp_guided.py": "acc96b6cbef1164a56e212718258b1068b6559f763030d4c45c36e0d523b0185",
+    "GUIDED_FORMAT_CONTROL.md": "693be5bd8021ed12625cd2f9871c707e2a25bdff05a9e40dee435f5a29905371"
+  },
+  "plan_sha256": "1638edfe5dea9f2f8c77867fb38df0c69a6ab6c5f708417215959c0b3fbf2e92",
+  "driver_sha256": "7135a70f7af213fba65c0e711b15dec4cc469239a6f3dcc48878bcb0dd5e685c",
+  "prior_admission_sha256": "372f8eab020bfdd9e6f62d3a34ab4e06362d13f320992ae5b1f73cdd4c507c1e",
+  "started_utc": "2026-11-16T05:25:31.229801+00:00",
+  "maximum_calls": 3,
+  "mode": "API format qualification only; no graph quality inference",
+  "failure_policy": "Stop on first failed probe; never add probes, relax schemas or change runtime",
+  "fleet_before": [
+    {
+      "host": "Spark_01",
+      "endpoint": "http://127.0.0.1:18081/v1",
+      "checked_utc": "2026-11-16T05:25:23.011886+00:00",
+      "verified": true,
+      "hostname": "spark-01",
+      "container": {
+        "owner": "swarm-lab-20261115",
+        "image": "vllm/vllm-openai@sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "running": true,
+        "oom": false,
+        "restart_count": 0,
+        "state_error": "",
+        "speculation": "dspark"
+      },
+      "health": "200",
+      "metrics": {
+        "timestamp_utc": "2026-11-16T05:25:24.239026+00:00",
+        "running": 0.0,
+        "waiting": 0.0,
+        "prompt": 20086734.0,
+        "completion": 7658922.0
+      },
+      "idle": true,
+      "drain_seconds": 0.31806620862334967
+    },
+    {
+      "host": "Spark_02",
+      "endpoint": "http://127.0.0.1:18082/v1",
+      "checked_utc": "2026-11-16T05:25:24.305159+00:00",
+      "verified": true,
+      "hostname": "spark-02",
+      "container": {
+        "owner": "swarm-lab-20261115",
+        "image": "vllm/vllm-openai@sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "running": true,
+        "oom": false,
+        "restart_count": 0,
+        "state_error": "",
+        "speculation": "dspark"
+      },
+      "health": "200",
+      "metrics": {
+        "timestamp_utc": "2026-11-16T05:25:25.484356+00:00",
+        "running": 0.0,
+        "waiting": 0.0,
+        "prompt": 20045499.0,
+        "completion": 7715421.0
+      },
+      "idle": true,
+      "drain_seconds": 0.26684020925313234
+    },
+    {
+      "host": "Spark_03",
+      "endpoint": "http://127.0.0.1:18083/v1",
+      "checked_utc": "2026-11-16T05:25:25.513886+00:00",
+      "verified": true,
+      "hostname": "spark-03",
+      "container": {
+        "owner": "swarm-lab-20261115",
+        "image": "vllm/vllm-openai@sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "running": true,
+        "oom": false,
+        "restart_count": 0,
+        "state_error": "",
+        "speculation": "dspark"
+      },
+      "health": "200",
+      "metrics": {
+        "timestamp_utc": "2026-11-16T05:25:27.021381+00:00",
+        "running": 0.0,
+        "waiting": 0.0,
+        "prompt": 18056416.0,
+        "completion": 7510906.0
+      },
+      "idle": true,
+      "drain_seconds": 0.500534750521183
+    },
+    {
+      "host": "Spark_04",
+      "endpoint": "http://127.0.0.1:18084/v1",
+      "checked_utc": "2026-11-16T05:25:27.278847+00:00",
+      "verified": true,
+      "hostname": "spark-04",
+      "container": {
+        "owner": "swarm-lab-20261115",
+        "image": "vllm/vllm-openai@sha256:6ff5ff0ddf3658d2c2d677dac5ca2d4726ce0156b4371166d918181b210bd4bc",
+        "running": true,
+        "oom": false,
+        "restart_count": 0,
+        "state_error": "",
+        "speculation": "dspark"
+      },
+      "health": "200",
+      "metrics": {
+        "timestamp_utc": "2026-11-16T05:25:29.436177+00:00",
+        "running": 0.0,
+        "waiting": 0.0,
+        "prompt": 19319638.0,
+        "completion": 7856138.0
+      },
+      "idle": true,
+      "drain_seconds": 0.6144491666927934
+    }
+  ]
+}

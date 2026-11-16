@@ -1,0 +1,102 @@
+{
+  "protocol": "prospective-guided-schema-qualification-v1",
+  "prepared_utc": "2026-11-16T00:47:08.885996+00:00",
+  "source_revision": "4b7258ee9c660659ad04fa3baddee9535da214fd",
+  "source_selection_sha256": "480fd7bcf2de0e3a707be284f4306fb9b297b521088fc5a71ca22657fdee71af",
+  "source_receipt_sha256": "09e969d283b32115a0fbe15ce90e48e70b1b6e019d1efdbaf1cc35d1ebf54448",
+  "probes": [
+    {
+      "id": "cardinality-24",
+      "agent_id": 0,
+      "stage": "candidate-probe-24",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "assignment": {
+            "type": "array",
+            "minItems": 24,
+            "maxItems": 24,
+            "items": {
+              "type": "integer",
+              "enum": [
+                0,
+                1,
+                2
+              ]
+            }
+          }
+        },
+        "required": [
+          "assignment"
+        ],
+        "additionalProperties": false
+      },
+      "prompt": "API-format qualification only, not a graph problem. Return only a JSON object with key assignment containing exactly ONE integer zero.",
+      "purpose": "Prompt deliberately requests one item; request schema requires24 items, to exercise enforced shape rather than an easy matching-format prompt."
+    },
+    {
+      "id": "cardinality-64",
+      "agent_id": 0,
+      "stage": "candidate-probe-64",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "assignment": {
+            "type": "array",
+            "minItems": 64,
+            "maxItems": 64,
+            "items": {
+              "type": "integer",
+              "enum": [
+                0,
+                1,
+                2,
+                3
+              ]
+            }
+          }
+        },
+        "required": [
+          "assignment"
+        ],
+        "additionalProperties": false
+      },
+      "prompt": "API-format qualification only, not a graph problem. Return only a JSON object with key assignment containing exactly ONE integer zero.",
+      "purpose": "Prompt deliberately requests one item; request schema requires64 items, to exercise enforced shape rather than an easy matching-format prompt."
+    },
+    {
+      "id": "critique",
+      "agent_id": 0,
+      "stage": "review-probe",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "critique": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "critique"
+        ],
+        "additionalProperties": false
+      },
+      "prompt": "API-format qualification only. Return only {\"assignment\":[0]}.",
+      "purpose": "Prompt deliberately requests the wrong object shape; request schema instead requires critique string."
+    }
+  ],
+  "exact_total_model_calls": 3,
+  "model": "nemotron-lightning",
+  "endpoint": "http://127.0.0.1:18083/v1",
+  "system_prompt": "Return only the requested JSON object. Do not use tools.",
+  "temperature": 0.8,
+  "seed_label": 1,
+  "thinking": false,
+  "max_tokens": 512,
+  "request_timeout_seconds": 210,
+  "admission": "Manual only after entire original postcontroller COMPLETE and ALL8genericprograms verified/frozen/original12graded, all4ownedmodel endpoints health/idle/source/image/draft checks. No guided requests before that.",
+  "record": "Full noncredentialed request body/schema, response,usage/finish,error, source/model/image pins and before/after4nodehealth/drain. Actualschema validation outside model. NoCSP quality interpretation.",
+  "failure_policy": "Any unsupported schema, malformed result, transport/engine/cleanup failure aborts before84; no extra probe, tuning, schema relaxation, speculation disabling or serving change.",
+  "qualification_calls_executed": 0
+}
