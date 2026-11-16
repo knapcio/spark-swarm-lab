@@ -1,0 +1,79 @@
+{
+  "protocol": "nemotron72-known-agents-v2",
+  "status": "FROZEN",
+  "scope": "Exploratory tuning on the previously seen 24 evaluation tasks x 3 seeds. Not fresh generalization. Independent agents only.",
+  "question": "Does client-side budget forcing (continue the same token sequence after a forced end of thinking) beat the scribe commit (new thinking-off request with own notes pasted) at the same 8192-token budget and prompt wording?",
+  "method": "K=4 independent forced_explicit agents per case (index_explicit prompt; thinking up to 7168 tokens via raw completions on the server chat template; if cut without closing thinking, append \"\\n</think>\\n\" and continue the same sequence with the remaining budget). Compare with the 4 scribe_explicit agents per case of nemotron72-known-swarm-v1 (same prompt, 7936 + 256). Case solved if any agent plan passes the original exact verifier; all agents run to completion. Trigger equals the scribe trigger (no parsed plan, finish=length, own tokens): if thinking was never closed the end is forced; if thinking closed but the answer was cut, the same sequence simply continues.",
+  "agent_variants": [
+    "forced_explicit",
+    "forced_explicit",
+    "forced_explicit",
+    "forced_explicit"
+  ],
+  "workers": {
+    "forced_explicit": "forced72_worker.py"
+  },
+  "extra_worker_args": [],
+  "agent_seed_offset": 100,
+  "source_revision": "a8b3a83031dc75aa6809896edf412245eddd87b8",
+  "source_branch": "research/nemotron72-forced-v1",
+  "source_path": ".runtime/nemotron72-forced-source",
+  "matrix": {
+    "dataset": "datasets/arithmetic-v1/tasks.json",
+    "dataset_sha256": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+    "split": "evaluation",
+    "expected_task_ids_in_stored_order": [
+      "eva-c25dd13868a8",
+      "eva-4a5b112b29e0",
+      "eva-91cea8bac1fe",
+      "eva-8955514173a5",
+      "eva-6b194524eb19",
+      "eva-27c0dd95407a",
+      "eva-5f7e8610aa71",
+      "eva-2894f3b286c6",
+      "eva-d75177564d41",
+      "eva-17c359789b49",
+      "eva-f087ad404500",
+      "eva-6ce1a0614ff5",
+      "eva-8c04e7fa4008",
+      "eva-3b1047ffeb08",
+      "eva-f792236a99ed",
+      "eva-e40959c347a7",
+      "eva-66b495db2b77",
+      "eva-3f863b95e0b7",
+      "eva-541797dfa346",
+      "eva-0fdf38eb4f8b",
+      "eva-eea066d2b2d7",
+      "eva-a890436f325f",
+      "eva-ec6b2de6877c",
+      "eva-eca4c7a9c432"
+    ],
+    "tasks": 24,
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "cases": 72,
+    "agent_runs": 288
+  },
+  "seeds": "agent seed = 1000*case_seed + 100 + agent_index; disjoint from seeds 1,2,3 and from the swarm run (offset 0)",
+  "limits": {
+    "per_agent_calls": 2,
+    "per_agent_completion_tokens": 8192,
+    "first_thinking_tokens": 7168,
+    "forced_answer_tokens": "8192 minus tokens used",
+    "idle_timeout_seconds": 120,
+    "transport_wall_limit_seconds": 1800,
+    "agent_wall_deadline_seconds": 2400,
+    "deadline_note": "No wall-clock quality limit. 120 s without any streamed byte = hung server (infrastructure fault). Deadlines are catastrophe stops only; run_benchmark labels them controller_180_second_deadline (legacy label).",
+    "transport_wall_limit_seconds_note": "1800 s per call (catastrophe only); the 2400 s agent deadline is reached first in the worst case."
+  },
+  "scheduling": {
+    "concurrent_agents_per_node": 20,
+    "placement": "agent j of case c runs on replica (c+j)%4; per-replica FIFO queues in case order"
+  },
+  "primary_outcome": "per-agent success rate forced_explicit vs scribe_explicit (swarm v1 odd agents) and solved cases with 4 agents each; secondary: tokens per solved case, forced-trigger and conversion rates",
+  "stop_policy": "Controller/transport/malformed-trace/process faults or source change stop new admissions; in-flight agents finish.",
+  "runner": "run_agents72.py"
+}
