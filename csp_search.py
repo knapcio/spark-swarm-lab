@@ -16,6 +16,18 @@ CORE_ARMS = ("resample", "sequential", "parallel_repair4", "evolution4")
 ARMS = CORE_ARMS + ("evolution_mutation4",) + SOCIAL_ARMS
 
 
+def stage_schema(task, stage):
+    """Format/domain constraints only; never encode edges or a valid coloring."""
+    if stage.startswith("candidate-"):
+        key, value = "assignment", dict(type="array", minItems=task["vertex_count"],
+            maxItems=task["vertex_count"], items=dict(type="integer", enum=list(range(task["color_count"]))))
+    elif stage.startswith("review-"):
+        key, value = "critique", dict(type="string", minLength=1, maxLength=4000)
+    else:
+        raise ValueError("unknown structured-output stage")
+    return dict(type="object", properties={key: value}, required=[key], additionalProperties=False)
+
+
 def task_prompt(task):
     return ("Color every vertex of this graph. Every edge must connect different colors. "
             "Colors are integers 0 through color_count-1; vertices are indexed from zero. "
@@ -182,6 +194,7 @@ def main(argv=None):
     parser.add_argument("--model", default="nemotron-lightning")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--thinking", action="store_true")
+    parser.add_argument("--guided-format", action="store_true", help="Constrain only JSON shape, cardinality and color domain")
     parser.add_argument("--max-tokens", type=int, default=512)
     parser.add_argument("--max-calls", type=int, default=16)
     parser.add_argument("--timeout", type=float, default=180)
@@ -194,10 +207,13 @@ def main(argv=None):
     client = Client([args.endpoint], args.model, 4, args.max_tokens, args.timeout,
                     budget, events, args.seed, args.thinking)
     client.system_prompt = "Solve the precise graph-coloring task. Return only the requested JSON object. Do not use tools."
+    if args.guided_format:
+        client.schema_for_stage = lambda stage: stage_schema(tasks[0], stage)
     try:
         events.emit("run_start", task=tasks[0], seed=args.seed,
                     thinking=args.thinking, max_tokens=args.max_tokens,
-                    max_calls=args.max_calls, max_completion_tokens=args.max_calls * args.max_tokens)
+                    max_calls=args.max_calls, max_completion_tokens=args.max_calls * args.max_tokens,
+                    **({"structured_outputs": "json_schema_format_domain_only"} if args.guided_format else {}))
         result = run_search(tasks[0], args.arm, client, events, args.max_calls)
         events.emit("run_end", status="complete", **result, **budget.snapshot(),
                     infrastructure_failures=client.infra_failures,

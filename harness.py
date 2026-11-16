@@ -159,6 +159,9 @@ class Client:
                     {"role": "user", "content": prompt}], max_tokens=self.max_tokens,
                     temperature=0.8, seed=request_seed, stream=False,
                     chat_template_kwargs={"enable_thinking": self.thinking})
+                schema_for_stage = getattr(self, "schema_for_stage", None)
+                if schema_for_stage is not None:
+                    body["structured_outputs"] = {"json": schema_for_stage(stage)}
                 request = urllib.request.Request(url, data=json.dumps(body).encode(),
                                                  headers={"Content-Type": "application/json"})
                 with urllib.request.urlopen(request, timeout=self.timeout) as response:

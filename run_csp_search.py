@@ -25,7 +25,7 @@ SOURCE_FILES = ("run_csp_search.py", "csp_search.py", "csp_social.py", "csp_task
                 "SEARCH_SELECTION.json", "datasets/csp-v1/tasks.json",
                 "datasets/csp-v1/reference-witnesses.json", "test_run_csp_search.py",
                 "test_csp_search.py", "test_csp_social.py", "test_csp_tasks.py",
-                "csp_classical.py", "test_csp_classical.py")
+                "csp_classical.py", "test_csp_classical.py", "test_csp_guided.py", "GUIDED_FORMAT_CONTROL.md")
 EXTRA_FIELDS = ["profile", "case_valid", "halt_reason", "candidate_count", "review_count",
                 "derived_count", "verified_assignment_count", "client_usage_complete",
                 "first_candidate_verified_seconds", "source_changed_after_case"]
@@ -101,6 +101,8 @@ def build_plan(profile, split, seed, output, gate_root):
                        "--timeout", str(recipe["request_timeout_seconds"])]
             if recipe["thinking"]:
                 command.append("--thinking")
+            if recipe.get("guided_format"):
+                command.append("--guided-format")
             cases.append(dict(task_id=task["id"], task=task, split=split, arm=arm, seed=seed,
                               slot=slot, endpoint=ENDPOINTS[slot], events=str(trace), command=command,
                               stdout=str(output / (stem + ".stdout.log")),
@@ -328,7 +330,7 @@ def run_cohort(plan, before, gate):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--profile", choices=("core_off16", "extended_off64", "thinking_on16"), required=True)
+    parser.add_argument("--profile", choices=("core_off16", "extended_off64", "thinking_on16", "core_guided_off16"), required=True)
     parser.add_argument("--split", choices=("development", "evaluation"), required=True)
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--gate-root", type=Path, default=HERE)

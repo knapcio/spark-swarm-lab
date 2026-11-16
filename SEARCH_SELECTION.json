@@ -1,7 +1,7 @@
 {
   "protocol": "csp-search-selection-v1",
   "prepared_utc": "2026-11-15T19:54:11.508463+00:00",
-  "status": "Preregistered policy/data proposal before any CSP model outcomes; parent review and immutable source tag required before launch. This record does not itself authorize inference.",
+  "status": "Prospective posthoc format-only exploratory control; root review, separate published source/tag and three API-schema probes after all original core/program/drain are required before 84 cases. No preparation inference.",
   "scope": "Separate exploratory CSP study after primary900, supplemental80, and all45 frozen throughput cohorts. Existing studies untouched; no pooling.",
   "profiles": {
     "core_off16": {
@@ -84,6 +84,31 @@
         ]
       },
       "request_timeout_seconds": 930
+    },
+    "core_guided_off16": {
+      "priority": 4,
+      "thinking": false,
+      "temperature": 0.8,
+      "max_tokens": 512,
+      "max_calls": 16,
+      "max_completion_tokens": 8192,
+      "deadline_seconds": 180,
+      "arms": [
+        "resample",
+        "sequential",
+        "parallel_repair4",
+        "evolution4",
+        "review_elites4",
+        "democracy4",
+        "weighted_democracy4"
+      ],
+      "splits_and_seeds": {
+        "evaluation": [
+          1
+        ]
+      },
+      "request_timeout_seconds": 210,
+      "guided_format": true
     }
   },
   "schedule": {
@@ -96,7 +121,8 @@
       "extended_off64/evaluation/1",
       "extended_off64/evaluation/2",
       "extended_off64/evaluation/3",
-      "thinking_on16/evaluation/1"
+      "thinking_on16/evaluation/1",
+      "core_guided_off16/evaluation/1"
     ],
     "time_gate": "Parent starts only whole balanced cohorts when remaining night permits; extension launch based on time/resources, never failed-task filtering or outcome-based escalation. Partial interrupted cohorts remain explicitly incomplete.",
     "core_cases": 280,
@@ -111,7 +137,8 @@
     "slots": "Four endpoint-owned persistent case slots; all arms of a task run sequentially on its slot. No simultaneous cases per endpoint.",
     "rotation": "Tasks sorted by ID, rotated by seed-1 and reversed for even seeds; arms reversed for even seeds then rotated by task index+seed-1. Tasks assigned round-robin to four slots.",
     "start_gate": "reference_worker.verify_gate(gate_root) verifies original900+80 and final45 throughput cohorts; all4 endpoints must be idle. Parent separately verifies live Docker/model identities before first CSP cohort.",
-    "whole_batch": "No controller early-success cancellation. Worker charges and completes all dispatched siblings before stopping; whole-case deadline remains binding."
+    "whole_batch": "No controller early-success cancellation. Worker charges and completes all dispatched siblings before stopping; whole-case deadline remains binding.",
+    "optional_guided_cases": 84
   },
   "corpus": {
     "protocol": "planted-coloring-csp-v1",
@@ -202,22 +229,24 @@
     "final_verification": "Full final assignment check counted separately from fitness evaluations; goals first verified after deadline do not count as in-budget successes."
   },
   "frozen_files_sha256": {
-    "csp_search.py": "371f65ce57501102027970d0174516577d7a0c3897f2e9560f75f61c6ec87518",
+    "csp_search.py": "9b13817cc29f952292cd947cf5545619855bf937370d6f068d2eb32a9cd90689",
     "csp_social.py": "50e899aa980bc5fbf613ed2b2c4bda711b1cf273a5fceb3779b138573650d999",
     "csp_tasks.py": "4a49d387687eb15c98cf226980b63b5a786c67a60ec94fa489ad58855b08373e",
-    "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+    "harness.py": "64777f393822f558a8f3ffd544abdecb314c692041a7bad13e78564995e61002",
     "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
     "reference_worker.py": "17f83d857a820a0dfc8665cd8330a94836d60dbc4b16ea73d4f05433dc49cbe9",
     "runtime.json": "072b628126f36aa559fa864372118c7e0497e44d1b37d29be99ea3c7f8cf6ec5",
     "datasets/csp-v1/tasks.json": "29d659bbc7b4b819ea7d572db073459eb30d6c19f7fda2114e7c174c375de960",
     "datasets/csp-v1/reference-witnesses.json": "b02be9c50fecf0c779d2959b15e00d145bfbceedecbdab25beb21643c6a9a40c",
-    "run_csp_search.py": "b1f8acd841e539777436629e0538da9dcfd0c828fb3fe2809229e543fc3ffcf5",
+    "run_csp_search.py": "d91a2ffab486df047a33604114a814803100c7769f53d5b37795e0d884c83d8d",
     "test_run_csp_search.py": "6a68873a3214d8a73fbcaf934c8e446fec5facdca73f9591d3f5654097bd08a7",
     "test_csp_search.py": "e9a655124ae9bc946d48c68471937aa0ebb4e5a8cd7653348fe301d289c1ceeb",
     "test_csp_social.py": "17ac98240889d0bcb9390e05187478a681dbc711bc9170c7b1b4c0203b874552",
     "test_csp_tasks.py": "b66ed7be0f6f906f8adf843d668820e2291190ac28f072808ed768aee8578b11",
     "csp_classical.py": "5a7f9388728a710cdf2d842f0ff35a4517f9612589fc0b2b93a471873c710c10",
-    "test_csp_classical.py": "0a1de0bf061bd0320cd0569af56372abef8c3459ca44447b60ab4fb696eba37f"
+    "test_csp_classical.py": "0a1de0bf061bd0320cd0569af56372abef8c3459ca44447b60ab4fb696eba37f",
+    "test_csp_guided.py": "acc96b6cbef1164a56e212718258b1068b6559f763030d4c45c36e0d523b0185",
+    "GUIDED_FORMAT_CONTROL.md": "693be5bd8021ed12625cd2f9871c707e2a25bdff05a9e40dee435f5a29905371"
   },
   "final_source_freeze": "Runner/tests must pass parent review before commit/tag. Selection excludes its own hash; cohort metadata separately captures its SHA plus complete frozen source hashes and Git revision.",
   "transport_timeout_amendment": {
@@ -234,5 +263,28 @@
       "whole-batch stopping and cost accounting"
     ],
     "reference_transport": "reference_worker.py source pin is refreshed for the separately authorized reference HTTP timeout margin; gate semantics remain unchanged."
+  },
+  "format_control_amendment": {
+    "base_source": "dadba8c29cd5b11bd71e49b4c8ba4e6ee5adaab5",
+    "prepared_utc": "2026-11-16T00:40:54.410884+00:00",
+    "motivation": "After original development+evaluation seed1: 0/112 solved and 1168 malformed candidates, mainly wrong assignment array lengths. Posthoc, not original preregistration.",
+    "profile": "core_guided_off16",
+    "planned_cases": 84,
+    "changes": [
+      "Per-request stage-specific structured_outputs.json schema: assignment exactn/integer enum0..k-1 or critique string1..4000",
+      "No graph edges, solver hints, witnesses, score or repair encoded in schema"
+    ],
+    "unchanged": [
+      "prompts",
+      "methods and ranking",
+      "task corpus and split",
+      "temperature and reasoning",
+      "call and completion ceilings",
+      "case and transport deadlines",
+      "model/runtime/draft/speculation"
+    ],
+    "runtime_qualification": "Source-level support present; exact GB10/Nemotron/DSpark combination UNKNOWN until exactly3 manually admitted schema probes after all original core/program/drain; failure aborts84 without changes.",
+    "replaces_original_results": false,
+    "protocol_document": "GUIDED_FORMAT_CONTROL.md"
   }
 }
