@@ -1,6 +1,6 @@
 {
   "protocol": "nemotron72-development-v1",
-  "status": "PROPOSED",
+  "status": "FROZEN",
   "prepared_utc": "2026-11-16T07:09:11.817698+00:00",
   "phase": "Prospective development on already-seen original development tasks; not a fresh evaluation or a promise of72/72",
   "authority": "Root freezes only after implementation and independent review, before any model calls; this file authorizes no deployment or corpus generation. Existing user authorization covers later coordinated nodes01-04 operations; Fable advisory text adds no permission requirement.",
@@ -122,7 +122,7 @@
     "admission": "One whole case per node, four independent existing Nemo replicas. No simultaneous cases on one node; no other model workload. This is recipe profiling, not a throughput/saturation study.",
     "block_order": "Seeds1,2,3 outermost; for each seed, the8development tasks in their stored order (4/6alternating). Block b=8*seed_index+task_index,0..23.",
     "variant_order": "Within each block, position j=0..6 runs variants[(j+floor(b/4)) mod7]. Rotation changes every4blocks to balance each variant across hosts.",
-    "node_assignment": "node=1+((7*b+j) mod4). Each node serializes its own block jobs; complete/drain admitted cases before next global block. After an operational fault, set a shared stop flag and schedule no further execute() calls; cases whose execution already started may finish their fixed policy/cleanup. No subsequent block is admitted.",
+    "node_assignment": "node=1+((7*b+j) mod4). Each node serializes its block jobs. After a fault flag, stop new case admission under the shared lock; already admitted cases may finish their fixed policy and cleanup. No subsequent block is admitted. Source hashes are rechecked at every block boundary.",
     "balance": "42cases/node total; each variant has2cases/node/seed (6/node overall). No adaptive admission, outcome-based reordering, retries or dropped failures.",
     "canonical_schedule_sha256": "35894b838857ebcde51fec5cc7f5247d7d89a06f4ded6240f9391bd69c1bc596",
     "schedule_row_fields": [
@@ -175,6 +175,9 @@
     "branch": "research/nemotron72-followup-v1",
     "worktree": ".runtime/nemotron72-followup-source",
     "solver_api": "run_followup(experiment, initial, puzzle_id, variant, agent_id=0)",
-    "pending_before_FROZEN": "Root pins actual solver/runner/tests/prompts/protocol/runtime/dataset/verifier hashes and independent review. Record exact outgoing JSON bytes+SHA before urllib sends, raw response/usage/finish/notes lineage; do not log authorization headers, credentials or environment dumps."
-  }
+    "client": "FollowupClient subclass in followup72_client.py; original harness.py stays byte-identical to baseline, preserving historical source guards",
+    "precall_clearance_sha256": "ceed82d72e6c471e053eac1a21b3abaad59cc0a3eec6b828817a08f340bcb12d",
+    "freeze_contract": "Actual source/test hashes, commit/tag and validation are recorded in the external frozen-source receipt; no self-referential source hash in this protocol."
+  },
+  "frozen_utc": "2026-11-16T07:27:01.446213+00:00"
 }

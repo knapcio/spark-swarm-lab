@@ -1,0 +1,41 @@
+{
+  "status": "PROVISIONAL_BLOCKER_PENDING_FIX",
+  "scope": "Independent offline precall review; no model, SSH, GPU, candidate execution or canonical score edits",
+  "blockers": [
+    {
+      "id": "controller_exception_stop",
+      "description": "An exception in slot_worker execute reaches the outer handler only after executor waits; other slots can admit their second case first.",
+      "reproduction": "CONTROLLER_EXCEPTION_BEFORE.json",
+      "extra_cases_after_authored_fault": 2,
+      "required": "Set shared stop within the slot worker on execution/output/classification failure before allowing other next-case checks."
+    }
+  ],
+  "verified_findings": [
+    "canonical/apply_action/solved/parse_json_response ASTs match original 1a462 baseline",
+    "192 authored original run_direct comparisons have exact return/events/client-call parity",
+    "16 existing focused authored tests passed before root Client subclass refactor",
+    "168 development cases: 8 tasks x 7 variants x 3 seeds; 42 cases per node and 2 per variant/node/seed",
+    "First request budget: 8192 singles or 7936 scribes; conditional 256 commitment, at most 8192 requested output per case and 240 requests per cohort",
+    "Scribe eligibility uses exactly parsed None AND response_received True AND length finish AND nonblank own reasoning; no retry for non-None invalid plan",
+    "Full/tail/empty notes come only from same case immediately preceding request and are hash/parent-bound; no extracted audit plans, witnesses or external advisors",
+    "Value addressing consumes first available distinct literal operand occurrences and then passes ordered operation to unchanged exact verifier; no search/correction",
+    "Client exact encoded request body SHA is computed on same bytes handed to urllib; local cap/thinking overrides do not mutate shared defaults; cancellations settle/log then propagate"
+  ],
+  "pending": [
+    "Root restoring original harness byte-for-byte and moving new call into separate FollowupClient to preserve historical source guards",
+    "Root fixes local exception stop boundary",
+    "Final source commit/protocol FROZEN/admission hashes and repeat focused checks"
+  ],
+  "interpretation": [
+    "Known original development tasks; design was informed by already-seen evaluation failure diagnostics and advisory review. This is exploratory recipe selection, not fresh heldout generalization.",
+    "Any later success on original 24 x 3 evaluation pairs is already-seen tuned-suite success, not a new confirmation or universal guarantee.",
+    "Fresh evaluation must be separately generated/frozen with prior-corpus exclusions and selected method fixed before outcomes.",
+    "Common output cap is not matched realized cost; full notes incur additional prompt work, scribe recipe also reallocates 8192 into 7936+256. Empty notes still receive complete task.",
+    "Derived request seeds depend on prompt; equal numeric seed labels are paired task labels, not identical random streams after prompt changes.",
+    "Scribe arms share identical first-request prompt/cap/derived seed, deliberately testing different commits, but repeated deterministic first outputs are not independent reasoning discoveries."
+  ],
+  "limitations": [
+    "Code review and authored fixtures cannot establish future live model quality or actual fleet identity; fresh runtime admission remains separate.",
+    "No outcome from this new followup has been collected."
+  ]
+}
