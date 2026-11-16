@@ -1,0 +1,100 @@
+{
+  "protocol": "nemotron72-known-agents-v2",
+  "status": "FROZEN",
+  "frozen_note": "Frozen 2026-11-16 ~11:45 Europe/Warsaw BEFORE either fresh corpus exists (arithmetic-v2 and arithmetic-hard-v1 not yet generated).",
+  "question": "On fresh, never-seen tasks: does a swarm of 8 independent budget-forced agents beat the original Nemotron method (four independent single reasoning calls), and how does a single improved agent compare with a single original call?",
+  "agent_variants": [
+    "plain_original",
+    "plain_original",
+    "plain_original",
+    "plain_original",
+    "forced_explicit",
+    "forced_explicit",
+    "forced_explicit",
+    "forced_explicit",
+    "forced_explicit",
+    "forced_explicit",
+    "forced_explicit",
+    "forced_explicit"
+  ],
+  "workers": {
+    "plain_original": "forced72_worker.py",
+    "forced_explicit": "forced72_worker.py"
+  },
+  "extra_worker_args": [],
+  "agent_seed_offset": 200,
+  "seeds": "agent seed = 1000*case_seed + 200 + agent_index; disjoint from all known72 runs",
+  "source_revision": "2ad6cdc2fe5bb5b72abadb2fcebfa0c3c105801f",
+  "source_branch": "research/nemotron72-forced-v1",
+  "source_path": ".runtime/nemotron72-forced-source",
+  "arms": {
+    "baseline": "agents 0-3: plain_original = original prompt, one thinking call capped at 8192, no second call (the old one-call method; any-of-4 = the old ensemble4 method). Same streaming transport as the swarm, so no wall-clock cutoff for either arm.",
+    "swarm": "agents 4-11: forced_explicit (selected by the frozen rule below), 7168 thinking + forced end + continuation within 8192."
+  },
+  "selection": {
+    "rule": "highest single-agent success on known72; ties -> fewer mean completion tokens",
+    "candidates": {
+      "scribe_full": {
+        "solved": 213,
+        "runs": 288,
+        "rate": 0.7396,
+        "mean_tokens": 6776,
+        "run": "runs/nemotron72-known-swarm-v1"
+      },
+      "scribe_explicit": {
+        "solved": 219,
+        "runs": 288,
+        "rate": 0.7604,
+        "mean_tokens": 5456,
+        "run": "runs/nemotron72-known-swarm-v1"
+      },
+      "forced_explicit": {
+        "solved": 236,
+        "runs": 288,
+        "rate": 0.8194,
+        "mean_tokens": 5169,
+        "run": "runs/nemotron72-known-forced-v1"
+      }
+    },
+    "selected": "forced_explicit",
+    "evidence_sha256": {
+      "runs/nemotron72-known-swarm-v1/summary.json": "9981330d3d5083827444f8930423bea19eae0b0b8e9a9642a8275c4cfed55acb",
+      "runs/nemotron72-known-forced-v1/summary.json": "a6fc0e8c5bd4cd6509bdd46afcb0a096d2170f6693be1942608026be25102298"
+    }
+  },
+  "limits": {
+    "per_agent_completion_tokens": 8192,
+    "per_agent_calls": "plain 1, forced <=2",
+    "idle_timeout_seconds": 120,
+    "transport_wall_limit_seconds": 1800,
+    "agent_wall_deadline_seconds": 2400
+  },
+  "scheduling": {
+    "concurrent_agents_per_node": 20,
+    "placement": "agent j of case c on replica (c+j)%4 (3 per replica per case); both arms interleaved in the same queue"
+  },
+  "primary_outcome": "Solved cases out of 144: swarm any-of-8 (agents 4-11) vs baseline any-of-4 (agents 0-3), paired by case; task-cluster bootstrap 95% interval over 48 tasks.",
+  "secondary": [
+    "single agent: forced_explicit rate vs plain_original rate",
+    "any-of-k curves per arm (fixed order and all-subsets expectation)",
+    "budget-matched: swarm any-of-4 vs baseline any-of-4 (both 32,768 tokens ceiling)",
+    "completion and prompt tokens per case and per solved case; wall time reported, never a cutoff"
+  ],
+  "not_allowed": "No prompt, budget, agent-type, K or code change after any fresh call; no reruns of failed cases; infrastructure faults stop admission and are reported.",
+  "runner": "run_agents72.py",
+  "study": "arithmetic-hard-v1-comparison",
+  "matrix": {
+    "dataset": "datasets/arithmetic-hard-v1/tasks.json",
+    "dataset_protocol": "arithmetic-hard-v1",
+    "split": "evaluation",
+    "tasks": 48,
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "cases": 144,
+    "agent_runs": 1728
+  },
+  "scope": "Fresh hard tasks: arithmetic-hard-v1 evaluation split (48 tasks; unique or near-unique solutions needing all 4 or >=5 of 6 numbers), generated after this freeze by make_arithmetic_hard.py. Same arms; DeepSeek will be measured later on the same tasks under its own frozen plan."
+}

@@ -69,8 +69,12 @@ def make_jobs(tasks, output, endpoints, source, plan):
     variants = plan['agent_variants']
     seeds = plan['matrix']['seeds']
     require(len(endpoints) == len(set(endpoints)) == 4, 'Four distinct endpoints required')
-    require([t['id'] for t in tasks] == plan['matrix']['expected_task_ids_in_stored_order'],
-            'Wrong stored evaluation task IDs')
+    expected = plan['matrix'].get('expected_task_ids_in_stored_order')
+    if expected is not None:
+        require([t['id'] for t in tasks] == expected, 'Wrong stored evaluation task IDs')
+    else:  # corpus generated after the plan froze: count and balance are fixed instead
+        require(len(tasks) == plan['matrix']['tasks'] and len({t['id'] for t in tasks}) == len(tasks),
+                'Wrong evaluation task count')
     jobs = []
     for si, seed in enumerate(seeds):
         for ti, task in enumerate(tasks):
@@ -142,14 +146,19 @@ def main(argv=None):
     source, output = a.source.expanduser().resolve(), a.output.resolve()
     validate_source(source, plan['source_revision'])
     before = hashes(source)
-    dataset = source / 'datasets/arithmetic-v1/tasks.json'
-    require(sha(dataset) == plan['matrix']['dataset_sha256'], 'Corpus hash differs')
+    if 'dataset_sha256' in plan['matrix']:
+        dataset = source / plan['matrix']['dataset']
+        require(sha(dataset) == plan['matrix']['dataset_sha256'], 'Corpus hash differs')
+    else:  # fresh corpus in the main repo; its protocol is pinned and its hash is recorded
+        dataset = HERE / plan['matrix']['dataset']
+        require(read(dataset).get('protocol') == plan['matrix']['dataset_protocol'], 'Wrong corpus protocol')
     tasks = [t for t in read(dataset)['tasks'] if t['split'] == 'evaluation']
     endpoints = [f'http://127.0.0.1:{port}/v1' for port in range(18081, 18085)]
     jobs = make_jobs(tasks, output, endpoints, source, plan)
     per_node = plan['scheduling']['concurrent_agents_per_node']
     deadline = plan['limits']['agent_wall_deadline_seconds']
     meta = dict(protocol=plan, plan_sha256=sha(a.plan), runner_sha256=sha(Path(__file__)), jobs=len(jobs),
+                dataset=str(dataset), dataset_sha256=sha(dataset),
                 source_sha256=before, source_revision=plan['source_revision'], output=str(output))
     if not a.run:
         print(json.dumps(dict(mode='plan', jobs=len(jobs), model_calls=0, agents=len(plan['agent_variants']))))
