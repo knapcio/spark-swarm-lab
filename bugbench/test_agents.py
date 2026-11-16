@@ -613,5 +613,508 @@ class RunnerTests(unittest.TestCase):
                 r.execute(plan, out, pool, parallel=1, log=lambda *_: None)
 
 
+
+# --- T1/T3/V3: agent-written tests, cross-validation, review ---------------------------------------------
+REPRO_HEAD = """import datetime
+import unittest
+
+from stockroom import Money, Store
+
+
+def price(quantity):
+    store = Store("PLN")
+    store.add_product("WID-001", "Widget", "2.50", tiers=[(10, "2.30"), (50, "2.10")])
+    store.receive("WID-001", 100, "1.20", datetime.date(2026, 3, 1))
+    return store.pricing.quote([("WID-001", quantity)]).line("WID-001").unit_price
+
+
+class Repro(unittest.TestCase):
+"""
+
+
+def repro(*pairs):
+    return REPRO_HEAD + "".join(f"    def test_{n}_units(self):\n        self.assertEqual(price({n}), Money(\"{p}\", "
+                                f"\"PLN\"))\n" for n, p in pairs)
+
+
+GOOD = repro((10, "2.30"), (50, "2.10"))   # the report's behaviour at every boundary
+TEN_ONLY = repro((10, "2.30"))             # the report's example only
+WEAK = repro((11, "2.30"))                 # already passes on the buggy code
+WRONG = repro((10, "2.10"))                # contradicts the report (fails before AND after the real fix)
+BROKEN = "import unittest\nfrom stockroom import NoSuchName\n\n\nclass R(unittest.TestCase):\n    def test_x(self):\n        pass\n"
+EMPTY = "import unittest\n"
+
+
+def test_answer(text, path="tests/test_repro_x.py", files=("stockroom/pricing.py",), action="test"):
+    head = json.dumps({"action": action, "expected": "2.30 from 10 units", "files": list(files),
+                       "suspect": {"file": "stockroom/pricing.py", "function": "PricingEngine.unit_price"},
+                       "notes": "tiers"})
+    return f"{head}\n=== TEST: {path} ===\n{text}=== END TEST ===\n"
+
+
+def hack_pricing():
+    """Special-cases the report's example: passes TEN_ONLY, fails GOOD at 50 units."""
+    text = buggy(B1)["stockroom/pricing.py"]
+    old = "            if quantity > tier.min_quantity:\n"
+    return {"stockroom/pricing.py": text.replace(old, "            if quantity > tier.min_quantity or quantity == tier.min_quantity == 10:\n")}
+
+
+def reference_files():
+    return g.parse_patch(g.reference_patch(g.load_case(B1)))
+
+
+class SpyExecutor:
+    """Local CHILD runner that records every payload sent to the sandbox."""
+
+    def __init__(self):
+        self.payloads, self.lock = [], threading.Lock()
+
+    def __call__(self, payload, timeout):
+        with self.lock:
+            self.payloads.append(payload)
+        result, error = g.run_child(payload, timeout)
+        return result, error, {"executor": "spy", "failure_kind": g._local_failure_kind(error),
+                               "provenance": "candidate"}
+
+
+class HiddenTripwire:
+    """Make every hidden-material reader raise while active."""
+    NAMES = ("load_expected", "probe_payload", "observe", "grade", "compare", "load_case", "verify_case")
+
+    def __enter__(self):
+        self.saved = {name: getattr(g, name) for name in self.NAMES}
+
+        def trip(name):
+            def boom(*args, **kwargs):
+                raise AssertionError(f"hidden material read during the agent phase: g.{name}")
+            return boom
+        for name in self.NAMES:
+            setattr(g, name, trip(name))
+        return self
+
+    def __exit__(self, *exc):
+        for name, fn in self.saved.items():
+            setattr(g, name, fn)
+
+
+def t_context(responder, n=1, executor=None, budget=None):
+    ctx, transports = context(B1, responder, n=n, budget=budget)
+    ctx.tester = a.make_agent_tester(ctx.bundle, executor)
+    return ctx, transports
+
+
+class AgentTestSandboxTests(unittest.TestCase):
+    def test_classification_on_original_and_patched_trees(self):
+        tests = {"tests/test_repro_a.py": GOOD, "tests/test_repro_b.py": WEAK, "tests/test_repro_c.py": BROKEN,
+                 "tests/test_repro_d.py": EMPTY}
+        before = g.run_agent_tests(B1, None, tests)
+        self.assertEqual({p: r["classification"] for p, r in before["tests"].items()},
+                         {"tests/test_repro_a.py": "fail", "tests/test_repro_b.py": "pass",
+                          "tests/test_repro_c.py": "broken", "tests/test_repro_d.py": "empty"})
+        self.assertTrue(before["public"]["ok"])
+        after = g.run_agent_tests(B1, g.reference_patch(g.load_case(B1)), {"tests/test_repro_a.py": GOOD})
+        self.assertEqual(after["tests"]["tests/test_repro_a.py"]["classification"], "pass")
+        self.assertTrue(after["public"]["ok"])
+        hacked = g.run_agent_tests(B1, hack_pricing(), {"tests/test_repro_a.py": GOOD, "tests/test_repro_t.py": TEN_ONLY},
+                                   include_public=False)
+        self.assertEqual([hacked["tests"][p]["classification"] for p in sorted(hacked["tests"])], ["fail", "pass"])
+        self.assertIsNone(hacked["public"])
+
+    def test_sandbox_never_runs_probes_or_reads_expected(self):
+        bundle = g.agent_bundle(B1)
+        canary = g.load_project("stockroom")["canary"]
+        spy, fix = SpyExecutor(), reference_files()
+        with HiddenTripwire():
+            result = g.run_agent_tests(bundle, fix, {"tests/test_repro_a.py": GOOD,
+                                                                  "tests/test_repro_b.py": WEAK}, executor=spy)
+        self.assertEqual(result["provenance"], "candidate")
+        self.assertEqual(len(spy.payloads), 3)  # two isolated agent-test runs + one public-test run
+        for payload in spy.payloads:
+            self.assertEqual(payload["mode"], "public_tests")
+            self.assertNotIn("probes", payload)
+            self.assertNotIn("probe_names", payload)
+            blob = json.dumps(payload)
+            for secret in (canary, "BUGBENCH-HIDDEN-CANARY", "expected.json", "def probe_"):
+                self.assertNotIn(secret, blob)
+        isolated = [p for p in spy.payloads if any(k.startswith("tests/test_repro") for k in p["files"])]
+        self.assertEqual(len(isolated), 2)
+        for payload in isolated:
+            self.assertNotIn("tests/test_public.py", payload["files"])
+            self.assertEqual(sum(k.startswith("tests/test_repro") for k in payload["files"]), 1)
+
+    def test_rejects_bad_paths_and_test_edits(self):
+        for path in ("stockroom/test_x.py", "tests/test_public.py", "tests/helper.py", "tests/../x.py"):
+            with self.assertRaises(g.PatchError):
+                g.run_agent_tests(B1, None, {path: GOOD})
+        with self.assertRaises(g.PatchError):
+            g.run_agent_tests(B1, {"tests/test_public.py": "x = 1\n"}, {})
+
+    def test_parse_test_block(self):
+        text, err = a.parse_test_block(test_answer(GOOD))
+        self.assertEqual((text, err), (GOOD, None))
+        fenced = 'x\n=== TEST: tests/test_a.py ===\n```python\nimport unittest\n```\n=== END TEST ===\n'
+        self.assertEqual(a.parse_test_block(fenced)[0], "import unittest\n")
+        cut = test_answer(GOOD)
+        self.assertIn("truncated", a.parse_test_block(cut[: cut.index("class Repro")])[1])
+        as_file = "=== FILE: tests/test_r.py ===\nimport unittest\n=== END FILE ===\n"
+        self.assertIsNone(a.parse_test_block(as_file)[0])
+        self.assertEqual(a.parse_test_block(as_file, allow_file=True)[0], "import unittest\n")
+        code_file = "=== FILE: stockroom/pricing.py ===\nx = 1\n=== END FILE ===\n"
+        self.assertIsNone(a.parse_test_block(code_file, allow_file=True)[0])
+        mixed = test_answer(GOOD) + g.patch_from_files(reference_files())
+        self.assertNotIn("=== TEST:", a.strip_test_blocks(mixed))
+        self.assertTrue(a.parse_patch_answer(a.strip_test_blocks(mixed), buggy(B1),
+                                             g.agent_bundle(B1)["editable_paths"])["valid"])
+        self.assertIn("pytest", a.check_test_source("import pytest\n"))
+        self.assertIn("SyntaxError", a.check_test_source("def (:\n"))
+
+
+class TestFirstTests(unittest.TestCase):
+    def test_repro_must_fail_before_and_pass_after(self):
+        script = Script([
+            gen(plan_json(["stockroom/pricing.py", "tests/test_public.py"])),
+            gen(test_answer(WEAK)),                     # passes on the buggy tree -> told so, one revision
+            gen(test_answer(GOOD)),                     # fails on the buggy tree -> adopted
+            gen(patch_answer(broken_pricing())),        # breaks public tests and still fails the repro
+            gen(reference_answer(B1)),                  # repair
+        ])
+        ctx, (t,) = t_context(script)
+        out = a.policy_t1(ctx, calls=8)
+        summary = out["agents"]["t1"]
+        self.assertEqual([e["stage"] for e in summary["trace"]], ["plan", "test", "test", "step", "repair"])
+        self.assertEqual([w["status"] for w in summary["tests_written"]], ["pass", "fail"])
+        self.assertTrue(summary["repro_fails_before"] and summary["repro_passes_after"] and summary["public_ok"])
+        self.assertEqual(summary["calls"], 5)
+        prompts = all_prompts([t])
+        self.assertIn("PASSED on the current (buggy) code", prompts[2])
+        self.assertIn("# Your previous test", prompts[2])
+        self.assertIn("You must write the test", prompts[2])
+        self.assertIn("Result on the current code: it FAILS", prompts[3])
+        self.assertIn("Visible project tests (they pass on the original code): FAIL", prompts[4])
+        self.assertIn("Your reproduction test tests/test_repro_t1.py: FAIL", prompts[4])
+        selected = out["selected"]
+        self.assertEqual(selected["stage"], "repair")
+        self.assertEqual(out["selection"]["tier"], "own_repro")
+        runs = ctx.events.of("agent_test_run")
+        self.assertEqual([e["purpose"] for e in runs if e["target"] == "agent_test"],
+                         ["repro_on_original", "repro_on_original", "own_on_patch", "own_on_patch"])
+        self.assertEqual([e["classification"] for e in runs if e["target"] == "agent_test"], ["pass", "fail", "fail", "pass"])
+        self.assertEqual([e["ok"] for e in runs if e["target"] == "public_tests"], [False, True])
+        self.assertEqual(len(ctx.events.of("agent_test_text")), 2)
+        self.assertEqual(g.grade(B1, selected["patch_text"])["status"], "passed")
+
+    def test_own_test_failure_drives_repair(self):
+        script = Script([gen(plan_json(["stockroom/pricing.py"])), gen(test_answer(GOOD)),
+                         gen(patch_answer(harmless_pricing("x"))), gen(reference_answer(B1))])
+        ctx, (t,) = t_context(script)
+        out = a.policy_t1(ctx, calls=8)
+        repair_prompt = all_prompts([t])[3]
+        self.assertIn("Visible project tests (they pass on the original code): PASS", repair_prompt)
+        self.assertIn("Your reproduction test tests/test_repro_t1.py: FAIL", repair_prompt)
+        self.assertIn("AssertionError", repair_prompt)
+        self.assertEqual(out["agents"]["t1"]["calls"], 4)
+        self.assertEqual(len(out["agents"]["t1"]["trace"]), 4)
+        self.assertTrue(out["selected"]["repro_passes_after"])
+        first = [c for c in ctx.patches if c["stage"] == "patch"][0]
+        self.assertTrue(first["public_ok"])
+        self.assertFalse(first["repro_passes_after"])
+
+    def test_test_only_repair_keeps_patch_and_rejects_non_reproducing_test(self):
+        def test_only(text):
+            return json.dumps({"action": "patch", "notes": "the test was wrong"}) + \
+                f"\n=== TEST: tests/test_repro_t1.py ===\n{text}=== END TEST ===\n"
+        script = Script([gen(plan_json(["stockroom/pricing.py"])), gen(test_answer(WRONG)),
+                         gen(reference_answer(B1)),        # real fix, but the wrong test still fails
+                         gen(test_only(WEAK)),             # rejected: passes on the original code
+                         gen(test_only(GOOD))])            # adopted: fails on original, passes on the kept fix
+        ctx, (t,) = t_context(script)
+        out = a.policy_t1(ctx, calls=8)
+        self.assertIn("Your corrected test was rejected", all_prompts([t])[4])
+        self.assertEqual(len(ctx.patches), 1, "a test-only repair keeps the current patch")
+        summary = out["agents"]["t1"]
+        self.assertEqual([w["status"] for w in summary["tests_written"]], ["fail", "pass", "fail"])
+        self.assertEqual(summary["test_sha256"], a.sha(GOOD))
+        self.assertTrue(summary["repro_passes_after"])
+        self.assertEqual(out["selected"]["own_test_sha256"], a.sha(GOOD))
+        self.assertEqual(summary["calls"], 5)
+
+    def test_garbage_never_crashes_and_respects_call_cap(self):
+        script = Script([gen("{not json"), gen("nothing", think="t" * 4 * 30000, closes=False), gen("no test"),
+                         gen("=== END FILE ==="), gen("x"), gen('{"action": "patch"}'), gen("y"), gen("z")])
+        ctx, (t,) = t_context(script)
+        out = a.policy_t1(ctx, calls=8)
+        self.assertEqual(out["candidates"], [])
+        self.assertIsNone(out["selected"])
+        self.assertEqual(out["selection"]["rule"], "no_valid_patch")
+        self.assertEqual(out["agents"]["t1"]["calls"], 8)
+        self.assertFalse(out["agents"]["t1"]["repro_fails_before"])
+        self.assertIn("no usable test", t.prompts[2]["user"])
+        self.assertIn("(none: rely on the bug report)", t.prompts[4]["user"])
+        self.assertIn("You must choose Option B", t.prompts[7]["user"])
+
+
+def tcand(agent, key, order, rank=0, public=True, before=True, after=True):
+    return dict(agent=agent, key=key, order=order, rank=rank, valid=True, no_op=False, patch_text=f"p{order}",
+                public_ok=public, repro_fails_before=before, repro_passes_after=after, selfcheck=dict(ok=public))
+
+
+class CrossValidationTests(unittest.TestCase):
+    def test_scoring_excludes_own_test_and_beats_cluster(self):
+        cands = [tcand("c0", "K1", 1, 0), tcand("c1", "K2", 2, 1), tcand("c2", "K2", 3, 2),
+                 tcand("c3", "K3", 4, 3, after=False)]
+        tests = {"c0": {}, "c1": {}, "c2": {}, "c3": {}}
+        passes = {("K1", t): True for t in tests}
+        passes.update({("K2", "c0"): False, ("K2", "c1"): True, ("K2", "c2"): True, ("K2", "c3"): False})
+        best, info = a.select_crossval(cands, tests, passes)
+        self.assertEqual((best["agent"], info["rule"], info["tier"]), ("c0", "crossval", "own_repro"))
+        scores = {row["agent"]: row["score"] for row in info["scores"]}
+        self.assertEqual(scores, {"c0": 3, "c1": 1, "c2": 1}, "own test excluded; c3 not qualified")
+        only_own = {("K1", "c0"): True}
+        best, info = a.select_crossval([tcand("c0", "K1", 1, 0), tcand("c1", "K2", 2, 1)], tests, only_own)
+        self.assertEqual(info["selected_score"], 0, "passing only one's own test earns nothing")
+        self.assertEqual(info["rule"], "earliest")
+
+    def test_ties_go_to_cluster_then_earliest_and_tiers_fall_back(self):
+        tests = {"c0": {}, "c1": {}, "c2": {}}
+        cands = [tcand("c0", "K1", 1, 0), tcand("c1", "K2", 2, 1), tcand("c2", "K2", 3, 2)]
+        best, info = a.select_crossval(cands, tests, {})
+        self.assertEqual((best["agent"], info["rule"], info["cluster_size"]), ("c1", "vote", 2))
+        best, info = a.select_crossval([tcand("c1", "K2", 9, 1), tcand("c0", "K1", 5, 0)], tests, {})
+        self.assertEqual((best["agent"], info["rule"]), ("c0", "earliest"))
+        best, info = a.select_crossval([tcand("c0", "K1", 1, 0, before=False), tcand("c1", "K2", 2, 1, public=False)],
+                                       tests, {})
+        self.assertEqual((best["agent"], info["tier"]), ("c0", "public_only"))
+        best, info = a.select_crossval([tcand("c0", "K1", 1, 0, public=False)], tests, {})
+        self.assertEqual(info["tier"], "valid_only")
+        self.assertIsNone(a.select_crossval([None, dict(tcand("c0", "K", 1), valid=False)], tests, {})[0])
+
+    def responder_t3(self):
+        """t3c0, t3c1: report-example hack + example-only test (self-consistent, wrong);
+        t3c2: real fix + boundary test; t3c3: good test, wrong patch it never repairs."""
+        plans = {"t3c0": (TEN_ONLY, hack_pricing()), "t3c1": (TEN_ONLY, hack_pricing()),
+                 "t3c2": (GOOD, reference_files()), "t3c3": (GOOD, harmless_pricing("w"))}
+
+        def responder(user, seed):
+            if "(test-first method)" in user:
+                return gen(plan_json(["stockroom/pricing.py"]))
+            chain = re.search(r"test_repro_(t3c\d)", user).group(1)
+            test, patch = plans[chain]
+            if "Phase 1 of 2" in user:
+                return gen(test_answer(test, path=f"tests/test_repro_{chain}.py"))
+            return gen(patch_answer(patch))
+        return responder
+
+    def test_t3_cross_validation_beats_self_consistent_majority(self):
+        spy = SpyExecutor()
+        pool, transports = pool_of(self.responder_t3(), n=2)
+        order = []
+        holder = {}
+        real_events = a.Events
+
+        class SpyEvents(real_events):
+            def __init__(self, *args, **kw):
+                super().__init__(*args, **kw)
+                holder["events"] = self
+
+        def grade_fn(patch):
+            order.append([e["type"] for e in holder["events"].records])
+            return g.grade(B1, patch)
+        a.Events = SpyEvents
+        try:
+            record = a.run_attempt(B1, "T3", 1, pool, executor=spy, grade_fn=grade_fn, k=4, calls=5)
+        finally:
+            a.Events = real_events
+        self.assertEqual(record["status"], "completed", record.get("error"))
+        sel = record["selection"]
+        self.assertEqual((sel["selected_agent"], sel["rule"], sel["tier"]), ("t3c2", "crossval", "own_repro"))
+        self.assertEqual({r["agent"]: r["score"] for r in sel["scores"]}, {"t3c0": 1, "t3c1": 1, "t3c2": 3})
+        self.assertEqual(sel["own_repro_qualified"], 3)
+        self.assertTrue(record["fixed"])
+        chains = record["evidence"]["chains"]
+        self.assertFalse(chains["t3c3"]["repro_passes_after"])
+        self.assertTrue(chains["t3c3"]["repro_fails_before"])
+        self.assertEqual(len(record["evidence"]["valid_tests"]), 4)
+        self.assertEqual(len(record["evidence"]["matrix"]), 2 * 4)
+        types = [e["type"] for e in record["events"].records]
+        self.assertLess(types.index("selection_evidence"), types.index("selection_frozen"))
+        self.assertLess(types.index("selection_frozen"), types.index("hidden_grade"))
+        self.assertIn("selection_frozen", order[0])
+        self.assertTrue(any(e["purpose"] == "crossval" for e in record["events"].of("agent_test_run")))
+        self.assertTrue(all(p["mode"] == "public_tests" for p in spy.payloads))
+        self.assertIn("ORACLE", record["oracle"]["label"])
+        for c in record["candidates"]:
+            self.assertIn("repro_passes_after", c)
+        # the plain S3 rule would have picked the self-consistent hack cluster
+        self.assertEqual(a.select([dict(c, selfcheck=dict(ok=True)) for c in
+                                   [dict(tcand("t3c0", "H", 1, 0)), dict(tcand("t3c1", "H", 2, 1)),
+                                    dict(tcand("t3c2", "R", 3, 2))]])[0]["key"], "H")
+
+    def test_selection_never_reads_hidden_material(self):
+        bundle = g.agent_bundle(B1)
+        spy = SpyExecutor()
+        for policy, kw, responder in (("T3", dict(k=4, calls=5), self.responder_t3()),
+                                      ("V3", dict(k=2, calls=3), V3Tests.responder(approve_fix=True)),
+                                      ("T1", dict(calls=5), self.responder_t3_single())):
+            with self.subTest(policy):
+                pool, _ = pool_of(responder, n=2)
+                events = a.Events()
+                with HiddenTripwire():
+                    out = a.run_policy(bundle, policy, pool, events, 1, a.make_selfcheck("stockroom", spy),
+                                       tester=a.make_agent_tester(bundle, spy), **kw)
+                self.assertIsNotNone(out["selected"])
+                self.assertEqual(events.of("hidden_grade") + events.of("oracle_grade"), [])
+        self.assertTrue(spy.payloads)
+        self.assertTrue(all(p["mode"] == "public_tests" and "probes" not in p for p in spy.payloads))
+
+    def responder_t3_single(self):
+        fix = reference_answer(B1)
+
+        def responder(user, seed):
+            if "(test-first method)" in user:
+                return gen(plan_json(["stockroom/pricing.py"]))
+            if "Phase 1 of 2" in user:
+                return gen(test_answer(GOOD))
+            return gen(fix)
+        return responder
+
+
+class V3Tests(unittest.TestCase):
+    @staticmethod
+    def responder(approve_fix=True, approve_all=False):
+        served, lock = [], threading.Lock()
+        fix, wrong = reference_answer(B1), patch_answer(harmless_pricing("a"))
+
+        def responder(user, seed):
+            if "A colleague proposes the change" in user:
+                fixed = "+            if quantity >= tier.min_quantity:" in user
+                ok = approve_all or (fixed and approve_fix)
+                return gen(json.dumps({"fixes_report": ok, "risk": "none" if ok else "does not touch the tiers"}))
+            if "`files` lists 1 or 2 paths" in user:
+                return gen(plan_json(["stockroom/pricing.py"]))
+            with lock:
+                first = not served
+                served.append(1)
+            return gen(fix if first else wrong)
+        return responder
+
+    def test_review_overrides_wrong_majority(self):
+        pool, transports = pool_of(self.responder(), n=2)
+        record = a.run_attempt(B1, "V3", 1, pool, grade_fn=lambda p: g.grade(B1, p), k=4, calls=3)
+        self.assertEqual(record["status"], "completed", record.get("error"))
+        sel = record["selection"]
+        self.assertEqual((sel["rule"], sel["selected_approved"], sel["reviewed_keys"]), ("review", True, 2))
+        self.assertEqual(sel["clusters"], [3, 1])
+        self.assertTrue(record["fixed"])
+        reviews = [p for p in all_prompts(transports) if "A colleague proposes the change" in p]
+        self.assertEqual(len(reviews), 2)
+        for prompt in reviews:
+            self.assertIn("# Proposed change (unified diff)", prompt)
+            self.assertIn("--- BEGIN stockroom/pricing.py ---", prompt)
+        self.assertEqual(len(record["evidence"]["reviews"]), 2)
+        self.assertEqual(len(record["events"].of("review")), 2)
+
+    def test_all_approved_falls_back_to_cluster(self):
+        pool, _ = pool_of(self.responder(approve_all=True), n=2)
+        record = a.run_attempt(B1, "V3", 1, pool, grade_fn=lambda p: dict(status="failed"), oracle=False, k=4, calls=3)
+        self.assertEqual((record["selection"]["rule"], record["selection"]["cluster_size"]), ("vote", 3))
+        self.assertEqual(a.parse_review('{"fixes_report": "yes", "risk": "x"}')["fixes_report"], True)
+        self.assertIsNone(a.parse_review("garbage")["fixes_report"])
+
+
+class NewPolicyLeakageTests(unittest.TestCase):
+    """No hidden material in any prompt (incl. sandbox outputs) of T1/T3/V3, on all 9 prototype cases."""
+
+    def responder_for(self, case_id):
+        bundle = g.agent_bundle(case_id)
+        editable, files, package = bundle["editable_paths"], bundle["files"], g.load_project(bundle["project"])["package"]
+        base = LeakageTests().responder_for(case_id)
+        test = (f"import unittest\nimport {package}\n\n\nclass R(unittest.TestCase):\n    def test_x(self):\n"
+                f"        self.assertEqual({package}.__name__, 'x')\n")
+
+        def responder(user, seed):
+            if "(test-first method)" in user:
+                return gen(plan_json(editable[:2]))
+            if "Phase 1 of 2" in user:
+                return gen(test_answer(test, files=editable[:1]))
+            if "Phase 2 of 2" in user:
+                target = re.findall(r"--- BEGIN (\S+) ---", user)[0]
+                return gen(patch_answer({target: files[target] + "\nraise RuntimeError('broken')\n"},
+                                        location=(target, "f")))
+            if ": repair." in user:
+                return gen("I give up")
+            if "A colleague proposes the change" in user:
+                return gen('{"fixes_report": false, "risk": "breaks import"}')
+            return base(user, seed)
+        return responder
+
+    def test_no_hidden_material_in_prompts_or_sandbox_payloads(self):
+        for case_id in PROTOTYPE_CASES:
+            with self.subTest(case_id):
+                responder = self.responder_for(case_id)
+                prompts, spy = [], SpyExecutor()
+                for policy, kwargs in (("T1", dict(calls=5)), ("T3", dict(k=2, calls=5)), ("V3", dict(k=2, calls=3))):
+                    pool, transports = pool_of(responder, n=2)
+                    record = a.run_attempt(case_id, policy, 1, pool, oracle=False, executor=spy,
+                                           grade_fn=lambda p: dict(status="failed"), **kwargs)
+                    self.assertEqual(record["status"], "completed", record.get("error"))
+                    prompts += all_prompts(transports)
+                blob = "\n".join(prompts)
+                self.assertIn("Result on the current code: it FAILS", blob)
+                self.assertIn("Test results on your patched code", blob)
+                self.assertIn("A colleague proposes the change", blob)
+                secrets = LeakageTests().secrets(case_id)
+                for secret in secrets:
+                    self.assertNotIn(secret, blob)
+                self.assertTrue(all(p["mode"] == "public_tests" and "probes" not in p for p in spy.payloads))
+                payloads = json.dumps(spy.payloads)
+                for secret in secrets[:2]:
+                    self.assertNotIn(secret, payloads)
+
+
+class NewPolicyRunnerTests(unittest.TestCase):
+    def args(self, **kw):
+        base = dict(cases=[B1], policies=["S1", "T1", "T3", "V3"], seeds=[1], endpoints=["fake0"], model="m",
+                    per_endpoint=1, parallel_attempts=1, docker_host=None, no_oracle=True, idle_timeout=120,
+                    max_calls=None, max_completion_tokens=None)
+        return r.argparse.Namespace(**dict(base, **kw))
+
+    def test_per_policy_budgets_and_choices(self):
+        plan = r.build_plan(self.args())
+        self.assertEqual(plan["policies"]["S1"], dict(kwargs=dict(calls=6), nominal_max_calls=6))
+        self.assertEqual(r.attempt_budget(plan, "S1"), (48, 256_000))
+        self.assertEqual(r.attempt_budget(plan, "T1"), (48, 256_000))
+        self.assertEqual(r.attempt_budget(plan, "T3"), (64, 512_000))
+        self.assertEqual(r.attempt_budget(plan, "V3"), (56, 320_000))
+        self.assertIn("OTHER agents", plan["policies"]["T3"]["selection"])
+        capped = r.build_plan(self.args(max_calls=30))
+        self.assertEqual(r.attempt_budget(capped, "T3"), (30, 512_000))
+        self.assertEqual(r.attempt_budget(capped, "S1"), (30, 256_000))
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            r.main(["--policies", "T9"])
+
+    def test_execute_t1_writes_agent_test_runs_to_attempt_log(self):
+        def responder(user, seed):
+            if "(test-first method)" in user:
+                return gen(plan_json(["stockroom/pricing.py"]))
+            if "Phase 1 of 2" in user:
+                return gen(test_answer(GOOD))
+            return gen(reference_answer(B1))
+        pool, _ = pool_of(responder, n=1)
+        plan = r.build_plan(self.args(policies=["T1"], no_oracle=False))
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "run")
+            summary = r.execute(plan, out, pool, parallel=1, log=lambda *_: None)
+            self.assertEqual(summary["policies"]["T1"]["fixed"], 1)
+            row = json.loads(open(os.path.join(out, "attempts.jsonl")).readline())
+            self.assertEqual(row["budget"]["max_calls"], 48)
+            self.assertTrue(row["evidence"]["chains"]["t1"]["repro_passes_after"])
+            events = [json.loads(line) for line in open(os.path.join(out, "attempts", row["attempt_id"] + ".jsonl"))]
+            types = [e["type"] for e in events]
+            self.assertIn("agent_test_run", types)
+            self.assertIn("agent_test_text", types)
+            self.assertLess(types.index("selection_evidence"), types.index("hidden_grade"))
+            self.assertTrue(any(e["type"] == "oracle_grade" for e in events))
+
+
 if __name__ == "__main__":
     unittest.main()

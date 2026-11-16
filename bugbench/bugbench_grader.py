@@ -623,6 +623,94 @@ def run_public_tests(project_name, files, timeout=60.0, python=None, executor=No
     return result
 
 
+# --- agent-written tests (agent-visible sandbox; never hidden probes, never expected.json) ---------
+AGENT_TEST_PATH = re.compile(r"tests/test_[A-Za-z0-9_]{1,80}\.py")
+AGENT_TEST_TIMEOUT = 20.0
+FAILED_IMPORT = "Failed to import test module"
+CHILD_DEADLINE = re.compile(r"(?m)^(__main__\.)?Deadline\s*$")  # the CHILD's per-run alarm inside a test
+
+
+def validate_agent_test(path, text, files):
+    """An agent test is a NEW ``tests/test_*.py`` text file; raises PatchError otherwise."""
+    if not isinstance(path, str) or not AGENT_TEST_PATH.fullmatch(path):
+        raise PatchError(f"agent test path must match tests/test_<name>.py, got {path!r}")
+    if path in files:
+        raise PatchError(f"{path} already exists; agent tests must be new files")
+    if not isinstance(text, str) or "\0" in text or len(text.encode("utf-8")) > MAX_FILE_BYTES:
+        raise PatchError(f"{path}: content must be text without NUL, at most {MAX_FILE_BYTES} bytes")
+
+
+def classify_test_run(result):
+    """pass | fail | timeout | broken (test module did not import) | empty (no tests) | crash | infrastructure."""
+    if not isinstance(result, dict):
+        return "crash"
+    if result.get("provenance") == "infrastructure":
+        return "infrastructure"
+    if (result.get("interrupted") or result.get("failure_kind") == "candidate_timeout"
+            or CHILD_DEADLINE.search(result.get("output") or "")):
+        return "timeout"
+    if result.get("error") is not None or result.get("setup_error"):
+        return "crash"
+    if FAILED_IMPORT in (result.get("output") or ""):
+        return "broken"
+    if not result.get("tests_run"):
+        return "empty"
+    return "pass" if result.get("ok") else "fail"
+
+
+def _visible_tree(case):
+    """(files, editable paths, project name) from a case id or an ``agent_bundle`` dict (no hidden reads)."""
+    bundle = case if isinstance(case, dict) else agent_bundle(case)
+    return dict(bundle["files"]), list(bundle["editable_paths"]), bundle["project"]
+
+
+def run_agent_tests(case, patch_or_none, test_files, executor=None, timeout=AGENT_TEST_TIMEOUT, python=None,
+                    include_public=True, public_timeout=60.0, workers=4):
+    """Agent-visible sandbox: public tests and the agent's OWN tests on the buggy tree (+ optional patch).
+
+    ``case`` is a case id or an ``agent_bundle`` dict.  ``patch_or_none`` is FILE-block text,
+    {path: content} or None (the buggy tree).  ``test_files`` maps new ``tests/test_*.py``
+    paths to agent-written unittest modules; each runs in isolation in its own child (the
+    project's ``tests/test*.py`` files are removed for that run) so results are per file.
+    Only the CHILD's ``public_tests`` mode is used: hidden probes and expected values are
+    never loaded or sent.  Returns dict(public, tests={path: result+classification},
+    provenance)."""
+    files, editable, project_name = _visible_tree(case)
+    before = dict(files)
+    if patch_or_none:
+        patch = parse_patch(patch_or_none) if isinstance(patch_or_none, str) else dict(patch_or_none)
+        validate_patch(patch, before, {"editable": editable})
+        files.update(patch)
+    for path, text in (test_files or {}).items():
+        validate_agent_test(path, text, before)
+    package = load_project(project_name)["package"]
+    base = {path: text for path, text in files.items()
+            if not (path.startswith("tests/") and path.rsplit("/", 1)[-1].startswith("test"))}
+
+    def one(item):
+        path, text = item
+        payload = {"mode": "public_tests", "package": package, "files": dict(base, **{path: text}),
+                   "timeout": max(1.0, timeout - 5)}
+        result, error, meta = _execute(payload, timeout, python, executor)
+        if error or result is None:
+            result = {"ok": False, "error": error, "failure_kind": meta.get("failure_kind"),
+                      "provenance": meta.get("provenance")}
+        else:
+            result = dict(result, provenance=meta.get("provenance", "candidate"))
+        result["classification"] = classify_test_run(result)
+        return path, result
+    items = sorted((test_files or {}).items())
+    with ThreadPoolExecutor(max_workers=max(1, min(workers, len(items) or 1))) as pool:
+        tests = dict(pool.map(one, items))
+    public = None
+    if include_public:
+        public = run_public_tests(project_name, files, timeout=public_timeout, python=python, executor=executor)
+    infra = any(r.get("provenance") == "infrastructure" for r in tests.values()) or (
+        public is not None and public.get("provenance") == "infrastructure")
+    return {"public": public, "tests": tests, "provenance": "infrastructure" if infra else "candidate",
+            "patched": bool(patch_or_none)}
+
+
 def json_equal(actual, expected):
     if type(actual) is not type(expected):
         return False

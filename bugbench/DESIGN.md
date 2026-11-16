@@ -477,6 +477,35 @@ Budgets are per case; "calls" are Nemotron calls.
   accepted patch with a passing self-check. Tests whether independent review
   catches overfit or collateral damage. ≈ 30–40 calls.
 
+### Self-correcting arms without an external arbiter (implemented 2026-11-16)
+
+Every selection signal is agent-generated (own reproduction tests, model
+reviews) or visible (public tests). Hidden probes only score, after
+`selection_frozen`. Agent tests run through `bugbench_grader.run_agent_tests`,
+which uses only the CHILD's `public_tests` mode on the visible tree (each agent
+test in isolation, `tests/test*.py` of the project removed for that run). It
+never loads probes or `expected.json`.
+
+- **T1 Test-first agent** (8 calls, global budget 48/256K). Plan, then write
+  `tests/test_repro_<agent>.py` (plain `unittest`) encoding the report's exact
+  expectation, then run it on the buggy tree. If it does not fail, the agent
+  sees the output and may revise it once. Then patch, run own test + public
+  tests, and repair from the failure output until both pass or calls run out.
+  A repair may also replace the test, but only with one that still fails on the
+  original code.
+- **T3** = 8 independent T1 chains (64 calls / 512K). Tier: own repro fails
+  before, passes after, and public tests pass; else public only; else valid.
+  Then each distinct pool patch runs against every chain's reproducing test.
+  Score = other agents' reproducing tests passed (own test excluded). Ties go
+  to the largest identical-diff cluster, then the earliest.
+- **V3** = S3 chains unchanged + one thinking-on reviewer per distinct pool
+  patch (report + diff + changed module, `{"fixes_report", "risk"}`), 56 calls
+  / 320K. Order: public pass, then approved, then cluster, then earliest.
+
+Events: `agent_test_text`, `agent_test_run` (purpose, patch/test sha,
+classification, output tail), `review`, `selection_evidence` (logged before
+`selection_frozen`). The record carries `evidence`.
+
 The common cap for every swarm arm and its matched S2 control is **48 calls,
 256K completion tokens and 15 minutes wall time per case**. Prompt tokens are
 recorded, not capped. Report actual usage. Equal agent counts are **not** equal

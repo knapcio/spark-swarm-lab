@@ -46,6 +46,19 @@ def build_plan(args):
     # seed-major order: a partial run still covers every case and policy evenly
     matrix = [dict(id=attempt_id(c, p, s), case_id=c, policy=p, seed=s)
               for s in args.seeds for c in cases for p in policies]
+    default_calls = 48 if args.max_calls is None else args.max_calls
+    default_tokens = 256_000 if args.max_completion_tokens is None else args.max_completion_tokens
+
+    def policy_entry(p):
+        spec = a.POLICIES[p]
+        entry = dict(kwargs=spec["kwargs"], nominal_max_calls=spec["max_calls"])
+        if "budget" in spec or "selection" in spec:  # T1/T3/V3 only; S1/S3/W1 entries stay as before
+            budget = spec.get("budget", {})
+            entry.update(selection=spec.get("selection"), attempt_budget=dict(
+                max_calls=budget.get("max_calls", default_calls) if args.max_calls is None else args.max_calls,
+                max_completion_tokens=budget.get("max_completion_tokens", default_tokens)
+                if args.max_completion_tokens is None else args.max_completion_tokens))
+        return entry
     sources = {name: hashlib.sha256(open(os.path.join(a.g.ROOT, name), "rb").read()).hexdigest()
                for name in ("agents.py", "bugbench_grader.py", "run_agents.py")}
     return dict(
@@ -56,11 +69,19 @@ def build_plan(args):
         budgets=dict(context_limit=a.CONTEXT_LIMIT, max_completion_per_call=a.MAX_COMPLETION,
                      patch_answer_reserve_min=a.PATCH_ANSWER_RESERVE, json_answer_reserve=a.JSON_ANSWER_RESERVE,
                      idle_timeout_s=args.idle_timeout, wall_clock_quality_cutoff=None,
-                     attempt_max_calls=args.max_calls, attempt_max_completion_tokens=args.max_completion_tokens),
-        policies={p: dict(kwargs=a.POLICIES[p]["kwargs"], nominal_max_calls=a.POLICIES[p]["max_calls"])
-                  for p in policies},
+                     attempt_max_calls=default_calls, attempt_max_completion_tokens=default_tokens),
+        policies={p: policy_entry(p) for p in policies},
         selection="valid -> passes public tests -> largest cluster of identical normalized diffs -> earliest",
         source_sha256=sources, attempts=matrix)
+
+
+def attempt_budget(plan, policy):
+    """(max_calls, max_completion_tokens) for one attempt: the policy's own budget (T3/V3) or the global one."""
+    budgets = plan["budgets"]
+    own = (plan["policies"].get(policy) or {}).get("attempt_budget")
+    if own:
+        return own["max_calls"], own["max_completion_tokens"]
+    return budgets["attempt_max_calls"], budgets["attempt_max_completion_tokens"]
 
 
 def summarize(records):
@@ -103,14 +124,13 @@ def execute(plan, out_dir, pool, executor=None, grade_fn=None, selfcheck=None, p
         json.dump(plan, handle, indent=1)
     results_file = open(os.path.join(out_dir, "attempts.jsonl"), "x", encoding="utf-8")
     lock, halt, records = threading.Lock(), threading.Event(), []
-    budgets = plan["budgets"]
 
     def one(item):
         record = a.run_attempt(
             item["case_id"], item["policy"], item["seed"], pool,
             events_path=os.path.join(out_dir, "attempts", item["id"] + ".jsonl"),
             executor=executor, grade_fn=grade_fn, selfcheck=selfcheck, oracle=plan["oracle"],
-            budget=a.Budget(budgets["attempt_max_calls"], budgets["attempt_max_completion_tokens"]))
+            budget=a.Budget(*attempt_budget(plan, item["policy"])))
         record.pop("events", None)
         record["attempt_id"] = item["id"]
         with lock:
@@ -159,15 +179,19 @@ def preflight(transports, model):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--cases", nargs="*", help="case ids (default: all)")
-    parser.add_argument("--policies", nargs="+", default=["S1", "S3", "W1"])
+    parser.add_argument("--policies", nargs="+", default=["S1", "S3", "W1"], choices=sorted(a.POLICIES),
+                        help="S1/S3/W1 baselines; T1 test-first agent, T3 8 test-first chains + cross-validation, "
+                             "V3 S3 + one model review per distinct patch")
     parser.add_argument("--seeds", nargs="+", type=int, default=[1])
     parser.add_argument("--endpoints", nargs="+", default=list(a.ENDPOINTS))
     parser.add_argument("--model", default=a.MODEL)
     parser.add_argument("--per-endpoint", type=int, default=8, help="concurrent requests per replica")
     parser.add_argument("--parallel-attempts", type=int, default=4)
     parser.add_argument("--idle-timeout", type=float, default=a.IDLE_TIMEOUT)
-    parser.add_argument("--max-calls", type=int, default=48, help="per-attempt logical call cap")
-    parser.add_argument("--max-completion-tokens", type=int, default=256_000, help="per-attempt cap")
+    parser.add_argument("--max-calls", type=int, default=None,
+                        help="per-attempt logical call cap (default 48; T3 64 and V3 56 unless given)")
+    parser.add_argument("--max-completion-tokens", type=int, default=None,
+                        help="per-attempt cap (default 256000; T3 512000 and V3 320000 unless given)")
     parser.add_argument("--docker-host", help="grade and self-check in the pinned container on this SSH host")
     parser.add_argument("--unsafe-local-grading", action="store_true",
                         help="run model patches in a local subprocess (NOT a sandbox)")
