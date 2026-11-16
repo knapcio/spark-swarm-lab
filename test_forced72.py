@@ -79,10 +79,30 @@ class ForcedTests(unittest.TestCase):
         self.assertFalse(result['solved'] or result['budget_forced'])
         self.assertEqual((c.infra_failures, len(c.bodies)), (1, 1))
 
-    def test_reported_usage_mismatch_blocks_force(self):
+    def test_reported_usage_mismatch_blocks_force_and_counts_as_fault(self):
         c, result = self.run_case([sse('notes', [7] * 100, 'length', completion=101)])
         self.assertFalse(result['budget_forced'])
-        self.assertEqual(len(c.bodies), 1)
+        self.assertEqual((len(c.bodies), c.infra_failures), (1, 1))
+
+    def test_cut_answer_after_closed_thinking_continues_without_force(self):
+        first = [7] * f.THINK_CAP
+        c, result = self.run_case([sse('notes</think>{"moves":[{"i":0,', first, 'length'),
+                                   sse('"j":1,"op":"+"}]}', [8] * 10, 'stop')])
+        self.assertTrue(result['solved'] and result['answer_continued'])
+        self.assertFalse(result['budget_forced'])
+        self.assertEqual(c.bodies[1]['prompt'], [1, 2, 3] + first)
+
+    def test_stream_error_chunk_is_infrastructure_failure(self):
+        bad = io.BytesIO(b'data: {"error": {"message": "boom"}}\n\n')
+        c, result = self.run_case([bad])
+        self.assertFalse(result['solved'])
+        self.assertEqual(c.infra_failures, 1)
+
+    def test_forced_answer_logged_and_token_ids_traced(self):
+        c, _ = self.run_case([sse('notes', [7] * f.THINK_CAP, 'length'), sse(GOOD, [8] * 20, 'stop')])
+        ends = [r for r in c.events.rows if r['type'] == 'request_end']
+        self.assertEqual(ends[1]['response'], GOOD)
+        self.assertEqual(ends[0]['token_ids'], [7] * f.THINK_CAP)
 
     def test_original_variant_uses_original_prompt(self):
         c, _ = self.run_case([sse('n</think>' + GOOD, [5], 'stop')], variant='forced_original')

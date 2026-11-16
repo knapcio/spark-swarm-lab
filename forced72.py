@@ -70,13 +70,13 @@ class ForcedClient:
         with self.post('/tokenize', dict(model=self.model, prompt=FORCE_TEXT, add_special_tokens=False), 60) as response:
             return json.load(response)['tokens']
 
-    def complete(self, agent_id, stage, prompt_ids, max_tokens, **context):
+    def complete(self, agent_id, stage, prompt_ids, max_tokens, thinking_closed=False, **context):
         request_id = uuid.uuid4().hex[:12]
         if not self.budget.reserve(max_tokens):
             self.budget_failures += 1
             self.events.emit('budget_exhausted', agent_id=agent_id, stage=stage, **context)
             return dict(request_id=request_id, dispatched=False, response_received=False, text='', token_ids=[],
-                        finish_reason=None, usage={}, error='budget_exhausted')
+                        finish_reason=None, usage={}, error='budget_exhausted', answer=None)
         material = f'{self.seed}:{agent_id}:{stage}:{json.dumps(prompt_ids)}'
         seed = int.from_bytes(hashlib.sha256(material.encode()).digest()[:4], 'big')
         body = dict(model=self.model, prompt=prompt_ids, max_tokens=max_tokens, temperature=0.8, seed=seed,
@@ -98,6 +98,8 @@ class ForcedClient:
                     if not line.startswith('data:') or line == 'data: [DONE]':
                         continue
                     chunk = json.loads(line[5:])
+                    if chunk.get('error'):
+                        raise ConnectionError(f"server stream error: {str(chunk['error'])[:200]}")
                     for choice in chunk.get('choices', []):
                         text += choice.get('text') or ''
                         token_ids += choice.get('token_ids') or []
@@ -114,14 +116,17 @@ class ForcedClient:
         reported = usage.get('completion_tokens')
         if received and reported is not None and reported != len(token_ids):
             error = error or f'token id count {len(token_ids)} != reported {reported}'
+            self.infra_failures += 1  # accounting fault: stop admissions rather than silently skip forcing
         self.budget.settle(max_tokens, reported)
         usage['estimated'] = reported is None
         answer, reasoning = split_answer(text)
+        if answer is None and thinking_closed:  # thinking was already closed before this call
+            answer, reasoning = text, ''
         self.events.emit('request_end', request_id=request_id, agent_id=agent_id, endpoint_index=0, stage=stage,
                          latency_ms=round((time.monotonic() - start) * 1000, 2), usage=usage,
                          completion_tokens_charged=max_tokens if reported is None else reported, error=error,
                          response=answer, reasoning=reasoning, finish_reason=finish, response_received=received,
-                         closed_thinking=answer is not None, request_body_sha256=wire_sha, **context)
+                         closed_thinking=answer is not None, token_ids=token_ids, request_body_sha256=wire_sha, **context)
         return dict(request_id=request_id, dispatched=True, response_received=received, text=text,
                     token_ids=token_ids, finish_reason=finish, usage=usage, error=error, answer=answer)
 
@@ -141,24 +146,31 @@ def run_forced(experiment, initial, puzzle_id, variant, agent_id=0):
     first = client.complete(agent_id, 'plan', prompt_ids, THINK_CAP, node_id=root, puzzle_id=puzzle_id,
                             variant=variant, followup_phase='think')
     plan, second, forced = parse_plan(first['answer']), None, False
-    eligible = (first['response_received'] and first['finish_reason'] == 'length' and first['answer'] is None
+    # Same trigger as the scribe commit: no parsed plan, cut by length, own tokens available.
+    eligible = (plan is None and first['response_received'] and first['finish_reason'] == 'length'
                 and len(first['token_ids']) > 0 and first['error'] is None)
     if eligible:
-        forced = True
+        forced = first['answer'] is None  # still thinking -> force the end; else just let the answer finish
         remaining = TOTAL - client.budget.snapshot()['completion_tokens_charged']
-        e.events.emit('budget_forced', node_id=root, puzzle_id=puzzle_id, variant=variant,
-                      parent_request_id=first['request_id'], forced_after_tokens=len(first['token_ids']),
-                      remaining_completion_tokens=remaining)
-        second = client.complete(agent_id, 'forced_answer', prompt_ids + first['token_ids'] + client.force_ids(),
-                                 remaining, node_id=root, puzzle_id=puzzle_id, variant=variant,
-                                 followup_phase='forced_answer', parent_request_id=first['request_id'])
-        # The continuation may first finish its own thinking and close it again.
-        answer = second['answer'] if second['answer'] is not None else second['text']
+        suffix = client.force_ids() if forced else []
+        e.events.emit('budget_forced' if forced else 'answer_continued', node_id=root, puzzle_id=puzzle_id,
+                      variant=variant, parent_request_id=first['request_id'],
+                      forced_after_tokens=len(first['token_ids']), remaining_completion_tokens=remaining)
+        second = client.complete(agent_id, 'forced_answer' if forced else 'continued_answer',
+                                 prompt_ids + first['token_ids'] + suffix, remaining, thinking_closed=True,
+                                 node_id=root, puzzle_id=puzzle_id, variant=variant,
+                                 followup_phase='forced_answer' if forced else 'continued_answer',
+                                 parent_request_id=first['request_id'])
+        # A forced continuation may first finish its thinking and close it again (answer after last marker).
+        answer = second['answer']
+        if not forced:  # the first call already holds the start of the answer
+            answer = first['answer'] + (second['text'] if END_THINK not in second['text'] else second['answer'])
         plan = parse_plan(answer)
     result = replay_plan(e, initial, root, plan, puzzle_id, agent_id)
     result.update(method=variant, variant=variant, first_request_id=first['request_id'],
                   first_finish_reason=first['finish_reason'], first_closed_thinking=first['answer'] is not None,
-                  budget_forced=forced, forced_request_id=second['request_id'] if second else None,
+                  budget_forced=forced, answer_continued=bool(second) and not forced,
+                  forced_request_id=second['request_id'] if second else None,
                   forced_finish_reason=second['finish_reason'] if second else None,
-                  forced_closed_thinking_again=(second['answer'] is not None) if second else None)
+                  forced_closed_thinking_again=(END_THINK in second['text']) if second else None)
     return result
