@@ -1,0 +1,81 @@
+{
+  "protocol": "nemotron72-known-swarm-v1",
+  "status": "FROZEN",
+  "scope": "Exploratory tuning on the previously seen 24 evaluation tasks x 3 seeds (also used for nemotron72-known-single-v1). Not fresh generalization. Independent agents only: no shared memory, voting, CPU search, teacher or gold answers. scribe_explicit is a new, not development-selected variant; any result for it is exploratory.",
+  "method": "K=8 independent agents per case, alternating scribe_full (frozen 638b9f3 worker, development-selected) and scribe_explicit (same scribe commit rule, prompt = index_explicit wording that states existing verifier rules; new module followup72b). Each agent has its own Budget(2 calls, 8192 completion tokens) and seed; no communication. Case solved if any agent plan passes the original exact verifier. All agents run to completion; size-k success uses agents 0..k-1 in this fixed order. Even agents give the homogeneous scribe_full curve k=1..4, odd agents the homogeneous scribe_explicit curve k=1..4.",
+  "agent_variants": [
+    "scribe_full",
+    "scribe_explicit",
+    "scribe_full",
+    "scribe_explicit",
+    "scribe_full",
+    "scribe_explicit",
+    "scribe_full",
+    "scribe_explicit"
+  ],
+  "matrix": {
+    "dataset": "datasets/arithmetic-v1/tasks.json",
+    "dataset_sha256": "434830c439ceb286947d373df9bea1dff60da28aa83f9164e4335be4f6658398",
+    "split": "evaluation",
+    "expected_task_ids_in_stored_order": [
+      "eva-c25dd13868a8",
+      "eva-4a5b112b29e0",
+      "eva-91cea8bac1fe",
+      "eva-8955514173a5",
+      "eva-6b194524eb19",
+      "eva-27c0dd95407a",
+      "eva-5f7e8610aa71",
+      "eva-2894f3b286c6",
+      "eva-d75177564d41",
+      "eva-17c359789b49",
+      "eva-f087ad404500",
+      "eva-6ce1a0614ff5",
+      "eva-8c04e7fa4008",
+      "eva-3b1047ffeb08",
+      "eva-f792236a99ed",
+      "eva-e40959c347a7",
+      "eva-66b495db2b77",
+      "eva-3f863b95e0b7",
+      "eva-541797dfa346",
+      "eva-0fdf38eb4f8b",
+      "eva-eea066d2b2d7",
+      "eva-a890436f325f",
+      "eva-ec6b2de6877c",
+      "eva-eca4c7a9c432"
+    ],
+    "tasks": 24,
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "cases": 72,
+    "agent_runs": 576
+  },
+  "seeds": "agent seed = 1000*case_seed + agent_index; disjoint from single-agent seeds 1,2,3",
+  "limits": {
+    "per_agent_calls": 2,
+    "per_agent_completion_tokens": 8192,
+    "first_thinking_tokens": 7936,
+    "commit_tokens": 256,
+    "case_completion_ceiling": 65536,
+    "agent_wall_deadline_seconds": 480,
+    "http_timeout_seconds": 210,
+    "deadline_note": "Safety stop above two 210 s HTTP calls; run_benchmark labels any deadline row controller_180_second_deadline regardless of the value (legacy label). An HTTP timeout is an infrastructure fault and stops new admissions."
+  },
+  "scheduling": {
+    "concurrent_agents_per_node": 6,
+    "placement": "agent j of case c runs on replica (c+j)%4; per-replica FIFO queues in case order",
+    "concurrency_note": "6 per node keeps a full 7936-token first call near 150 s (measured ~47 tok/s at 8/node, ~118 at 1/node) under the 210 s HTTP timeout; 12/node would risk timeouts that count as infrastructure faults (pre-launch review)."
+  },
+  "primary_outcome": "solved cases out of 72 with all 8 agents (mixed curve); secondary: homogeneous scribe_full and scribe_explicit curves k=1..4, per-agent success, completion tokens per solved case (all in metadata swarm_summary)",
+  "stop_policy": "Controller/transport/malformed-trace/process faults or source change stop new admissions; in-flight agents finish. Deadlines are outcomes.",
+  "runner": "run_swarm72.py",
+  "workers": {
+    "scribe_full": "followup72_worker.py",
+    "scribe_explicit": "followup72b_worker.py"
+  },
+  "source_revision": "28223cabefc8f324d9fb0da04f90030b15b08c6a",
+  "source_branch": "research/nemotron72-swarm-v2",
+  "source_path": ".runtime/nemotron72-swarm-source"
+}
