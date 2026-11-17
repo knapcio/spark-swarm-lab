@@ -31,6 +31,7 @@ import deepseek_ref as dr  # noqa: E402
 CONTEXT_LIMIT = 131000        # server window 131,072
 MAX_TOTAL = 32768             # per logical call, thinking + answer (same as DeepSeek R max_tokens)
 ANSWER_RESERVE = 6000         # whole-file patches; forced answer budget after the think cap
+FORMAT_FOLLOWUP = False       # v2 policies L1F/L8F set it (process-wide, like the caps)
 SELECTION = "valid -> passes public tests -> largest cluster of identical normalized diffs -> earliest"
 _ORIGINAL_CAPS = a.compute_caps
 
@@ -75,6 +76,16 @@ def whole_agent(ctx, name="l1", rank=0):
         return cands, trace
     first, step, ok = _candidate(ctx, name, rank, "patch", result)
     trace.append(step)
+    if not ok and FORMAT_FOLLOWUP and first["error"] == "no FILE blocks found" and result["answer"]:
+        # v2 (dev pilot finding): Nemotron often stops after the JSON diagnosis and never writes the patch.
+        follow = (prompt + "\n# Your previous answer\n" + result["answer"] + "\n\n# Your answer\nYour previous "
+                  "answer gave the diagnosis but NO patch. Now give the fix: ONE JSON object as before, then the "
+                  f"complete file(s) in exactly this format:\n{ctx.bundle['patch_format']}")
+        result = ctx.caller.call(name, "format", follow, answer_reserve=ANSWER_RESERVE, hint=rank)
+        if result is None:
+            return cands, trace
+        first, step, ok = _candidate(ctx, name, rank, "format", result)
+        trace.append(step)
     if not ok:
         return cands, trace
     cands.append(first)
@@ -116,6 +127,10 @@ POLICIES = {
     "L1": dict(fn=policy_l1, kwargs={}, max_calls=2, budget=dict(max_calls=2, max_completion_tokens=2 * MAX_TOTAL)),
     "L8": dict(fn=policy_l8, kwargs=dict(k=8), max_calls=16,
                budget=dict(max_calls=16, max_completion_tokens=16 * MAX_TOTAL)),
+    # v2: + one format follow-up call when the first answer has no FILE blocks (3 calls per agent at most)
+    "L1F": dict(fn=policy_l1, kwargs={}, max_calls=3, budget=dict(max_calls=3, max_completion_tokens=3 * MAX_TOTAL)),
+    "L8F": dict(fn=policy_l8, kwargs=dict(k=8), max_calls=24,
+                budget=dict(max_calls=24, max_completion_tokens=24 * MAX_TOTAL)),
 }
 for _spec in POLICIES.values():
     _spec["selection"] = SELECTION
@@ -127,7 +142,12 @@ def main(argv=None):
     pols = argv[argv.index("--policies") + 1:] if "--policies" in argv else []
     pols = [p for p in pols[:next((i for i, p in enumerate(pols) if p.startswith("--")), len(pols))]]
     if not pols or any(p not in POLICIES for p in pols):
-        raise SystemExit("nemotron_long runs only L1/L8 (--policies L1 [L8])")
+        raise SystemExit("nemotron_long runs only L-policies (--policies L1 [L8] | L1F [L8F])")
+    follow = {p.endswith("F") for p in pols}
+    if len(follow) != 1:
+        raise SystemExit("do not mix v1 (L1/L8) and v2 (L1F/L8F) policies in one process")
+    global FORMAT_FOLLOWUP
+    FORMAT_FOLLOWUP = follow.pop()
     install()
     a.POLICIES.update(POLICIES)
     import run_agents  # noqa: E402  (imported after install so its POLICIES table includes L1/L8)
