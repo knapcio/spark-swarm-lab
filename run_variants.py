@@ -149,6 +149,7 @@ def main(argv=None):
     p.add_argument('--source', type=Path, required=True)
     p.add_argument('--admission', type=Path)
     p.add_argument('--run', action='store_true')
+    p.add_argument('--resume-from', type=Path, help='previous output: skip its policy cases that finished without infrastructure faults')
     a = p.parse_args(argv)
     plan = read(a.plan)
     require(plan['protocol'] == 'swarm-variants-screen-v1', 'Wrong protocol')
@@ -159,6 +160,12 @@ def main(argv=None):
     tasks = [t for t in data['tasks'] if t['split'] == plan['split']]
     require(len(tasks) == plan['tasks'], 'Wrong task count')
     jobs = [(t, s, si * len(tasks) + ti, pol) for si, s in enumerate(plan['seeds']) for ti, t in enumerate(tasks) for pol in plan['policies']]
+    resumed = None
+    if a.resume_from:  # continuation after an infrastructure stop: same plan, only unfinished policy cases
+        prev = [json.loads(line) for line in (a.resume_from / 'cases.jsonl').read_text().splitlines()]
+        finished = {(r['task_id'], r['seed'], r['policy']) for r in prev if 'error' not in r and not r['infra']}
+        jobs = [j for j in jobs if (j[0]['id'], j[1], j[3]) not in finished]
+        resumed = dict(resumed_from=str(a.resume_from.resolve()), skipped_finished=len(finished))
     if not a.run:
         print(json.dumps(dict(mode='plan', policy_cases=len(jobs), model_calls=0)))
         return 0
@@ -167,7 +174,7 @@ def main(argv=None):
     require(adm.get('verified') is True and 0 <= (datetime.now(timezone.utc) - datetime.fromisoformat(adm['verified_utc'])).total_seconds() <= 900, 'Fresh admission')
     for d in ('agents', 'judges', 'extra'):
         (out / d).mkdir(parents=True, exist_ok=d != 'agents')
-    write(out / 'metadata.json', dict(protocol=plan, runner_sha256=sha(Path(__file__)), started_utc=datetime.now(timezone.utc).isoformat(), admission=adm))
+    write(out / 'metadata.json', dict(protocol=plan, runner_sha256=sha(Path(__file__)), resume=resumed, started_utc=datetime.now(timezone.utc).isoformat(), admission=adm))
     slots, lock, stop, rows = Slots(plan['concurrent_requests_per_endpoint']), threading.Lock(), threading.Event(), []
 
     def work(job):

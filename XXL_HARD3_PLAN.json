@@ -32,5 +32,6 @@
   "primary_outcome": "solved/48 per policy, paired vs 16K same policy and vs DeepSeek; wrong answers; tokens",
   "serving": "swarm-lightning-128k clones (ctx_switch.py): identical image and vLLM args except --max-model-len 131072",
   "compare": "same 48 cases: deep4 16K 31, 32K 38 (xl-hard3-seed1-v1); DeepSeek 32K 39",
-  "erratum": "v1 (runs/xxl-hard3-seed1-v1) stopped after 18 cases: the worker per-request catastrophe limit (1800 s) cut 64K-thinking requests under load, a wall-clock quality cutoff. v2 = same plan with WALL_LIMIT 14400 s; v1 kept as a diagnostic, not scored."
+  "erratum": "v1 (runs/xxl-hard3-seed1-v1) stopped after 18 cases: the worker per-request catastrophe limit (1800 s) cut 64K-thinking requests under load, a wall-clock quality cutoff. v2 = same plan with WALL_LIMIT 14400 s; v1 kept as a diagnostic, not scored.",
+  "amendment_1": "2026-11-17 ~23:40 Europe/Warsaw: v2 stopped after 12 cases on one judge transport fault from the same 2-minute SSH tunnel stall (21:40-21:43 UTC). Continuation runs/xxl-hard3-seed1-v2b = same plan/source/seed offsets, the 37 policy cases without a finished non-fault record (run_variants.py --resume-from). Analysis merges v2 + v2b."
 }
