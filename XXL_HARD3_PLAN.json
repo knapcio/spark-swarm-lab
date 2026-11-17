@@ -1,7 +1,7 @@
 {
   "protocol": "swarm-variants-screen-v1",
   "status": "FROZEN",
-  "frozen_note": "Frozen 2026-11-17 ~21:45 Europe/Warsaw before any xxl agent call. Thinking-budget scaling point after XL (deep4 16K 31 -> 32K 38/48).",
+  "frozen_note": "Frozen 2026-11-17 ~21:45 Europe/Warsaw before any xxl agent call. Thinking-budget scaling point after XL (deep4 16K 31 -> 32K 38/48). Amended ~22:45 (erratum) before any v2 call.",
   "question": "Does doubling the thinking budget again (32K -> 64K total) keep improving deep4 on the same hard-v3 seed-1 cases?",
   "dataset": "datasets/arithmetic-hard-v3/tasks.json",
   "dataset_protocol": "arithmetic-hard-v3",
@@ -20,16 +20,17 @@
     "repair4": 4600,
     "board2x2": 4700
   },
-  "source_revision": "dd30fe84a7d5d40c866603f50b543d60f16b8790",
+  "source_revision": "d94c893efb2a77041ef9086139cc570b994687c0",
   "source_path": ".runtime/xl-source",
   "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason)",
   "agent_wall_deadline_seconds": 14400,
   "concurrent_policy_cases": 12,
   "concurrent_requests_per_endpoint": 16,
   "runner": "run_variants.py",
-  "study": "xxl-hard3-seed1-v1",
+  "study": "xxl-hard3-seed1-v2",
   "generator": "make_arithmetic_hard.py --seed 2026111702 --protocol arithmetic-hard-v3",
   "primary_outcome": "solved/48 per policy, paired vs 16K same policy and vs DeepSeek; wrong answers; tokens",
   "serving": "swarm-lightning-128k clones (ctx_switch.py): identical image and vLLM args except --max-model-len 131072",
-  "compare": "same 48 cases: deep4 16K 31, 32K 38 (xl-hard3-seed1-v1); DeepSeek 32K 39"
+  "compare": "same 48 cases: deep4 16K 31, 32K 38 (xl-hard3-seed1-v1); DeepSeek 32K 39",
+  "erratum": "v1 (runs/xxl-hard3-seed1-v1) stopped after 18 cases: the worker per-request catastrophe limit (1800 s) cut 64K-thinking requests under load, a wall-clock quality cutoff. v2 = same plan with WALL_LIMIT 14400 s; v1 kept as a diagnostic, not scored."
 }
