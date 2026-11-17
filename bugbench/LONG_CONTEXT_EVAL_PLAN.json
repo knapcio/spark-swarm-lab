@@ -1,0 +1,60 @@
+{
+ "protocol": "bugbench-long-context-v1",
+ "status": "FROZEN",
+ "question": "With the whole project in one prompt (128K serving, same prompt as DeepSeek R), how close does Nemotron get to DeepSeek 36/36? Single agent (L1F) and arbiter-free swarm of 8 (L8F).",
+ "cases": [
+  "quarry-b1-desc-tie-order",
+  "quarry-b2-right-assoc-minus",
+  "quarry-b3-failed-insert-keys",
+  "tally-b1-discount-last-day",
+  "tally-b2-vat-per-line",
+  "tally-b3-rejected-discount-payment",
+  "trellis-b1-caret-zero-patch",
+  "trellis-b2-install-order-ready",
+  "trellis-b3-backtrack-leak",
+  "junction-b1-exact-transfer-time",
+  "junction-b2-walk-time-rounding",
+  "junction-b3-night-listing-stale",
+  "patchwork-b1-hunk-merge-gap",
+  "patchwork-b2-context-newline-marker",
+  "patchwork-b3-fuzz-trims-patch",
+  "relay-b1-wait-rounds-down",
+  "relay-b2-ready-time-tiebreak",
+  "relay-b3-rejected-batch-tokens"
+ ],
+ "seeds": [
+  1,
+  2
+ ],
+ "policies": [
+  "L1F",
+  "L8F"
+ ],
+ "policy_text": {
+  "L1F": "one whole-bundle call (prompt identical to R) -> if diagnosis but no FILE blocks: one format follow-up asking for FILE blocks only -> public self-check -> one repair on failure; FILE-marker normalization (glued/unterminated headers, END FILE with path)",
+  "L8F": "8 independent L1F agents; selection valid -> passes public tests -> largest cluster of identical normalized diffs -> earliest"
+ },
+ "serving": "swarm-lightning-128k clones (ctx_switch.py): same image/args as the 16K replicas except --max-model-len 131072",
+ "caps": {
+  "context_limit": 131000,
+  "max_total_per_call": 32768,
+  "answer_reserve": 6000
+ },
+ "dev_history": "dev pilots v1 (L1 2/9, L8 9/9), v2 stopped, v3 (L1F 5/9, L8F), v4 (L1F, 2 seeds) on the 9 development cases only; eval cases untouched by L-policies; v4 failures after the fixes were FILE headers closed by \"---\" (fixed before freezing)",
+ "source_sha256": {
+  "nemotron_long.py": "b73630a0b8afcab2f9eeaae1b433cad3ca56104c20a2b1528af1fc59177d9bc7",
+  "agents.py": "9a17237a045ffc6498d4dd11cef498584f8459a062e3e12fb47f22d337826adb",
+  "deepseek_ref.py": "07829dc93d90bdf9274fa5b8d5ec5bb93b58b14b0af80817ee898e9d3fb0197e",
+  "run_agents.py": "554dcab5a19fb99964658c59905111402f8b7820b2a4b4f6f35c5bbe0f23876d",
+  "bugbench_grader.py": "f5c161f6bbc13fba02daa9c1c6a1a37110e009f452376377594a4e346d5ccf57"
+ },
+ "runner_commit": "41d5bb9e0e7163c7d668d5d0dd4f8942242c0973",
+ "compare": "same 36 attempts: DeepSeek R 36/36; Nemotron 16K S1 18, S3 26, T3 26, V3 28",
+ "frozen_note": "Frozen 2026-11-17 ~20:45 Europe/Warsaw before any L-policy call on the 18 evaluation cases.",
+ "run": {
+  "per_endpoint": 12,
+  "parallel_attempts": 6,
+  "docker_hosts": "Spark_01,Spark_02,Spark_03,Spark_04",
+  "out": "bugbench/runs/eval18-long-v1"
+ }
+}
