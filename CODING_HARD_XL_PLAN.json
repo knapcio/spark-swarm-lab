@@ -38,5 +38,6 @@
   },
   "question": "Context-gap experiment: do 4 deep coding agents with a 32K budget (= DeepSeek max_tokens; 128K serving) close the gap to DeepSeek (61/72) from 16K deep agents (4 deep: coding-hard-long-v1; 8 deep 37/72)?",
   "frozen_note": "Frozen 2026-11-17 ~20:55 Europe/Warsaw before any code_xl call. Same 24 evaluation tasks x 3 seeds as coding-hard-long-v1 and the DeepSeek coding reference; nothing tuned on them.",
-  "serving": "swarm-lightning-128k clones (ctx_switch.py): same image/args as the 16K replicas except --max-model-len 131072"
+  "serving": "swarm-lightning-128k clones (ctx_switch.py): same image/args as the 16K replicas except --max-model-len 131072",
+  "amendment_1": "2026-11-17 ~23:05 Europe/Warsaw: v1 (runs/coding-hard-xl-v1) stopped after 225/288 agents on two transport faults (120 s without a streamed byte, 21:40-21:43 UTC) that hit every owned SSH tunnel at once while all four servers kept generating normally (vLLM logs); bugbench eval18-long-v1 saw the same stall. Continuation runs/coding-hard-xl-v1b = same plan/source/seeds, only the 65 agents that had not finished without fault (run_coding_agents.py --resume-from). Analysis merges v1 + v1b rows."
 }

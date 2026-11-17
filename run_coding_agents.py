@@ -84,6 +84,7 @@ def main(argv=None):
     p.add_argument('--source', type=Path, required=True)
     p.add_argument('--admission', type=Path)
     p.add_argument('--run', action='store_true')
+    p.add_argument('--resume-from', type=Path, help='previous output: skip its agents that finished without an operational fault')
     a = p.parse_args(argv)
     plan = read(a.plan)
     require(plan['protocol'] == PROTOCOL, 'Wrong protocol')
@@ -96,8 +97,15 @@ def main(argv=None):
     tasks = [t for t in read(tasks_path)['tasks'] if t['split'] == plan['matrix']['split']]
     require(len(tasks) == plan['matrix']['tasks_count'], 'Wrong task count')
     jobs = make_jobs(tasks, output, source, plan, tasks_path, tests_path)
+    resumed = None
+    if a.resume_from:  # continuation after an infrastructure stop: same plan, same seeds, only unfinished agents
+        previous = read(a.resume_from / 'summary.json')
+        finished = {Path(r['events']).name for r in previous if not operational_fault(r)}
+        jobs = [j for j in jobs if Path(j['events']).name not in finished]
+        resumed = dict(resumed_from=str(a.resume_from.resolve()), skipped_finished=len(finished))
     per_node, deadline = plan['scheduling']['concurrent_agents_per_node'], plan['limits']['agent_wall_deadline_seconds']
-    meta = dict(protocol=plan, plan_sha256=sha(a.plan), jobs=len(jobs), source_sha256=before, output=str(output))
+    meta = dict(protocol=plan, plan_sha256=sha(a.plan), jobs=len(jobs), source_sha256=before, output=str(output),
+                resume=resumed)
     if not a.run:
         print(json.dumps(dict(mode='plan', jobs=len(jobs), model_calls=0, agents=len(plan['agent_variants']))))
         return 0
