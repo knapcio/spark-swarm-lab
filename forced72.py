@@ -38,7 +38,7 @@ CAPS['xxl_forced_original'] = (61440, 65536)
 END_THINK = '</think>'
 FORCE_TEXT = '\n</think>\n'
 IDLE_TIMEOUT = 120
-WALL_LIMIT = 1800
+WALL_LIMIT = 14400  # catastrophe stop only; a 61K-token thinking request under load can exceed 30 min
 
 
 def split_answer(text):
