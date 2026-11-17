@@ -11,9 +11,10 @@ from coding_harness import context, infrastructure, parse_python_response
 from forced72 import END_THINK, TOTAL, THINK_CAP, ForcedClient
 from sandbox_code import evaluate_code
 
-VARIANTS = ('code_forced', 'code_plain', 'code_long')
+VARIANTS = ('code_forced', 'code_plain', 'code_long', 'code_xl')
 # code_long: same agent with the whole 16K context (thinking up to 14848, total completion 16000).
-CAPS = {'code_forced': (THINK_CAP, TOTAL), 'code_plain': (TOTAL, TOTAL), 'code_long': (14848, 16000)}
+CAPS = {'code_forced': (THINK_CAP, TOTAL), 'code_plain': (TOTAL, TOTAL), 'code_long': (14848, 16000),
+        'code_xl': (30720, 32768)}  # code_xl: 128K serving, total = DeepSeek max_tokens
 SYSTEM = ('Implement or review the specified pure Python function. Return complete Python source for '
           'code proposals and the requested JSON for voting. Do not explain or use tools.')
 INSTRUCTION = '\nReturn complete Python function source only. Do not wrap it in JSON or include explanations.'
