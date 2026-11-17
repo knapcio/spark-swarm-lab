@@ -43,7 +43,7 @@ def install():
 
 
 _GLUED_HEADER = re.compile(r"(?m)^(\{.*\})[ \t]*=== FILE: ")  # only after the JSON object, never inside code
-_OPEN_HEADER = re.compile(r"(?m)^=== FILE: (\S+?)[ \t]*$")       # header without its closing ' ==='"
+_OPEN_HEADER = re.compile(r"(?m)^=== FILE: (\S+?)(?:[ \t]+(?:---|==))?[ \t]*$")  # header closed by '---' or not at all
 _END_WITH_PATH = re.compile(r"(?m)^=== END FILE: [^\n]*? ===[ \t]*$")
 
 
