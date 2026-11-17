@@ -136,7 +136,7 @@ class ForcedClient:
                     token_ids=token_ids, finish_reason=finish, usage=usage, error=error, answer=answer)
 
 
-def run_forced(experiment, initial, puzzle_id, variant, agent_id=0):
+def run_forced(experiment, initial, puzzle_id, variant, agent_id=0, extra=''):
     if variant not in VARIANTS:
         raise ValueError('unknown variant')
     e = experiment
@@ -148,6 +148,8 @@ def run_forced(experiment, initial, puzzle_id, variant, agent_id=0):
         raise ValueError('fresh case Budget(2, variant total) and integer rules required')
     root = e.node(initial, None, 0, puzzle_id, agent_id)
     prompt = prompt_for(e, initial, VARIANTS[variant])
+    if extra:  # controller-supplied context (strategy hint, judge critique, shared board); never gold information
+        prompt += '\n' + extra.strip()
     prompt_ids = client.chat_prompt_ids(prompt)
     plain = variant.startswith('plain_')
     first = client.complete(agent_id, 'plan', prompt_ids, total if plain else think_cap, node_id=root,
