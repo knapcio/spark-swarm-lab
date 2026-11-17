@@ -83,6 +83,8 @@ def run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, sl
     with slots(endpoint):
         row = execute(job, deadline_seconds=plan['agent_wall_deadline_seconds'])
     info = plan_of(events)
+    if row.get('controller_error') or (row.get('returncode') not in (0, None) and not row['deadline']):
+        info['infra'] += 1  # worker process failure: stop admissions, never a silent 'no plan'
     info.update(slot=slot, extra=bool(extra), deadline=bool(row['deadline']), verdict=None, reason='', judge_tokens=0, judge_infra=0)
     if info['plan'] is not None:
         cand = dict(numbers=task['numbers'], target=task['target'], plan=info['plan'])

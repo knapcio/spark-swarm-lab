@@ -25,12 +25,13 @@
     "repair4": 1600,
     "board2x2": 1700
   },
-  "source_revision": "ca2355574c666474f280315bbc470a78c3e207ca",
+  "source_revision": "50eff88ab5e621980b5d0519da0d7a2abfee4e18",
   "source_path": ".runtime/variants-source",
   "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason)",
   "selection_rule_for_confirmation": "Policy with the most solved cases (ties: fewer wrong answers, then fewer tokens) goes to the hard-v3 confirmation together with deep4 as control.",
   "agent_wall_deadline_seconds": 3600,
   "concurrent_policy_cases": 24,
   "concurrent_requests_per_endpoint": 16,
-  "runner": "run_variants.py"
+  "runner": "run_variants.py",
+  "erratum": "2026-11-17 ~10:30: first launch (runs/variants-screen-v1, diagnostic only) failed because the worker could not JSON-serialize its --extra-file path (every agent with extra text crashed before any model call; the controller did not treat process failures as infrastructure faults). Fixed in source 50eff88 (config serialization only) and run_variants.py (process failure = infrastructure fault). Rerun as variants-screen-v2; no design change."
 }
