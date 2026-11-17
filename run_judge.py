@@ -22,8 +22,6 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SOURCE = Path(os.environ.get('SWARM_LONG_SOURCE', HERE / '.runtime/nemotron-long-source'))  # CI checks it out elsewhere
-sys.path.insert(0, str(SOURCE))
-import forced72  # noqa: E402
 from harness import Budget, Events, canonical  # noqa: E402
 from fractions import Fraction  # noqa: E402
 
@@ -73,12 +71,31 @@ def candidates(runs):
     return out
 
 
-class ChatJudge(forced72.ForcedClient):
-    def chat_prompt_ids(self, prompt, thinking=True):
-        messages = [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt}]
-        with self.post('/tokenize', dict(model=self.model, messages=messages, add_generation_prompt=True,
-                                         chat_template_kwargs={'enable_thinking': thinking}), 60) as response:
-            return json.load(response)['tokens']
+def _forced72():
+    """Load the pinned agent source only when a judge is actually used (keeps offline test imports clean)."""
+    if str(SOURCE) not in sys.path:
+        sys.path.insert(0, str(SOURCE))
+    import forced72
+    return forced72
+
+
+_CHAT_JUDGE = None
+
+
+def ChatJudge(*args, **kwargs):  # noqa: N802 - factory kept under the original class name
+    global _CHAT_JUDGE
+    if _CHAT_JUDGE is None:
+        forced72 = _forced72()
+
+        class _ChatJudge(forced72.ForcedClient):
+            def chat_prompt_ids(self, prompt, thinking=True):
+                messages = [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt}]
+                with self.post('/tokenize', dict(model=self.model, messages=messages, add_generation_prompt=True,
+                                                 chat_template_kwargs={'enable_thinking': thinking}), 60) as response:
+                    return json.load(response)['tokens']
+
+        _CHAT_JUDGE = _ChatJudge
+    return _CHAT_JUDGE(*args, **kwargs)
 
 
 def judge(candidate, mode, endpoint, events_path, seed):
