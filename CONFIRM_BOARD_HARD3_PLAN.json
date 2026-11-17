@@ -1,0 +1,36 @@
+{
+  "protocol": "swarm-variants-screen-v1",
+  "status": "FROZEN",
+  "frozen_note": "Frozen 2026-11-17 ~12:15 Europe/Warsaw BEFORE arithmetic-hard-v3 exists. Winner of the dev screen (board2x2: 34/48 vs deep4 29/48, paired 5-0) vs deep4 control on fresh hard tasks.",
+  "question": "On fresh hard tasks, does the shared failure board beat 4 identical deep agents (arbiter-free, judge-selected)?",
+  "dataset": "datasets/arithmetic-hard-v3/tasks.json",
+  "dataset_protocol": "arithmetic-hard-v3",
+  "split": "evaluation",
+  "tasks": 48,
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "policies": [
+    "deep4",
+    "board2x2"
+  ],
+  "agent_variant": "long_forced_original",
+  "seed_offsets": {
+    "deep4": 2400,
+    "strategy4": 2500,
+    "repair4": 2600,
+    "board2x2": 2700
+  },
+  "source_revision": "50eff88ab5e621980b5d0519da0d7a2abfee4e18",
+  "source_path": ".runtime/variants-source",
+  "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason)",
+  "agent_wall_deadline_seconds": 3600,
+  "concurrent_policy_cases": 24,
+  "concurrent_requests_per_endpoint": 16,
+  "runner": "run_variants.py",
+  "study": "board-confirmation-hard3-v1",
+  "generator": "make_arithmetic_hard.py --seed 2026111702 --protocol arithmetic-hard-v3",
+  "primary_outcome": "solved / 144 per policy (paired by case), wrong answers, tokens"
+}

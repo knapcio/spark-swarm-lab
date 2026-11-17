@@ -1,0 +1,47 @@
+{
+  "protocol": "deepseek-fresh-reference-v1",
+  "study": "hybrid-hard3-deepseek-v1",
+  "status": "FROZEN",
+  "drafted": "2026-11-16 ~11:45 Europe/Warsaw, before any DeepSeek call on the fresh corpora and before Nemotron fresh results.",
+  "question": "Same fresh tasks as CONFIRM_V2_PLAN and CONFIRM_HARD_PLAN: how does the native DeepSeek V4.1 reference (one reasoning call, and any of 2) compare with Nemotron single agents and the 8-agent Nemotron swarm?",
+  "model": "deepseek-v4.1-flash",
+  "agent_variants": [
+    "index_original"
+  ],
+  "workers": {
+    "index_original": "followup72_worker.py"
+  },
+  "source": "frozen 638b9f3 (.runtime/nemotron72-followup-source)",
+  "method": "Exactly the earlier DeepSeek reference method: original prompt, one thinking call capped at 8192 completion tokens, chat completions, temperature 0.8, request seed from the frozen client. Two independent calls per case; agent 0 alone = single-call reference.",
+  "agent_seed_offset": 2800,
+  "corpora": {
+    "hard3": "datasets/arithmetic-hard-v3/tasks.json"
+  },
+  "transport": "stream",
+  "comparisons": [
+    "DeepSeek single vs Nemotron forced_explicit single vs plain_original single",
+    "DeepSeek any-of-2 vs Nemotron swarm any-of-2/any-of-8 (token budgets reported; GPU cost differs: DeepSeek uses all four nodes per request stream, Nemotron one node per agent)"
+  ],
+  "limits": "Bundled differences (model, serving engine, reasoning implementation); no causal model-size claim. Wall time reported only.",
+  "frozen_note": "Frozen 2026-11-17 ~12:15 Europe/Warsaw before hard-v3 exists. Hybrid routing rule: DeepSeek (1 call, 32K) is called for (a) every case where the board2x2 swarm gave no answer (judge accepted nothing) and (b) every seed-1 task as a stand-alone DeepSeek baseline. The case list is written mechanically from runs/board-confirmation-hard3-v1 before any DeepSeek call.",
+  "corpora_sha256": "filled at generation time; runner checks the protocol field and records the hash",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "concurrency": 8,
+  "agent_wall_deadline_seconds": 3600,
+  "concurrency_note": "4 concurrent requests as in the earlier DeepSeek reference (median 18 s, max 115 s per arithmetic call), far below the frozen 210 s HTTP timeout.",
+  "runner": "run_ds_agents.py",
+  "endpoint": "owned loopback tunnel 127.0.0.1:18889 -> Spark_01 127.0.0.1:8888",
+  "run_corpora": [
+    "hard3"
+  ],
+  "max_tokens": 32768,
+  "corpora_protocol": {
+    "hard3": "arithmetic-hard-v3"
+  },
+  "case_filter_file": "results/board-confirmation-hard3-v1/deepseek_cases.json",
+  "hybrid_score": "solved = board2x2 solved OR (board2x2 abstained AND DeepSeek solved); DeepSeek calls = number of abstentions"
+}

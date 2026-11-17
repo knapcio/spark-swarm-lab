@@ -75,6 +75,9 @@ def main(argv=None):
             require(data.get('protocol') == plan.get('corpora_protocol', {}).get(name), 'Wrong corpus protocol: ' + name)
         corpora.append((name, [t for t in data['tasks'] if t['split'] == 'evaluation']))
     jobs = make_jobs(corpora, output, source, plan, a.endpoint)
+    if plan.get('case_filter_file'):  # e.g. hybrid routing: only cases the Nemotron swarm abstained on (+ a baseline seed)
+        keep = {(t, int(sd)) for t, sd in read(HERE / plan['case_filter_file'])}
+        jobs = [j for j in jobs if (j['task_id'], int(j['seed'])) in keep]
     meta = dict(protocol=plan, plan_sha256=sha(a.plan), jobs=len(jobs), source_sha256=before, solver_revision=REVISION,
                 endpoint=a.endpoint, output=str(output))
     if not a.run:
