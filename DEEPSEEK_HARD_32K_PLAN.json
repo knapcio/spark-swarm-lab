@@ -36,12 +36,13 @@
     3
   ],
   "concurrency": 8,
-  "agent_wall_deadline_seconds": 480,
+  "agent_wall_deadline_seconds": 3600,
   "concurrency_note": "4 concurrent requests as in the earlier DeepSeek reference (median 18 s, max 115 s per arithmetic call), far below the frozen 210 s HTTP timeout.",
   "runner": "run_ds_agents.py",
   "endpoint": "owned loopback tunnel 127.0.0.1:18889 -> Spark_01 127.0.0.1:8888",
   "run_corpora": [
     "hard"
   ],
-  "max_tokens": 32768
+  "max_tokens": 32768,
+  "erratum": "2026-11-17 ~03:50: the first launch (runs/deepseek-hard-32k-v1, kept as diagnostic) inherited a 480 s controller deadline from the 8K plan, which killed long 32K-token calls (8/8 first results were deadline kills). That is a wall-clock quality cutoff contrary to the study rules; the run was stopped and is rerun as deepseek-hard-32k-v2 with a 3,600 s catastrophe-only deadline. No other field changed."
 }
