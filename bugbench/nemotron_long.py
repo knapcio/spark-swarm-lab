@@ -42,6 +42,8 @@ def install():
     a.CONTEXT_LIMIT, a.MAX_COMPLETION = CONTEXT_LIMIT, MAX_TOTAL  # recorded in plan.json budgets
 
 
+_GLUED_HEADER = re.compile(r"(?m)^(\{.*\})[ \t]*=== FILE: ")  # only after the JSON object, never inside code
+_OPEN_HEADER = re.compile(r"(?m)^=== FILE: (\S+?)[ \t]*$")       # header without its closing ' ==='"
 _END_WITH_PATH = re.compile(r"(?m)^=== END FILE: [^\n]*? ===[ \t]*$")
 
 
@@ -50,12 +52,16 @@ def normalize_answer(answer):
     required '=== END FILE ==='.  Rewrite only that marker; everything else goes to the unchanged parser."""
     if not FORMAT_FOLLOWUP or not isinstance(answer, str):
         return answer
+    answer = _GLUED_HEADER.sub("\\1\n=== FILE: ", answer)  # header glued to the JSON line
+    answer = _OPEN_HEADER.sub(lambda m: f"=== FILE: {m.group(1)} ===", answer)
     return _END_WITH_PATH.sub("=== END FILE ===", answer)
 
 
-def _candidate(ctx, name, rank, stage, result):
+def _candidate(ctx, name, rank, stage, result, diagnosis=None):
     answer = normalize_answer(result["answer"])
     decision = a.extract_json(answer, keys=("location", "hypothesis")) or {}
+    if not decision and diagnosis:  # format follow-up answers carry only FILE blocks; keep the first diagnosis
+        decision = a.extract_json(diagnosis, keys=("location", "hypothesis")) or {}
     parsed = a.parse_patch_answer(answer, ctx.files, ctx.editable)
     claim = decision.get("location") if isinstance(decision.get("location"), dict) else None
     if claim:
@@ -91,13 +97,15 @@ def whole_agent(ctx, name="l1", rank=0):
     trace.append(step)
     if not ok and FORMAT_FOLLOWUP and first["error"] == "no FILE blocks found" and result["answer"]:
         # v2 (dev pilot finding): Nemotron often stops after the JSON diagnosis and never writes the patch.
-        follow = (prompt + "\n# Your previous answer\n" + result["answer"] + "\n\n# Your answer\nYour previous "
-                  "answer gave the diagnosis but NO patch. Now give the fix: ONE JSON object as before, then the "
-                  f"complete file(s) in exactly this format:\n{ctx.bundle['patch_format']}")
+        diagnosis = result["answer"]
+        follow = (prompt + "\n# Your previous answer\n" + diagnosis + "\n\n# Your answer\nYour previous answer "
+                  "gave only the diagnosis and NO patch. Do NOT repeat the JSON. Output ONLY the patch that implements "
+                  "your diagnosis: the complete new content of each changed file, starting with a line "
+                  f"'=== FILE: <path> ===', in exactly this format:\n{ctx.bundle['patch_format']}")
         result = ctx.caller.call(name, "format", follow, answer_reserve=ANSWER_RESERVE, hint=rank)
         if result is None:
             return cands, trace
-        first, step, ok = _candidate(ctx, name, rank, "format", result)
+        first, step, ok = _candidate(ctx, name, rank, "format", result, diagnosis)
         trace.append(step)
     if not ok:
         return cands, trace
