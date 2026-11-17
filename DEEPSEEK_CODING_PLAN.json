@@ -1,0 +1,21 @@
+{
+  "protocol": "deepseek-coding-reference-v1",
+  "status": "FROZEN",
+  "frozen_note": "Frozen 2026-11-17 ~03:00 Europe/Warsaw before any DeepSeek coding call.",
+  "tasks": "datasets/coding-hard-v1/tasks.json",
+  "tests": "datasets/coding-hard-v1/hidden-tests.json",
+  "tasks_sha256": "01cb39b1b18d7e6565576fa8b96a30681b3fe2a31796399bfd8f0f6761033da0",
+  "tests_sha256": "57cf4420c5db07ae2afab10b86c93f07fc24da6318386856cd10399b11effa13",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "agent_seed_offset": 900,
+  "model": "deepseek-v4.1-flash",
+  "max_tokens": 32768,
+  "concurrency": 6,
+  "agent_wall_deadline_seconds": 3600,
+  "method": "One DeepSeek call per task and seed: same public task context, Python-source instruction, system prompt, parser and CPU sandbox as the Nemotron coding agents; thinking on, frontend default effort (high), max_tokens 32,768, streamed (120 s idle = infrastructure fault). Solved = passes feedback AND holdout (same rule as a selected Nemotron program).",
+  "compare": "Nemotron coding-hard: 8 x 8K budget-forced 28/72; 8 x 16K deep 37/72; original single call 4/72 (k=1)."
+}
