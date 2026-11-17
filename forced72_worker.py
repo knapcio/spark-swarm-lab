@@ -19,6 +19,8 @@ def main(argv=None):
     p.add_argument('--extra-file', type=Path, help='text appended to the task prompt (strategy / critique / board)')
     p.add_argument('--run', action='store_true')
     args = p.parse_args(argv)
+    extra_text = args.extra_file.read_text() if args.extra_file else ''
+    args.extra_file = str(args.extra_file) if args.extra_file else None  # JSON-serializable config
     initial, args.target = parse_puzzle(args.puzzle)
     if any(x.denominator != 1 or x <= 0 for x in initial) or len(initial) not in (4, 6):
         p.error('Study tasks require four or six strictly positive integers')
@@ -37,9 +39,8 @@ def main(argv=None):
                 scope='Budget-forced agent: no external advisor, no CPU puzzle search, no wall-clock quality limit')
     try:
         events.emit('puzzle_start', puzzle_id=puzzle_id, target=args.target, state=canonical(initial))
-        extra = args.extra_file.read_text() if args.extra_file else ''
-        events.emit('extra_prompt', text=extra)
-        result = run_forced(experiment, initial, puzzle_id, args.variant, extra=extra)
+        events.emit('extra_prompt', text=extra_text)
+        result = run_forced(experiment, initial, puzzle_id, args.variant, extra=extra_text)
         events.emit('puzzle_end', puzzle_id=puzzle_id, **result)
         summary = dict(run_id=events.run_id, solved=int(result['solved']), puzzles=1,
                        budget=budget.snapshot(), events=str(events.path),
