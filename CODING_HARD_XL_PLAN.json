@@ -1,0 +1,42 @@
+{
+  "protocol": "coding-agents-v1",
+  "status": "FROZEN",
+  "source_revision": "a41c312d0103ce499a147125c36df1c28397aa1e",
+  "source_path": ".runtime/coding-xl-source",
+  "limits": {
+    "per_agent_completion_tokens": 32768,
+    "idle_timeout_seconds": 120,
+    "agent_wall_deadline_seconds": 7200,
+    "sandbox": "CPU-only Docker python@c61cffc3, no network, 256 MB, 1 CPU, 10 s per grade"
+  },
+  "scheduling": {
+    "concurrent_agents_per_node": 10,
+    "placement": "agent j of case c on replica/grader host (c+j)%4"
+  },
+  "selection": "first agent in fixed order whose code passes ALL feedback cases; solved if that code passes ALL holdout cases",
+  "runner": "run_coding_agents.py",
+  "study": "coding-hard-xl-v1",
+  "agent_variants": [
+    "code_xl",
+    "code_xl",
+    "code_xl",
+    "code_xl"
+  ],
+  "agent_seed_offset": 700,
+  "matrix": {
+    "tasks": "datasets/coding-hard-v1/tasks.json",
+    "tests": "datasets/coding-hard-v1/hidden-tests.json",
+    "tasks_sha256": "01cb39b1b18d7e6565576fa8b96a30681b3fe2a31796399bfd8f0f6761033da0",
+    "tests_sha256": "57cf4420c5db07ae2afab10b86c93f07fc24da6318386856cd10399b11effa13",
+    "split": "evaluation",
+    "tasks_count": 24,
+    "seeds": [
+      1,
+      2,
+      3
+    ]
+  },
+  "question": "Context-gap experiment: do 4 deep coding agents with a 32K budget (= DeepSeek max_tokens; 128K serving) close the gap to DeepSeek (61/72) from 16K deep agents (4 deep: coding-hard-long-v1; 8 deep 37/72)?",
+  "frozen_note": "Frozen 2026-11-17 ~20:55 Europe/Warsaw before any code_xl call. Same 24 evaluation tasks x 3 seeds as coding-hard-long-v1 and the DeepSeek coding reference; nothing tuned on them.",
+  "serving": "swarm-lightning-128k clones (ctx_switch.py): same image/args as the 16K replicas except --max-model-len 131072"
+}
