@@ -21,6 +21,7 @@ Importing this module changes nothing and contacts nothing.
 """
 import functools
 import os
+import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 
@@ -41,9 +42,21 @@ def install():
     a.CONTEXT_LIMIT, a.MAX_COMPLETION = CONTEXT_LIMIT, MAX_TOTAL  # recorded in plan.json budgets
 
 
+_END_WITH_PATH = re.compile(r"(?m)^=== END FILE: [^\n]*? ===[ \t]*$")
+
+
+def normalize_answer(answer):
+    """v2 (dev pilot finding): Nemotron often closes a block with '=== END FILE: <path> ===' instead of the
+    required '=== END FILE ==='.  Rewrite only that marker; everything else goes to the unchanged parser."""
+    if not FORMAT_FOLLOWUP or not isinstance(answer, str):
+        return answer
+    return _END_WITH_PATH.sub("=== END FILE ===", answer)
+
+
 def _candidate(ctx, name, rank, stage, result):
-    decision = a.extract_json(result["answer"], keys=("location", "hypothesis")) or {}
-    parsed = a.parse_patch_answer(result["answer"], ctx.files, ctx.editable)
+    answer = normalize_answer(result["answer"])
+    decision = a.extract_json(answer, keys=("location", "hypothesis")) or {}
+    parsed = a.parse_patch_answer(answer, ctx.files, ctx.editable)
     claim = decision.get("location") if isinstance(decision.get("location"), dict) else None
     if claim:
         claim = {"file": a._str(claim.get("file"), 200), "function": a._str(claim.get("function"), 200)}
