@@ -1,0 +1,36 @@
+{
+  "protocol": "swarm-variants-screen-v1",
+  "status": "FROZEN",
+  "frozen_note": "Frozen 2026-11-17 ~10:20 Europe/Warsaw. Development screen on arithmetic-hard-v2 DEVELOPMENT split (never used before). Winner to be confirmed on a fresh corpus (hard-v3) under a separate frozen plan.",
+  "question": "At equal agent count (4 deep agents per case, arbiter-free judge selection): do strategy diversity, judge-critique repair, or a shared failure board beat 4 identical independent agents?",
+  "dataset": "datasets/arithmetic-hard-v2/tasks.json",
+  "dataset_protocol": "arithmetic-hard-v2",
+  "split": "development",
+  "tasks": 16,
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "policies": [
+    "deep4",
+    "strategy4",
+    "repair4",
+    "board2x2"
+  ],
+  "agent_variant": "long_forced_original",
+  "seed_offsets": {
+    "deep4": 1400,
+    "strategy4": 1500,
+    "repair4": 1600,
+    "board2x2": 1700
+  },
+  "source_revision": "ca2355574c666474f280315bbc470a78c3e207ca",
+  "source_path": ".runtime/variants-source",
+  "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason)",
+  "selection_rule_for_confirmation": "Policy with the most solved cases (ties: fewer wrong answers, then fewer tokens) goes to the hard-v3 confirmation together with deep4 as control.",
+  "agent_wall_deadline_seconds": 3600,
+  "concurrent_policy_cases": 24,
+  "concurrent_requests_per_endpoint": 16,
+  "runner": "run_variants.py"
+}
