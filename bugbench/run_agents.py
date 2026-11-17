@@ -14,6 +14,10 @@ candidate (garbled, truncated, invalid or wrong patch) is an outcome, not a faul
 
 Model patches must be graded in the container: ``--docker-host`` is required for
 ``--run`` unless ``--unsafe-local-grading`` is given (authored fixtures only).
+
+Policy R (DeepSeek V4.1 reference, ``deepseek_ref.py``) runs alone (``--policies R``) against one
+OpenAI-compatible chat endpoint (``--endpoint``, model ``deepseek-v4.1-flash`` unless ``--model``);
+``--per-endpoint`` caps its concurrent requests.
 """
 import argparse
 import hashlib
@@ -28,6 +32,9 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import agents as a  # noqa: E402
 import bugbench_grader as g  # noqa: E402
+import deepseek_ref as dr  # noqa: E402
+
+POLICIES = dict(a.POLICIES, **dr.POLICIES)
 
 
 def attempt_id(case_id, policy, seed):
@@ -41,8 +48,11 @@ def build_plan(args):
         raise SystemExit(f"unknown cases: {unknown}")
     policies = args.policies
     for policy in policies:
-        if policy not in a.POLICIES:
-            raise SystemExit(f"unknown policy {policy}; choose from {sorted(a.POLICIES)}")
+        if policy not in POLICIES:
+            raise SystemExit(f"unknown policy {policy}; choose from {sorted(POLICIES)}")
+    deepseek = any(p in dr.POLICIES for p in policies)
+    if deepseek and any(p not in dr.POLICIES for p in policies):
+        raise SystemExit("policy R uses the DeepSeek chat endpoint; run it alone (--policies R)")
     # seed-major order: a partial run still covers every case and policy evenly
     matrix = [dict(id=attempt_id(c, p, s), case_id=c, policy=p, seed=s)
               for s in args.seeds for c in cases for p in policies]
@@ -58,7 +68,7 @@ def build_plan(args):
     default_tokens = 256_000 if args.max_completion_tokens is None else args.max_completion_tokens
 
     def policy_entry(p):
-        spec = a.POLICIES[p]
+        spec = POLICIES[p]
         entry = dict(kwargs=spec["kwargs"], nominal_max_calls=spec["max_calls"])
         if "budget" in spec or "selection" in spec:  # T1/T3/V3 only; S1/S3/W1 entries stay as before
             budget = spec.get("budget", {})
@@ -68,9 +78,20 @@ def build_plan(args):
                 if args.max_completion_tokens is None else args.max_completion_tokens))
         return entry
     sources = {name: hashlib.sha256(open(os.path.join(a.g.ROOT, name), "rb").read()).hexdigest()
-               for name in ("agents.py", "bugbench_grader.py", "run_agents.py")}
+               for name in ("agents.py", "bugbench_grader.py", "run_agents.py")
+               + (("deepseek_ref.py",) if deepseek else ())}
+    extra = {}
+    if deepseek:  # R only: the Nemotron budget block below is kept for format compatibility but does not apply
+        extra["deepseek"] = dict(
+            endpoint=getattr(args, "endpoint", None) or dr.ENDPOINT, api="chat/completions (streamed)",
+            thinking="chat_template_kwargs.enable_thinking=true", context_window=dr.CONTEXT_WINDOW,
+            max_tokens_per_call=dr.MAX_TOKENS, temperature=dr.TEMPERATURE, idle_timeout_s=args.idle_timeout,
+            wall_limit_per_call_s=getattr(args, "wall_limit", None) or dr.WALL_LIMIT,
+            concurrent_requests=args.per_endpoint,
+            prompt="whole agent-visible bundle in one user message; repair = second turn with self-check output")
     return dict(
-        created=datetime.now().astimezone().isoformat(), model=args.model, endpoints=args.endpoints,
+        created=datetime.now().astimezone().isoformat(), model=args.model,
+        endpoints=[extra["deepseek"]["endpoint"]] if deepseek else args.endpoints,
         per_endpoint_concurrency=args.per_endpoint, parallel_attempts=args.parallel_attempts,
         grading=("docker:" + args.docker_host) if args.docker_host else "local (unsafe; fixtures only)",
         oracle=not args.no_oracle,
@@ -79,8 +100,9 @@ def build_plan(args):
                      idle_timeout_s=args.idle_timeout, wall_clock_quality_cutoff=None,
                      attempt_max_calls=default_calls, attempt_max_completion_tokens=default_tokens),
         policies={p: policy_entry(p) for p in policies},
-        selection="valid -> passes public tests -> largest cluster of identical normalized diffs -> earliest",
-        source_sha256=sources, attempts=matrix)
+        selection=dr.SELECTION_RULE if deepseek else
+        "valid -> passes public tests -> largest cluster of identical normalized diffs -> earliest",
+        source_sha256=sources, **extra, attempts=matrix)
 
 
 def attempt_budget(plan, policy):
@@ -134,7 +156,8 @@ def execute(plan, out_dir, pool, executor=None, grade_fn=None, selfcheck=None, p
     lock, halt, records = threading.Lock(), threading.Event(), []
 
     def one(item):
-        record = a.run_attempt(
+        runner = dr.run_attempt if item["policy"] in dr.POLICIES else a.run_attempt
+        record = runner(
             item["case_id"], item["policy"], item["seed"], pool,
             events_path=os.path.join(out_dir, "attempts", item["id"] + ".jsonl"),
             executor=executor, grade_fn=grade_fn, selfcheck=selfcheck, oracle=plan["oracle"],
@@ -187,12 +210,14 @@ def preflight(transports, model):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--cases", nargs="*", help="case ids (default: all)")
-    parser.add_argument("--policies", nargs="+", default=["S1", "S3", "W1"], choices=sorted(a.POLICIES),
+    parser.add_argument("--policies", nargs="+", default=["S1", "S3", "W1"], choices=sorted(POLICIES),
                         help="S1/S3/W1 baselines; T1 test-first agent, T3 8 test-first chains + cross-validation, "
-                             "V3 S3 + one model review per distinct patch")
+                             "V3 S3 + one model review per distinct patch; R DeepSeek reference (run alone)")
     parser.add_argument("--seeds", nargs="+", type=int, default=[1])
     parser.add_argument("--endpoints", nargs="+", default=list(a.ENDPOINTS))
-    parser.add_argument("--model", default=a.MODEL)
+    parser.add_argument("--endpoint", default=dr.ENDPOINT, help="R only: OpenAI-compatible chat endpoint (.../v1)")
+    parser.add_argument("--model", default=None, help=f"default {a.MODEL}; R: {dr.MODEL}")
+    parser.add_argument("--wall-limit", type=float, default=dr.WALL_LIMIT, help="R only: seconds per call")
     parser.add_argument("--per-endpoint", type=int, default=8, help="concurrent requests per replica")
     parser.add_argument("--parallel-attempts", type=int, default=4)
     parser.add_argument("--skip-completed", help="previous run dir: skip its finished (non-infrastructure-fault) attempts")
@@ -208,6 +233,9 @@ def main(argv=None):
     parser.add_argument("--out", help="new output directory (must not exist)")
     parser.add_argument("--run", action="store_true", help="execute (default: print the plan only)")
     args = parser.parse_args(argv)
+    deepseek = any(p in dr.POLICIES for p in args.policies)
+    if args.model is None:
+        args.model = dr.MODEL if deepseek else a.MODEL
     plan = build_plan(args)
     if not args.run:
         shown = dict(plan, attempts=[item["id"] for item in plan["attempts"]])
@@ -222,9 +250,14 @@ def main(argv=None):
     if not args.docker_host and not args.unsafe_local_grading:
         raise SystemExit("--run grades model patches: pass --docker-host HOST (or --unsafe-local-grading)")
     executor = g.DockerExecutor(args.docker_host) if args.docker_host else None
-    transports = [a.HTTPTransport(e, args.model, args.idle_timeout) for e in args.endpoints]
-    preflight(transports, args.model)
-    pool = a.EndpointPool(transports, args.per_endpoint)
+    if deepseek:
+        transport = dr.ChatTransport(args.endpoint, args.model, args.idle_timeout, args.wall_limit)
+        dr.preflight(transport)
+        pool = dr.ChatPool(transport, args.per_endpoint)
+    else:
+        transports = [a.HTTPTransport(e, args.model, args.idle_timeout) for e in args.endpoints]
+        preflight(transports, args.model)
+        pool = a.EndpointPool(transports, args.per_endpoint)
     summary = execute(plan, args.out, pool, executor=executor, parallel=args.parallel_attempts)
     print(json.dumps(summary, indent=1))
     return 1 if summary["halted"] else 0

@@ -1,0 +1,41 @@
+{
+  "protocol": "bugbench-deepseek-reference-v1",
+  "status": "FROZEN",
+  "frozen_note": "Frozen 2026-11-17 ~10:45 Europe/Warsaw before any DeepSeek call on bugbench.",
+  "cases": [
+    "quarry-b1-desc-tie-order",
+    "quarry-b2-right-assoc-minus",
+    "quarry-b3-failed-insert-keys",
+    "tally-b1-discount-last-day",
+    "tally-b2-vat-per-line",
+    "tally-b3-rejected-discount-payment",
+    "trellis-b1-caret-zero-patch",
+    "trellis-b2-install-order-ready",
+    "trellis-b3-backtrack-leak",
+    "junction-b1-exact-transfer-time",
+    "junction-b2-walk-time-rounding",
+    "junction-b3-night-listing-stale",
+    "patchwork-b1-hunk-merge-gap",
+    "patchwork-b2-context-newline-marker",
+    "patchwork-b3-fuzz-trims-patch",
+    "relay-b1-wait-rounds-down",
+    "relay-b2-ready-time-tiebreak",
+    "relay-b3-rejected-batch-tokens"
+  ],
+  "seeds": [
+    1,
+    2
+  ],
+  "policy": "R: one DeepSeek call with the whole agent-visible bundle -> full-file patch -> public self-check -> at most one repair call on failure; one hidden grade",
+  "model": "deepseek-v4.1-flash",
+  "max_tokens": 32768,
+  "effort": "frontend default (high)",
+  "transport": "streamed chat, 120 s idle timeout, 1800 s per call catastrophe limit",
+  "source_sha256": {
+    "deepseek_ref.py": "07829dc93d90bdf9274fa5b8d5ec5bb93b58b14b0af80817ee898e9d3fb0197e",
+    "run_agents.py": "554dcab5a19fb99964658c59905111402f8b7820b2a4b4f6f35c5bbe0f23876d",
+    "agents.py": "9a17237a045ffc6498d4dd11cef498584f8459a062e3e12fb47f22d337826adb",
+    "bugbench_grader.py": "f5c161f6bbc13fba02daa9c1c6a1a37110e009f452376377594a4e346d5ccf57"
+  },
+  "compare": "Nemotron arbiter-free policies on the same 36 attempts: S1 18, S3 26, T3 26, V3 28"
+}
