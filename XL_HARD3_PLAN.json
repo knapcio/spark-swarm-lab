@@ -1,0 +1,36 @@
+{
+  "protocol": "swarm-variants-screen-v1",
+  "status": "FROZEN",
+  "frozen_note": "Frozen 2026-11-17 ~19:55 Europe/Warsaw before any xl agent call. Context-gap experiment: same tasks and seed 1 as the hard-v3 board confirmation and the DeepSeek 32K baseline (39/48).",
+  "question": "Does doubling the deep agents thinking budget (16K -> 32K total, = DeepSeek max_tokens) close the gap to DeepSeek on hard-v3 seed 1?",
+  "dataset": "datasets/arithmetic-hard-v3/tasks.json",
+  "dataset_protocol": "arithmetic-hard-v3",
+  "split": "evaluation",
+  "tasks": 48,
+  "seeds": [
+    1
+  ],
+  "policies": [
+    "deep4",
+    "board2x2"
+  ],
+  "agent_variant": "xl_forced_original",
+  "seed_offsets": {
+    "deep4": 3400,
+    "strategy4": 3500,
+    "repair4": 3600,
+    "board2x2": 3700
+  },
+  "source_revision": "40b2bd5d852dbe028d9de3f9a5cac06b01377286",
+  "source_path": ".runtime/xl-source",
+  "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason)",
+  "agent_wall_deadline_seconds": 7200,
+  "concurrent_policy_cases": 16,
+  "concurrent_requests_per_endpoint": 16,
+  "runner": "run_variants.py",
+  "study": "xl-hard3-seed1-v1",
+  "generator": "make_arithmetic_hard.py --seed 2026111702 --protocol arithmetic-hard-v3",
+  "primary_outcome": "solved/48 per policy, paired vs 16K same policy and vs DeepSeek; wrong answers; tokens",
+  "serving": "swarm-lightning-128k clones (ctx_switch.py): identical image and vLLM args except --max-model-len 131072",
+  "compare": "same 48 cases: DeepSeek 32K alone 39/48 (hybrid-hard3-deepseek-v1), board2x2 16K 32/48 and deep4 16K seed-1 from board-confirmation-hard3-v1"
+}
