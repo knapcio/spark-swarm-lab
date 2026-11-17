@@ -12,6 +12,7 @@ selection = first agent (fixed order) whose plan the judge accepts.
 import argparse
 import hashlib
 import json
+import os
 import sys
 import threading
 import time
@@ -20,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-SOURCE = HERE / '.runtime/nemotron-long-source'
+SOURCE = Path(os.environ.get('SWARM_LONG_SOURCE', HERE / '.runtime/nemotron-long-source'))  # CI checks it out elsewhere
 sys.path.insert(0, str(SOURCE))
 import forced72  # noqa: E402
 from harness import Budget, Events, canonical  # noqa: E402

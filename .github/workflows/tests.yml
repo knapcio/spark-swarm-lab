@@ -17,8 +17,10 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Prepare pinned agent source used by the arbiter-free and variant controllers
-        run: git worktree add --detach .runtime/nemotron-long-source ce6c0b6e583596faf15e4f556b0d73f09fb0b6a4
+        run: git worktree add --detach "${{ runner.temp }}/nemotron-long-source" ce6c0b6e583596faf15e4f556b0d73f09fb0b6a4
       - run: python -m unittest -q
+        env:
+          SWARM_LONG_SOURCE: ${{ runner.temp }}/nemotron-long-source
       - name: Prepare immutable throughput validation
         run: git worktree add --detach "${{ runner.temp }}/throughput-timeoutguard" 7bb965b073af8cdc211404186c15463d5cfc374e
       - name: Verify frozen timeout margin and exact source delta
