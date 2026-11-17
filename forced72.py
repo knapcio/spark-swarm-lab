@@ -24,7 +24,8 @@ from harness import parse_json_response
 SYSTEM = 'Solve the precise arithmetic task. Return only the requested JSON object. Do not explain or use tools.'
 VARIANTS = {'forced_explicit': 'index_explicit', 'forced_original': 'index_original',
             'plain_original': 'index_original', 'long_forced_explicit': 'index_explicit',
-            'long_forced_original': 'index_original', 'xl_forced_original': 'index_original'}
+            'long_forced_original': 'index_original', 'xl_forced_original': 'index_original',
+            'xxl_forced_original': 'index_original'}
 # long_*: same agent with the whole 16K context: thinking up to 14848, total completion 16000.
 # plain_original = the original single reasoning call (index_original, 8192, no second call) on this transport.
 THINK_CAP = 7168
@@ -32,6 +33,8 @@ TOTAL = 8192  # defaults; per-variant caps in CAPS
 CAPS = {name: (14848, 16000) if name.startswith('long_') else (THINK_CAP, TOTAL) for name in VARIANTS}
 # xl_*: same deep agent served with a 128K window: thinking up to 30720, total 32768 (= DeepSeek max_tokens).
 CAPS['xl_forced_original'] = (30720, 32768)
+# xxl_*: thinking-budget scaling point: thinking up to 61440, total 65536 (128K serving).
+CAPS['xxl_forced_original'] = (61440, 65536)
 END_THINK = '</think>'
 FORCE_TEXT = '\n</think>\n'
 IDLE_TIMEOUT = 120
