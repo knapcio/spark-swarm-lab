@@ -24,12 +24,13 @@
   "source_path": ".runtime/xl-source",
   "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason)",
   "agent_wall_deadline_seconds": 14400,
-  "concurrent_policy_cases": 16,
+  "concurrent_policy_cases": 6,
   "concurrent_requests_per_endpoint": 16,
   "runner": "run_variants.py",
   "study": "confirm-xl-hard4-v1",
   "generator": "make_arithmetic_hard.py --seed 2026111703 --protocol arithmetic-hard-v4",
   "primary_outcome": "solved/48 deep4-32K vs DeepSeek; wrong answers; hybrid (DeepSeek only on abstentions)",
   "serving": "swarm-lightning-128k clones (ctx_switch.py): identical image and vLLM args except --max-model-len 131072",
-  "compare": "DeepSeek 32K single call on the same 48 tasks (seed 1), measured after this run"
+  "compare": "DeepSeek 32K single call on the same 48 tasks (seed 1), measured after this run",
+  "amendment_1": "2026-11-17 ~23:58: v1 aborted after 5 cases because my concurrent runs overloaded the servers (see XXL_HARD3_PLAN amendment_1_correction); v1 is not scored. v2 = same plan, same seed offsets, with concurrent_policy_cases 6 so that the summed client concurrency per node stays <= 25."
 }
