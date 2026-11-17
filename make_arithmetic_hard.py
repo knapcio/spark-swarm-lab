@@ -92,19 +92,21 @@ def verify(tasks, private, excluded):
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output', type=Path)
+    p.add_argument('--seed', type=int, default=SEED)
+    p.add_argument('--protocol', default=PROTOCOL)
     a = p.parse_args(argv)
     if a.output is None:
-        print(json.dumps(dict(mode='plan', protocol=PROTOCOL, seed=SEED, counts=dict(COUNTS), tasks_generated=0)))
+        print(json.dumps(dict(mode='plan', protocol=a.protocol, seed=a.seed, counts=dict(COUNTS), tasks_generated=0)))
         return 0
     if a.output.exists():
         raise SystemExit('output exists')
     history, _, manifest = exclusions()
     excluded = history | dataset_fingerprints(HERE)
-    tasks, private, attempts = generate(SEED, excluded)
+    tasks, private, attempts = generate(a.seed, excluded)
     verify(tasks, private, excluded)
     source = {name: hashlib.sha256((HERE / name).read_bytes()).hexdigest()
               for name in ('make_arithmetic_hard.py', 'arith_difficulty.py', 'make_tasks.py', 'harness.py')}
-    common = dict(protocol=PROTOCOL, generator_seed=SEED, rules=RULES, generation_attempts=attempts,
+    common = dict(protocol=a.protocol, generator_seed=a.seed, rules=RULES, generation_attempts=attempts,
                   selection='4-number: needs all four numbers, <=2 derivation trees in total; 6-number: needs >=5 numbers, '
                             '<=2 derivation trees at the minimum size. Targets uniform 100..999. Difficulty from an exact CPU '
                             'subset DP used only to SELECT tasks; never shown to agents.',

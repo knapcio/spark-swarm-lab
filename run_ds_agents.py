@@ -69,7 +69,10 @@ def main(argv=None):
         if name not in plan.get('run_corpora', plan['corpora']):
             continue
         data = read(HERE / rel)
-        require(sha(HERE / rel) == plan['corpora_sha256'][name], 'Corpus hash differs: ' + name)
+        if isinstance(plan['corpora_sha256'], dict):
+            require(sha(HERE / rel) == plan['corpora_sha256'][name], 'Corpus hash differs: ' + name)
+        else:  # corpus generated after the plan froze: check its protocol, hash is recorded in run metadata
+            require(data.get('protocol') == plan.get('corpora_protocol', {}).get(name), 'Wrong corpus protocol: ' + name)
         corpora.append((name, [t for t in data['tasks'] if t['split'] == 'evaluation']))
     jobs = make_jobs(corpora, output, source, plan, a.endpoint)
     meta = dict(protocol=plan, plan_sha256=sha(a.plan), jobs=len(jobs), source_sha256=before, solver_revision=REVISION,

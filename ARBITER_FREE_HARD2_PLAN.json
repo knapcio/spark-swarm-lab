@@ -1,0 +1,30 @@
+{
+  "protocol": "arbiter-free-swarm-v1",
+  "status": "FROZEN",
+  "frozen_note": "Frozen 2026-11-17 ~07:00 Europe/Warsaw BEFORE the arithmetic-hard-v2 corpus exists. Confirms, on fresh tasks, the configuration assembled post hoc during the night (deep agents, Nemotron thinking judge, escalation).",
+  "question": "On fresh hard tasks and with NO external verifier in the loop, how many cases does the frozen Nemotron swarm solve, how many wrong answers does it give, and how does it compare with one DeepSeek call (32K)?",
+  "dataset": "datasets/arithmetic-hard-v2/tasks.json",
+  "dataset_protocol": "arithmetic-hard-v2",
+  "generator": "make_arithmetic_hard.py --seed 2026111701 --protocol arithmetic-hard-v2 (same selection rules as hard-v1; excludes every earlier dataset task and historical run puzzle)",
+  "split": "evaluation",
+  "tasks": 48,
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "stage_a_variant": "forced_explicit",
+  "stage_a_seed_offset": 1100,
+  "stage_b_variant": "long_forced_original",
+  "stage_b_seed_offset": 1200,
+  "judge": "run_judge.judge mode think (budget-forced 6144 + continuation), sees task + raw plan only",
+  "selection": "first judge-accepted plan in agent order; stage B (4 deep agents) only if no stage-A plan is accepted; no answer if nothing accepted",
+  "source_revision": "ce6c0b6e583596faf15e4f556b0d73f09fb0b6a4",
+  "source_path": ".runtime/nemotron-long-source",
+  "agent_wall_deadline_seconds": 3600,
+  "concurrent_cases": 16,
+  "concurrent_requests_per_endpoint": 14,
+  "primary_outcome": "solved / 144 (selected plan passes the exact verifier, which never influences any decision); secondary: wrong answers (accepted but invalid), unanswered, escalation rate, tokens per case, oracle (any agent run solved)",
+  "expectation_from_hard_v1": "Offline estimate on hard-v1: short4 then deep4 with a perfect selector reached 107/144; the thinking judge had 0 false accepts in 2,282. A large drop on fresh tasks would indicate post-hoc fitting.",
+  "runner": "run_arbiterfree.py"
+}
