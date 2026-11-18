@@ -11,5 +11,7 @@
     "k=4 and k=8: first_passing vs cx vs oracle"
   ],
   "script_sha256": "693bf12d33b0512ba1f10cf2fe4501ec664489f9691e4ad918709a2cb6b92e6d",
-  "runner": "cx_select.py --output runs/cx-selection-v1 --run --per-node 4"
+  "runner": "cx_select.py --output runs/cx-selection-v2 --run --per-node 4",
+  "erratum_1": "2026-11-18 ~04:10: v1 (runs/cx-selection-v1) had two implementation bugs: (a) the loader de-duplicated candidates by file name, dropping agents 4-7 whose files share names with agents 0-3, so k=8 equalled k=4; (b) input generation did not continue an answer cut after thinking closed, and one malformed element discarded the whole input list (14/48 cases without inputs). v1 result seen: k=4 first_passing 51, cx 51, oracle 59. v2 = same rule and prompt; loader keyed by (run group, file); continuation of cut answers; element-wise JSON parsing. Rule unchanged.",
+  "script_sha256_v2": "b1c15da0bff9fa2090176f1856af318ce48fba8dd33462ee844ed9e18359b205"
 }

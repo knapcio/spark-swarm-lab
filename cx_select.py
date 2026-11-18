@@ -44,7 +44,7 @@ def load_candidates():
     rows, seen = [], set()
     for run, shift in RUNS:
         for r in json.loads((HERE / 'runs' / run / 'summary.json').read_text()):
-            name = os.path.basename(r['events'])
+            name = (shift, os.path.basename(r['events']))  # v2 fix: ext agents share file names with agents 0-3
             if operational_fault(r) or name in seen:
                 continue
             seen.add(name)
@@ -66,19 +66,45 @@ def input_prompt(task):
             "(a JSON array of positional arguments).")
 
 
+def _elements(text):
+    """Top-level elements of the first JSON array in text, each parsed on its own (v2: one broken element no
+    longer discards the whole list; a truncated tail is dropped)."""
+    start = text.find('[')
+    if start < 0:
+        return []
+    out, depth, begin, in_str, esc = [], 0, None, False, False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_str:
+            esc = (ch == '\\') and not esc
+            if ch == '"' and not esc:
+                in_str = False
+            elif ch != '\\':
+                esc = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch in '[{':
+            depth += 1
+            if depth == 2:
+                begin = i
+        elif ch in ']}':
+            if depth == 2 and begin is not None:
+                try:
+                    out.append(json.loads(text[begin:i + 1]))
+                except ValueError:
+                    pass
+                begin = None
+            depth -= 1
+            if depth == 0:
+                break
+    return out
+
+
 def parse_inputs(text, arity):
     if not isinstance(text, str):
         return None
-    start, end = text.find('['), text.rfind(']')
-    if start < 0 or end <= start:
-        return None
-    try:
-        value = json.loads(text[start:end + 1])
-    except ValueError:
-        return None
-    if not isinstance(value, list):
-        return None
-    out = [v for v in value if isinstance(v, list) and len(v) == arity]
+    out = [v for v in _elements(text) if isinstance(v, list) and len(v) == arity]
     return out[:40] or None
 
 
@@ -101,10 +127,13 @@ def gen_inputs(task, endpoint, events_path, seed):
         ids = client.chat_prompt_ids(input_prompt(task))
         first = client.complete(0, 'inputs', ids, 10240)
         answer = first['answer']
-        if answer is None and first['finish_reason'] == 'length' and first['error'] is None:
-            second = client.complete(0, 'inputs_forced', ids + first['token_ids'] + client.force_ids(),
+        if first['finish_reason'] == 'length' and first['error'] is None:
+            # v2: thinking still open -> force it closed; thinking closed but the answer was cut -> continue it.
+            forced = answer is None
+            second = client.complete(0, 'inputs_forced' if forced else 'inputs_continued',
+                                     ids + first['token_ids'] + (client.force_ids() if forced else []),
                                      14000 - client.budget.snapshot()['completion_tokens_charged'], thinking_closed=True)
-            answer = second['answer']
+            answer = second['answer'] if forced else (answer or '') + (second.get('response') or second['answer'] or '')
         return answer, client.infra_failures
     finally:
         events.close()
