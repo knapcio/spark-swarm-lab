@@ -1,0 +1,40 @@
+{
+  "protocol": "coding-agents-v1",
+  "status": "FROZEN",
+  "source_revision": "bb26ab0611f306a326df85ed7fa90e0850298955",
+  "source_path": ".runtime/coding-xxl-source",
+  "limits": {
+    "per_agent_completion_tokens": 65536,
+    "idle_timeout_seconds": 120,
+    "agent_wall_deadline_seconds": 14400,
+    "sandbox": "CPU-only Docker python@c61cffc3, no network, 256 MB, 1 CPU, 10 s per grade"
+  },
+  "scheduling": {
+    "concurrent_agents_per_node": 6,
+    "placement": "agent j of case c on replica/grader host (c+j)%4",
+    "concurrency_note": "summed client concurrency per node kept <= 25: coding-hard-xl-ext-v1 runs 8/node alongside."
+  },
+  "selection": "first agent in fixed order whose code passes ALL feedback cases; solved if that code passes ALL holdout cases",
+  "runner": "run_coding_agents.py",
+  "study": "coding-hard-xxl-v1",
+  "agent_variants": [
+    "code_xxl"
+  ],
+  "agent_seed_offset": 1000,
+  "matrix": {
+    "tasks": "datasets/coding-hard-v1/tasks.json",
+    "tests": "datasets/coding-hard-v1/hidden-tests.json",
+    "tasks_sha256": "01cb39b1b18d7e6565576fa8b96a30681b3fe2a31796399bfd8f0f6761033da0",
+    "tests_sha256": "57cf4420c5db07ae2afab10b86c93f07fc24da6318386856cd10399b11effa13",
+    "split": "evaluation",
+    "tasks_count": 24,
+    "seeds": [
+      1,
+      2,
+      3
+    ]
+  },
+  "question": "Thinking-budget scaling for a SINGLE coding agent: 16K 22/72, 32K 37/72 -> 64K? (DeepSeek 61/72 with 1 call)",
+  "frozen_note": "Frozen 2026-11-18 ~02:00 Europe/Warsaw before any code_xxl call. Same tasks/seeds/sandbox/grading as coding-hard-xl-v1; one agent per case; seed offset 1000 (unused before).",
+  "serving": "swarm-lightning-128k clones (ctx_switch.py): same image/args as the 16K replicas except --max-model-len 131072"
+}
