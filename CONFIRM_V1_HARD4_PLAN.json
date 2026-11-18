@@ -1,0 +1,36 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "status": "FROZEN",
+ "frozen_note": "Frozen 2026-11-18 ~09:20 Europe/Warsaw before any call. Fills the missing Swarm v1 cell for the article: the 16K swarm (deep4, long_forced_original) on the same arithmetic-hard-v4 tasks and seeds as Swarm v2 (confirm-xl-hard4-v2 seed 1 + confirm-xl-hard4-seed2-v1 seed 2). Owner request 2026-11-18 09:12.",
+ "question": "How does Swarm v1 (4 deep agents with the 16K budget, own thinking judge) score on hard-v4, 96 cases, compared with Swarm v2 (82/96) and DeepSeek (85/96)?",
+ "dataset": "datasets/arithmetic-hard-v4/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v4",
+ "split": "evaluation",
+ "tasks": 48,
+ "seeds": [
+  1,
+  2
+ ],
+ "policies": [
+  "deep4"
+ ],
+ "agent_variant": "long_forced_original",
+ "seed_offsets": {
+  "deep4": 5800,
+  "strategy4": 5900,
+  "repair4": 6000,
+  "board2x2": 6100
+ },
+ "source_revision": "d94c893efb2a77041ef9086139cc570b994687c0",
+ "source_path": ".runtime/xl-source",
+ "source_note": "Same source as Swarm v2; long_forced_original is the unchanged 16K deep agent (14848 thinking / 16000 total); this revision only raises the catastrophe-only per-request wall limit to 14400 s.",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason)",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_policy_cases": 20,
+ "concurrent_requests_per_endpoint": 20,
+ "runner": "run_variants.py",
+ "study": "confirm-v1-hard4-v1",
+ "serving": "16K originals (swarm-lightning, --max-model-len 16384), the serving Swarm v1 was designed for",
+ "primary_outcome": "solved/96, wrong answers, no answer; paired vs Swarm v2 and DeepSeek on the same cases",
+ "concurrency_note": "per-endpoint slot cap 20 (agents and judges share it) <= 25 max-num-seqs; only run on the fleet"
+}
