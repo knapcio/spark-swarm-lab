@@ -1,0 +1,15 @@
+{
+  "protocol": "cx-selection-v1",
+  "status": "FROZEN",
+  "frozen_note": "Frozen 2026-11-18 ~04:30 Europe/Warsaw before any input-generation call or sandbox observation. Exploratory: the 72 coding-hard evaluation cases were already used; only the selection rule changes, fixed in advance (CodeT-style), no tuning.",
+  "question": "Can an arbiter-free cross-execution vote close the coding selection gap (8x32K: first-passing 56/72, oracle 64, DeepSeek 61)?",
+  "candidates": "coding-hard-xl-v1 + v1b + ext-v1 (agents 0-7, 32K), frozen code from their events",
+  "inputs": "one Nemotron thinking call per case (16K serving, budget-forced, 14000 total) on the PUBLIC task only; 24 requested inputs; no expected outputs",
+  "rule": "largest group of identical output signatures among distinct feedback-passing programs; tie -> group with earliest agent; pick earliest agent of the group; <2 distinct passing programs -> first passing",
+  "scoring": "hidden holdout result already recorded per candidate, read only after selections.json is written",
+  "reported": [
+    "k=4 and k=8: first_passing vs cx vs oracle"
+  ],
+  "script_sha256": "693bf12d33b0512ba1f10cf2fe4501ec664489f9691e4ad918709a2cb6b92e6d",
+  "runner": "cx_select.py --output runs/cx-selection-v1 --run --per-node 4"
+}
