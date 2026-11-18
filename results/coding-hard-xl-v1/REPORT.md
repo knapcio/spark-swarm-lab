@@ -13,3 +13,14 @@ Hybrid (DeepSeek only where no agent passed feedback): 57/72 with 12 DeepSeek ca
 Oracle (any of the 4 agents passes holdout): 59/72. Mean agent completion tokens per case: 16K 57,259 -> 32K 88,024.
 
 Reading: doubling the thinking budget lifts a single Nemotron coding agent from 22 to 37/72 and the 4-agent swarm from 34 to 51/72, closing more than half of the gap to DeepSeek (61/72). As in arithmetic, the 16K budget, not only the model, was holding Nemotron back.
+
+## Extension to 8 agents and single-agent 64K (added 2026-11-18)
+
+Plans `CODING_HARD_XL_EXT_PLAN.json` (agents 4-7, seed offset 900) and `CODING_HARD_XXL_PLAN.json` (one agent with 61440/65536, seed offset 1000), both frozen before their first call; errors [] in both.
+
+32K swarm curve (first agent in fixed order passing the feedback cases; solved if it passes holdout), k = 1..8:
+k=1: 37, k=2: 44, k=3: 49, k=4: 51, k=5: 52, k=6: 53, k=7: 55, k=8: 56 (of 72).
+8 agents: answered 66/72, solved 56, wrong (passed feedback, failed holdout) 10; oracle any-of-8 64/72; vs DeepSeek +6 / -11; hybrid with DeepSeek only on no-answer cases 58/72 with 6 DeepSeek calls. Mean completion tokens per case (8 agents) 175,955.
+Single agent with a 64K budget: 35/72 (32K single agent: 37; 16K: 22).
+
+Reading: on coding the gains stop at 32K. Doubling again to 64K does not help a single agent, and agents 5-8 add little because the public feedback cases cannot tell apart all wrong solutions: the oracle keeps rising, the selected answer much less. The remaining gap to DeepSeek (56 vs 61) is a selection/verification gap plus a model gap, not a thinking-budget gap.
