@@ -1,7 +1,7 @@
 {
  "protocol": "coding-agents-v1",
  "status": "FROZEN",
- "source_revision": "a41c312d0103ce499a147125c36df1c28397aa1e",
+ "source_revision": "c2eb89e0a7a78c21f6f0b1471766ad24b09780d3",
  "source_path": ".runtime/coding-xl-source",
  "limits": {
   "per_agent_completion_tokens": 32768,
@@ -50,5 +50,7 @@
   "launch": "inkling/serve.sh (cookbook dgx-spark/nvfp4/dspark + text-only, ctx 131072, mem 0.62)",
   "adapter": "inkling/shim.py (vLLM dialect; enable_thinking true -> reasoning_effort high, false -> none)",
   "temperature": "0.8 (harness constant, unchanged from Nemotron runs)"
- }
+ },
+ "source_revision_v1": "a41c312d0103ce499a147125c36df1c28397aa1e",
+ "amendment_1": "2026-11-21 ~00:15 Europe/Warsaw: the frozen coding source a41c312 still had the 1800 s per-request catastrophe wall limit (raised to 14400 s for arithmetic in d94c893). Inkling decodes ~18 tok/s per request at 25 requests per node, so a 32K-token proposal takes ~30 min: one request (eva-cron_next-s1 agent 2) hit the limit at 22:55 UTC, the runner stopped admissions on that operational fault as designed and drained. c2eb89e = a41c312 with only WALL_LIMIT 1800 -> 14400 (unit tests pass). The run continues as runs/inkling-coding-hard-v1b with --resume-from runs/inkling-coding-hard-v1: agents that finished without an operational fault are kept, every other agent (faulted or never started) runs from scratch with its original seed. No outcome was inspected beyond the runner progress lines; the selection rule, tasks, seeds and budgets are unchanged."
 }
