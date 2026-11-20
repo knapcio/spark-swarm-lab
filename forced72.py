@@ -30,7 +30,7 @@ TOTAL = 8192
 END_THINK = '</think>'
 FORCE_TEXT = '\n</think>\n'
 IDLE_TIMEOUT = 120
-WALL_LIMIT = 1800
+WALL_LIMIT = 14400  # catastrophe stop only; a 32K-token request at ~18 tok/s under a 25-request load takes ~30 min
 
 
 def split_answer(text):
