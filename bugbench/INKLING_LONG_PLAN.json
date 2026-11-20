@@ -1,0 +1,61 @@
+{
+ "protocol": "bugbench-long-context-inkling-v1",
+ "status": "FROZEN",
+ "question": "Bug fixing with Inkling-2-Mini instead of Nemotron: whole project in one prompt (same prompt as DeepSeek R), single agent (L1F = One Inkling) and arbiter-free swarm of 8 (L8F). Compare Nemotron L1F 26/36, L8F 35/36 and DeepSeek R 36/36 on the same 36 attempts.",
+ "cases": [
+  "quarry-b1-desc-tie-order",
+  "quarry-b2-right-assoc-minus",
+  "quarry-b3-failed-insert-keys",
+  "tally-b1-discount-last-day",
+  "tally-b2-vat-per-line",
+  "tally-b3-rejected-discount-payment",
+  "trellis-b1-caret-zero-patch",
+  "trellis-b2-install-order-ready",
+  "trellis-b3-backtrack-leak",
+  "junction-b1-exact-transfer-time",
+  "junction-b2-walk-time-rounding",
+  "junction-b3-night-listing-stale",
+  "patchwork-b1-hunk-merge-gap",
+  "patchwork-b2-context-newline-marker",
+  "patchwork-b3-fuzz-trims-patch",
+  "relay-b1-wait-rounds-down",
+  "relay-b2-ready-time-tiebreak",
+  "relay-b3-rejected-batch-tokens"
+ ],
+ "seeds": [
+  1,
+  2
+ ],
+ "policies": [
+  "L1F",
+  "L8F"
+ ],
+ "policy_text": {
+  "L1F": "one whole-bundle call (prompt identical to R) -> if diagnosis but no FILE blocks: one format follow-up asking for FILE blocks only -> public self-check -> one repair on failure; FILE-marker normalization (glued/unterminated headers, END FILE with path)",
+  "L8F": "8 independent L1F agents; selection valid -> passes public tests -> largest cluster of identical normalized diffs -> earliest"
+ },
+ "serving": "Inkling-2-Mini (thinkingmachines rev 6e7c824), SGLang lmsysorg/sglang:inkling-2-mini digest efac853b, inkling/serve.sh + inkling/shim.py (reasoning_effort high when thinking is on)",
+ "caps": {
+  "context_limit": 131000,
+  "max_total_per_call": 32768,
+  "answer_reserve": 6000
+ },
+ "dev_history": "dev pilots v1 (L1 2/9, L8 9/9), v2 stopped, v3 (L1F 5/9, L8F), v4 (L1F, 2 seeds) on the 9 development cases only; eval cases untouched by L-policies; v4 failures after the fixes were FILE headers closed by \"---\" (fixed before freezing)",
+ "source_sha256": {
+  "nemotron_long.py": "b73630a0b8afcab2f9eeaae1b433cad3ca56104c20a2b1528af1fc59177d9bc7",
+  "agents.py": "9a17237a045ffc6498d4dd11cef498584f8459a062e3e12fb47f22d337826adb",
+  "deepseek_ref.py": "07829dc93d90bdf9274fa5b8d5ec5bb93b58b14b0af80817ee898e9d3fb0197e",
+  "run_agents.py": "554dcab5a19fb99964658c59905111402f8b7820b2a4b4f6f35c5bbe0f23876d",
+  "bugbench_grader.py": "f5c161f6bbc13fba02daa9c1c6a1a37110e009f452376377594a4e346d5ccf57"
+ },
+ "runner_commit": "41d5bb9e0e7163c7d668d5d0dd4f8942242c0973",
+ "compare": "same 36 attempts: DeepSeek R 36/36; Nemotron 128K L1F 26, L8F 35; Nemotron 16K best V3 28",
+ "frozen_note": "Frozen 2026-11-21 ~00:30 Europe/Warsaw before any Inkling call on bugbench cases (development or evaluation). Same cases, seeds, policies, caps, selection and source files (hashes re-verified equal) as the Nemotron long-context run; only the served model changes.",
+ "run": {
+  "per_endpoint": 12,
+  "parallel_attempts": 6,
+  "docker_hosts": "Spark_01,Spark_02,Spark_03,Spark_04",
+  "out": "bugbench/runs/eval18-long-inkling-v1",
+  "start": "after the Inkling coding run finishes; summed client concurrency per node <= 25 with the arithmetic run"
+ }
+}
