@@ -1,0 +1,44 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "status": "FROZEN",
+ "frozen_note": "Frozen 2026-11-20 before any Inkling call on arithmetic-hard-v4. Same tasks, seeds, policy, budgets, judge, harness source and seed offsets as the Nemotron Swarm v2 runs (confirm-xl-hard4-v2 seed 1 + seed2-v1); only the served model changes (Inkling-2-Mini through inkling/shim.py). Nothing was tuned on hard-v4: serving was tuned on synthetic puzzles, smoke checks used development tasks only.",
+ "question": "Swarm v2 with Inkling-2-Mini instead of Nemotron: on the same 96 hard-v4 cases, how does an Inkling deep4 32K swarm with its own judge (and One Inkling = agent 0) compare with Nemotron Swarm v2 82/96 (One Nemotron 54) and DeepSeek 85/96?",
+ "dataset": "datasets/arithmetic-hard-v4/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v4",
+ "split": "evaluation",
+ "tasks": 48,
+ "seeds": [
+  1,
+  2
+ ],
+ "policies": [
+  "deep4"
+ ],
+ "agent_variant": "xl_forced_original",
+ "seed_offsets": {
+  "deep4": 5400,
+  "strategy4": 5500,
+  "repair4": 5600,
+  "board2x2": 5700
+ },
+ "source_revision": "d94c893efb2a77041ef9086139cc570b994687c0",
+ "source_path": ".runtime/xl-source",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason)",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_policy_cases": 12,
+ "concurrent_requests_per_endpoint": 12,
+ "runner": "run_variants.py",
+ "study": "inkling-hard4-v1",
+ "generator": "make_arithmetic_hard.py --seed 2026111703 --protocol arithmetic-hard-v4",
+ "primary_outcome": "solved/96 Inkling deep4-32K (own Inkling judge); wrong answers; One Inkling (agent 0, verifier-scored); paired vs Nemotron Swarm v2 and vs DeepSeek (sign tests); hybrid with existing DeepSeek answers on abstentions; completion tokens per case",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh (cookbook dgx-spark/nvfp4/dspark + text-only, ctx 131072, mem 0.62)",
+  "adapter": "inkling/shim.py (vLLM dialect; enable_thinking true -> reasoning_effort high, false -> none)",
+  "temperature": "0.8 (harness constant, unchanged from Nemotron runs)"
+ },
+ "compare": "Nemotron Swarm v2 (confirm-xl-hard4-v2 + confirm-xl-hard4-seed2-v1): 82/96, 0 wrong; One Nemotron 54/96; DeepSeek 85/96 (DEEPSEEK_HARD4 + SEED2 plans). Existing measurements, not rerun.",
+ "concurrency_note": "runs alongside INKLING_CODING_PLAN (12 agents/node): per-endpoint slot cap 12 here, summed client concurrency per node 24 <= 25"
+}

@@ -1,0 +1,54 @@
+{
+ "protocol": "coding-agents-v1",
+ "status": "FROZEN",
+ "source_revision": "a41c312d0103ce499a147125c36df1c28397aa1e",
+ "source_path": ".runtime/coding-xl-source",
+ "limits": {
+  "per_agent_completion_tokens": 32768,
+  "idle_timeout_seconds": 120,
+  "agent_wall_deadline_seconds": 7200,
+  "sandbox": "CPU-only Docker python@c61cffc3, no network, 256 MB, 1 CPU, 10 s per grade"
+ },
+ "scheduling": {
+  "concurrent_agents_per_node": 12,
+  "placement": "agent j of case c on replica/grader host (c+j)%4",
+  "concurrency_note": "runs alongside INKLING_HARD4_PLAN (12/node): summed client concurrency per node 24 <= 25"
+ },
+ "selection": "first agent in fixed order whose code passes ALL feedback cases; solved if that code passes ALL holdout cases",
+ "runner": "run_coding_agents.py",
+ "study": "inkling-coding-hard-v1",
+ "agent_variants": [
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl"
+ ],
+ "agent_seed_offset": 700,
+ "matrix": {
+  "tasks": "datasets/coding-hard-v1/tasks.json",
+  "tests": "datasets/coding-hard-v1/hidden-tests.json",
+  "tasks_sha256": "01cb39b1b18d7e6565576fa8b96a30681b3fe2a31796399bfd8f0f6761033da0",
+  "tests_sha256": "57cf4420c5db07ae2afab10b86c93f07fc24da6318386856cd10399b11effa13",
+  "split": "evaluation",
+  "tasks_count": 24,
+  "seeds": [
+   1,
+   2,
+   3
+  ]
+ },
+ "question": "Coding swarm with Inkling-2-Mini instead of Nemotron: 8 independent 32K code_xl agents on the same 24 evaluation tasks x 3 seeds; first-feedback-passing selection; compare Nemotron 8 agents 56/72 (oracle 64), Nemotron judge selection 57, One Nemotron 37, DeepSeek 61/72.",
+ "frozen_note": "Frozen 2026-11-20 before any Inkling call on coding-hard-v1 evaluation tasks. Same source, tasks, seeds, budgets, selection rule and seed offset as coding-hard-xl-v1 (+ext); 8 agents in one run. Only the served model changes (Inkling-2-Mini through inkling/shim.py). The one smoke check used development task dev-repeating_expansion.",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh (cookbook dgx-spark/nvfp4/dspark + text-only, ctx 131072, mem 0.62)",
+  "adapter": "inkling/shim.py (vLLM dialect; enable_thinking true -> reasoning_effort high, false -> none)",
+  "temperature": "0.8 (harness constant, unchanged from Nemotron runs)"
+ }
+}
