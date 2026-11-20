@@ -29,10 +29,16 @@ def metric(text, name):
 
 def inspect(node, name):
     raw = subprocess.check_output(['ssh', '-o', 'BatchMode=yes', 'Spark_' + node,
-                                   f'hostname; docker inspect {name}'], text=True)
+                                   f'hostname; docker inspect {name}; docker image inspect '
+                                   f'$(docker inspect --format "{{{{.Image}}}}" {name}) --format "{{{{json .RepoDigests}}}}"'],
+                                  text=True)
     host, body = raw.split('\n', 1)
+    body, digests = body.rsplit('\n', 2)[0], json.loads(body.rsplit('\n', 2)[1])
     c = json.loads(body)[0]
-    return dict(hostname=host.strip(), container_id=c['Id'][:12], image=c['Image'], running=c['State']['Running'],
+    # Image IDs differ between the overlay2 and containerd snapshotter stores; the registry digest does not.
+    image = sorted(d.split('@', 1)[1] for d in digests if '@' in d)
+    return dict(hostname=host.strip(), container_id=c['Id'][:12], image=image, local_image_id=c['Image'],
+                running=c['State']['Running'],
                 started_at=c['State']['StartedAt'], oom=c['State']['OOMKilled'], restarts=c['RestartCount'],
                 cmd=c['Config']['Cmd'], entrypoint=c['Config']['Entrypoint'],
                 env=sorted(e for e in c['Config']['Env'] if e.startswith(('SGLANG_', 'MAX_JOBS', 'THINK', 'NOTHINK'))))
@@ -67,7 +73,7 @@ def main(argv=None):
                       and not server['oom'] and not shim['oom'] and server['restarts'] == shim['restarts'] == 0
                       and shim['image'] == server['image'] and remote_sha == shim_sha and health == 200
                       and signature == reference
-                      and (not expected.get('image_id') or server['image'] == expected['image_id'])
+                      and (not expected.get('image_id') or expected['image_id'] in server['image'])
                       and (a.allow_busy or node['running_requests'] == node['waiting_requests'] == 0))
         ok_all &= node['ok']
         nodes.append(node)
