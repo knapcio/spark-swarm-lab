@@ -1,0 +1,20 @@
+{
+ "protocol": "disproof-selection-v1",
+ "status": "FROZEN",
+ "idea": "astra 2026-11-20 idea #1 (executable disproofs): select code by executable contracts that can refute candidates even when they agree.",
+ "question": "Does arbiter-free executable-disproof selection close part of the coding selection gap (first-passing vs oracle) without any hidden information?",
+ "runner": "disproof_select.py",
+ "dataset": "datasets/coding-hard-v1 evaluation split (24 tasks x seeds 1-3 = 72 cases)",
+ "contract_model": "Inkling-2-Mini (the fleet model; INKLING serving + inkling/shim.py), one contract per case from the PUBLIC task only; thinking on, budget 12288 first call / 16000 total with forcing; seeds 66000+index",
+ "contract_validity": "loads in the pinned CPU sandbox, >=1 input of the right arity, check() exactly True on every public example",
+ "disproof": "check() exactly False on any (contract input, candidate output value); exceptions/timeouts/non-bool never disprove",
+ "selection_rule": "earliest non-disproved feedback-passing candidate; fallback to earliest feedback-passing (original rule) if contract invalid, no passing candidate, or all disproved",
+ "candidate_sets": {
+  "inkling": "runs/inkling-coding-hard-v1 (8 Inkling agents per case): primary, same model writes contracts and code",
+  "nemotron": "coding-hard-xl-v1 + v1b + ext-v1 (8 Nemotron agents per case): secondary, cross-model contracts"
+ },
+ "outcomes": "solved/72 at k=4 and k=8 vs first-passing and oracle; wrong and correct candidates disproved",
+ "scheduling": "contracts run alongside the two Inkling runs with 1 request per node (summed client concurrency 25)",
+ "source_note": "selection is frozen in selections.json before holdout results are read; holdout results are those already recorded by each coding run",
+ "frozen_note": "Frozen 2026-11-20 ~23:55 Europe/Warsaw before any contract call on evaluation tasks and before the Inkling coding run produced any summary. One plumbing smoke ran on development task dev-wrap_hyphen (valid contract, 30 inputs). Nemotron candidates and their holdout outcomes were known before; the rule was not tuned on them."
+}
