@@ -148,6 +148,8 @@ counting and GPU-rail energy, in the order B, B+, A.
   cancellation cannot be their cause. The direction repeated on both corpora, though, which we note openly; the pooled
   difference is not significant, and B+ (which contains B) is above A on this corpus.
 
+One DeepSeek on the same 96 cases (separate plan, run afterwards): see [DEEPSEEK.md](DEEPSEEK.md).
+
 ## Decision
 
 Frozen rule: B+ replaces B if 0 wrong, >= 2 strict rescues, server tokens per case <= A and arm wall < A.

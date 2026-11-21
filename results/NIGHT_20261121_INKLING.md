@@ -71,6 +71,9 @@ each agent that ends without an accepted plan is replaced at once by a fresh-see
 B+ vs A +9/-1 (p = 0.02) at -19 % tokens and -21 % wall; 6 strict rescues (cases every one of the first four agents had
 failed). **B+ is now the default arithmetic swarm policy.** B vs A was -3 on both fresh corpora (pooled +6/-12, p = 0.24);
 every one of those losses was a case where B cancelled nothing, so it is generation noise by mechanism, noted openly.
+[One DeepSeek on the same hard-v7 tasks](swarm-escalate-hard7-v1/DEEPSEEK.md): 79/96. **B+ vs One DeepSeek 90 vs 79, paired
++13/-2 (p = 0.007)**, 0 wrong, at 1.48 vs 1.66 Wh per solved case on the same four Sparks: the first significant win of
+the swarm over DeepSeek. Hybrid (DeepSeek only on B+'s 6 abstentions): 92/96.
 
 ## Day 2026-11-21 (3): coding swarm early stop, live ([coding-earlystop-v1](coding-earlystop-v1/REPORT.md))
 
