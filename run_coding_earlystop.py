@@ -4,7 +4,8 @@ public feedback cases. The remaining agents of that case are terminated at once 
 upstream stream and SGLang aborts) and queued agents of that case never start. Answer = the first feedback-passing
 proposal in TIME order; the case is solved if it passes the hidden holdout (graded by the worker, never read by the
 controller). Same jobs, seeds, endpoints, grading and fault rules as run_coding_agents.py; a terminated agent is a
-controller decision, not an operational fault. Plan-only by default.
+controller decision, not an operational fault. Optional plan field stagger = {"first": k, "after_seconds": T}: agents
+k.. of a case start only if the case has no passing proposal T seconds after its first agent started. Plan-only by default.
 """
 import argparse
 import json
@@ -79,18 +80,41 @@ def main(argv=None):
     write(output / 'metadata.json', meta)
     rows, errors, lock, stop = [], [], threading.Lock(), threading.Event()
     cancel = {(j['task_id'], j['seed']): threading.Event() for j in jobs}
-    first_start = {}
-    queues = {e: iter([j for j in jobs if j['endpoint'] == e]) for e in ENDPOINTS}
+    first_start, first_done = {}, {}
+    stagger = plan.get('stagger')
+    first_k = stagger['first'] if stagger else len(plan['agent_variants'])
+    queues = {e: iter([j for j in jobs if j['endpoint'] == e and j['agent'] < first_k]) for e in ENDPOINTS}
+    later = {e: [j for j in jobs if j['endpoint'] == e and j['agent'] >= first_k] for e in ENDPOINTS}
     start = time.monotonic()
+
+    def take(endpoint):
+        """Next job for this endpoint (caller holds the lock): a due later agent of an open case first, else the next
+        first-wave agent of an open case. Returns (job, waiting) where waiting means later agents are not due yet."""
+        pending = later[endpoint]
+        pending[:] = [j for j in pending if not cancel[(j['task_id'], j['seed'])].is_set()]  # answered: never start
+        now = time.monotonic()
+        for j in pending:
+            k = (j['task_id'], j['seed'])
+            if k in first_start and (now - first_start[k] >= stagger['after_seconds'] or first_done.get(k, 0) >= first_k):
+                pending.remove(j)
+                return j, False
+        job = next(queues[endpoint], None)
+        while job is not None and cancel[(job['task_id'], job['seed'])].is_set():
+            job = next(queues[endpoint], None)  # case already answered: this agent never starts
+        return job, bool(pending)
 
     def worker(endpoint):
         while True:
             with lock:
-                job = next(queues[endpoint], None)
-                while job is not None and cancel[(job['task_id'], job['seed'])].is_set():
-                    job = next(queues[endpoint], None)  # case already answered: this agent never starts
-                if job is None or stop.is_set():
+                if stop.is_set():
                     return
+                job, waiting = take(endpoint)
+            if job is None:
+                if not waiting:
+                    return
+                time.sleep(2)
+                continue
+            with lock:
                 try:
                     changed = hashes(source) != before
                 except Exception as exc:
@@ -116,6 +140,8 @@ def main(argv=None):
                     errors.append(dict(reason='controller_exception', events=job['events'], detail=str(exc)[:300]))
                 return
             with lock:
+                if job['agent'] < first_k:
+                    first_done[key] = first_done.get(key, 0) + 1
                 row['winner'] = False
                 if row['feedback_pass'] and not cancel[key].is_set():
                     row.update(winner=True, stop_seconds=round(time.monotonic() - first_start[key], 1))

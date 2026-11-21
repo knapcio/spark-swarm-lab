@@ -19,7 +19,7 @@ def sha(path):
 
 
 class EarlyStopTests(unittest.TestCase):
-    def run_main(self, fast_pass, holdout):
+    def run_main(self, fast_pass, holdout, stagger=None):
         """fast_pass: agents that end at once with feedback pass; every other agent runs until cancelled."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -32,6 +32,8 @@ class EarlyStopTests(unittest.TestCase):
                         matrix=dict(tasks=str(tasks), tests=str(tests), tasks_sha256=sha(tasks), tests_sha256=sha(tests),
                                     split='evaluation', tasks_count=2, seeds=[4]),
                         scheduling=dict(concurrent_agents_per_node=2), limits=dict(agent_wall_deadline_seconds=60))
+            if stagger:
+                plan['stagger'] = stagger
             plan_path = root / 'plan.json'
             plan_path.write_text(json.dumps(plan))
             adm = root / 'adm.json'
@@ -81,6 +83,19 @@ class EarlyStopTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(len(started), 8)
         self.assertTrue(all(not c['answered'] and c['cancelled'] == 0 for c in cases))
+
+    def test_stagger_skips_later_agents_when_first_wave_passes(self):
+        code, cases, started = self.run_main(fast_pass={1}, holdout={1}, stagger=dict(first=2, after_seconds=30))
+        self.assertEqual(code, 0)
+        self.assertTrue(all(c['solved'] for c in cases))
+        self.assertTrue(all(agent < 2 for _, agent in started))
+        self.assertTrue(all(c['never_started'] == 2 for c in cases))
+
+    def test_stagger_starts_later_agents_after_first_wave_fails(self):
+        # first wave (0,1) ends fast without a pass -> later agents start at once (not after 30 s); agent 3 passes
+        code, cases, started = self.run_main(fast_pass={3}, holdout={3}, stagger=dict(first=2, after_seconds=30))
+        self.assertEqual(code, 0)
+        self.assertTrue(all(c['solved'] and c['winner_agent'] == 3 for c in cases))
 
     def test_cancelled_row_is_not_an_operational_fault(self):
         row = dict(cancelled=True, controller_error=None, malformed_lines=0)
