@@ -1,0 +1,84 @@
+{
+ "protocol": "coding-agents-v1",
+ "status": "FROZEN",
+ "source_revision": "c2eb89e0a7a78c21f6f0b1471766ad24b09780d3",
+ "source_path": ".runtime/coding-xl-source",
+ "limits": {
+  "per_agent_completion_tokens": 32768,
+  "idle_timeout_seconds": 120,
+  "agent_wall_deadline_seconds": 7200,
+  "sandbox": "CPU-only Docker python@c61cffc3, no network, 256 MB, 1 CPU, 10 s per grade"
+ },
+ "scheduling": {
+  "concurrent_agents_per_node": 20,
+  "placement": "agent j of case c on replica/grader host (c+j)%4",
+  "concurrency_note": "each arm alone on the fleet: 20 client requests per node <= 25"
+ },
+ "runner": "run_coding_earlystop.py",
+ "study": "coding-stagger-v1-e8",
+ "agent_variants": [
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl"
+ ],
+ "agent_seed_offset": 2700,
+ "matrix": {
+  "tasks": "datasets/coding-hard-v1/tasks.json",
+  "tests": "datasets/coding-hard-v1/hidden-tests.json",
+  "tasks_sha256": "01cb39b1b18d7e6565576fa8b96a30681b3fe2a31796399bfd8f0f6761033da0",
+  "tests_sha256": "57cf4420c5db07ae2afab10b86c93f07fc24da6318386856cd10399b11effa13",
+  "split": "evaluation",
+  "tasks_count": 24,
+  "seeds": [
+   7,
+   8,
+   9
+  ]
+ },
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh with MEM=0.75 (cookbook dgx-spark/nvfp4/dspark + text-only, ctx 131072; KV pool ~1.08M tokens per node since 2026-11-21 16:25 Europe/Warsaw)",
+  "adapter": "inkling/shim.py (vLLM dialect; client disconnects are shim:client_cancels)",
+  "temperature": "0.8 (harness constant, unchanged from Nemotron runs)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "mem_fraction": "0.75"
+ },
+ "study_group": "coding-stagger-v1",
+ "early_stop": "first_feedback_pass_in_time",
+ "selection": "the first proposal in TIME order that passes ALL feedback cases ends the case: other agents of the case are terminated, queued ones never start; solved if it passes ALL holdout cases",
+ "execution": "Each arm alone on the fleet via inkling/coding_arms.py (fresh admission with shim sha and mem fraction 0.75, prefix-cache flush, server counters, idle wait, GPU energy). S first, then E.",
+ "exclusions": "None; all 72 cases of each arm count.",
+ "resume_rule": "As in earlier coding plans: on an operational fault the runner stops admissions; the same arm is continued only for unfinished cases with the same seeds and documented as an amendment.",
+ "report": "inkling/report_coding_stagger.py -> results/coding-stagger-v1/REPORT.md + report.json",
+ "frozen_note": "Frozen 2026-11-21 before any call with seeds 7-9 on coding-hard-v1. Follow-up of coding-earlystop-v1 (early stop at the first proposal passing the public tests is the coding default: 69/72 at -37 % tokens vs running all 8). A replay of that run's full arm (aligned timeline, in-sample) predicted that starting 4 agents and adding the other 4 only if nothing has passed after 300 s keeps 70/72 at about -17 % tokens (55K vs 66K per case).",
+ "question": "Does a staggered start (4 agents, 4 more only if no proposal passes the public tests within 300 s or all of the first four fail) keep the accuracy of the early-stop default with all 8 agents started at once, at fewer server tokens?",
+ "arms_order": [
+  "S coding-stagger-v1-s44",
+  "E coding-stagger-v1-e8"
+ ],
+ "primary_outcomes": {
+  "tokens": "Server-counted generated tokens per case, S vs E.",
+  "accuracy": "Solved/72, S vs E, paired two-sided exact sign test (contains run-to-run noise of a few cases).",
+  "wall": "Arm wall time and median / p90 case stop time, S vs E."
+ },
+ "decision_rule": "The staggered start becomes the coding default if S server tokens per case <= 0.85 x E AND S solved >= E solved - 2 (noise allowance) AND S arm wall <= 1.10 x E. Otherwise E (all 8 at once with early stop) stays.",
+ "secondary_outcomes": "GPU energy per solved case; cases where the second wave started (and why: 300 s or first wave failed); never-started agents; per-case stop times.",
+ "arm": "E: early stop with all 8 agents queued at once (the coding default since coding-earlystop-v1)",
+ "code_sha256": {
+  "run_coding_earlystop.py": "05d6e351299739f21a435e633f295554741b910e7f729d690d2423ce744182e5",
+  "run_coding_agents.py": "ff525e9e8b108f6a2f975efec408fbc32b86865bdd9e004e1c8837b48f04182a",
+  "run_variants.py": "daad0d989e4dc816d1068a8aa1f0b87c51f1432fe83461e382f4323ed3662c3f",
+  "inkling/coding_arms.py": "9f4979df5e603558600c5628fb7319bb161a03fd98af66645e897983992afff3",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "445349b83e910f1189df8908aff2428ab3ee1dd0bb862f1fc46978b31bda82c6",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3"
+ },
+ "smoke": "Throwaway smoke (not part of the study) on development task dev-wrap_hyphen, seed 9, stagger first=2 after 60 s: agents 1-2 started at 0 s, agents 3-4 at +61 s, agent 1 passed the public tests at 147 s and the other three were terminated."
+}
