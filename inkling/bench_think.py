@@ -39,6 +39,32 @@ def metric(base, name):
         return None
 
 
+def one_chat(base, prompt, max_tokens, seed, model, out):
+    """OpenAI chat streaming (DeepSeek reference server): thinking on, usage from the final chunk."""
+    msgs = [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt}]
+    body = dict(model=model, messages=msgs, max_tokens=max_tokens, temperature=0.8, seed=seed, stream=True,
+                stream_options={'include_usage': True}, chat_template_kwargs={'enable_thinking': True})
+    start = time.monotonic()
+    first, usage, finish, chunks = None, {}, None, 0
+    with post(base, '/v1/chat/completions', body) as resp:
+        for raw in resp:
+            line = raw.decode().strip()
+            if not line.startswith('data:') or line == 'data: [DONE]':
+                continue
+            chunk = json.loads(line[5:])
+            for ch in chunk.get('choices', []):
+                d = ch.get('delta') or {}
+                if d.get('content') or d.get('reasoning_content') or d.get('reasoning'):
+                    first = first or time.monotonic()
+                    chunks += 1
+                finish = ch.get('finish_reason') or finish
+            usage = chunk.get('usage') or usage
+    end = time.monotonic()
+    n = usage.get('completion_tokens', chunks)
+    out.append(dict(tokens=n, ttft=(first or end) - start,
+                    decode_tps=(n - 1) / (end - first) if first and end > first and n > 1 else None, finish=finish))
+
+
 def one(base, prompt, max_tokens, seed, effort, out):
     msgs = [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt}]
     body = dict(messages=msgs, add_generation_prompt=True, chat_template_kwargs={'enable_thinking': True})
@@ -75,6 +101,8 @@ def main():
     p.add_argument('--effort', default=None)
     p.add_argument('--seed', type=int, default=1)
     p.add_argument('--label', default='')
+    p.add_argument('--api', choices=['completions', 'chat'], default='completions')
+    p.add_argument('--model', default='deepseek-v4.1-flash')
     a = p.parse_args()
     rng = random.Random(a.seed)
     jobs = [(puzzle(rng), 1000 * a.seed + i) for i in range(a.requests)]
@@ -87,9 +115,13 @@ def main():
                 if not queue:
                     return
                 prompt, seed = queue.pop(0)
-            one(a.base, prompt, a.max_tokens, seed, a.effort, results)
+            if a.api == 'chat':
+                one_chat(a.base, prompt, a.max_tokens, seed, a.model, results)
+            else:
+                one(a.base, prompt, a.max_tokens, seed, a.effort, results)
 
     acc_before = metric(a.base, 'spec_accept_length')
+    start_utc = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
     start = time.monotonic()
     threads = [threading.Thread(target=worker) for _ in range(a.concurrency)]
     for t in threads:
@@ -99,7 +131,7 @@ def main():
     wall = time.monotonic() - start
     total = sum(r['tokens'] for r in results)
     dec = [r['decode_tps'] for r in results if r['decode_tps']]
-    summary = dict(label=a.label, concurrency=a.concurrency, requests=len(results), max_tokens=a.max_tokens,
+    summary = dict(label=a.label, api=a.api, started_utc=start_utc, concurrency=a.concurrency, requests=len(results), max_tokens=a.max_tokens,
                    effort=a.effort, wall_s=round(wall, 2), completion_tokens=total,
                    aggregate_tps=round(total / wall, 1),
                    per_request_decode_tps_median=round(statistics.median(dec), 1) if dec else None,
@@ -107,6 +139,7 @@ def main():
                    length_finishes=sum(r['finish'] == 'length' for r in results),
                    spec_accept_length_gauge_after=metric(a.base, 'spec_accept_length'),
                    spec_accept_length_gauge_before=acc_before)
+    summary['ended_utc'] = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
     print(json.dumps(summary))
 
 

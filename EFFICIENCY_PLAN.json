@@ -1,0 +1,15 @@
+{
+ "protocol": "efficiency-inkling-vs-deepseek-v1",
+ "status": "FROZEN",
+ "frozen_note": "Frozen 2026-11-21 ~03:10 Europe/Warsaw before any measurement below. Fable idea #6 (energy per solved task) plus a fair throughput comparison (the DeepSeek quality runs used only 6-8 concurrent requests).",
+ "question": "On the same four Sparks, how many tasks per hour and how much GPU energy per solved task do One DeepSeek (TP4, all four Sparks), One Inkling and the Inkling swarm need?",
+ "workload": "inkling/bench_think.py synthetic arithmetic puzzles (seeded, not from any evaluation set), thinking on, temperature 0.8, max_tokens 4096, streamed",
+ "arms": {
+  "inkling_fleet": "four Inkling replicas at once (inkling/serve.sh, DSpark 8), 24 concurrent requests per node, 48 requests per node, seeds 11-14 (one per node), bench through the local adapter on each node",
+  "deepseek": "native DeepSeek V4.1 Flash on all four Sparks (exact saved start script, inkling/ds_switch_inkling.py), chat API through the owned 18889 tunnel, concurrency 8 then 16 (the server has 16 slots), 48 requests each, seed 21"
+ },
+ "metrics": "fleet completion tokens per second over the full batch wall; GPU-rail joules over the batch window summed over the four nodes (inkling/energy.py, 1 Hz nvidia-smi power.draw); J per completion token",
+ "derived": "tasks per hour and Wh per solved task = (tokens per case from the frozen quality runs) x (s or J per token at the best measured concurrency) / solve rate, for hard-v4 arithmetic, coding-hard and bugbench, per system",
+ "limits": "GPU rail only (no CPU, memory, NIC, SSD, PSU); one batch per arm; the thinking workload is synthetic and its token length distribution differs from the evaluation tasks; DeepSeek uses its production engine (pico dsgb10) with its own speculative decoding",
+ "order": "after bugbench eval18-long-inkling-v1 finishes: inkling_fleet first, then switch to DeepSeek, deepseek arms, switch back to Inkling"
+}
