@@ -57,6 +57,21 @@ Offline, the same early stop on the coding swarm would keep 69/72 (not the dispr
 [One DeepSeek on the same hard-v6 tasks](swarm-cancel-hard6-v1/DEEPSEEK.md): 85/96 (swarm A 86, paired +3/-2) at 1.29 Wh per
 solved case, the same as swarm B (1.30). Exploratory pooled v4+v5+v6 (288): swarm 254 vs DeepSeek 246 (+17/-9, p = 0.17).
 
+## Day 2026-11-21 (2): escalation, B+ ([swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md))
+
+Frozen plan (1409067) before a fresh corpus (arithmetic-hard-v7, 168e423). B+ = cancel-on-accept plus adaptive escalation:
+each agent that ends without an accepted plan is replaced at once by a fresh-seed agent, up to 8 per case.
+
+| Arm | Solved | Wrong | Server tokens/case | Arm wall | GPU energy per solved case |
+|---|---:|---:|---:|---:|---:|
+| B deep4cancel | 79 | 0 | 44.0K | 55 min | 1.31 Wh |
+| **B+ roll8cancel** | **90** | 0 | 53.6K | 71 min | 1.48 Wh |
+| A deep4 (reference) | 82 | 0 | 66.6K | 90 min | 2.04 Wh |
+
+B+ vs A +9/-1 (p = 0.02) at -19 % tokens and -21 % wall; 6 strict rescues (cases every one of the first four agents had
+failed). **B+ is now the default arithmetic swarm policy.** B vs A was -3 on both fresh corpora (pooled +6/-12, p = 0.24);
+every one of those losses was a case where B cancelled nothing, so it is generation noise by mechanism, noted openly.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -69,4 +84,4 @@ solved case, the same as swarm B (1.30). Exploratory pooled v4+v5+v6 (288): swar
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md)
