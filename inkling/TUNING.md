@@ -17,6 +17,10 @@ and `--mem-fraction-static 0.62` instead of 0.45 (KV pool 517,760 → 833,408 to
 At release time (2026-11-20 ~22:10 Europe/Warsaw) the vLLM recipe's image `vllm/vllm-openai:inkling-2-mini`
 did not exist on Docker Hub (vLLM >= 0.35 nightly required), so vLLM was not tried.
 
+Update 2026-11-21 16:25 Europe/Warsaw (owner: bigger KV cache): `--mem-fraction-static 0.75` on all four replicas,
+KV pool 833K -> ~1.08M tokens per node (sglang:max_total_num_tokens 1,080,832-1,085,696), MemAvailable after start
+26-27 GiB (was ~40). Each 0.01 is ~1.2 GiB; ~0.82 would leave the owner's 12-16 GiB target under load.
+
 ## Measurements (one DGX Spark each, on-box, through the adapter)
 
 Workload: synthetic arithmetic puzzles (seeded, not from any evaluation set), thinking on (effort `high`),

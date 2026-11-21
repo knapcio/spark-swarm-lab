@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Swarm Lab Inkling-2-Mini replica: SGLang DGX Spark DSpark recipe (sglang cookbook inkling-2-mini.jsx,
-# dgx-spark/nvfp4/dspark cell), text-only, loopback only. Tuned defaults: --mem-fraction-static 0.62
-# (833K KV tokens: 25 agents x 32K), metrics on. Tuning record: inkling/TUNING.md.
+# dgx-spark/nvfp4/dspark cell), text-only, loopback only. Defaults: --mem-fraction-static 0.75 since 2026-11-21
+# (~1.08M KV tokens, ~26 GiB MemAvailable after start; was 0.62 = 833K tokens, ~40 GiB), metrics on.
+# Tuning record: inkling/TUNING.md.
 set -euo pipefail
 NAME=${NAME:-swarm-inkling}
 PORT=${PORT:-30000}
-MEM=${MEM:-0.62}
+MEM=${MEM:-0.75}
 CTX=${CTX:-131072}
 EXTRA=${EXTRA:---enable-metrics}
 docker rm -f "$NAME" >/dev/null 2>&1 || true
