@@ -54,6 +54,8 @@ judge with 0 false accepts. Same-seed agents changed outcome in 18 % of pairs be
 between identical policies is ordinary. **deep4cancel is now the default arithmetic swarm policy** (owner decision).
 The shim now treats client disconnects as cancellations (`shim:client_cancels`; SGLang aborts in < 0.5 s).
 Offline, the same early stop on the coding swarm would keep 69/72 (not the disproof 70) for about a third fewer tokens.
+[One DeepSeek on the same hard-v6 tasks](swarm-cancel-hard6-v1/DEEPSEEK.md): 85/96 (swarm A 86, paired +3/-2) at 1.29 Wh per
+solved case, the same as swarm B (1.30). Exploratory pooled v4+v5+v6 (288): swarm 254 vs DeepSeek 246 (+17/-9, p = 0.17).
 
 ## Incidents
 

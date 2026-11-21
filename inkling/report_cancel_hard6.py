@@ -259,6 +259,8 @@ C (waves of 2) solved {C['solved']} with {C['wrong']} wrong (vs A +{pc['wins']} 
 (secondary arm; it changes no decision). Waves save the most tokens but stretch the hard cases: its p90 case time
 was {C['case_seconds']['p90']} s vs {A['case_seconds']['p90']} s for A, and it lost more cases than B, so it is not pursued.
 
+One DeepSeek on the same 96 cases (separate plan, run afterwards): see [DEEPSEEK.md](DEEPSEEK.md).
+
 ## Abstentions: what more agents could buy
 
 All {n['abstentions_with_rejected_plan']} abstentions (A {n['abstentions']['A']}, B {n['abstentions']['B']}) had at least one judged and rejected plan. On those cases the other

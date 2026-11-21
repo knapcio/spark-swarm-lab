@@ -70,6 +70,8 @@ C (waves of 2) solved 81 with 0 wrong (vs A +2 / -7, p = 0.18) at
 (secondary arm; it changes no decision). Waves save the most tokens but stretch the hard cases: its p90 case time
 was 2689 s vs 1578 s for A, and it lost more cases than B, so it is not pursued.
 
+One DeepSeek on the same 96 cases (separate plan, run afterwards): see [DEEPSEEK.md](DEEPSEEK.md).
+
 ## Abstentions: what more agents could buy
 
 All 23 abstentions (A 10, B 13) had at least one judged and rejected plan. On those cases the other
