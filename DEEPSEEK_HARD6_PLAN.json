@@ -1,0 +1,50 @@
+{
+ "protocol": "deepseek-fresh-reference-v1",
+ "study": "deepseek-hard6-v1",
+ "status": "FROZEN",
+ "drafted": "2026-11-21 Europe/Warsaw (after swarm-cancel-hard6-v1)",
+ "question": "Same fresh hard-v6 tasks as SWARM_CANCEL_HARD6_PLAN (arms deep4 / deep4cancel / waves2cancel): One DeepSeek V4.1 (one 32K thinking call) as the reference, exactly as on hard-v5.",
+ "model": "deepseek-v4.1-flash",
+ "agent_variants": [
+  "index_original"
+ ],
+ "workers": {
+  "index_original": "followup72_worker.py"
+ },
+ "source": "frozen 638b9f3 (.runtime/nemotron72-followup-source)",
+ "method": "Exactly the earlier DeepSeek reference method: original prompt, one thinking call capped at 8192 completion tokens, chat completions, temperature 0.8, request seed from the frozen client. Two independent calls per case; agent 0 alone = single-call reference.",
+ "agent_seed_offset": 2900,
+ "corpora": {
+  "hard6": "datasets/arithmetic-hard-v6/tasks.json"
+ },
+ "transport": "stream",
+ "comparisons": [
+  "Inkling swarm arms A/B/C vs One DeepSeek on the same 96 (task, seed) pairs: paired two-sided exact sign tests",
+  "One Inkling (agent 0 of arm A) vs One DeepSeek",
+  "Exploratory addendum: pooled hard-v4 + v5 + v6 (288 cases), deep4 arms only; the pre-registered pooled test was v4 + v5"
+ ],
+ "limits": "Bundled differences (model, serving engine, reasoning implementation); no causal model-size claim. Wall time reported only.",
+ "frozen_note": "Frozen 2026-11-21 Europe/Warsaw AFTER arithmetic-hard-v6 exists (it was generated for SWARM_CANCEL_HARD6_PLAN, d8bc18e) and after the Inkling arms ran, but BEFORE any DeepSeek call on it. DeepSeek has never seen these tasks; method, seeds, seed offset 2900, runner, worker source, endpoint and concurrency are copied unchanged from DEEPSEEK_HARD5_PLAN; only the corpus changes, pinned by sha256.",
+ "corpora_sha256": {
+  "hard6": "5ae3beead2c2a9c3cf94f172c70c261af2fe32f0e9eadaa9143a35dc028028da"
+ },
+ "seeds": [
+  1,
+  2
+ ],
+ "concurrency": 8,
+ "agent_wall_deadline_seconds": 3600,
+ "concurrency_note": "4 concurrent requests as in the earlier DeepSeek reference (median 18 s, max 115 s per arithmetic call), far below the frozen 210 s HTTP timeout.",
+ "runner": "run_ds_agents.py",
+ "endpoint": "owned loopback tunnel 127.0.0.1:18889 -> Spark_01 127.0.0.1:8888",
+ "run_corpora": [
+  "hard6"
+ ],
+ "max_tokens": 32768,
+ "corpora_protocol": {
+  "hard6": "arithmetic-hard-v6"
+ },
+ "hybrid_score": "solved = Inkling swarm (each arm) solved OR (swarm abstained AND DeepSeek solved); DeepSeek calls = abstentions",
+ "switch": "inkling/ds_switch_inkling.py precheck + to-deepseek after swarm-cancel-hard6-v1 finishes; owned tunnel 127.0.0.1:18889 -> Spark_01:8888; to-inkling + connect.sh afterwards",
+ "report": "inkling/report_ds_hard6.py -> results/swarm-cancel-hard6-v1/DEEPSEEK.md (+ json)"
+}
