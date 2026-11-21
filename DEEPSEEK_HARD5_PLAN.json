@@ -1,0 +1,46 @@
+{
+ "protocol": "deepseek-fresh-reference-v1",
+ "study": "deepseek-hard5-v1",
+ "status": "FROZEN",
+ "drafted": "2026-11-21 ~04:40 Europe/Warsaw",
+ "question": "Same fresh hard-v5 tasks as INKLING_HARD5_PLAN: One DeepSeek V4.1 (one 32K thinking call) as the reference for the Inkling swarm and One Inkling.",
+ "model": "deepseek-v4.1-flash",
+ "agent_variants": [
+  "index_original"
+ ],
+ "workers": {
+  "index_original": "followup72_worker.py"
+ },
+ "source": "frozen 638b9f3 (.runtime/nemotron72-followup-source)",
+ "method": "Exactly the earlier DeepSeek reference method: original prompt, one thinking call capped at 8192 completion tokens, chat completions, temperature 0.8, request seed from the frozen client. Two independent calls per case; agent 0 alone = single-call reference.",
+ "agent_seed_offset": 2900,
+ "corpora": {
+  "hard5": "datasets/arithmetic-hard-v5/tasks.json"
+ },
+ "transport": "stream",
+ "comparisons": [
+  "DeepSeek single vs Nemotron forced_explicit single vs plain_original single",
+  "DeepSeek any-of-2 vs Nemotron swarm any-of-2/any-of-8 (token budgets reported; GPU cost differs: DeepSeek uses all four nodes per request stream, Nemotron one node per agent)"
+ ],
+ "limits": "Bundled differences (model, serving engine, reasoning implementation); no causal model-size claim. Wall time reported only.",
+ "frozen_note": "Frozen 2026-11-21 ~04:40 Europe/Warsaw BEFORE arithmetic-hard-v5 exists and before any Inkling hard-v5 call. Same method as DEEPSEEK_HARD4_PLAN / SEED2 (seed offset 2900).",
+ "corpora_sha256": "filled at generation time; runner checks the protocol field and records the hash",
+ "seeds": [
+  1,
+  2
+ ],
+ "concurrency": 8,
+ "agent_wall_deadline_seconds": 3600,
+ "concurrency_note": "4 concurrent requests as in the earlier DeepSeek reference (median 18 s, max 115 s per arithmetic call), far below the frozen 210 s HTTP timeout.",
+ "runner": "run_ds_agents.py",
+ "endpoint": "owned loopback tunnel 127.0.0.1:18889 -> Spark_01 127.0.0.1:8888",
+ "run_corpora": [
+  "hard5"
+ ],
+ "max_tokens": 32768,
+ "corpora_protocol": {
+  "hard5": "arithmetic-hard-v5"
+ },
+ "hybrid_score": "solved = Inkling swarm solved OR (swarm abstained AND DeepSeek solved); DeepSeek calls = abstentions",
+ "switch": "inkling/ds_switch_inkling.py to-deepseek after inkling-hard5-v1 finishes; to-inkling afterwards"
+}

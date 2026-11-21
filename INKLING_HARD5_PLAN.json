@@ -1,0 +1,44 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "status": "FROZEN",
+ "frozen_note": "Frozen 2026-11-21 ~04:40 Europe/Warsaw BEFORE arithmetic-hard-v5 exists. Fresh replication of inkling-hard4-v1 (Inkling swarm 90/96 vs DeepSeek 85/96, paired +6/-1, p = 0.125). Same harness, policy, budgets, judge, seed offsets and serving as inkling-hard4-v1; DeepSeek measured on the same tasks afterwards (DEEPSEEK_HARD5_PLAN.json).",
+ "question": "On fresh hard tasks generated after this freeze, does the Inkling deep4 32K swarm with its own judge match or beat One DeepSeek (32K)?",
+ "dataset": "datasets/arithmetic-hard-v5/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v5",
+ "split": "evaluation",
+ "tasks": 48,
+ "seeds": [
+  1,
+  2
+ ],
+ "policies": [
+  "deep4"
+ ],
+ "agent_variant": "xl_forced_original",
+ "seed_offsets": {
+  "deep4": 5400,
+  "strategy4": 5500,
+  "repair4": 5600,
+  "board2x2": 5700
+ },
+ "source_revision": "d94c893efb2a77041ef9086139cc570b994687c0",
+ "source_path": ".runtime/xl-source",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason)",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_policy_cases": 20,
+ "concurrent_requests_per_endpoint": 20,
+ "runner": "run_variants.py",
+ "study": "inkling-hard5-v1",
+ "generator": "make_arithmetic_hard.py --seed 2026112101 --protocol arithmetic-hard-v5 (after this plan and DEEPSEEK_HARD5_PLAN are committed)",
+ "primary_outcome": "solved/96 Inkling swarm vs DeepSeek, paired two-sided sign test; pooled with hard-v4 (192 paired cases) as the pre-registered pooled test; wrong answers; One Inkling (agent 0) vs DeepSeek; hybrid (DeepSeek only on abstentions)",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh (cookbook dgx-spark/nvfp4/dspark + text-only, ctx 131072, mem 0.62)",
+  "adapter": "inkling/shim.py (vLLM dialect; enable_thinking true -> reasoning_effort high, false -> none)",
+  "temperature": "0.8 (harness constant, unchanged from Nemotron runs)"
+ },
+ "compare": "DeepSeek 32K single call on the same 96 cases (DEEPSEEK_HARD5_PLAN.json), measured after this run",
+ "concurrency_note": "only Swarm Lab run on the fleet: per-endpoint slot cap 20 (agents and judges share it) <= 25"
+}
