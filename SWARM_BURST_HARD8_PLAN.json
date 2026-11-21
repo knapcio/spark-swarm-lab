@@ -1,0 +1,79 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "status": "FROZEN",
+ "study": "swarm-burst-hard8-v1",
+ "dataset": "datasets/arithmetic-hard-v8/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v8",
+ "split": "evaluation",
+ "tasks": 48,
+ "seeds": [
+  1,
+  2
+ ],
+ "policies": [
+  "roll8cancel",
+  "roll12burst"
+ ],
+ "arm_order": [
+  "roll8cancel",
+  "roll12burst"
+ ],
+ "agent_variant": "xl_forced_original",
+ "seed_offsets": {
+  "roll8cancel": 8400,
+  "roll12burst": 8400
+ },
+ "pairing": "Same tasks, seeds, agent seeds (1000*seed + 8400 + slot; slots 8-11 only in B++), judge seeds; first four agents on the same nodes. Run-to-run generation noise (~4 cases per 96 between identical policies, hard-v6/v7) applies to paired solved counts.",
+ "source_revision": "d94c893efb2a77041ef9086139cc570b994687c0",
+ "source_path": ".runtime/xl-source",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason), unchanged; the exact verifier only scores",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_policy_cases": 20,
+ "concurrent_policy_cases_by_policy": {
+  "deep4cancel": 20,
+  "roll8cancel": 20,
+  "deep4": 20
+ },
+ "concurrent_requests_per_endpoint": 20,
+ "concurrency_note": "At most 4 agents in flight per case in every arm, 20 cases at once, per-endpoint slot cap 20 (agents and judges) <= 25. Escalation agents run on the node of the agent they replace.",
+ "runner": "run_variants.py --policy ARM, one arm at a time, driven by inkling/arms.py",
+ "execution": "Arms run sequentially in arm_order, each alone on the fleet via inkling/arms.py (fresh admission with the shim sha and mem fraction below, prefix-cache flush, server counters, idle wait, GPU energy). Watchdog inkling/watch.sh; MemAvailable logged every 60 s.",
+ "resume_rule": "If an arm stops on an infrastructure fault (runner stop flag, worker or judge infra failure, node fault), the fault is fixed and the same arm is continued with arms.py --resume-from (skips its cases that finished without infra faults; reruns the others with the same seeds) and documented as an amendment. Server tokens, wall and energy of an arm are then the sums over its segments (wasted work of the stopped segment included and reported separately). Never a silent restart; no case is dropped.",
+ "exclusions": "None. All 96 cases of each arm count.",
+ "generator": "make_arithmetic_hard.py --seed 2026112104 --protocol arithmetic-hard-v8 --output datasets/arithmetic-hard-v8 (after this plan is committed and pushed); same rules as hard-v5..v7",
+ "report": "inkling/report_burst_hard8.py -> results/swarm-burst-hard8-v1/REPORT.md + report.json",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh, MEM=0.75 since 2026-11-21 16:25 Europe/Warsaw (KV ~1.08M tokens per node)",
+  "adapter": "inkling/shim.py (vLLM dialect; client disconnects close the upstream stream and count as shim:client_cancels)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "temperature": "0.8 (harness constant)",
+  "mem_fraction": "0.75"
+ },
+ "frozen_note": "Frozen 2026-11-21 BEFORE arithmetic-hard-v8 exists. Follow-up of swarm-escalate-hard7-v1, where B+ (roll8cancel) solved 90/96 vs 82 for deep4 and became the default. On hard-v7, B+ escalated 17 cases; their first failure came only at a median 1,210 s (agents fail by exhausting the budget) and the 6 remaining abstentions ran 2,700-3,400 s. B++ adds a time trigger and a higher cap.",
+ "question": "On fresh hard tasks generated after this freeze, does roll12burst (B++) solve more cases than roll8cancel (B+) and/or finish the hard cases sooner, at no more than 15 % more server tokens per case?",
+ "arms": {
+  "B+": "roll8cancel (default since swarm-escalate-hard7-v1): 4 in flight, each agent ending without an accept is replaced by a fresh-seed agent on its node, up to 8; first accept cancels the rest",
+  "B++": "roll12burst: as B+, but up to 12 agents, and if no plan is accepted 900 s after the case started, 8 agents are kept in flight instead of 4 (failures still replaced; first accept cancels the rest)"
+ },
+ "burst_seconds": 900,
+ "calibration": "hard-v7 B+: cases still open at 900 s = 17, of which 4 were later answered by the first four (false triggers); on escalated cases extra agents solved 7 of 57 (12 % per agent); 6 cases abstained after 8 agents.",
+ "primary_outcomes": {
+  "late_rescues": "Mechanism count inside B++ (noise-free): cases answered by an agent B+ never runs (slot >= 8).",
+  "accuracy": "Solved and wrong answers per arm; B++ vs B+ paired two-sided exact sign test (contains run-to-run noise).",
+  "tokens": "Server-counted generated tokens per case, B++ vs B+.",
+  "wall": "Arm wall time and p90 / max case latency, B++ vs B+."
+ },
+ "decision_rule": "B++ replaces B+ as the default if: 0 wrong answers AND server tokens per case <= 1.15 x B+ AND (late rescues >= 2 OR arm wall <= 0.90 x B+). Otherwise B+ stays.",
+ "secondary_outcomes": "GPU energy per solved case; burst cases and false triggers (bursts in cases later answered by one of the first four); escalation and cancelled agents; case latency distribution; judge verdicts and false accepts.",
+ "code_sha256": {
+  "run_variants.py": "daad0d989e4dc816d1068a8aa1f0b87c51f1432fe83461e382f4323ed3662c3f",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "445349b83e910f1189df8908aff2428ab3ee1dd0bb862f1fc46978b31bda82c6",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3"
+ },
+ "baseline_note": "Defaults since today: arithmetic B+ (roll8cancel, swarm-escalate-hard7-v1); B+ vs One DeepSeek on hard-v7 90 vs 79 (p = 0.007).",
+ "smoke": "Throwaway smoke (not part of the study) on development task dev-hadec4ba7e36 (arithmetic-hard-v5), burst at 120 s: 4 agents at 0 s, 4 more at 120 s, failures replaced up to 12; all 12 failed, case closed cleanly at 1,094 s (B+ smoke on the same task: 8 agents, 1,118 s)."
+}
