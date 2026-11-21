@@ -88,6 +88,12 @@ On the same proposals (inside F), the first passing proposal in time is the bett
 (71 vs 66). **Early stop is now the default for the coding swarm.** Serving changed before this study (owner): Inkling
 runs with `--mem-fraction-static 0.75` (KV ~1.08M tokens per node; MemAvailable >= 24.3 GiB under full load).
 
+## Night 2026-11-21 (4): escalate earlier and further? ([swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md))
+
+Fresh hard-v8 (plan 4eb69e7 frozen first). B+ (default) 91/96 at 47.3K tokens/case, 66 min, 1.36 Wh per solved case;
+B++ (cap 12 + 900 s burst to 8 in flight) 90/96 at 70.7K, 91 min, 1.94 Wh. Agents 9-12 rescued 4 cases, but the time
+trigger fired 21 times (9 needlessly) and the burst agents slowed every other case. **B+ stays the default.**
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -100,4 +106,4 @@ runs with `--mem-fraction-static 0.75` (KV ~1.08M tokens per node; MemAvailable 
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md)

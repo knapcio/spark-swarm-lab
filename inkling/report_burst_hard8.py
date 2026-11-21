@@ -54,6 +54,36 @@ def main():
                f"never runs): {m['late_rescues']} ({m['late_rescues_correct']} correct). Answering slot histogram B++: {m['answered_by_slot']}.\n\n"
                'Frozen decision rule: ' + ', '.join(f'{k} = {v}' for k, v in res['decision'].items()) + '\n')
     (OUT / 'tables.md').write_text(md)
+    if 'paired' in res:
+        bp, bpp, m = res['arms']['roll8cancel'], res['arms']['roll12burst'], res['mechanics']['roll12burst']
+        verdict = ('**B++ becomes the default.**' if res['decision']['adopt_roll12burst'] else
+                   '**B+ stays the default**: ' + ', '.join(k for k, v in res['decision'].items() if v is False) + '.')
+        (OUT / 'REPORT.md').write_text(f"""# Escalate earlier and further? (swarm-burst-hard8-v1)
+
+Plan [`SWARM_BURST_HARD8_PLAN.json`](../../SWARM_BURST_HARD8_PLAN.json) was frozen and pushed (4eb69e7) before the fresh
+corpus arithmetic-hard-v8 (generator seed 2026112104) was generated (b977f0b). Inkling-2-Mini on Spark_01..04
+(mem fraction 0.75), 96 paired cases per arm, each arm alone on the fleet, server-side token counting, GPU energy.
+
+- **B+ roll8cancel** (default since [hard7](../swarm-escalate-hard7-v1/REPORT.md)): 4 in flight, failures replaced, up to 8.
+- **B++ roll12burst**: up to 12 agents, and if nothing is accepted 900 s after the case started, 8 in flight instead of 4.
+
+## Result
+
+{md}
+- Escalating further does find answers B+ cannot: {m['late_rescues']} cases were answered (correctly) by agents 9-12. But B++ ended
+  with {bpp['solved']} solved vs {bp['solved']} (paired +{res['paired']['wins']} / -{res['paired']['losses']}): the extra rescues are within run-to-run noise.
+- The time trigger is the problem under a loaded fleet: it fired in {m['bursts']} cases, {m['false_triggers']} of them later answered by one of the
+  first four agents. Burst agents compete with every other case for the same slots, so the median case took
+  {bpp['case_seconds']['median']} s instead of {bp['case_seconds']['median']} s, the arm took {bpp['arm_wall_seconds'] / 60:.0f} instead of {bp['arm_wall_seconds'] / 60:.0f} min, and server tokens per case rose
+  {(bpp['server_tokens_per_case'] / bp['server_tokens_per_case'] - 1) * 100:.0f} % ({bpp['energy_wh_per_solved']:.2f} vs {bp['energy_wh_per_solved']:.2f} Wh per solved case).
+
+Frozen rule: B++ replaces B+ if 0 wrong, tokens <= 1.15 x B+ and (>= 2 late rescues or wall <= 0.90 x B+).
+{', '.join(f'{k} = {v}' for k, v in res['decision'].items())}.
+
+{verdict} Escalation should stay failure-driven (B+); a time trigger only pays when the fleet has idle capacity.
+
+Files: `run_variants.py` (`roll12burst`), `inkling/arms.py`, `inkling/report_burst_hard8.py`, numbers in [report.json](report.json).
+""")
     print(md)
     return res
 
