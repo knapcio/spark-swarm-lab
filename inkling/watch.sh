@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Watchdog for Inkling runs: prints a line on problems, on run exit, and a progress line every ~30 min.
+# Client disconnects of cancelled agents are shim:client_cancels and never raise the upstream_errors alert.
 # usage: watch.sh RUN_DIR... (relative to apps/swarm-lab/runs)
 cd "$(dirname "$0")/.." || exit 1
 tick=0
@@ -34,9 +35,9 @@ while true; do
     fi
   done
   if (( tick % 15 == 0 )); then
-    a=$(ls runs/inkling-hard4-v1/agents 2>/dev/null | grep -c '\.jsonl$')
-    c=$(ls runs/inkling-coding-hard-v1b 2>/dev/null | grep -c '\.jsonl$')
-    echo "PROGRESS $(date +%H:%M) arithmetic agent files=$a coding agent files=$c running $runs_line"
+    cases=""
+    for d in "$@"; do cases="$cases$d=$(cat runs/$d/cases.jsonl 2>/dev/null | wc -l | tr -d ' ') "; done
+    echo "PROGRESS $(date +%H:%M) finished cases: $cases running $runs_line"
   fi
   tick=$((tick + 1))
   runs_line=""

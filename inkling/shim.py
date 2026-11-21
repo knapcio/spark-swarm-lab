@@ -13,7 +13,9 @@ dialect onto Inkling's own format without touching the harness:
 * the forcing suffix ``"\\n</think>\\n"`` tokenizes to Inkling's own close-thinking/open-answer tokens
   ``<|end_message|><|message_model|><|content_text|>``, so a forced continuation stays on the model's
   native format and the server can reuse its prefix cache;
-* token ids are the model's real ids; usage is the server's own count.
+* token ids are the model's real ids; usage is the server's own count;
+* a client that closes its stream (a cancelled agent) closes the upstream request too, so SGLang aborts it;
+  this is counted as ``shim:client_cancels``, never as an upstream error.
 
 Stdlib + aiohttp + transformers only (all present in the SGLang image).
 """
@@ -42,7 +44,18 @@ HEADER = re.compile(r'(?:<\|message_model\|>[^<]*)?<\|content_(thinking|text|too
 DROP = re.compile(r'<\|(?:end_message|content_model_end_sampling|endoftext|message_model)\|>')
 
 tok = AutoTokenizer.from_pretrained(MODEL_DIR)
-STATS = dict(requests=0, inflight=0, non_monotonic=0, upstream_errors=0)
+STATS = dict(requests=0, inflight=0, non_monotonic=0, upstream_errors=0, client_cancels=0)
+
+
+class ClientGone(Exception):
+    """The harness client closed its connection (for example a cancelled agent); not an upstream fault."""
+
+
+async def send(resp, data):
+    try:
+        await resp.write(data)
+    except ConnectionError as exc:  # aiohttp ClientConnectionResetError is a ConnectionResetError
+        raise ClientGone(str(exc)) from exc
 
 
 def effort(body):
@@ -112,7 +125,7 @@ async def completions(request):
     cid = 'cmpl-' + os.urandom(8).hex()
     STATS['requests'] += 1
     STATS['inflight'] += 1
-    resp = None
+    resp = up = None
     sent_text, sent_ids, last_meta, final_text, ids_all = '', 0, {}, '', []
     try:
         if stream:
@@ -143,7 +156,7 @@ async def completions(request):
                     if delta or new_ids or finish:
                         payload = dict(id=cid, object='text_completion', created=int(time.time()), model=SERVED,
                                        choices=[dict(index=0, text=delta, token_ids=new_ids, finish_reason=finish)])
-                        await resp.write(f'data: {json.dumps(payload)}\n\n'.encode())
+                        await send(resp, f'data: {json.dumps(payload)}\n\n'.encode())
         usage = dict(prompt_tokens=last_meta.get('prompt_tokens', len(prompt)),
                      completion_tokens=last_meta.get('completion_tokens', len(ids_all)))
         usage['total_tokens'] = usage['prompt_tokens'] + usage['completion_tokens']
@@ -153,17 +166,28 @@ async def completions(request):
                 STATS['non_monotonic'] += 1
             payload = dict(id=cid, object='text_completion', created=int(time.time()), model=SERVED, choices=[],
                            usage=usage)
-            await resp.write(f'data: {json.dumps(payload)}\n\n'.encode())
-            await resp.write(b'data: [DONE]\n\n')
+            await send(resp, f'data: {json.dumps(payload)}\n\n'.encode())
+            await send(resp, b'data: [DONE]\n\n')
             return resp
         return web.json_response(dict(id=cid, object='text_completion', created=int(time.time()), model=SERVED,
                                       choices=[dict(index=0, text=final_text, token_ids=ids_all,
                                                     finish_reason=finish)], usage=usage))
+    except (ClientGone, asyncio.CancelledError) as exc:
+        # Client disconnected: drop the upstream connection at once so SGLang aborts the request.
+        STATS['client_cancels'] += 1
+        if up is not None:
+            up.close()
+        if isinstance(exc, asyncio.CancelledError):
+            raise
+        return resp
     except (aiohttp.ClientError, ConnectionError, asyncio.TimeoutError) as exc:
         STATS['upstream_errors'] += 1
         message = f'{type(exc).__name__}: {exc}'[:300]
         if resp is not None:
-            await resp.write(f'data: {json.dumps(dict(error=dict(message=message)))}\n\n'.encode())
+            try:
+                await send(resp, f'data: {json.dumps(dict(error=dict(message=message)))}\n\n'.encode())
+            except ClientGone:
+                pass
             return resp
         return web.json_response({'error': {'message': message}}, status=502)
     finally:
@@ -203,7 +227,8 @@ async def metrics(request):
     extra = (f'vllm:num_requests_running{{model_name="{SERVED}"}} {values["num_running_reqs"]}\n'
              f'vllm:num_requests_waiting{{model_name="{SERVED}"}} {values["num_queue_reqs"]}\n'
              f'shim:inflight{{}} {STATS["inflight"]}\nshim:requests{{}} {STATS["requests"]}\n'
-             f'shim:non_monotonic{{}} {STATS["non_monotonic"]}\nshim:upstream_errors{{}} {STATS["upstream_errors"]}\n')
+             f'shim:non_monotonic{{}} {STATS["non_monotonic"]}\nshim:upstream_errors{{}} {STATS["upstream_errors"]}\n'
+             f'shim:client_cancels{{}} {STATS["client_cancels"]}\n')
     return web.Response(text=extra + text, content_type='text/plain')
 
 

@@ -6,10 +6,15 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
   strategy4  4 independent agents, each with a different task-agnostic strategy hint
   repair4    sequential: agent -> judge with reason -> if rejected, next agent sees its plan + critique
   board2x2   round 1: 2 agents; if none accepted, round 2: 2 agents see all round-1 plans + critiques
+  deep4cancel   deep4, but the first judge-accepted plan (in time) is the answer and stops the case at once:
+                running agents are terminated, agents and judges not yet started never start
+  waves2cancel  agents 0+1 in parallel with the same cancel rule; agents 2+3 only if neither was accepted
+Every agent record carries timing (seconds from case start); decisions of the original policies are unchanged.
 The exact verifier never influences decisions; it only scores the selected plan.
 """
 import argparse
 import json
+import subprocess
 import sys
 import threading
 import time
@@ -19,7 +24,7 @@ from pathlib import Path
 
 from run_agents72 import read, require, sha, validate_source, write
 from run_arbiterfree import ENDPOINTS, Slots, plan_of
-from run_benchmark import execute
+from run_benchmark import append_controller_stop, execute, metrics, read_trace, terminate
 import run_judge
 
 HERE = Path(__file__).resolve().parent
@@ -64,7 +69,46 @@ def judge_with_reason(candidate, endpoint, events_path, seed):
         events.close()
 
 
-def run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, seed_offset):
+def execute_cancellable(case, deadline_seconds, cancel):
+    """run_benchmark.execute for a shared endpoint plus a cancel event: when it is set, the worker's process group is
+    terminated (killpg) and the row is marked cancelled. run_benchmark.py itself is hash-pinned by earlier frozen
+    plans, so it stays unchanged; this loop keeps its process-group, deadline and terminate semantics."""
+    start = time.monotonic()
+    deadline = cancelled = False
+    error = returncode = None
+    with Path(case['stdout']).open('x') as stdout, Path(case['stderr']).open('x') as stderr:
+        try:
+            process = subprocess.Popen(case['command'], cwd=HERE, stdout=stdout, stderr=stderr, start_new_session=True)
+            while True:
+                if process.poll() is not None:
+                    returncode = process.returncode
+                    break
+                if cancel.is_set():
+                    cancelled, returncode = True, terminate(process)
+                    break
+                if time.monotonic() - start >= deadline_seconds:
+                    deadline, returncode = True, terminate(process)
+                    break
+                time.sleep(.1)
+        except OSError as exc:
+            error = f'{type(exc).__name__}: {exc}'
+    trace = Path(case['events'])
+    records, _ = read_trace(trace)
+    row = dict(metrics(records, deadline), returncode=returncode, controller_error=error, deadline=deadline,
+               cancelled=cancelled, wall_seconds=round(time.monotonic() - start, 6), controller_stop=cancelled or deadline,
+               server_cost_known=False, server_cost_reason='shared_endpoint', server_prompt_tokens=None,
+               server_completion_tokens=None, server_idle_after=None, time_to_verified_solution_seconds=None)
+    if cancelled:
+        row.update(status='cancelled', solved=False)
+    if row['controller_stop']:
+        append_controller_stop(trace, records, row, case)
+    return row
+
+
+def run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, seed_offset, t0=None, race=None):
+    """One agent + its judge. race (cancel policies): dict(cancel=Event, accept=callable) shared by the case."""
+    t0 = time.monotonic() if t0 is None else t0
+    cancel = race['cancel'] if race else None
     endpoint = ENDPOINTS[(case_index + slot) % 4]
     stem = f"{task['id']}-s{seed}-{policy}-a{slot}"
     events = out / 'agents' / (stem + '.jsonl')
@@ -80,17 +124,39 @@ def run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, sl
     job = dict(task_id=task['id'], split='development', arm=policy, seed=seed, endpoint=endpoint, command=command,
                events=str(events), stdout=str(events).replace('.jsonl', '.stdout.log'),
                stderr=str(events).replace('.jsonl', '.stderr.log'), shared_endpoint=True, stop_on_solution=False)
+    timing = dict(queued_s=round(time.monotonic() - t0, 3))
     with slots(endpoint):
-        row = execute(job, deadline_seconds=plan['agent_wall_deadline_seconds'])
+        if cancel is not None and cancel.is_set():  # case already answered while this agent waited for a slot
+            return dict(plan=None, verifier_solved=False, tokens=0, infra=0, slot=slot, extra=bool(extra), deadline=False,
+                        verdict=None, reason='', judge_tokens=0, judge_infra=0, started=False, cancelled=False,
+                        judge_skipped=False, **timing)
+        timing['started_s'] = round(time.monotonic() - t0, 3)
+        if race:
+            row = execute_cancellable(job, plan['agent_wall_deadline_seconds'], cancel)
+        else:
+            row = execute(job, deadline_seconds=plan['agent_wall_deadline_seconds'])
+    timing['finished_s'] = round(time.monotonic() - t0, 3)
+    cancelled = bool(row.get('cancelled'))
     info = plan_of(events)
-    if row.get('controller_error') or (row.get('returncode') not in (0, None) and not row['deadline']):
+    if cancelled:
+        info['plan'] = None  # a terminated agent has no answer; its partial work is counted server-side
+    elif row.get('controller_error') or (row.get('returncode') not in (0, None) and not row['deadline']):
         info['infra'] += 1  # worker process failure: stop admissions, never a silent 'no plan'
     info.update(slot=slot, extra=bool(extra), deadline=bool(row['deadline']), verdict=None, reason='', judge_tokens=0, judge_infra=0)
+    if race:
+        info.update(started=True, cancelled=cancelled, judge_skipped=False)
     if info['plan'] is not None:
         cand = dict(numbers=task['numbers'], target=task['target'], plan=info['plan'])
         with slots(endpoint):
-            j = judge_with_reason(cand, endpoint, out / 'judges' / (stem + '.jsonl'), 90000 + 1000 * seed + 10 * case_index + slot)
-        info.update(verdict=j['verdict'], reason=j['reason'], judge_tokens=j['tokens'], judge_infra=j['infra'])
+            if cancel is not None and cancel.is_set():
+                info['judge_skipped'] = True
+            else:
+                j = judge_with_reason(cand, endpoint, out / 'judges' / (stem + '.jsonl'), 90000 + 1000 * seed + 10 * case_index + slot)
+                info.update(verdict=j['verdict'], reason=j['reason'], judge_tokens=j['tokens'], judge_infra=j['infra'])
+                timing['judged_s'] = round(time.monotonic() - t0, 3)
+                if race and info['verdict'] is True:
+                    race['accept'](slot)
+    info.update(timing)
     return info
 
 
@@ -110,9 +176,24 @@ def critique(info):
     return f"A previous attempt proposed {json.dumps(info['plan'])}; a careful checker rejected it: {info['reason'] or 'invalid'}."
 
 
+def new_race(t0):
+    """Shared per-case cancel state: the first accepted agent (in time) wins and cancels the rest."""
+    lock, race = threading.Lock(), dict(cancel=threading.Event(), winner=None, answer_s=None)
+
+    def accept(slot):
+        with lock:
+            if race['winner'] is None:
+                race.update(winner=slot, answer_s=round(time.monotonic() - t0, 3))
+                race['cancel'].set()
+    race['accept'] = accept
+    return race
+
+
 def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     off = plan['seed_offsets'][policy]
-    agent = lambda slot, extra='': run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off)
+    t0 = time.monotonic()
+    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel') else None
+    agent = lambda slot, extra='': run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off, t0, race)
     if policy == 'deep4':
         agents = parallel([lambda s=s: agent(s) for s in range(4)])
     elif policy == 'strategy4':
@@ -132,14 +213,29 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
             board = 'Shared board from other solvers on this exact task (all rejected by a checker):\n' + \
                     '\n'.join(critique(a) for a in agents) + '\nUse what is useful, avoid their mistakes, and give a complete valid plan.'
             agents += parallel([lambda s=s: agent(s, board) for s in (2, 3)])
+    elif policy == 'deep4cancel':
+        agents = parallel([lambda s=s: agent(s) for s in range(4)])
+    elif policy == 'waves2cancel':
+        agents = parallel([lambda s=s: agent(s) for s in range(2)])
+        if race['winner'] is None:
+            agents += parallel([lambda s=s: agent(s) for s in (2, 3)])
     else:
         raise ValueError(policy)
-    selected = next((a for a in agents if a['verdict'] is True), None)
+    if race:  # answer = first accepted in time
+        selected = next((a for a in agents if a['slot'] == race['winner']), None)
+        selection = dict(selected_slot=race['winner'], answer_seconds=race['answer_s'],
+                     cancelled_agents=sum(a['cancelled'] for a in agents),
+                     unstarted_agents=sum(not a['started'] for a in agents) + 4 - len(agents),
+                     skipped_judges=sum(a['judge_skipped'] for a in agents))
+    else:  # answer = first accepted in slot order
+        selected = next((a for a in agents if a['verdict'] is True), None)
+        selection = dict(selected_slot=selected['slot'] if selected else None)
     return dict(policy=policy, agents=agents, answered=selected is not None,
                 solved=bool(selected and selected['verifier_solved']), wrong=bool(selected and not selected['verifier_solved']),
                 oracle=any(a['verifier_solved'] for a in agents), calls=len(agents),
                 tokens=sum(a['tokens'] + a['judge_tokens'] for a in agents),
-                infra=sum(a['infra'] + a['judge_infra'] for a in agents), deadlines=sum(a['deadline'] for a in agents))
+                infra=sum(a['infra'] + a['judge_infra'] for a in agents), deadlines=sum(a['deadline'] for a in agents),
+                case_seconds=round(time.monotonic() - t0, 3), **selection)
 
 
 def main(argv=None):
@@ -150,6 +246,7 @@ def main(argv=None):
     p.add_argument('--admission', type=Path)
     p.add_argument('--run', action='store_true')
     p.add_argument('--resume-from', type=Path, help='previous output: skip its policy cases that finished without infrastructure faults')
+    p.add_argument('--policy', action='append', help='run only these policies of the plan (one arm at a time); default all')
     a = p.parse_args(argv)
     plan = read(a.plan)
     require(plan['protocol'] == 'swarm-variants-screen-v1', 'Wrong protocol')
@@ -158,8 +255,15 @@ def main(argv=None):
     data = read(HERE / plan['dataset'])
     require(data.get('protocol') == plan['dataset_protocol'], 'Wrong corpus')
     tasks = [t for t in data['tasks'] if t['split'] == plan['split']]
+    if plan.get('task_ids'):  # optional subset (smoke plans)
+        tasks = [t for t in tasks if t['id'] in plan['task_ids']]
     require(len(tasks) == plan['tasks'], 'Wrong task count')
-    jobs = [(t, s, si * len(tasks) + ti, pol) for si, s in enumerate(plan['seeds']) for ti, t in enumerate(tasks) for pol in plan['policies']]
+    policies = a.policy or plan['policies']
+    require(set(policies) <= set(plan['policies']), 'Policy not in plan')
+    jobs = [(t, s, si * len(tasks) + ti, pol) for si, s in enumerate(plan['seeds']) for ti, t in enumerate(tasks) for pol in policies]
+    concurrent = plan['concurrent_policy_cases']
+    if len(policies) == 1:  # optional per-arm case concurrency (e.g. two-agent waves keep the same per-node load)
+        concurrent = plan.get('concurrent_policy_cases_by_policy', {}).get(policies[0], concurrent)
     resumed = None
     if a.resume_from:  # continuation after an infrastructure stop: same plan, only unfinished policy cases
         prev = [json.loads(line) for line in (a.resume_from / 'cases.jsonl').read_text().splitlines()]
@@ -174,7 +278,8 @@ def main(argv=None):
     require(adm.get('verified') is True and 0 <= (datetime.now(timezone.utc) - datetime.fromisoformat(adm['verified_utc'])).total_seconds() <= 900, 'Fresh admission')
     for d in ('agents', 'judges', 'extra'):
         (out / d).mkdir(parents=True, exist_ok=d != 'agents')
-    write(out / 'metadata.json', dict(protocol=plan, runner_sha256=sha(Path(__file__)), resume=resumed, started_utc=datetime.now(timezone.utc).isoformat(), admission=adm))
+    write(out / 'metadata.json', dict(protocol=plan, runner_sha256=sha(Path(__file__)), resume=resumed, policies=policies,
+                                      concurrent_policy_cases=concurrent, started_utc=datetime.now(timezone.utc).isoformat(), admission=adm))
     slots, lock, stop, rows = Slots(plan['concurrent_requests_per_endpoint']), threading.Lock(), threading.Event(), []
 
     def work(job):
@@ -198,7 +303,7 @@ def main(argv=None):
             print(json.dumps(dict(done=len(rows), total=len(jobs), policy=pol, task=task['id'], seed=seed, solved=rec['solved'], wrong=rec['wrong'])), flush=True)
 
     start = time.monotonic()
-    with ThreadPoolExecutor(plan['concurrent_policy_cases']) as pool:
+    with ThreadPoolExecutor(concurrent) as pool:
         list(pool.map(work, jobs))
     meta = read(out / 'metadata.json')
     meta.update(completed_utc=datetime.now(timezone.utc).isoformat(), wall_seconds=time.monotonic() - start, stopped=stop.is_set(),
@@ -206,7 +311,7 @@ def main(argv=None):
                 summary={pol: dict(cases=sum(r.get('policy') == pol and 'error' not in r for r in rows),
                                    solved=sum(r.get('policy') == pol and r.get('solved', False) for r in rows),
                                    wrong=sum(r.get('policy') == pol and r.get('wrong', False) for r in rows))
-                         for pol in plan['policies']})
+                         for pol in policies})
     write(out / 'metadata.json', meta)
     print(json.dumps(meta['summary']))
     return int(bool(meta['errors']) or meta['stopped'])

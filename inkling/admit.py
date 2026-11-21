@@ -4,7 +4,7 @@
 Same receipt contract as admit_known72.py (``verified``, ``verified_utc``), for the Inkling serving stack:
 on each of the four Sparks an SGLang ``swarm-inkling`` container plus the vLLM-dialect adapter
 ``swarm-inkling-shim`` (inkling/shim.py) must run from the same image digest, with the same launch
-arguments, no OOM, no restarts, the expected shim source hash, health 200 through the local tunnel and
+arguments, no OOM, no restarts, the expected shim source hash (the plan's ``serving.shim_sha256`` when given), health 200 through the local tunnel and
 (unless --allow-busy) zero running/waiting requests.
 """
 import argparse
@@ -74,6 +74,7 @@ def main(argv=None):
                       and shim['image'] == server['image'] and remote_sha == shim_sha and health == 200
                       and signature == reference
                       and (not expected.get('image_id') or expected['image_id'] in server['image'])
+                      and (not expected.get('shim_sha256') or expected['shim_sha256'] == shim_sha)
                       and (a.allow_busy or node['running_requests'] == node['waiting_requests'] == 0))
         ok_all &= node['ok']
         nodes.append(node)
