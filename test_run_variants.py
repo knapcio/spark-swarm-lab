@@ -77,7 +77,7 @@ class CancelPolicyTests(unittest.TestCase):
         def judge(cand, endpoint, events_path, seed):
             slot = int(str(events_path).rsplit('-a', 1)[1].split('.')[0])
             return dict(verdict=slot in accept, reason='', infra=0, tokens=1)
-        plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], deep4cancel=1400, waves2cancel=1400, roll8cancel=1400))
+        plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], deep4cancel=1400, waves2cancel=1400, roll8cancel=1400, roll12burst=1400), burst_seconds=0.3)
         with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute', execute), patch.object(v, 'plan_of', plan_of), \
                 patch.object(v, 'execute_cancellable', execute), patch.object(v, 'judge_with_reason', judge):
             out = Path(d)
@@ -136,6 +136,29 @@ class CancelPolicyTests(unittest.TestCase):
         self.assertEqual(rec['selected_slot'], 1)
         self.assertEqual(rec['escalated_agents'], 0)
         self.assertLessEqual(set(started), {0, 1, 2, 3})
+
+    def test_burst_adds_agents_when_no_accept_by_deadline(self):
+        # slots 0-3 slow (run until cancelled); burst at 0.3 s starts slots 4-7; slot 5 is accepted
+        rec, started = self.run_policy('roll12burst', fast={5}, accept={5})
+        self.assertEqual(rec['selected_slot'], 5)
+        self.assertTrue(rec['burst'])
+        self.assertTrue({0, 1, 2, 3, 4, 5} <= set(started))
+        self.assertLessEqual(max(started), 7)
+
+    def test_burst_caps_at_twelve(self):
+        rec, started = self.run_policy('roll12burst', fast=set(range(12)), accept=set())
+        self.assertEqual(sorted(started), list(range(12)))
+        self.assertFalse(rec['answered'])
+
+    def test_no_burst_when_accepted_early(self):
+        rec, started = self.run_policy('roll12burst', fast={2}, accept={2})
+        self.assertFalse(rec['burst'])
+        self.assertLessEqual(set(started), {0, 1, 2, 3})
+
+    def test_roll8_unchanged_by_burst_code(self):
+        rec, started = self.run_policy('roll8cancel', fast=set(range(8)), accept=set())
+        self.assertEqual(sorted(started), list(range(8)))
+        self.assertEqual(rec['escalated_agents'], 4)
 
     def test_deep4_keeps_slot_order_selection(self):
         rec, started = self.run_policy('deep4', fast={0, 1, 2, 3}, accept={1, 3})

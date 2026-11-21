@@ -11,6 +11,8 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
   waves2cancel  agents 0+1 in parallel with the same cancel rule; agents 2+3 only if neither was accepted
   roll8cancel   deep4cancel with adaptive escalation: 4 agents in flight; each agent that ends without an accepted
                 plan is replaced at once by a fresh-seed agent on the same node, up to 8 agents in total
+  roll12burst   roll8cancel with a cap of 12 agents and a time trigger: if no plan is accepted BURST_SECONDS after the
+                case started, 8 agents are kept in flight instead of 4 (failures still replaced, first accept cancels)
 Every agent record carries timing (seconds from case start); decisions of the original policies are unchanged.
 The exact verifier never influences decisions; it only scores the selected plan.
 """
@@ -180,29 +182,52 @@ def critique(info):
     return f"A previous attempt proposed {json.dumps(info['plan'])}; a careful checker rejected it: {info['reason'] or 'invalid'}."
 
 
-def rolling(agent, race, case_index, width=4, cap=8):
-    """Keep `width` agents in flight; an agent that ends without an accept is replaced by the next slot on its node."""
-    lock, state, results, threads = threading.Lock(), dict(next=width), [], []
+def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_width=8):
+    """Keep `width` agents in flight; an agent that ends without an accept is replaced by the next slot on its node.
+    burst_seconds: if the case has no accept by then, raise the in-flight width to burst_width (new slots on nodes
+    (case_index + slot) % 4), still within `cap` agents in total."""
+    lock, state, results, threads = threading.Lock(), dict(next=width, running=0, width=width), [], []
+
+    def launch(slot, node):  # caller holds the lock
+        state['running'] += 1
+        t = threading.Thread(target=run, args=(slot, node))
+        threads.append(t)
+        t.start()
 
     def run(slot, node):
         info = agent(slot, node)
         with lock:
             results.append(info)
-            if race['winner'] is None and not race['cancel'].is_set() and state['next'] < cap:
+            state['running'] -= 1
+            while (race['winner'] is None and not race['cancel'].is_set() and state['next'] < cap
+                   and state['running'] < state['width']):
                 nxt = state['next']
                 state['next'] += 1
-                t = threading.Thread(target=run, args=(nxt, node))
-                threads.append(t)
-                t.start()
+                launch(nxt, node if state['running'] == state['width'] - 1 else (case_index + nxt) % 4)
+
+    def burst():
+        if race['cancel'].wait(burst_seconds):
+            return
+        with lock:
+            if race['winner'] is not None or state.get('closed'):
+                return
+            state['width'] = burst_width
+            race['burst_at'] = True
+            while state['next'] < cap and state['running'] < state['width']:
+                nxt = state['next']
+                state['next'] += 1
+                launch(nxt, (case_index + nxt) % 4)
     with lock:
         for s in range(width):
-            t = threading.Thread(target=run, args=(s, (case_index + s) % 4))
-            threads.append(t)
-            t.start()
+            launch(s, (case_index + s) % 4)
+    if burst_seconds is not None:
+        timer = threading.Thread(target=burst, daemon=True)
+        timer.start()
     i = 0
     while True:
         with lock:
             if i >= len(threads):
+                state['closed'] = True  # a late burst timer must not start agents for a finished case
                 break
             t = threads[i]
         t.join()
@@ -226,7 +251,7 @@ def new_race(t0):
 def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     off = plan['seed_offsets'][policy]
     t0 = time.monotonic()
-    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel') else None
+    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll12burst') else None
     agent = lambda slot, extra='': run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off, t0, race)
     if policy == 'deep4':
         agents = parallel([lambda s=s: agent(s) for s in range(4)])
@@ -256,6 +281,10 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     elif policy == 'roll8cancel':
         agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, '', slots,
                                                       off, t0, race, node), race, case_index)
+    elif policy == 'roll12burst':
+        agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, '', slots,
+                                                      off, t0, race, node), race, case_index, cap=12,
+                         burst_seconds=plan.get('burst_seconds', 900))
     else:
         raise ValueError(policy)
     if race:  # answer = first accepted in time
@@ -264,6 +293,7 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
                      cancelled_agents=sum(a['cancelled'] for a in agents),
                      unstarted_agents=sum(not a['started'] for a in agents) + max(0, 4 - len(agents)),
                      escalated_agents=sum(a['slot'] >= 4 and a['started'] for a in agents),
+                     burst=bool(race.get('burst_at')),
                      skipped_judges=sum(a['judge_skipped'] for a in agents))
     else:  # answer = first accepted in slot order
         selected = next((a for a in agents if a['verdict'] is True), None)
