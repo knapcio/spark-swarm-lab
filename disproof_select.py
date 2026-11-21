@@ -43,7 +43,7 @@ HOSTS = ['Spark_01', 'Spark_02', 'Spark_03', 'Spark_04']
 SYSTEM = 'You write executable test contracts for Python functions. Return only the requested code block.'
 RUN_SETS = {
     'nemotron': (('coding-hard-xl-v1', 0), ('coding-hard-xl-v1b', 0), ('coding-hard-xl-ext-v1', 4)),
-    'inkling': (('inkling-coding-hard-v1', 0),),
+    'inkling': (('inkling-coding-hard-v1', 0), ('inkling-coding-hard-v1b', 0)),
 }
 FIRST_CAP, TOTAL_CAP = 12288, 16000
 
