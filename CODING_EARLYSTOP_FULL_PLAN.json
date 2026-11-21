@@ -1,0 +1,85 @@
+{
+ "protocol": "coding-agents-v1",
+ "status": "FROZEN",
+ "source_revision": "c2eb89e0a7a78c21f6f0b1471766ad24b09780d3",
+ "source_path": ".runtime/coding-xl-source",
+ "limits": {
+  "per_agent_completion_tokens": 32768,
+  "idle_timeout_seconds": 120,
+  "agent_wall_deadline_seconds": 7200,
+  "sandbox": "CPU-only Docker python@c61cffc3, no network, 256 MB, 1 CPU, 10 s per grade"
+ },
+ "scheduling": {
+  "concurrent_agents_per_node": 20,
+  "placement": "agent j of case c on replica/grader host (c+j)%4",
+  "concurrency_note": "each arm alone on the fleet: 20 client requests per node <= 25"
+ },
+ "runner": "run_coding_agents.py (unchanged)",
+ "study": "coding-earlystop-v1-full",
+ "agent_variants": [
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl"
+ ],
+ "agent_seed_offset": 1700,
+ "matrix": {
+  "tasks": "datasets/coding-hard-v1/tasks.json",
+  "tests": "datasets/coding-hard-v1/hidden-tests.json",
+  "tasks_sha256": "01cb39b1b18d7e6565576fa8b96a30681b3fe2a31796399bfd8f0f6761033da0",
+  "tests_sha256": "57cf4420c5db07ae2afab10b86c93f07fc24da6318386856cd10399b11effa13",
+  "split": "evaluation",
+  "tasks_count": 24,
+  "seeds": [
+   4,
+   5,
+   6
+  ]
+ },
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh with MEM=0.75 (cookbook dgx-spark/nvfp4/dspark + text-only, ctx 131072; KV pool ~1.08M tokens per node since 2026-11-21 16:25 Europe/Warsaw)",
+  "adapter": "inkling/shim.py (vLLM dialect; client disconnects are shim:client_cancels)",
+  "temperature": "0.8 (harness constant, unchanged from Nemotron runs)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "mem_fraction": "0.75"
+ },
+ "study_group": "coding-earlystop-v1",
+ "frozen_note": "Frozen 2026-11-21 before any call with seeds 4-6 on coding-hard-v1. Fresh seeds on the existing 24 evaluation tasks (owner: \"on the existing one with a fresh seed\"); agent seed offset 1700 is new, so every agent sample is new. An offline replay of the seed 1-3 run (inkling/sim_coding_early_stop.py, results/swarm-cancel-hard6-v1/REPORT.md) predicted: stopping at the first feedback-passing candidate in time keeps 69/72 (the slot-order rule) for about 35-45 % fewer agent tokens and 55-61 % less case wall; contracts added nothing under early stop, so this live test uses public feedback only.",
+ "selection": "first agent in fixed slot order whose code passes ALL feedback cases; solved if it passes ALL holdout cases (the rule of inkling-coding-hard-v1)",
+ "arm": "F: 8 agents, all run to the end (baseline)",
+ "question": "Does stopping a coding case at the first proposal that passes the public tests (E) keep the accuracy of running all 8 agents to the end (F) while cutting server tokens and wall time?",
+ "arms_order": [
+  "E coding-earlystop-v1-stop",
+  "F coding-earlystop-v1-full"
+ ],
+ "execution": "Each arm alone on the fleet via inkling/coding_arms.py (fresh admission with the shim sha below, prefix-cache flush, server counters before and after, idle wait, GPU energy). Arms run one after another, E first.",
+ "primary_outcomes": {
+  "tokens": "Server-counted generated tokens per case (delta of sglang:generation_tokens_total on the four nodes / 72), E vs F.",
+  "wall": "Arm wall time and per-case stop time, E vs F.",
+  "selection_effect": "Noise-free selection effect inside F: holdout result of the first feedback-passing proposal in TIME order vs in SLOT order, same proposals (difference in solved cases).",
+  "accuracy": "Solved/72 E vs F, paired two-sided exact sign test over (task, seed) (contains run-to-run generation noise, about +-4 cases)."
+ },
+ "decision_rule": "Early stop becomes the default for the Inkling coding swarm if: the noise-free selection effect inside F is >= -1 case AND E server tokens per case <= 0.80 x F AND E arm wall < F. E vs F solved is reported with its sign test, not used as a gate (run-to-run noise).",
+ "secondary_outcomes": "GPU energy per solved case; cancelled and never-started agents; per-case stop time distribution; One Inkling (agent 0 of F); oracle (any feedback-and-holdout pass) in F.",
+ "exclusions": "None; all 72 cases of each arm count.",
+ "resume_rule": "As in earlier coding plans: on an operational fault the runner stops admissions; the same arm is continued only for unfinished cases with the same seeds and documented as an amendment.",
+ "report": "inkling/report_coding_earlystop.py -> results/coding-earlystop-v1/REPORT.md + report.json",
+ "code_sha256": {
+  "run_coding_agents.py": "ff525e9e8b108f6a2f975efec408fbc32b86865bdd9e004e1c8837b48f04182a",
+  "run_coding_earlystop.py": "f7ab5512fe7e805e0f3ee4a063e9e431e75a8837950659b9f299b517cdb1eac9",
+  "run_variants.py": "465aa2166e4b48784fafaedbd48893c55f3339c2414984c4d7116a189e312071",
+  "inkling/coding_arms.py": "9f4979df5e603558600c5628fb7319bb161a03fd98af66645e897983992afff3",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "445349b83e910f1189df8908aff2428ab3ee1dd0bb862f1fc46978b31bda82c6",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3"
+ },
+ "smoke": "Throwaway smoke (not part of the study) on development task dev-repeating_expansion, seed 9, 4 agents, early stop: agent 1 passed the public tests at 167 s, agents 0/2/3 were terminated (shim client_cancels 3, 0 upstream errors), no grading containers left on the nodes.",
+ "baseline_note": "Arithmetic default is now B+ (swarm-escalate-hard7-v1); this study is about the coding swarm only."
+}
