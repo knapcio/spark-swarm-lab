@@ -1,0 +1,79 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "status": "FROZEN",
+ "frozen_note": "Frozen 2026-11-21 BEFORE arithmetic-hard-v6 exists. Efficiency study of the Inkling deep4 32K swarm: cancel the other agents as soon as one plan is accepted by the swarm's own judge. An offline simulation on the 192 hard-v4+hard-v5 cases (same data, post hoc) predicted for deep4cancel: the same 168 solved / 0 wrong, completion tokens per case -34 %, case wall -50 %; for waves2cancel: -39 % tokens, longer latency. This study confirms or refutes that on a fresh corpus.",
+ "question": "On fresh hard tasks generated after this freeze, does deep4cancel (first judge-accepted plan in time is the answer; the remaining agents are terminated at once) use fewer server-generated tokens and less wall time than deep4 without losing accuracy?",
+ "study": "swarm-cancel-hard6-v1",
+ "dataset": "datasets/arithmetic-hard-v6/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v6",
+ "split": "evaluation",
+ "tasks": 48,
+ "seeds": [
+  1,
+  2
+ ],
+ "policies": [
+  "deep4",
+  "deep4cancel",
+  "waves2cancel"
+ ],
+ "arms": {
+  "A": "deep4 (unchanged baseline: 4 agents in parallel, all run to the end, first judge-accepted plan in slot order, else abstain)",
+  "B": "deep4cancel (4 agents in parallel; the first judge-accepted plan in time is the answer; running agents are terminated (process group killed, shim closes the upstream stream, SGLang aborts), agents/judges not yet started never start)",
+  "C": "waves2cancel (secondary, energy mode: agents 0+1 in parallel with the B cancel rule; agents 2+3 start only if neither of 0+1 was accepted)"
+ },
+ "arm_order": [
+  "deep4",
+  "deep4cancel",
+  "waves2cancel"
+ ],
+ "agent_variant": "xl_forced_original",
+ "seed_offsets": {
+  "deep4": 6400,
+  "deep4cancel": 6400,
+  "waves2cancel": 6400
+ },
+ "pairing": "Same tasks, seeds, agent seeds (1000*seed + 6400 + slot), endpoints ((case_index + slot) % 4) and judge seeds in every arm, so cases are paired (task, seed). Identical seeds do not guarantee identical generations (batched numerics), so paired differences also contain sampling noise.",
+ "source_revision": "d94c893efb2a77041ef9086139cc570b994687c0",
+ "source_path": ".runtime/xl-source",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason), unchanged; the exact verifier only scores",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_policy_cases": 20,
+ "concurrent_policy_cases_by_policy": {
+  "deep4": 20,
+  "deep4cancel": 20,
+  "waves2cancel": 40
+ },
+ "concurrent_requests_per_endpoint": 20,
+ "concurrency_note": "Per-endpoint slot cap 20 (agents and judges share it) <= 25 in every arm. waves2cancel runs 2 agents per case at a time, so it runs 40 cases at once to keep the same ~20 agents per node; the slot cap still bounds it.",
+ "runner": "run_variants.py --policy ARM, one arm at a time, driven by inkling/arms.py",
+ "execution": "Arms run sequentially in arm_order, each alone on the fleet (Spark_01..04, Inkling only). Before each arm: fresh admission (inkling/admit.py: idle fleet, same containers/image/launch, shim sha256 below), prefix-cache flush on every node (POST /flush_cache on the loopback SGLang port), server counters snapshot. After: wait until every node is idle, snapshot again, GPU energy for the window (inkling/energy.py). Watchdog: inkling/watch.sh.",
+ "resume_rule": "If an arm stops on an infrastructure fault (runner stop flag, worker or judge infra failure, node fault), the fault is fixed and the same arm is continued with arms.py --resume-from (skips its cases that finished without infra faults; reruns the others with the same seeds) and documented as an amendment. Server tokens, wall and energy of an arm are then the sums over its segments (wasted work of the stopped segment included and reported separately). Never a silent restart; no case is dropped.",
+ "primary_outcomes": {
+  "tokens": "Server-counted generated tokens per case = sum over the four nodes of the delta of sglang:generation_tokens_total over the arm window / 96, B vs A (ratio). Counts tokens of aborted requests too (verified 2026-11-21). Also reported: sglang:realtime_tokens_total{mode=decode} delta, client-logged completion tokens.",
+  "wall": "Arm wall time (runner start to finish), B vs A; and the per-case latency distribution (case_seconds: median, p90, max; for B also answer_seconds).",
+  "accuracy_non_inferiority": "B solved >= A solved - 2 AND B wrong answers = 0. Paired two-sided exact sign test over discordant (task, seed) pairs is reported. A wrong answer in B is reported as a failure of the cancel policy regardless of counts."
+ },
+ "decision_rule": "deep4cancel becomes the default Inkling arithmetic swarm policy if accuracy non-inferiority holds AND its server-counted tokens per case are at least 15 % lower than deep4 AND its arm wall time is not higher. Otherwise deep4 stays.",
+ "secondary_outcomes": "GPU-rail energy per solved case (and per case); cancelled agents and agents never started per case; skipped judges; case latency distribution; One Inkling (agent 0) per arm; oracle (any agent correct) for A; judge verdicts and false accepts/rejects; arm C with the same metrics against A (non-inferiority, tokens, wall, energy) and against B. C is secondary: it changes no decision about B.",
+ "prediction": "From the offline simulation: B tokens/case about -34 % vs A, case wall about -50 %, solved equal; C tokens about -39 %, latency higher than B.",
+ "exclusions": "None. All 96 cases of each arm count.",
+ "generator": "make_arithmetic_hard.py --seed 2026112102 --protocol arithmetic-hard-v6 --output datasets/arithmetic-hard-v6 (after this plan is committed and pushed); same rules as hard-v5",
+ "report": "inkling/report_cancel_hard6.py -> results/swarm-cancel-hard6-v1/REPORT.md + report.json",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh (cookbook dgx-spark/nvfp4/dspark + text-only, ctx 131072, mem 0.62)",
+  "adapter": "inkling/shim.py (vLLM dialect; client disconnects close the upstream stream and count as shim:client_cancels)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "temperature": "0.8 (harness constant)"
+ },
+ "code_sha256": {
+  "run_variants.py": "3a7feb8b023368722a89c6af6147972e2b1f1a08aa75c299d1b3f4f53a5b87ef",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "f452075e237a38298cc94c19a991923384f9309c3045a4d5154b7dbad73ef4de",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3"
+ },
+ "smoke": "Throwaway smoke (not part of the study) on development tasks of arithmetic-hard-v5 only: deep4cancel 2 cases (1 solved with 3 agents cancelled within 0.1 s of the accept; 1 abstain, all 4 agents to the budget), waves2cancel 1 case (solved by wave 1, 1 cancelled, 2 never started); shim client_cancels counted, upstream_errors 0."
+}
