@@ -72,6 +72,19 @@ B+ vs A +9/-1 (p = 0.02) at -19 % tokens and -21 % wall; 6 strict rescues (cases
 failed). **B+ is now the default arithmetic swarm policy.** B vs A was -3 on both fresh corpora (pooled +6/-12, p = 0.24);
 every one of those losses was a case where B cancelled nothing, so it is generation noise by mechanism, noted openly.
 
+## Day 2026-11-21 (3): coding swarm early stop, live ([coding-earlystop-v1](coding-earlystop-v1/REPORT.md))
+
+Frozen plans (669665e) before any call with fresh seeds 4-6 on coding-hard-v1 (72 cases, 8 agents of 32K).
+
+| Arm | Solved /72 | Server tokens/case | Arm wall | GPU energy per solved case |
+|---|---:|---:|---:|---:|
+| F: all 8 agents to the end, slot-order first passing | 66 | 99.8K | 96 min | 2.74 Wh |
+| **E: first proposal passing the public tests ends the case** | **69** | **62.8K (-37 %)** | **61 min (-36 %)** | **1.69 Wh** |
+
+On the same proposals (inside F), the first passing proposal in time is the better pick than the first in slot order
+(71 vs 66). **Early stop is now the default for the coding swarm.** Serving changed before this study (owner): Inkling
+runs with `--mem-fraction-static 0.75` (KV ~1.08M tokens per node; MemAvailable >= 24.3 GiB under full load).
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -84,4 +97,4 @@ every one of those losses was a case where B cancelled nothing, so it is generat
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md)
