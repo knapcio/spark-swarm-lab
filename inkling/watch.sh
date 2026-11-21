@@ -27,15 +27,15 @@ while true; do
     runs_line="$runs_line$n:$run "
   done
   for d in "$@"; do
-    log="runs/$d.log"
-    if [[ "$done_list" != *" $d "* ]] && ! pgrep -f "output runs/$d" >/dev/null; then
+    log="runs/$d.log"; [[ -f "$log" ]] || log="bugbench/runs/$d.log"
+    if [[ "$done_list" != *" $d "* ]] && ! pgrep -f "runs/$d( |\$)" >/dev/null; then
       done_list="$done_list$d "
       echo "RUN EXITED $d: $(tail -c 400 "$log" | tr '\n' ' ')"
     fi
   done
   if (( tick % 15 == 0 )); then
     a=$(ls runs/inkling-hard4-v1/agents 2>/dev/null | grep -c '\.jsonl$')
-    c=$(ls runs/inkling-coding-hard-v1 2>/dev/null | grep -c '\.jsonl$')
+    c=$(ls runs/inkling-coding-hard-v1b 2>/dev/null | grep -c '\.jsonl$')
     echo "PROGRESS $(date +%H:%M) arithmetic agent files=$a coding agent files=$c running $runs_line"
   fi
   tick=$((tick + 1))
