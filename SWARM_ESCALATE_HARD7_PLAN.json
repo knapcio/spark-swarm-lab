@@ -1,0 +1,81 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "status": "FROZEN",
+ "study": "swarm-escalate-hard7-v1",
+ "dataset": "datasets/arithmetic-hard-v7/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v7",
+ "split": "evaluation",
+ "tasks": 48,
+ "seeds": [
+  1,
+  2
+ ],
+ "policies": [
+  "deep4cancel",
+  "roll8cancel",
+  "deep4"
+ ],
+ "arm_order": [
+  "deep4cancel",
+  "roll8cancel",
+  "deep4"
+ ],
+ "agent_variant": "xl_forced_original",
+ "seed_offsets": {
+  "deep4cancel": 7400,
+  "roll8cancel": 7400,
+  "deep4": 7400
+ },
+ "pairing": "Same tasks, seeds, agent seeds (1000*seed + 7400 + slot; slots 4-7 only exist in B+), endpoints and judge seeds in every arm (pairs (task, seed)). Generation is not reproducible across runs even with equal seeds (hard-v6: 28/157 same-seed agent pairs changed outcome), so paired case differences contain that noise (about 4-5 discordant cases per 96 between identical configurations).",
+ "source_revision": "d94c893efb2a77041ef9086139cc570b994687c0",
+ "source_path": ".runtime/xl-source",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason), unchanged; the exact verifier only scores",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_policy_cases": 20,
+ "concurrent_policy_cases_by_policy": {
+  "deep4cancel": 20,
+  "roll8cancel": 20,
+  "deep4": 20
+ },
+ "concurrent_requests_per_endpoint": 20,
+ "concurrency_note": "At most 4 agents in flight per case in every arm, 20 cases at once, per-endpoint slot cap 20 (agents and judges) <= 25. Escalation agents run on the node of the agent they replace.",
+ "runner": "run_variants.py --policy ARM, one arm at a time, driven by inkling/arms.py",
+ "execution": "Arms run sequentially in arm_order, each alone on the fleet via inkling/arms.py (fresh admission with the shim sha below, prefix-cache flush, server counters before/after, idle wait, GPU energy). A is the reference arm and runs last. Watchdog inkling/watch.sh.",
+ "resume_rule": "If an arm stops on an infrastructure fault (runner stop flag, worker or judge infra failure, node fault), the fault is fixed and the same arm is continued with arms.py --resume-from (skips its cases that finished without infra faults; reruns the others with the same seeds) and documented as an amendment. Server tokens, wall and energy of an arm are then the sums over its segments (wasted work of the stopped segment included and reported separately). Never a silent restart; no case is dropped.",
+ "exclusions": "None. All 96 cases of each arm count.",
+ "generator": "make_arithmetic_hard.py --seed 2026112103 --protocol arithmetic-hard-v7 --output datasets/arithmetic-hard-v7 (after this plan is committed and pushed); same rules as hard-v5/v6",
+ "report": "inkling/report_escalate_hard7.py -> results/swarm-escalate-hard7-v1/REPORT.md + report.json",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh (cookbook dgx-spark/nvfp4/dspark + text-only, ctx 131072, mem 0.62)",
+  "adapter": "inkling/shim.py (vLLM dialect; client disconnects close the upstream stream and count as shim:client_cancels)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "temperature": "0.8 (harness constant)"
+ },
+ "frozen_note": "Frozen 2026-11-21 BEFORE arithmetic-hard-v7 exists. Follow-up of swarm-cancel-hard6-v1, where deep4cancel (B) matched deep4 (A) by mechanism (all 4 of its losses were cases with 0 cancellations, i.e. run-to-run generation noise; same-seed agents changed outcome in 28/157 pairs) and saved 33 % server tokens, 36 % wall and 35 % GPU energy; the owner made B the default arithmetic swarm policy. B+ spends part of that saving on the hard cases.",
+ "question": "On fresh hard tasks generated after this freeze, does roll8cancel (B+: deep4cancel plus adaptive escalation, up to 8 agents) solve more cases than deep4cancel (B) while staying at or below deep4 (A) in server tokens per case and below it in wall time?",
+ "arms": {
+  "B": "deep4cancel (default since swarm-cancel-hard6-v1): 4 agents in parallel; the first judge-accepted plan in time answers; running agents are terminated, unstarted ones never start",
+  "B+": "roll8cancel: as B, but every agent that ends without an accepted plan (rejected plan, no plan, budget exhausted) is replaced at once by a fresh-seed agent on the same node, so 4 agents stay in flight, up to 8 agents in total; first accept in time answers and cancels the rest; abstain only if all 8 end without an accept",
+  "A": "deep4 (reference arm, run last): 4 agents, all to the end, first accepted in slot order"
+ },
+ "calibration": "hard-v6 (post hoc): all 23 abstentions of A and B had at least one judged and rejected plan; on those cases the other arm's 4 fresh agents solved 5/23 (22 %), so 4 extra agents are expected to rescue about 2-3 of ~11 abstentions per 96 at about +4 x 30K tokens per abstained case (about +12K tokens per case on average).",
+ "primary_outcomes": {
+  "accuracy": "Solved and wrong answers per arm; B+ vs B paired two-sided exact sign test. Mechanism count (not subject to run-to-run noise): strict rescues = B+ cases answered by an escalation agent (slot >= 4) while every one of the first 4 agents had already ended without an accept; plus loose rescues (answered by slot >= 4 at all).",
+  "tokens": "Server-counted generated tokens per case (delta of sglang:generation_tokens_total over the arm window, all four nodes, / 96), B+ vs B and B+ vs A.",
+  "wall": "Arm wall time (runner start to finish) and per-case latency distribution, B+ vs B and B+ vs A."
+ },
+ "decision_rule": "B+ replaces B as the default if: 0 wrong answers AND strict rescues >= 2 AND B+ server tokens per case <= A AND B+ arm wall < A (if A could not be run: <= 1.10 x B for both). Solved counts B+ vs B and B+ vs A are reported with paired sign tests but are not gates: hard-v6 showed that two runs of the same policy differ by about 4 cases (generation noise), while by mechanism neither cancellation (only after a judge accept; 0 false accepts) nor escalation (only adds agents) can turn a case the first four agents would solve into a miss. Strict rescues are counted inside the B+ run itself and are free of that noise.",
+ "secondary_outcomes": "GPU-rail energy per solved case; escalated / cancelled / never-started agents; latency distribution; B vs A on a second fresh corpus (noise replication) with a paired sign test, and pooled hard-v6 + hard-v7 B vs A (192 cases) as a secondary check; judge verdicts, false accepts/rejects; One Inkling (agent 0 of A).",
+ "code_sha256": {
+  "run_variants.py": "465aa2166e4b48784fafaedbd48893c55f3339c2414984c4d7116a189e312071",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "f452075e237a38298cc94c19a991923384f9309c3045a4d5154b7dbad73ef4de",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3"
+ },
+ "owner_goal": "Owner goal (reported, not the decision rule because of run-to-run noise): B+ solved >= A solved, 0 wrong, server tokens per case <= A, arm wall < A.",
+ "baseline_note": "Since swarm-cancel-hard6-v1 deep4cancel (B) is the default; B+ is compared against B, A is a reference arm run last.",
+ "smoke": "Throwaway smoke (not part of the study) on 2 development tasks of arithmetic-hard-v5: roll8cancel solved the easy one with the first 4 agents; on the hard one every ending agent was replaced at once by a fresh-seed agent on its node (4 in flight)."
+}
