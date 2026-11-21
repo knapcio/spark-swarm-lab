@@ -17,10 +17,14 @@ times. A small adapter ([inkling/shim.py](../inkling/shim.py)) gives the harness
 | Task family | One DeepSeek V4.1 | One Nemotron | Nemotron swarm | **One Inkling** | **Inkling swarm** |
 |---|---:|---:|---:|---:|---:|
 | Hard arithmetic, 96 cases (4 agents + own judge) | 85 | 54 | 82 | 69 | **90** (0 wrong) |
+| Hard arithmetic, fresh hard-v5, 96 cases | 76 | | | 61 | **78** (0 wrong) |
 | Hard coding, 72 cases (8 agents) | 61 | 37 | 56 | **62** | **69** |
 | Bug fixing, whole project in context, 36 | 36 | 26 | 35 | **36** | 36 |
 
-- Arithmetic swarm vs DeepSeek paired +6/-1 (p = 0.125); vs Nemotron swarm +9/-1 (p = 0.02). Judge: 0 false accepts in 330.
+- [Fresh replication](inkling-hard5-v1/REPORT.md) on arithmetic-hard-v5 (plans frozen before the corpus existed): swarm 78 vs DeepSeek 76 (+8/-6).
+  Pre-registered pooled test over 192 cases: 168 vs 161, +14/-7 (p = 0.19), 0 wrong; One Inkling 130 is clearly below DeepSeek (p = 3e-6).
+  So the swarm matches DeepSeek, it does not beat it significantly.
+- Arithmetic hard-v4 swarm vs DeepSeek paired +6/-1 (p = 0.125); vs Nemotron swarm +9/-1 (p = 0.02). Judge: 0 false accepts in 330.
 - Coding swarm vs DeepSeek +10/-2 (p = 0.039); One Inkling vs DeepSeek +8/-6 (p = 0.79).
 - [Executable disproofs](disproof-selection-v1/REPORT.md) (astra idea #1): contracts written from the public task alone
   are the best arbiter-free code selector so far: Nemotron candidates 56 -> 59 (judge 57, output vote 55; oracle 64),
@@ -44,4 +48,4 @@ The Inkling swarm is the most accurate system and costs more energy per solved t
 
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
-[efficiency-v1](efficiency-v1/REPORT.md)
+[efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md)
