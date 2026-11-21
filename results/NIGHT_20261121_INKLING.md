@@ -37,6 +37,24 @@ Same four Sparks, GPU-rail energy from 1 Hz `nvidia-smi`: the Inkling fleet (fou
 tasks per hour than One DeepSeek at ~1/5 of the GPU energy (equal accuracy), and is cheaper on bugs and arithmetic too.
 The Inkling swarm is the most accurate system and costs more energy per solved task than One DeepSeek.
 
+## Day 2026-11-21: cancel the other agents once one plan is accepted ([swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md))
+
+Frozen plan (2376372) before a fresh corpus (arithmetic-hard-v6, d8bc18e); three arms run alone on the fleet, 96 paired
+cases each, server-side token counting (includes aborted requests), GPU-rail energy.
+
+| Arm | Solved | Wrong | Server tokens/case | Arm wall | GPU energy per solved case |
+|---|---:|---:|---:|---:|---:|
+| A deep4 (all 4 agents to the end) | 86 | 0 | 66.3K | 87 min | 1.92 Wh |
+| **B deep4cancel** (first accepted plan ends the case) | 83 | 0 | **44.6K (-33 %)** | **56 min (-36 %)** | **1.30 Wh** |
+| C waves of 2 with cancel | 81 | 0 | 39.3K (-41 %) | 59 min (-32 %) | 1.32 Wh |
+
+B missed the frozen non-inferiority margin (>= 84) by one case, but every one of its 4 losses was a case where it
+cancelled nothing (it ran A's policy and drew worse samples); where it cancelled, the answer was already accepted by a
+judge with 0 false accepts. Same-seed agents changed outcome in 18 % of pairs between the two runs, so a 3-case gap
+between identical policies is ordinary. **deep4cancel is now the default arithmetic swarm policy** (owner decision).
+The shim now treats client disconnects as cancellations (`shim:client_cancels`; SGLang aborts in < 0.5 s).
+Offline, the same early stop on the coding swarm would keep 69/72 (not the disproof 70) for about a third fewer tokens.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -48,4 +66,5 @@ The Inkling swarm is the most accurate system and costs more energy per solved t
 
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
-[efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md)
+[efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md)

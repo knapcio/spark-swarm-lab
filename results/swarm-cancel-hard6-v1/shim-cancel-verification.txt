@@ -1,0 +1,35 @@
+Shim client-cancel verification, 2026-11-21 (UTC). Probe: streamed /v1/completions (thinking, max_tokens 8000)
+through the Mac tunnel, client killed with SIGKILL after 8-10 s; metrics read through the same tunnel.
+New shim sha256 f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3 (old d9aef1df...f350).
+
+Spark_01 (new shim)
+06:32:01 before: running=0.0 gen_total=8 rt_decode=9.0 shim_inflight=0 client_cancels=0 upstream_errors=0
+06:32:11 at kill: running=1.0 gen_total=8 rt_decode=503.0 shim_inflight=1 client_cancels=0 upstream_errors=0 client_tokens=499
+06:32:12.361 +.5s: running=0.0 gen_total=516 rt_decode=518.0 shim_inflight=0 client_cancels=1 upstream_errors=0
+06:32:31 +18s: running=0.0 gen_total=516 rt_decode=518.0 shim_inflight=0 client_cancels=1 upstream_errors=0
+
+Spark_02 (OLD shim, before the update: SGLang also aborts, but the disconnect is counted as an upstream error)
+06:32:37 before: running=0.0 gen_total=8 rt_decode=9.0 shim_inflight=0 upstream_errors=0
+06:32:47 at kill: running=1.0 gen_total=8 rt_decode=453.0 shim_inflight=1 upstream_errors=0 client_tokens=451
+06:32:47.903 +.5s: running=0.0 gen_total=466 rt_decode=467.0 shim_inflight=0 upstream_errors=1
+06:33:07 +18s: running=0.0 gen_total=466 rt_decode=467.0 shim_inflight=0 upstream_errors=1
+
+Spark_02 (new shim)
+06:34:20 before: running=0.0 gen_total=466 rt_decode=467.0 shim_inflight=0 client_cancels=0 upstream_errors=0
+06:34:28 at kill: running=1.0 gen_total=466 rt_decode=910.0 shim_inflight=1 client_cancels=0 upstream_errors=0 client_tokens=444
+06:34:29.298 +.5s: running=0.0 gen_total=917 rt_decode=919.0 shim_inflight=0 client_cancels=1 upstream_errors=0
+06:34:48 +18s: running=0.0 gen_total=917 rt_decode=919.0 shim_inflight=0 client_cancels=1 upstream_errors=0
+Spark_03 (new shim)
+06:34:48 before: running=0.0 gen_total=8 rt_decode=9.0 shim_inflight=0 client_cancels=0 upstream_errors=0
+06:34:56 at kill: running=1.0 gen_total=8 rt_decode=435.0 shim_inflight=1 client_cancels=0 upstream_errors=0 client_tokens=427
+06:34:56.927 +.5s: running=0.0 gen_total=440 rt_decode=446.0 shim_inflight=0 client_cancels=1 upstream_errors=0
+06:35:16 +18s: running=0.0 gen_total=440 rt_decode=446.0 shim_inflight=0 client_cancels=1 upstream_errors=0
+Spark_04 (new shim)
+06:35:16 before: running=0.0 gen_total=8 rt_decode=9.0 shim_inflight=0 client_cancels=0 upstream_errors=0
+06:35:24 at kill: running=1.0 gen_total=8 rt_decode=400.0 shim_inflight=1 client_cancels=0 upstream_errors=0 client_tokens=393
+06:35:24.976 +.5s: running=0.0 gen_total=404 rt_decode=405.0 shim_inflight=0 client_cancels=1 upstream_errors=0
+06:35:44 +18s: running=0.0 gen_total=404 rt_decode=405.0 shim_inflight=0 client_cancels=1 upstream_errors=0
+
+Conclusion: on all four nodes the aborted request leaves SGLang within 0.5 s (num_running_reqs 0), the shim counts
+shim:client_cancels and not shim:upstream_errors, and sglang:generation_tokens_total includes the tokens generated
+before the abort (server delta >= client-seen tokens), so server counters capture cancelled work.
