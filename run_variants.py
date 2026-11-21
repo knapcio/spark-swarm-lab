@@ -9,6 +9,8 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
   deep4cancel   deep4, but the first judge-accepted plan (in time) is the answer and stops the case at once:
                 running agents are terminated, agents and judges not yet started never start
   waves2cancel  agents 0+1 in parallel with the same cancel rule; agents 2+3 only if neither was accepted
+  roll8cancel   deep4cancel with adaptive escalation: 4 agents in flight; each agent that ends without an accepted
+                plan is replaced at once by a fresh-seed agent on the same node, up to 8 agents in total
 Every agent record carries timing (seconds from case start); decisions of the original policies are unchanged.
 The exact verifier never influences decisions; it only scores the selected plan.
 """
@@ -105,11 +107,13 @@ def execute_cancellable(case, deadline_seconds, cancel):
     return row
 
 
-def run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, seed_offset, t0=None, race=None):
-    """One agent + its judge. race (cancel policies): dict(cancel=Event, accept=callable) shared by the case."""
+def run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, seed_offset, t0=None, race=None,
+              node=None):
+    """One agent + its judge. race (cancel policies): dict(cancel=Event, accept=callable) shared by the case.
+    node: endpoint index override (escalation agents run on the node of the agent they replace)."""
     t0 = time.monotonic() if t0 is None else t0
     cancel = race['cancel'] if race else None
-    endpoint = ENDPOINTS[(case_index + slot) % 4]
+    endpoint = ENDPOINTS[(case_index + slot) % 4 if node is None else node]
     stem = f"{task['id']}-s{seed}-{policy}-a{slot}"
     events = out / 'agents' / (stem + '.jsonl')
     extra_file = None
@@ -176,6 +180,36 @@ def critique(info):
     return f"A previous attempt proposed {json.dumps(info['plan'])}; a careful checker rejected it: {info['reason'] or 'invalid'}."
 
 
+def rolling(agent, race, case_index, width=4, cap=8):
+    """Keep `width` agents in flight; an agent that ends without an accept is replaced by the next slot on its node."""
+    lock, state, results, threads = threading.Lock(), dict(next=width), [], []
+
+    def run(slot, node):
+        info = agent(slot, node)
+        with lock:
+            results.append(info)
+            if race['winner'] is None and not race['cancel'].is_set() and state['next'] < cap:
+                nxt = state['next']
+                state['next'] += 1
+                t = threading.Thread(target=run, args=(nxt, node))
+                threads.append(t)
+                t.start()
+    with lock:
+        for s in range(width):
+            t = threading.Thread(target=run, args=(s, (case_index + s) % 4))
+            threads.append(t)
+            t.start()
+    i = 0
+    while True:
+        with lock:
+            if i >= len(threads):
+                break
+            t = threads[i]
+        t.join()
+        i += 1
+    return sorted(results, key=lambda a: a['slot'])
+
+
 def new_race(t0):
     """Shared per-case cancel state: the first accepted agent (in time) wins and cancels the rest."""
     lock, race = threading.Lock(), dict(cancel=threading.Event(), winner=None, answer_s=None)
@@ -192,7 +226,7 @@ def new_race(t0):
 def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     off = plan['seed_offsets'][policy]
     t0 = time.monotonic()
-    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel') else None
+    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel') else None
     agent = lambda slot, extra='': run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off, t0, race)
     if policy == 'deep4':
         agents = parallel([lambda s=s: agent(s) for s in range(4)])
@@ -219,13 +253,17 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
         agents = parallel([lambda s=s: agent(s) for s in range(2)])
         if race['winner'] is None:
             agents += parallel([lambda s=s: agent(s) for s in (2, 3)])
+    elif policy == 'roll8cancel':
+        agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, '', slots,
+                                                      off, t0, race, node), race, case_index)
     else:
         raise ValueError(policy)
     if race:  # answer = first accepted in time
         selected = next((a for a in agents if a['slot'] == race['winner']), None)
         selection = dict(selected_slot=race['winner'], answer_seconds=race['answer_s'],
                      cancelled_agents=sum(a['cancelled'] for a in agents),
-                     unstarted_agents=sum(not a['started'] for a in agents) + 4 - len(agents),
+                     unstarted_agents=sum(not a['started'] for a in agents) + max(0, 4 - len(agents)),
+                     escalated_agents=sum(a['slot'] >= 4 and a['started'] for a in agents),
                      skipped_judges=sum(a['judge_skipped'] for a in agents))
     else:  # answer = first accepted in slot order
         selected = next((a for a in agents if a['verdict'] is True), None)

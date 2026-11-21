@@ -77,7 +77,7 @@ class CancelPolicyTests(unittest.TestCase):
         def judge(cand, endpoint, events_path, seed):
             slot = int(str(events_path).rsplit('-a', 1)[1].split('.')[0])
             return dict(verdict=slot in accept, reason='', infra=0, tokens=1)
-        plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], deep4cancel=1400, waves2cancel=1400))
+        plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], deep4cancel=1400, waves2cancel=1400, roll8cancel=1400))
         with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute', execute), patch.object(v, 'plan_of', plan_of), \
                 patch.object(v, 'execute_cancellable', execute), patch.object(v, 'judge_with_reason', judge):
             out = Path(d)
@@ -115,6 +115,27 @@ class CancelPolicyTests(unittest.TestCase):
         self.assertEqual(sorted(started), [0, 1, 2, 3])
         self.assertEqual(rec['selected_slot'], 3)
         self.assertEqual(rec['cancelled_agents'], 1)
+
+    def test_roll_replaces_failures_until_accept(self):
+        # slots 0-3 end fast and are rejected; replacements 4,5 fast rejected, 6 accepted; 7 may start and is cancelled
+        rec, started = self.run_policy('roll8cancel', fast={0, 1, 2, 3, 4, 5, 6}, accept={6})
+        self.assertEqual(rec['selected_slot'], 6)
+        self.assertTrue(rec['answered'])
+        self.assertLessEqual(set(started), set(range(8)))
+        self.assertIn(6, started)
+        self.assertGreaterEqual(rec['escalated_agents'], 3)
+
+    def test_roll_caps_at_eight_agents(self):
+        rec, started = self.run_policy('roll8cancel', fast=set(range(8)), accept=set())
+        self.assertEqual(sorted(started), list(range(8)))
+        self.assertFalse(rec['answered'])
+        self.assertEqual(rec['escalated_agents'], 4)
+
+    def test_roll_without_failures_is_deep4cancel(self):
+        rec, started = self.run_policy('roll8cancel', fast={1}, accept={1})
+        self.assertEqual(rec['selected_slot'], 1)
+        self.assertEqual(rec['escalated_agents'], 0)
+        self.assertLessEqual(set(started), {0, 1, 2, 3})
 
     def test_deep4_keeps_slot_order_selection(self):
         rec, started = self.run_policy('deep4', fast={0, 1, 2, 3}, accept={1, 3})
