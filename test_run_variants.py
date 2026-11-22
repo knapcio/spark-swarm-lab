@@ -77,11 +77,12 @@ class CancelPolicyTests(unittest.TestCase):
         def judge(cand, endpoint, events_path, seed):
             slot = int(str(events_path).rsplit('-a', 1)[1].split('.')[0])
             return dict(verdict=slot in accept, reason='', infra=0, tokens=1)
-        plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], deep4cancel=1400, waves2cancel=1400, roll8cancel=1400, roll12burst=1400), burst_seconds=0.3)
+        plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], deep4cancel=1400, waves2cancel=1400, roll8cancel=1400, roll12burst=1400, roll8repair=1400), burst_seconds=0.3)
         with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute', execute), patch.object(v, 'plan_of', plan_of), \
                 patch.object(v, 'execute_cancellable', execute), patch.object(v, 'judge_with_reason', judge):
             out = Path(d)
             (out / 'agents').mkdir(); (out / 'extra').mkdir(); (out / 'judges').mkdir()
+            self.last_out = d
             rec = v.run_policy(plan, Path('/src'), out, TASK, 1, 0, policy, v.Slots(8))
         return rec, started
 
@@ -159,6 +160,13 @@ class CancelPolicyTests(unittest.TestCase):
         rec, started = self.run_policy('roll8cancel', fast=set(range(8)), accept=set())
         self.assertEqual(sorted(started), list(range(8)))
         self.assertEqual(rec['escalated_agents'], 4)
+
+    def test_repair_escalation_sees_rejected_plans_with_reasons(self):
+        rec, started = self.run_policy('roll8repair', fast={0, 1, 2, 3, 4}, accept={4})
+        self.assertEqual(rec['selected_slot'], 4)
+        self.assertGreaterEqual(rec['escalated_agents'], 1)
+        self.assertTrue(rec['agents'][4]['extra'])
+        self.assertFalse(any(a['extra'] for a in rec['agents'][:4]))
 
     def test_deep4_keeps_slot_order_selection(self):
         rec, started = self.run_policy('deep4', fast={0, 1, 2, 3}, accept={1, 3})

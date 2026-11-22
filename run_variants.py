@@ -11,6 +11,8 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
   waves2cancel  agents 0+1 in parallel with the same cancel rule; agents 2+3 only if neither was accepted
   roll8cancel   deep4cancel with adaptive escalation: 4 agents in flight; each agent that ends without an accepted
                 plan is replaced at once by a fresh-seed agent on the same node, up to 8 agents in total
+  roll8repair   roll8cancel, but each escalation agent (slot >= 4) also sees every plan of this case that the judge has
+                rejected so far, with the judge's one-sentence reason (the repair4 critique text)
   roll12burst   roll8cancel with a cap of 12 agents and a time trigger: if no plan is accepted BURST_SECONDS after the
                 case started, 8 agents are kept in flight instead of 4 (failures still replaced, first accept cancels)
 Every agent record carries timing (seconds from case start); decisions of the original policies are unchanged.
@@ -182,7 +184,7 @@ def critique(info):
     return f"A previous attempt proposed {json.dumps(info['plan'])}; a careful checker rejected it: {info['reason'] or 'invalid'}."
 
 
-def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_width=8):
+def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_width=8, feedback=None):
     """Keep `width` agents in flight; an agent that ends without an accept is replaced by the next slot on its node.
     burst_seconds: if the case has no accept by then, raise the in-flight width to burst_width (new slots on nodes
     (case_index + slot) % 4), still within `cap` agents in total."""
@@ -190,12 +192,13 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
 
     def launch(slot, node):  # caller holds the lock
         state['running'] += 1
-        t = threading.Thread(target=run, args=(slot, node))
+        extra = feedback(list(results)) if feedback and slot >= width else None
+        t = threading.Thread(target=run, args=(slot, node, extra))
         threads.append(t)
         t.start()
 
-    def run(slot, node):
-        info = agent(slot, node)
+    def run(slot, node, extra=None):
+        info = agent(slot, node, extra) if feedback else agent(slot, node)
         with lock:
             results.append(info)
             state['running'] -= 1
@@ -251,7 +254,7 @@ def new_race(t0):
 def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     off = plan['seed_offsets'][policy]
     t0 = time.monotonic()
-    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll12burst') else None
+    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll8repair', 'roll12burst') else None
     agent = lambda slot, extra='': run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off, t0, race)
     if policy == 'deep4':
         agents = parallel([lambda s=s: agent(s) for s in range(4)])
@@ -281,6 +284,16 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     elif policy == 'roll8cancel':
         agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, '', slots,
                                                       off, t0, race, node), race, case_index)
+    elif policy == 'roll8repair':
+        def board(done):
+            rejected = [a for a in done if a['plan'] is not None and a['verdict'] is False]
+            if not rejected:
+                return ''
+            return ('Earlier attempts on this exact task failed:\n' + '\n'.join(critique(a) for a in rejected) +
+                    '\nAvoid these mistakes and give a corrected complete plan.')
+        agents = rolling(lambda slot, node, extra='': run_agent(plan, source, out, task, seed, case_index, policy, slot,
+                                                                extra or '', slots, off, t0, race, node),
+                         race, case_index, feedback=board)
     elif policy == 'roll12burst':
         agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, '', slots,
                                                       off, t0, race, node), race, case_index, cap=12,
