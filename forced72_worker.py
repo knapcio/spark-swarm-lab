@@ -33,6 +33,7 @@ def main(argv=None):
     events = Events(args.events, args.variant)
     budget = Budget(args.max_calls, args.max_completion_tokens)
     client = ForcedClient(args.endpoint, args.model, budget, events, args.seed)
+    client.loop_watch = args.variant == 'xl_forced_watchdog'
     experiment = Experiment(args, client, events)
     puzzle_id = 'p0-' + fingerprint(initial, args.target)[:10]
     events.emit('run_start', config=vars(args), budget=budget.snapshot(),

@@ -16,6 +16,7 @@ import json
 import time
 import urllib.request
 import uuid
+import zlib
 
 from direct_solver import replay_plan
 from followup72 import prompt_for, sha
@@ -25,7 +26,7 @@ SYSTEM = 'Solve the precise arithmetic task. Return only the requested JSON obje
 VARIANTS = {'forced_explicit': 'index_explicit', 'forced_original': 'index_original',
             'plain_original': 'index_original', 'long_forced_explicit': 'index_explicit',
             'long_forced_original': 'index_original', 'xl_forced_original': 'index_original',
-            'xxl_forced_original': 'index_original'}
+            'xxl_forced_original': 'index_original', 'xl_forced_watchdog': 'index_original'}
 # long_*: same agent with the whole 16K context: thinking up to 14848, total completion 16000.
 # plain_original = the original single reasoning call (index_original, 8192, no second call) on this transport.
 THINK_CAP = 7168
@@ -35,6 +36,14 @@ CAPS = {name: (14848, 16000) if name.startswith('long_') else (THINK_CAP, TOTAL)
 CAPS['xl_forced_original'] = (30720, 32768)
 # xxl_*: thinking-budget scaling point: thinking up to 61440, total 65536 (128K serving).
 CAPS['xxl_forced_original'] = (61440, 65536)
+# xl_forced_watchdog: xl_forced_original plus a repetition-loop watchdog on the thinking stream (see loop_detected).
+CAPS['xl_forced_watchdog'] = (30720, 32768)
+LOOP_WINDOW, LOOP_STEP, LOOP_RATIO, LOOP_HITS = 2000, 500, 0.06, 2
+
+
+def loop_ratio(window):
+    raw = window.encode()
+    return len(zlib.compress(raw)) / max(1, len(raw))
 END_THINK = '</think>'
 FORCE_TEXT = '\n</think>\n'
 IDLE_TIMEOUT = 120
@@ -64,6 +73,7 @@ class ForcedClient:
         self.model, self.budget, self.events, self.seed = model, budget, events, seed
         self.idle_timeout, self.wall_limit = idle_timeout, wall_limit
         self.infra_failures = self.budget_failures = 0
+        self.loop_watch = False  # set for xl_forced_watchdog: stop a thinking stream that has become a repetition loop
 
     def post(self, path, body, timeout):
         request = urllib.request.Request(self.base + path, data=json.dumps(body).encode(),
@@ -98,6 +108,8 @@ class ForcedClient:
                          request_body_sha256=wire_sha, request_max_tokens=max_tokens, request_thinking=True, **context)
         start = time.monotonic()
         text, token_ids, finish, usage, error, received = '', [], None, {}, None, False
+        watch = self.loop_watch and not thinking_closed
+        checked, hits, loop_stop = 0, 0, False
         try:
             # Socket timeout applies per read: it detects a silent server, not a slow one.
             with self.post('/v1/completions', body, self.idle_timeout) as response:
@@ -117,6 +129,13 @@ class ForcedClient:
                     if chunk.get('usage'):
                         usage = {k: v for k, v in chunk['usage'].items()
                                  if k in ('prompt_tokens', 'completion_tokens', 'total_tokens') and type(v) is int}
+                    if watch and finish is None and END_THINK not in text and len(text) - checked >= LOOP_STEP \
+                            and len(text) >= LOOP_WINDOW:
+                        checked = len(text)
+                        hits = hits + 1 if loop_ratio(text[-LOOP_WINDOW:]) < LOOP_RATIO else 0
+                        if hits >= LOOP_HITS:  # looping: stop here; the caller forces the answer like a length cut
+                            loop_stop, finish = True, 'length'
+                            break
             received = finish is not None
             if not received:
                 raise ConnectionError('stream ended without finish_reason')
@@ -136,7 +155,8 @@ class ForcedClient:
                          latency_ms=round((time.monotonic() - start) * 1000, 2), usage=usage,
                          completion_tokens_charged=max_tokens if reported is None else reported, error=error,
                          response=answer, reasoning=reasoning, finish_reason=finish, response_received=received,
-                         closed_thinking=answer is not None, token_ids=token_ids, request_body_sha256=wire_sha, **context)
+                         closed_thinking=answer is not None, token_ids=token_ids, request_body_sha256=wire_sha,
+                         loop_stop=loop_stop, **context)
         return dict(request_id=request_id, dispatched=True, response_received=received, text=text,
                     token_ids=token_ids, finish_reason=finish, usage=usage, error=error, answer=answer)
 

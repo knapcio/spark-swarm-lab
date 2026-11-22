@@ -124,6 +124,46 @@ class ForcedTests(unittest.TestCase):
         c, _ = self.run_case([sse('n</think>' + GOOD, [5], 'stop')], variant='forced_original')
         self.assertNotIn('Leftover numbers are allowed', c.prompt)
 
+def stream(pieces):
+    chunks = [dict(choices=[dict(text=t, token_ids=[i], finish_reason=None)]) for i, t in enumerate(pieces)]
+    chunks.append(dict(choices=[dict(text='', token_ids=[], finish_reason='length')]))
+    return io.BytesIO(b''.join(b'data: ' + json.dumps(c).encode() + b'\n\n' for c in chunks) + b'data: [DONE]\n\n')
+
+
+class LoopWatchTests(unittest.TestCase):
+    def client(self, replies, watch=True):
+        c = FakeForced(replies)
+        c.loop_watch = watch
+        return c
+
+    def test_repetition_loop_is_stopped_like_a_length_cut(self):
+        varied = [f'step {i}: try {i * 37 % 101} times {i % 7} gives {i * 37 % 101 * (i % 7)}; ' for i in range(60)]
+        loop = ['so the answer is 5 and the answer is 5. '] * 400
+        c = self.client([stream(varied + loop)])
+        out = c.complete(0, 'plan', [1, 2, 3], 8000)
+        self.assertEqual(out['finish_reason'], 'length')
+        self.assertIsNone(out['error'])
+        self.assertLess(len(out['token_ids']), len(varied) + 200)  # stopped long before the stream ended
+        self.assertGreater(len(out['token_ids']), len(varied))
+
+    def test_varied_thinking_is_not_stopped(self):
+        varied = [f'candidate {i}: {i * 13 % 97} plus {i * 29 % 89} is {(i * 13 % 97) + (i * 29 % 89)}, check against {i * 7}. ' for i in range(400)]
+        c = self.client([stream(varied)])
+        out = c.complete(0, 'plan', [1, 2, 3], 8000)
+        self.assertEqual(len(out['token_ids']), len(varied))
+
+    def test_watch_off_reads_the_whole_loop(self):
+        loop = ['so the answer is 5 and the answer is 5. '] * 400
+        c = self.client([stream(loop)], watch=False)
+        out = c.complete(0, 'plan', [1, 2, 3], 8000)
+        self.assertEqual(len(out['token_ids']), 400)
+
+    def test_closed_thinking_is_not_watched(self):
+        loop = ['so the answer is 5 and the answer is 5. '] * 400
+        c = self.client([stream(loop)])
+        out = c.complete(0, 'forced_answer', [1, 2, 3], 8000, thinking_closed=True)
+        self.assertEqual(len(out['token_ids']), 400)
+
 
 if __name__ == '__main__':
     unittest.main()
