@@ -70,6 +70,12 @@ x4, mem fraction 0.75. M ran both at once (10 + 10 client requests per node); Sa
 {md}
 {verdict}
 
+Why: the static split. Each workload got half of the per-node concurrency for the whole run, and when the coding swarm
+finished (after {w['mixed_coding_done'] / 60:.0f} min) the arithmetic swarm kept running alone with only 10 requests per node for the last
+{(w['mixed'] - w['mixed_coding_done']) / 60:.0f} min, so part of the fleet stood idle; the long hard-case tails of both swarms do not overlap enough to make up for it.
+Accuracy is unaffected by sharing (both paired differences are run-to-run noise). Sharing would need a dynamic split
+(one global request budget per node handed to whichever swarm has work), which this study did not test.
+
 Files: `inkling/mixed_arms.py` (concurrent driver), `inkling/arms.py`, `inkling/coding_arms.py`, `inkling/report_mixed_task.py`,
 numbers in [report.json](report.json).
 """)
