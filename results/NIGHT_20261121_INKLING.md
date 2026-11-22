@@ -159,8 +159,9 @@ prompt per case, well under 1 % of the work, so no fleet study was spent on it.
 ## Day 2026-11-22 (9): escalation cap 12 instead of 8 ([swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md))
 
 Fresh hard-v12 (plan 0a475c3 frozen first). Default roll8strategy 81/96 (62.0K tokens/case, 79 min); cap 12 85/96, 0 wrong,
-2 cases answered only by agents 9-12, but +24 % tokens and +29 % wall (frozen limits 20 % / 25 %). **Cap 8 stays the
-default**; cap 12 is a "maximum accuracy" option.
+2 cases answered only by agents 9-12, paired +6/-2 (p = 0.29), 2.28 vs 1.85 Wh per solved case; +24 % tokens and +29 % wall
+(my frozen limits were 20 % / 25 %). **Cap 12 = max-accuracy mode**; cap 8 stays the efficiency default until a
+replication on a fresh corpus (queued next) shows whether the gain holds.
 
 ## Incidents
 

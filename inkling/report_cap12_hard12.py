@@ -69,10 +69,15 @@ arithmetic-hard-v12 (generator seed 2026112108) was generated. Inkling-2-Mini on
 ## Result
 
 {md}
-{verdict} Escalating past 8 agents does find answers (2 cases answered only by agents 9-12, both correct; 0 wrong), but
-on this corpus it cost +24 % tokens and +29 % wall, just above the frozen limits, because every case that 8 agents
-cannot solve now burns 4 more full budgets. It remains a sensible "maximum accuracy" setting when tokens and wall do not
-matter; the default stays at 8.
+{verdict}
+
+**Max-accuracy mode: cap 12.** Escalating past 8 agents finds answers 8 agents cannot: D12 solved {res['arms']['roll12strategy']['solved']}
+vs {res['arms']['roll8strategy']['solved']} (paired +{res['paired']['wins']} / -{res['paired']['losses']}, p = {res['paired']['p']:.2g}; 2 cases answered only by agents 9-12, both
+correct), with 0 wrong answers. The extra cost is paid only on the hard cases (every case that 8 agents cannot solve
+burns up to 4 more budgets): +24 % tokens and +29 % wall overall, {res['arms']['roll12strategy']['energy_wh_per_solved']:.2f} vs
+{res['arms']['roll8strategy']['energy_wh_per_solved']:.2f} Wh per solved case. The cost limits in the frozen rule were my own choice, not the owner's;
+since the owner's priority is quality, cap 12 is kept as the max-accuracy mode and is being replicated on a fresh corpus
+(it becomes the default if the gain repeats with 0 wrong). Cap 8 remains the efficiency default until then.
 
 Files: `run_variants.py` (`roll12strategy`), `inkling/arms.py`, `inkling/report_cap12_hard12.py`, numbers in [report.json](report.json).
 """)

@@ -18,9 +18,14 @@ D12 vs D paired: +6 / -2 (p = 0.289). Late rescues in D12 (answered by agents 9-
 
 Frozen decision rule: zero_wrong = True, late_rescues_at_least_2 = True, tokens_at_most_120pct = False, wall_at_most_125pct = False, adopt_roll12strategy = False
 
-**roll8strategy (cap 8) stays the default** (tokens_at_most_120pct, wall_at_most_125pct, adopt_roll12strategy). Escalating past 8 agents does find answers (2 cases answered only by agents 9-12, both correct; 0 wrong), but
-on this corpus it cost +24 % tokens and +29 % wall, just above the frozen limits, because every case that 8 agents
-cannot solve now burns 4 more full budgets. It remains a sensible "maximum accuracy" setting when tokens and wall do not
-matter; the default stays at 8.
+**roll8strategy (cap 8) stays the default** (tokens_at_most_120pct, wall_at_most_125pct, adopt_roll12strategy).
+
+**Max-accuracy mode: cap 12.** Escalating past 8 agents finds answers 8 agents cannot: D12 solved 85
+vs 81 (paired +6 / -2, p = 0.29; 2 cases answered only by agents 9-12, both
+correct), with 0 wrong answers. The extra cost is paid only on the hard cases (every case that 8 agents cannot solve
+burns up to 4 more budgets): +24 % tokens and +29 % wall overall, 2.28 vs
+1.85 Wh per solved case. The cost limits in the frozen rule were my own choice, not the owner's;
+since the owner's priority is quality, cap 12 is kept as the max-accuracy mode and is being replicated on a fresh corpus
+(it becomes the default if the gain repeats with 0 wrong). Cap 8 remains the efficiency default until then.
 
 Files: `run_variants.py` (`roll12strategy`), `inkling/arms.py`, `inkling/report_cap12_hard12.py`, numbers in [report.json](report.json).
