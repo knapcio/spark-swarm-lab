@@ -106,6 +106,9 @@ Fresh seeds 7-9 on coding-hard-v1 (plans ec69a43 frozen first), both arms with e
 Fresh hard-v9 (plan 8b28aed frozen first; a harder corpus). B+ 86/96 (0 wrong, 69.1K tokens/case); escalation agents
 given every rejected plan with the judge's reason: 83/96, and their success rate halved (4/73 vs 9/82 accepted;
 4 vs 8 strict rescues). Feedback anchors the agents. **B+ (fresh escalation agents) stays the default.**
+[One DeepSeek on hard-v9](swarm-repair-hard9-v1/DEEPSEEK.md): 77/96; B+ 86 (+12/-3, p = 0.035). **Pre-registered pooled
+hard-v7 + v9: B+ 176 vs One DeepSeek 156 of 192, paired +25/-5 (p = 0.0003), 0 wrong**: the swarm's lead over DeepSeek
+replicates on fresh tasks. Hybrid (DeepSeek only on B+ abstentions): 181/192.
 
 ## Incidents
 
