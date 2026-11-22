@@ -5,7 +5,9 @@ upstream stream and SGLang aborts) and queued agents of that case never start. A
 proposal in TIME order; the case is solved if it passes the hidden holdout (graded by the worker, never read by the
 controller). Same jobs, seeds, endpoints, grading and fault rules as run_coding_agents.py; a terminated agent is a
 controller decision, not an operational fault. Optional plan field stagger = {"first": k, "after_seconds": T}: agents
-k.. of a case start only if the case has no passing proposal T seconds after its first agent started. Plan-only by default.
+k.. of a case start only if the case has no passing proposal T seconds after its first agent started. Optional plan field
+rolling = {"width": W} (failure-driven replacement, exclusive with stagger): W agents start; agent k >= W of a case
+starts only after k - W + 1 agents of that case have ended without a passing proposal. Plan-only by default.
 """
 import argparse
 import json
@@ -80,9 +82,9 @@ def main(argv=None):
     write(output / 'metadata.json', meta)
     rows, errors, lock, stop = [], [], threading.Lock(), threading.Event()
     cancel = {(j['task_id'], j['seed']): threading.Event() for j in jobs}
-    first_start, first_done = {}, {}
-    stagger = plan.get('stagger')
-    first_k = stagger['first'] if stagger else len(plan['agent_variants'])
+    first_start, first_done, failed = {}, {}, {}
+    stagger, rolling = plan.get('stagger'), plan.get('rolling')
+    first_k = stagger['first'] if stagger else rolling['width'] if rolling else len(plan['agent_variants'])
     queues = {e: iter([j for j in jobs if j['endpoint'] == e and j['agent'] < first_k]) for e in ENDPOINTS}
     later = {e: [j for j in jobs if j['endpoint'] == e and j['agent'] >= first_k] for e in ENDPOINTS}
     start = time.monotonic()
@@ -95,7 +97,11 @@ def main(argv=None):
         now = time.monotonic()
         for j in pending:
             k = (j['task_id'], j['seed'])
-            if k in first_start and (now - first_start[k] >= stagger['after_seconds'] or first_done.get(k, 0) >= first_k):
+            if rolling:
+                due = failed.get(k, 0) >= j['agent'] - first_k + 1
+            else:
+                due = k in first_start and (now - first_start[k] >= stagger['after_seconds'] or first_done.get(k, 0) >= first_k)
+            if due:
                 pending.remove(j)
                 return j, False
         job = next(queues[endpoint], None)
@@ -142,6 +148,8 @@ def main(argv=None):
             with lock:
                 if job['agent'] < first_k:
                     first_done[key] = first_done.get(key, 0) + 1
+                if not row['feedback_pass'] and not row['cancelled']:
+                    failed[key] = failed.get(key, 0) + 1
                 row['winner'] = False
                 if row['feedback_pass'] and not cancel[key].is_set():
                     row.update(winner=True, stop_seconds=round(time.monotonic() - first_start[key], 1))

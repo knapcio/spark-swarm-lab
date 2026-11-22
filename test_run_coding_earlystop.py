@@ -19,7 +19,7 @@ def sha(path):
 
 
 class EarlyStopTests(unittest.TestCase):
-    def run_main(self, fast_pass, holdout, stagger=None):
+    def run_main(self, fast_pass, holdout, stagger=None, rolling=None):
         """fast_pass: agents that end at once with feedback pass; every other agent runs until cancelled."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -34,6 +34,8 @@ class EarlyStopTests(unittest.TestCase):
                         scheduling=dict(concurrent_agents_per_node=2), limits=dict(agent_wall_deadline_seconds=60))
             if stagger:
                 plan['stagger'] = stagger
+            if rolling:
+                plan['rolling'] = rolling
             plan_path = root / 'plan.json'
             plan_path.write_text(json.dumps(plan))
             adm = root / 'adm.json'
@@ -96,6 +98,17 @@ class EarlyStopTests(unittest.TestCase):
         code, cases, started = self.run_main(fast_pass={3}, holdout={3}, stagger=dict(first=2, after_seconds=30))
         self.assertEqual(code, 0)
         self.assertTrue(all(c['solved'] and c['winner_agent'] == 3 for c in cases))
+
+    def test_rolling_replaces_failures_one_by_one(self):
+        # width 2: agents 0 and 1 start; slow agents run ~3 s and fail; agent 3 passes once started
+        code, cases, started = self.run_main(fast_pass={3}, holdout={3}, rolling=dict(width=2))
+        self.assertEqual(code, 0)
+        self.assertTrue(all(c['solved'] and c['winner_agent'] == 3 for c in cases))
+
+    def test_rolling_no_extra_agents_when_first_passes(self):
+        code, cases, started = self.run_main(fast_pass={0}, holdout={0}, rolling=dict(width=2))
+        self.assertTrue(all(agent < 2 for _, agent in started))
+        self.assertTrue(all(c['never_started'] >= 2 for c in cases))
 
     def test_cancelled_row_is_not_an_operational_fault(self):
         row = dict(cancelled=True, controller_error=None, malformed_lines=0)
