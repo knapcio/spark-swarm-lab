@@ -13,6 +13,8 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
                 plan is replaced at once by a fresh-seed agent on the same node, up to 8 agents in total
   roll8repair   roll8cancel, but each escalation agent (slot >= 4) also sees every plan of this case that the judge has
                 rejected so far, with the judge's one-sentence reason (the repair4 critique text)
+  roll8strategy roll8cancel, but each escalation agent (slot >= 4) gets one of the four task-agnostic strategy hints
+                (STRATEGIES[slot - 4]); the first four agents are unchanged
   roll12burst   roll8cancel with a cap of 12 agents and a time trigger: if no plan is accepted BURST_SECONDS after the
                 case started, 8 agents are kept in flight instead of 4 (failures still replaced, first accept cancels)
 Every agent record carries timing (seconds from case start); decisions of the original policies are unchanged.
@@ -254,7 +256,7 @@ def new_race(t0):
 def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     off = plan['seed_offsets'][policy]
     t0 = time.monotonic()
-    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll8repair', 'roll12burst') else None
+    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll8repair', 'roll8strategy', 'roll12burst') else None
     agent = lambda slot, extra='': run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off, t0, race)
     if policy == 'deep4':
         agents = parallel([lambda s=s: agent(s) for s in range(4)])
@@ -294,6 +296,10 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
         agents = rolling(lambda slot, node, extra='': run_agent(plan, source, out, task, seed, case_index, policy, slot,
                                                                 extra or '', slots, off, t0, race, node),
                          race, case_index, feedback=board)
+    elif policy == 'roll8strategy':
+        agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot,
+                                                      STRATEGIES[(slot - 4) % 4] if slot >= 4 else '', slots, off, t0, race, node),
+                         race, case_index)
     elif policy == 'roll12burst':
         agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, '', slots,
                                                       off, t0, race, node), race, case_index, cap=12,
