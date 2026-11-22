@@ -1,0 +1,77 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "status": "FROZEN",
+ "study": "swarm-strategy-hard10-v1",
+ "dataset": "datasets/arithmetic-hard-v10/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v10",
+ "split": "evaluation",
+ "tasks": 48,
+ "seeds": [
+  1,
+  2
+ ],
+ "policies": [
+  "roll8cancel",
+  "roll8strategy"
+ ],
+ "arm_order": [
+  "roll8cancel",
+  "roll8strategy"
+ ],
+ "agent_variant": "xl_forced_original",
+ "seed_offsets": {
+  "roll8cancel": 10400,
+  "roll8strategy": 10400
+ },
+ "pairing": "Same tasks, seeds, agent seeds (1000*seed + 10400 + slot), nodes and judge seeds; the first four agents of both arms are identical in configuration. Run-to-run generation noise (~4 cases per 96) applies to paired solved counts.",
+ "source_revision": "d94c893efb2a77041ef9086139cc570b994687c0",
+ "source_path": ".runtime/xl-source",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason), unchanged; the exact verifier only scores",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_policy_cases": 20,
+ "concurrent_policy_cases_by_policy": {
+  "deep4cancel": 20,
+  "roll8cancel": 20,
+  "deep4": 20
+ },
+ "concurrent_requests_per_endpoint": 20,
+ "concurrency_note": "At most 4 agents in flight per case in every arm, 20 cases at once, per-endpoint slot cap 20 (agents and judges) <= 25. Escalation agents run on the node of the agent they replace.",
+ "runner": "run_variants.py --policy ARM, one arm at a time, driven by inkling/arms.py",
+ "execution": "Arms run sequentially in arm_order, each alone on the fleet via inkling/arms.py (fresh admission with the shim sha and mem fraction below, prefix-cache flush, server counters, idle wait, GPU energy). Watchdog inkling/watch.sh; MemAvailable logged every 60 s.",
+ "resume_rule": "If an arm stops on an infrastructure fault (runner stop flag, worker or judge infra failure, node fault), the fault is fixed and the same arm is continued with arms.py --resume-from (skips its cases that finished without infra faults; reruns the others with the same seeds) and documented as an amendment. Server tokens, wall and energy of an arm are then the sums over its segments (wasted work of the stopped segment included and reported separately). Never a silent restart; no case is dropped.",
+ "exclusions": "None. All 96 cases of each arm count.",
+ "generator": "make_arithmetic_hard.py --seed 2026112106 --protocol arithmetic-hard-v10 --output datasets/arithmetic-hard-v10 (after this plan is committed and pushed); same rules as hard-v5..v9",
+ "report": "inkling/report_strategy_hard10.py -> results/swarm-strategy-hard10-v1/REPORT.md + report.json",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh, MEM=0.75 since 2026-11-21 16:25 Europe/Warsaw (KV ~1.08M tokens per node)",
+  "adapter": "inkling/shim.py (vLLM dialect; client disconnects close the upstream stream and count as shim:client_cancels)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "temperature": "0.8 (harness constant)",
+  "mem_fraction": "0.75"
+ },
+ "frozen_note": "Frozen 2026-11-22 BEFORE arithmetic-hard-v10 exists. In swarm-repair-hard9-v1, escalation agents shown the rejected plans with the judge reasons solved half as often as fresh ones (4/73 vs 9/82 accepted): feedback anchors them. This study tests the opposite lever, diversity: each escalation agent gets a different task-agnostic strategy hint (the four STRATEGIES of the 2026-11-17 variant screen, where strategy4 was the second-best first-round policy on Nemotron).",
+ "question": "On fresh hard tasks generated after this freeze, do escalation agents with distinct strategy hints (roll8strategy) rescue more hard cases than fresh, unhinted escalation agents (roll8cancel, B+)?",
+ "arms": {
+  "B+": "roll8cancel (default): 4 in flight, each agent ending without an accepted plan is replaced by a fresh-seed agent on its node, up to 8; first accept cancels the rest",
+  "S": "roll8strategy: identical, but escalation agent k (slots 4-7) gets strategy hint k appended to its prompt (work backward from the target / product close to the target / use every number / build one large intermediate first)"
+ },
+ "primary_outcomes": {
+  "rescues": "Mechanism count inside each arm: strict rescues = cases answered by an escalation agent (slot >= 4) after all of the first four had ended without an accept; and the success rate of escalation agents (accepted plans / escalation agents started).",
+  "accuracy": "Solved and wrong per arm; S vs B+ paired two-sided exact sign test.",
+  "tokens": "Server-counted generated tokens per case, S vs B+.",
+  "wall": "Arm wall time, S vs B+."
+ },
+ "decision_rule": "roll8strategy replaces B+ as the default if: 0 wrong answers AND S strict rescues > B+ strict rescues AND S escalation-agent success rate > B+ escalation-agent success rate AND S server tokens per case <= 1.10 x B+. Otherwise B+ stays.",
+ "secondary_outcomes": "GPU energy per solved case; escalated cases; case latency distribution; judge verdicts and false accepts (critique could make plans look plausible: watch false accepts).",
+ "baseline_note": "Defaults: arithmetic B+ (roll8cancel); coding early stop + staggered start. Pooled hard-v7+v9: B+ 176 vs One DeepSeek 156 of 192.",
+ "code_sha256": {
+  "run_variants.py": "a2199f04f9c32d1f2c43b85b782a2fa0f4dea5b2146346bc97ec287470b5d7ee",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "445349b83e910f1189df8908aff2428ab3ee1dd0bb862f1fc46978b31bda82c6",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3"
+ },
+ "smoke": "Throwaway smoke (not part of the study) on development task dev-hadec4ba7e36 (arithmetic-hard-v5): agents 1-4 had no hint; the first escalation agent (slot 4) got \"Strategy hint: work backward from the target ...\" in its prompt (extra_prompt event)."
+}
