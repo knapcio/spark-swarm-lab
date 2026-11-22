@@ -1,0 +1,156 @@
+{
+ "study": "swarm-strategy-hard10-v1",
+ "arms": {
+  "roll8cancel": {
+   "cases": 96,
+   "solved": 83,
+   "wrong": 0,
+   "abstain": 13,
+   "oracle": 83,
+   "infra": 0,
+   "one_agent0": 25,
+   "server_generation_tokens": 5599294.0,
+   "server_decode_tokens": 5601114.0,
+   "server_prompt_tokens": 3714015.0,
+   "server_requests": 703.0,
+   "shim_client_cancels": 237.0,
+   "shim_upstream_errors": 0.0,
+   "server_tokens_per_case": 58326,
+   "client_tokens_per_case": 44249,
+   "arm_wall_seconds": 4621,
+   "segments": 1,
+   "energy_wh": 145.9,
+   "energy_wh_per_solved": 1.76,
+   "energy_wh_per_case": 1.52,
+   "case_seconds": {
+    "median": 330,
+    "p90": 2362,
+    "max": 3239
+   },
+   "answer_seconds": {
+    "median": 329,
+    "p90": 2362,
+    "max": 3239
+   },
+   "agents_started": 449,
+   "agents_cancelled": 237,
+   "agents_unstarted": 0,
+   "judges_skipped": 0,
+   "verdicts": 138,
+   "false_accepts": 0,
+   "false_rejects": 0,
+   "deadlines": 0
+  },
+  "roll8strategy": {
+   "cases": 96,
+   "solved": 86,
+   "wrong": 0,
+   "abstain": 10,
+   "oracle": 86,
+   "infra": 0,
+   "one_agent0": 20,
+   "server_generation_tokens": 5317898.0,
+   "server_decode_tokens": 5319490.0,
+   "server_prompt_tokens": 3476499.0,
+   "server_requests": 711.0,
+   "shim_client_cancels": 238.0,
+   "shim_upstream_errors": 0.0,
+   "server_tokens_per_case": 55395,
+   "client_tokens_per_case": 41152,
+   "arm_wall_seconds": 4312,
+   "segments": 1,
+   "energy_wh": 137.3,
+   "energy_wh_per_solved": 1.6,
+   "energy_wh_per_case": 1.43,
+   "case_seconds": {
+    "median": 332,
+    "p90": 2573,
+    "max": 3333
+   },
+   "answer_seconds": {
+    "median": 324,
+    "p90": 2573,
+    "max": 3333
+   },
+   "agents_started": 444,
+   "agents_cancelled": 238,
+   "agents_unstarted": 0,
+   "judges_skipped": 0,
+   "verdicts": 159,
+   "false_accepts": 0,
+   "false_rejects": 0,
+   "deadlines": 0
+  }
+ },
+ "rescues": {
+  "roll8cancel": {
+   "loose": 2,
+   "strict": 1,
+   "strict_solved": 1,
+   "strict_cases": [
+    [
+     "eva-h7f24ebb38cb",
+     2
+    ]
+   ],
+   "escalated_cases": 19,
+   "escalated_agents": 65,
+   "escalated_in_solved_by_first_four": 4
+  },
+  "roll8strategy": {
+   "loose": 5,
+   "strict": 4,
+   "strict_solved": 4,
+   "strict_cases": [
+    [
+     "eva-h7f24ebb38cb",
+     2
+    ],
+    [
+     "eva-ha5c350b17c9",
+     1
+    ],
+    [
+     "eva-hda88b851fe4",
+     1
+    ],
+    [
+     "eva-ha3c1ce5df63",
+     2
+    ]
+   ],
+   "escalated_cases": 16,
+   "escalated_agents": 60,
+   "escalated_in_solved_by_first_four": 1
+  }
+ },
+ "escalation": {
+  "roll8cancel": {
+   "started": 65,
+   "accepted": 2,
+   "verifier_solved": 2,
+   "cancelled": 11,
+   "rate": 0.031
+  },
+  "roll8strategy": {
+   "started": 60,
+   "accepted": 5,
+   "verifier_solved": 5,
+   "cancelled": 9,
+   "rate": 0.083
+  }
+ },
+ "paired": {
+  "pairs": 96,
+  "wins": 5,
+  "losses": 2,
+  "p": 0.453125
+ },
+ "decision": {
+  "zero_wrong": true,
+  "more_strict_rescues": true,
+  "higher_escalation_success": true,
+  "tokens_at_most_110pct": true,
+  "adopt_roll8strategy": true
+ }
+}

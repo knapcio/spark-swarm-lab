@@ -138,6 +138,13 @@ coding **early stop + staggered start**. Per solved case they cost about 1.4-1.9
 hardness) and 1.4 Wh (coding), against 1.9-2.0 Wh (deep4) and 2.7 Wh (all 8 coding agents to the end) before;
 One DeepSeek costs 1.3-1.8 Wh per solved case on the same fleet and solves fewer of these tasks.
 
+## Morning 2026-11-22 (7): escalation agents with distinct strategy hints ([swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md))
+
+Fresh hard-v10 (plan 37b82fc frozen first). B+ 83/96 (58.3K tokens/case, 1.76 Wh per solved case); escalation agents
+with one of four task-agnostic strategy hints each: **86/96, 0 wrong, 55.4K tokens/case, 1.60 Wh**, escalation success
+5/60 vs 2/65 accepted, 4 vs 1 strict rescues (small counts; paired +5/-2). Frozen rule met: **roll8strategy is the new
+arithmetic default** (B+ plus diverse escalation). Diversity helps where critique (hard9) hurt.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -150,4 +157,4 @@ One DeepSeek costs 1.3-1.8 Wh per solved case on the same fleet and solves fewer
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md)

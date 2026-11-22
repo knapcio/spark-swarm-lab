@@ -62,7 +62,10 @@ arithmetic-hard-v10 (generator seed 2026112106) was generated. Inkling-2-Mini on
 ## Result
 
 {md}
-{verdict}
+{verdict} The counts behind it are small (5 vs 2 accepted escalation agents, 4 vs 1 strict rescues) and the paired solved
+difference is within run-to-run noise, but by mechanism the hints only change agents that start after a failure, so the
+first four agents and every case they solve are untouched; together with swarm-repair-hard9-v1 (critiques halved the
+escalation success) the picture is consistent: escalation agents should be fresh and diverse, not anchored.
 
 Files: `run_variants.py` (`roll8strategy`), `inkling/arms.py`, `inkling/report_strategy_hard10.py`, numbers in [report.json](report.json).
 """)
