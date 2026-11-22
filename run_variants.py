@@ -13,6 +13,7 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
                 plan is replaced at once by a fresh-seed agent on the same node, up to 8 agents in total
   roll8repair   roll8cancel, but each escalation agent (slot >= 4) also sees every plan of this case that the judge has
                 rejected so far, with the judge's one-sentence reason (the repair4 critique text)
+  roll3to8      roll8cancel with 3 agents in flight instead of 4 (failures replaced by fresh-seed agents up to 8 in total)
   roll8strategy roll8cancel, but each escalation agent (slot >= 4) gets one of the four task-agnostic strategy hints
                 (STRATEGIES[slot - 4]); the first four agents are unchanged
   roll12burst   roll8cancel with a cap of 12 agents and a time trigger: if no plan is accepted BURST_SECONDS after the
@@ -256,7 +257,7 @@ def new_race(t0):
 def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     off = plan['seed_offsets'][policy]
     t0 = time.monotonic()
-    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll8repair', 'roll8strategy', 'roll12burst') else None
+    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll3to8', 'roll8repair', 'roll8strategy', 'roll12burst') else None
     agent = lambda slot, extra='': run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off, t0, race)
     if policy == 'deep4':
         agents = parallel([lambda s=s: agent(s) for s in range(4)])
@@ -296,6 +297,9 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
         agents = rolling(lambda slot, node, extra='': run_agent(plan, source, out, task, seed, case_index, policy, slot,
                                                                 extra or '', slots, off, t0, race, node),
                          race, case_index, feedback=board)
+    elif policy == 'roll3to8':
+        agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, '', slots,
+                                                      off, t0, race, node), race, case_index, width=3)
     elif policy == 'roll8strategy':
         agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot,
                                                       STRATEGIES[(slot - 4) % 4] if slot >= 4 else '', slots, off, t0, race, node),
@@ -311,7 +315,7 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
         selection = dict(selected_slot=race['winner'], answer_seconds=race['answer_s'],
                      cancelled_agents=sum(a['cancelled'] for a in agents),
                      unstarted_agents=sum(not a['started'] for a in agents) + max(0, 4 - len(agents)),
-                     escalated_agents=sum(a['slot'] >= 4 and a['started'] for a in agents),
+                     escalated_agents=sum(a['slot'] >= (3 if policy == 'roll3to8' else 4) and a['started'] for a in agents),
                      burst=bool(race.get('burst_at')),
                      skipped_judges=sum(a['judge_skipped'] for a in agents))
     else:  # answer = first accepted in slot order

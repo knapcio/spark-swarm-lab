@@ -77,7 +77,7 @@ class CancelPolicyTests(unittest.TestCase):
         def judge(cand, endpoint, events_path, seed):
             slot = int(str(events_path).rsplit('-a', 1)[1].split('.')[0])
             return dict(verdict=slot in accept, reason='', infra=0, tokens=1)
-        plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], deep4cancel=1400, waves2cancel=1400, roll8cancel=1400, roll12burst=1400, roll8repair=1400, roll8strategy=1400), burst_seconds=0.3)
+        plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], deep4cancel=1400, waves2cancel=1400, roll8cancel=1400, roll12burst=1400, roll8repair=1400, roll8strategy=1400, roll3to8=1400), burst_seconds=0.3)
         with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute', execute), patch.object(v, 'plan_of', plan_of), \
                 patch.object(v, 'execute_cancellable', execute), patch.object(v, 'judge_with_reason', judge):
             out = Path(d)
@@ -173,6 +173,16 @@ class CancelPolicyTests(unittest.TestCase):
         self.assertEqual(sorted(started), list(range(8)))
         self.assertFalse(any(a['extra'] for a in rec['agents'][:4]))
         self.assertTrue(all(a['extra'] for a in rec['agents'][4:]))
+
+    def test_width3_starts_three_and_escalates_to_eight(self):
+        rec, started = self.run_policy('roll3to8', fast=set(range(8)), accept=set())
+        self.assertEqual(sorted(started), list(range(8)))
+        self.assertEqual(rec['escalated_agents'], 5)
+
+    def test_width3_accept_in_first_wave(self):
+        rec, started = self.run_policy('roll3to8', fast={1}, accept={1})
+        self.assertEqual(rec['selected_slot'], 1)
+        self.assertLessEqual(set(started), {0, 1, 2})
 
     def test_deep4_keeps_slot_order_selection(self):
         rec, started = self.run_policy('deep4', fast={0, 1, 2, 3}, accept={1, 3})
