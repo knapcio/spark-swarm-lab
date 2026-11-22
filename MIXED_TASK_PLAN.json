@@ -1,0 +1,40 @@
+{
+ "protocol": "mixed-task-study-v1",
+ "status": "FROZEN",
+ "study": "mixed-task-v1",
+ "frozen_note": "Frozen 2026-11-22 BEFORE arithmetic-hard-v13 exists and before any call with seeds 10-12 on coding-hard-v1. Study mixed-task-v1: the two default swarms (arithmetic roll8strategy, coding early stop + staggered start) served at the same time on the four Sparks (10 + 10 client requests per node) vs one after the other alone (20 per node each). Plans: SWARM_MIXED_HARD13_MIX_PLAN.json / SWARM_MIXED_HARD13_ALONE_PLAN.json (arithmetic) and CODING_MIXED_S1012_MIX_PLAN.json / CODING_MIXED_S1012_ALONE_PLAN.json (coding); see MIXED_TASK_PLAN.json for arms, outcomes and the decision rule.",
+ "question": "Can the arithmetic and coding default swarms share the four Sparks at the same time without losing accuracy, and does sharing finish the combined workload sooner and with less energy than running them one after the other?",
+ "workloads": {
+  "arithmetic": "96 cases: arithmetic-hard-v13 (generated after this freeze, seed 2026112109) x seeds 1-2, policy roll8strategy (the default), seed offset 13400",
+  "coding": "72 cases: coding-hard-v1 evaluation tasks x fresh seeds 10-12, agent seed offset 3700, early stop + staggered start (the default)"
+ },
+ "arms": {
+  "M": "mixed: both workloads started at the same time (mixed_arms.py): arithmetic 10 cases at once with a 10-request slot cap per node, coding 10 agents per node",
+  "Sa": "arithmetic alone: same 96 cases, 20 cases at once, 20-request slot cap per node (arms.py)",
+  "Sc": "coding alone: same 72 cases, 20 agents per node (coding_arms.py)"
+ },
+ "arm_order": [
+  "M",
+  "Sa",
+  "Sc"
+ ],
+ "primary_outcomes": {
+  "wall": "Wall to finish both workloads: M vs Sa + Sc.",
+  "energy": "GPU energy for both workloads: M vs Sa + Sc.",
+  "accuracy": "Solved per workload, M vs alone (paired sign tests; run-to-run noise of a few cases applies; the policies are identical)."
+ },
+ "decision_rule": "Recommend serving the two swarms together if M wall <= 0.95 x (Sa + Sc) AND M energy <= (Sa + Sc) energy AND each workload solves >= its alone arm - 2 (noise allowance) with 0 wrong arithmetic answers. Otherwise recommend running them one after the other.",
+ "serving": "Inkling-2-Mini x4, mem fraction 0.75, shim f03627eb; same as the other studies of 2026-11-22.",
+ "report": "inkling/report_mixed_task.py -> results/mixed-task-v1/REPORT.md + report.json",
+ "generator": "make_arithmetic_hard.py --seed 2026112109 --protocol arithmetic-hard-v13 --output datasets/arithmetic-hard-v13 (after this plan is committed and pushed)",
+ "code_sha256": {
+  "run_variants.py": "dd3b8aa9fdd95b579abbab1e58c148d66a5304432a5e4727d5ca782b0617d15c",
+  "run_coding_earlystop.py": "05d6e351299739f21a435e633f295554741b910e7f729d690d2423ce744182e5",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/coding_arms.py": "9f4979df5e603558600c5628fb7319bb161a03fd98af66645e897983992afff3",
+  "inkling/mixed_arms.py": "a45f919011ec9b09e5205e1d58a1fda2bfb536c01da04074c978902b1e77b49f",
+  "inkling/admit.py": "445349b83e910f1189df8908aff2428ab3ee1dd0bb862f1fc46978b31bda82c6",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3"
+ },
+ "smoke": "Throwaway smoke (not part of the study): mixed_arms.py ran an arithmetic development case (roll8strategy, 10-request cap) and a coding development case (early stop + stagger, 10 agents per node) at the same time: both solved, both runners exited 0, shim upstream_errors 0."
+}
