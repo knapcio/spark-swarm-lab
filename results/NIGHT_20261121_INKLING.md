@@ -94,6 +94,13 @@ Fresh hard-v8 (plan 4eb69e7 frozen first). B+ (default) 91/96 at 47.3K tokens/ca
 B++ (cap 12 + 900 s burst to 8 in flight) 90/96 at 70.7K, 91 min, 1.94 Wh. Agents 9-12 rescued 4 cases, but the time
 trigger fired 21 times (9 needlessly) and the burst agents slowed every other case. **B+ stays the default.**
 
+## Night 2026-11-22 (5): coding swarm, start 4 agents and add 4 only if needed ([coding-stagger-v1](coding-stagger-v1/REPORT.md))
+
+Fresh seeds 7-9 on coding-hard-v1 (plans ec69a43 frozen first), both arms with early stop. All 8 agents at once: 69/72,
+59.8K tokens/case, 60 min, 1.66 Wh per solved case. Staggered (4 first, 4 more after 300 s or when the first four fail):
+**69/72, 50.0K tokens/case (-16 %), 52 min (-13 %), 1.42 Wh**; the second wave was needed in 39 of 72 cases.
+**Coding default is now early stop + staggered start.**
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -106,4 +113,4 @@ trigger fired 21 times (9 needlessly) and the burst agents slowed every other ca
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md)
