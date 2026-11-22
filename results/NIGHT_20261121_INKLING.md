@@ -156,6 +156,12 @@ arithmetic prompt tokens and 65-74 % of the coding prompt tokens; the prefill th
 generated tokens. Routing a case's agents to one node could save at most the 3 extra computations of one ~500-token
 prompt per case, well under 1 % of the work, so no fleet study was spent on it.
 
+## Day 2026-11-22 (9): escalation cap 12 instead of 8 ([swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md))
+
+Fresh hard-v12 (plan 0a475c3 frozen first). Default roll8strategy 81/96 (62.0K tokens/case, 79 min); cap 12 85/96, 0 wrong,
+2 cases answered only by agents 9-12, but +24 % tokens and +29 % wall (frozen limits 20 % / 25 %). **Cap 8 stays the
+default**; cap 12 is a "maximum accuracy" option.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -168,4 +174,4 @@ prompt per case, well under 1 % of the work, so no fleet study was spent on it.
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md)

@@ -69,7 +69,10 @@ arithmetic-hard-v12 (generator seed 2026112108) was generated. Inkling-2-Mini on
 ## Result
 
 {md}
-{verdict}
+{verdict} Escalating past 8 agents does find answers (2 cases answered only by agents 9-12, both correct; 0 wrong), but
+on this corpus it cost +24 % tokens and +29 % wall, just above the frozen limits, because every case that 8 agents
+cannot solve now burns 4 more full budgets. It remains a sensible "maximum accuracy" setting when tokens and wall do not
+matter; the default stays at 8.
 
 Files: `run_variants.py` (`roll12strategy`), `inkling/arms.py`, `inkling/report_cap12_hard12.py`, numbers in [report.json](report.json).
 """)
