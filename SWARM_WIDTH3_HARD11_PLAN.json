@@ -1,0 +1,76 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "status": "FROZEN",
+ "study": "swarm-width3-hard11-v1",
+ "dataset": "datasets/arithmetic-hard-v11/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v11",
+ "split": "evaluation",
+ "tasks": 48,
+ "seeds": [
+  1,
+  2
+ ],
+ "policies": [
+  "roll8strategy",
+  "roll3strategy"
+ ],
+ "arm_order": [
+  "roll8strategy",
+  "roll3strategy"
+ ],
+ "agent_variant": "xl_forced_original",
+ "seed_offsets": {
+  "roll8strategy": 11400,
+  "roll3strategy": 11400
+ },
+ "pairing": "Same tasks, seeds, agent seeds (1000*seed + 11400 + slot), judge seeds. Slot 3 is a first-wave agent in D and the first escalation agent (with a hint) in D3. Run-to-run generation noise (~4 cases per 96) applies to paired solved counts.",
+ "source_revision": "d94c893efb2a77041ef9086139cc570b994687c0",
+ "source_path": ".runtime/xl-source",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason), unchanged; the exact verifier only scores",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_policy_cases": 20,
+ "concurrent_policy_cases_by_policy": {
+  "deep4cancel": 20,
+  "roll8cancel": 20,
+  "deep4": 20
+ },
+ "concurrent_requests_per_endpoint": 20,
+ "concurrency_note": "At most 4 agents in flight per case in every arm, 20 cases at once, per-endpoint slot cap 20 (agents and judges) <= 25. Escalation agents run on the node of the agent they replace.",
+ "runner": "run_variants.py --policy ARM, one arm at a time, driven by inkling/arms.py",
+ "execution": "Arms run sequentially in arm_order, each alone on the fleet via inkling/arms.py (fresh admission with the shim sha and mem fraction below, prefix-cache flush, server counters, idle wait, GPU energy). Watchdog inkling/watch.sh; MemAvailable logged every 60 s.",
+ "resume_rule": "If an arm stops on an infrastructure fault (runner stop flag, worker or judge infra failure, node fault), the fault is fixed and the same arm is continued with arms.py --resume-from (skips its cases that finished without infra faults; reruns the others with the same seeds) and documented as an amendment. Server tokens, wall and energy of an arm are then the sums over its segments (wasted work of the stopped segment included and reported separately). Never a silent restart; no case is dropped.",
+ "exclusions": "None. All 96 cases of each arm count.",
+ "generator": "make_arithmetic_hard.py --seed 2026112107 --protocol arithmetic-hard-v11 --output datasets/arithmetic-hard-v11 (after this plan is committed and pushed); same rules as hard-v5..v10",
+ "report": "inkling/report_width3_hard11.py -> results/swarm-width3-hard11-v1/REPORT.md + report.json",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh, MEM=0.75 since 2026-11-21 16:25 Europe/Warsaw (KV ~1.08M tokens per node)",
+  "adapter": "inkling/shim.py (vLLM dialect; client disconnects close the upstream stream and count as shim:client_cancels)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "temperature": "0.8 (harness constant)",
+  "mem_fraction": "0.75"
+ },
+ "frozen_note": "Frozen 2026-11-22 BEFORE arithmetic-hard-v11 exists. In the coding swarm, starting fewer agents and adding more only when needed (coding-stagger-v1) kept accuracy at -16 % tokens. The arithmetic default (roll8strategy since swarm-strategy-hard10-v1: B+ whose escalation agents get distinct strategy hints) keeps 4 agents in flight from the start; on most cases the first accepted plan arrives while the other three are cancelled, so a 4th agent mainly adds cancelled tokens, and failure-driven escalation already covers the hard cases.",
+ "question": "On fresh hard tasks generated after this freeze, does running 3 agents in flight instead of 4 (failures replaced up to 8 agents, escalation agents with strategy hints) keep the accuracy of the default at fewer server tokens?",
+ "arms": {
+  "D": "roll8strategy (default): 4 in flight; every agent ending without an accepted plan is replaced by a fresh-seed agent on its node with one of four strategy hints, up to 8; first accept cancels the rest",
+  "D3": "roll3strategy: identical with 3 in flight (slots 0-2 without hints; slots 3-7 are escalation agents with the strategy hints)"
+ },
+ "primary_outcomes": {
+  "tokens": "Server-counted generated tokens per case, D3 vs D.",
+  "accuracy": "Solved and wrong per arm; D3 vs D paired two-sided exact sign test.",
+  "wall": "Arm wall time and median / p90 case latency, D3 vs D."
+ },
+ "decision_rule": "roll3strategy replaces roll8strategy as the default if: 0 wrong answers AND D3 server tokens per case <= 0.90 x D AND D3 solved >= D solved - 2 (run-to-run noise allowance) AND D3 arm wall <= 1.10 x D. Otherwise roll8strategy stays.",
+ "secondary_outcomes": "GPU energy per solved case; escalated cases; agents per case; case latency distribution; judge verdicts and false accepts.",
+ "baseline_note": "Defaults: arithmetic roll8strategy; coding early stop + staggered start.",
+ "code_sha256": {
+  "run_variants.py": "566abd565af9f36101ca4a8fb635004ab5d4b72bd58b345d5475de4546e2880c",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "445349b83e910f1189df8908aff2428ab3ee1dd0bb862f1fc46978b31bda82c6",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3"
+ },
+ "smoke": "Throwaway smoke (not part of the study) of the 3-in-flight path (roll3to8, the same rolling code with width 3) on development task dev-hd1cbe1173d5: 3 agents started, slot 2 accepted at 150 s, the other 2 terminated. The strategy hint path was smoke-tested for roll8strategy (swarm-strategy-hard10-v1)."
+}
