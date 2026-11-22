@@ -62,7 +62,9 @@ arithmetic-hard-v9 (generator seed 2026112105) was generated. Inkling-2-Mini on 
 ## Result
 
 {md}
-{verdict}
+{verdict} Showing escalation agents the failed attempts halves their success rate: they anchor on the rejected
+plans instead of searching afresh (the same direction as repair4 on Nemotron, 2026-11-17). Fresh, independent
+escalation agents stay. One DeepSeek on the same tasks: see [DEEPSEEK.md](DEEPSEEK.md) (when present).
 
 Files: `run_variants.py` (`roll8repair`), `inkling/arms.py`, `inkling/report_repair_hard9.py`, numbers in [report.json](report.json).
 """)

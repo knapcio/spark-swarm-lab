@@ -101,6 +101,12 @@ Fresh seeds 7-9 on coding-hard-v1 (plans ec69a43 frozen first), both arms with e
 **69/72, 50.0K tokens/case (-16 %), 52 min (-13 %), 1.42 Wh**; the second wave was needed in 39 of 72 cases.
 **Coding default is now early stop + staggered start.**
 
+## Night 2026-11-22 (6): escalation agents that see the judge's critique ([swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md))
+
+Fresh hard-v9 (plan 8b28aed frozen first; a harder corpus). B+ 86/96 (0 wrong, 69.1K tokens/case); escalation agents
+given every rejected plan with the judge's reason: 83/96, and their success rate halved (4/73 vs 9/82 accepted;
+4 vs 8 strict rescues). Feedback anchors the agents. **B+ (fresh escalation agents) stays the default.**
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -113,4 +119,4 @@ Fresh seeds 7-9 on coding-hard-v1 (plans ec69a43 frozen first), both arms with e
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md)
