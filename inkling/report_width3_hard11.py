@@ -58,6 +58,13 @@ arithmetic-hard-v11 (generator seed 2026112107) was generated. Inkling-2-Mini on
 {md}
 {verdict}
 
+Why 3 in flight costs more, not less: with fewer agents racing, the first accepted plan arrives later, so the agents that
+are cancelled have already run longer, and more cases fall through to escalation (failing agents use their whole budget).
+Caveat (design, stated before the results were read): both arms ran 20 cases at once, so D3 kept only ~15 agents per node
+busy (and unevenly: 3 agents per case over 4 nodes), which inflates its wall time; its token count is not affected by
+that and is already higher than D's. In the coding swarm the opposite held (coding-stagger-v1), because there the
+first passing proposal usually arrives before the second wave would start.
+
 Files: `run_variants.py` (`roll3strategy`), `inkling/arms.py`, `inkling/report_width3_hard11.py`, numbers in [report.json](report.json).
 """)
     (OUT / 'tables.md').write_text(md)

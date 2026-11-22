@@ -145,6 +145,17 @@ with one of four task-agnostic strategy hints each: **86/96, 0 wrong, 55.4K toke
 5/60 vs 2/65 accepted, 4 vs 1 strict rescues (small counts; paired +5/-2). Frozen rule met: **roll8strategy is the new
 arithmetic default** (B+ plus diverse escalation). Diversity helps where critique (hard9) hurt.
 
+## Day 2026-11-22 (8): three agents in flight instead of four ([swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md))
+
+Fresh hard-v11 (plan a320690 frozen first). Default roll8strategy (4 in flight) 83/96, 61.2K tokens/case, 79 min; 3 in
+flight 81/96 with **+17 % tokens**, +44 % wall, +37 % energy: fewer racers mean a later first accept (cancelled agents ran
+longer) and more escalations. **4 in flight stays.** (Caveat: the 3-wide arm also used only ~15 agents per node.)
+
+Prefix cache (from the server counters of every arm today): the SGLang radix cache already serves 94-97 % of the
+arithmetic prompt tokens and 65-74 % of the coding prompt tokens; the prefill that is still computed is 2-3 % of the
+generated tokens. Routing a case's agents to one node could save at most the 3 extra computations of one ~500-token
+prompt per case, well under 1 % of the work, so no fleet study was spent on it.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -157,4 +168,4 @@ arithmetic default** (B+ plus diverse escalation). Diversity helps where critiqu
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md)
