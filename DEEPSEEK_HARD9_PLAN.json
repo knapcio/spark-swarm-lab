@@ -1,0 +1,53 @@
+{
+ "protocol": "deepseek-fresh-reference-v1",
+ "study": "deepseek-hard9-v1",
+ "status": "FROZEN",
+ "drafted": "2026-11-22 ~01:45 Europe/Warsaw, while swarm-repair-hard9-v1 arm roll8cancel was running and before any of its results were read",
+ "question": "Replication of the hard-v7 headline (Inkling swarm B+ 90 vs One DeepSeek 79, p = 0.007) on fresh tasks: One DeepSeek V4.1 (one 32K thinking call, exactly as on hard-v5/v6/v7) on arithmetic-hard-v9, against the B+ (roll8cancel) arm of swarm-repair-hard9-v1.",
+ "model": "deepseek-v4.1-flash",
+ "agent_variants": [
+  "index_original"
+ ],
+ "workers": {
+  "index_original": "followup72_worker.py"
+ },
+ "source": "frozen 638b9f3 (.runtime/nemotron72-followup-source)",
+ "method": "Exactly the earlier DeepSeek reference method: original prompt, one thinking call capped at 8192 completion tokens, chat completions, temperature 0.8, request seed from the frozen client. Two independent calls per case; agent 0 alone = single-call reference.",
+ "agent_seed_offset": 2900,
+ "corpora": {
+  "hard9": "datasets/arithmetic-hard-v9/tasks.json"
+ },
+ "transport": "stream",
+ "comparisons": [
+  "B+ vs One DeepSeek on hard-v9 (paired sign test)",
+  "Pooled hard-v7 + hard-v9 B+ vs One DeepSeek (pre-registered primary)",
+  "roll8repair arm vs One DeepSeek",
+  "Hybrid: DeepSeek only where B+ abstains",
+  "GPU energy per solved case and wall on the same four Sparks"
+ ],
+ "limits": "Bundled differences (model, serving engine, reasoning implementation); no causal model-size claim. Wall time reported only.",
+ "frozen_note": "Frozen 2026-11-22 Europe/Warsaw after arithmetic-hard-v9 exists (generated for SWARM_REPAIR_HARD9_PLAN, bf91fc6) but before any DeepSeek call on it and before any result of the hard-v9 swarm arms was read. Method, seeds, offset 2900, runner, worker source, endpoint and concurrency copied from DEEPSEEK_HARD5/6/7_PLAN; corpus pinned by sha256.",
+ "corpora_sha256": {
+  "hard9": "f070567eba1c2586eb3131b7fe7f7bb86317cf6631d924d48278f55b351cc69c"
+ },
+ "seeds": [
+  1,
+  2
+ ],
+ "concurrency": 8,
+ "agent_wall_deadline_seconds": 3600,
+ "concurrency_note": "4 concurrent requests as in the earlier DeepSeek reference (median 18 s, max 115 s per arithmetic call), far below the frozen 210 s HTTP timeout.",
+ "runner": "run_ds_agents.py",
+ "endpoint": "owned loopback tunnel 127.0.0.1:18889 -> Spark_01 127.0.0.1:8888",
+ "run_corpora": [
+  "hard9"
+ ],
+ "max_tokens": 32768,
+ "corpora_protocol": {
+  "hard9": "arithmetic-hard-v9"
+ },
+ "hybrid_score": "solved = B+ solved OR (B+ abstained AND DeepSeek solved); DeepSeek calls = B+ abstentions",
+ "switch": "inkling/ds_switch_inkling.py precheck + to-deepseek after swarm-cancel-hard6-v1 finishes; owned tunnel 127.0.0.1:18889 -> Spark_01:8888; to-inkling + connect.sh afterwards",
+ "report": "inkling/report_ds_hard9.py -> results/swarm-repair-hard9-v1/DEEPSEEK.md (+ json)",
+ "primary_outcome": "Pre-registered pooled test: Inkling swarm B+ (roll8cancel arms of swarm-escalate-hard7-v1 and swarm-repair-hard9-v1) vs One DeepSeek over hard-v7 + hard-v9, 192 paired (corpus, task, seed) cases, two-sided exact sign test; B+ wrong answers. Also reported: hard-v9 alone, and the roll8repair arm vs DeepSeek."
+}
