@@ -1,21 +1,34 @@
 #!/usr/bin/env python3
-"""Server-side accounting around ANY replay/screen command, the same as inkling/arms.py gives one run_variants arm.
+"""Server-side accounting around ANY replay/screen command, the same as inkling/arms.py gives one run_variants arm,
+with stricter checks (arms.py itself stays unchanged: finished studies pin its hash).
 
-Sequence: fresh admission (inkling/admit.py, idle fleet) -> prefix-cache flush on each node (every response must
-report 'Cache flushed') -> server counters on all four nodes (every counter of arms.COUNTERS must be exported) on an
-idle fleet -> CMD (cwd = repo root, stdout+stderr to OUTPUT.log) -> wait until every node is idle (drain limit) ->
-counters again -> GPU energy for the window (inkling/energy.py). Writes OUTPUT/arm_accounting.json in the arms.py
-schema (protocol 'swarm-arm-accounting-v1') plus 'command'. The command must be the only client of the fleet.
+Sequence: fresh admission (inkling/admit.py, idle fleet) -> prefix-cache flush on each node (own ssh call: ssh exit
+status 0, HTTP 2xx from `curl -f`, body 'Cache flushed') -> server counters on all four nodes on an idle fleet ->
+CMD (exec list, no shell; cwd = repo root; stdout+stderr to OUTPUT.log) -> wait until every node is idle (an idle
+sample counts only if it was taken before the drain deadline) -> counters again -> GPU energy for the window
+(inkling/energy.py). Writes OUTPUT/arm_accounting.json in the arms.py schema (protocol 'swarm-arm-accounting-v1')
+plus 'command', and on any fault 'accounting_error' / 'energy_error'. The command must be the only client.
 
-In CMD, '{admission}' is replaced by the admission receipt path and '{output}' by OUTPUT. OUTPUT must not exist
-before the run (CMD may create it, e.g. closer_replay.py --output {output}); it is created after CMD if needed.
-Exit: CMD's exit code; 3 if the drain timed out or counters were missing after CMD (the record is still written,
-with 'accounting_error'); 2 (and CMD never runs) if admission, flush, idle or counters fail before it.
+Counters: every counter of arms.COUNTERS must be exported by every node (label filters matched as arms.parse does),
+finite, and no cumulative counter may decrease over the window (a reset makes the window unusable).
+CMD argv elements that are exactly '{admission}' or '{output}' are replaced by the receipt path / OUTPUT; any other
+occurrence of a placeholder is refused. OUTPUT must be a new path under runs/; the receipt
+.runtime/<STUDY>_<LABEL>_ADMISSION.JSON must not exist yet (study and label: letters, digits, '.', '_', '-').
 
-usage: account_cmd.py --plan PLAN --output DIR [--label NAME] [--source DIR] [--drain-seconds N] -- CMD ...
+Exit: 2 if admission, flush or the first snapshot fails (CMD never runs; a record is still written); otherwise CMD's
+exit code if non-zero; else 3 for a counter/metrics/drain fault after CMD; else 4 if GPU energy is missing for the
+window or for any node; else 0.
+
+Weaknesses that remain in arms.py-driven arms (arms.py is pinned; disclose in reports): flush_caches ignores the ssh
+exit status and the HTTP status (only the response text is recorded), delta() accepts negative deltas after a counter
+reset, parse() counts a missing counter as 0 and accepts non-finite values, wait_idle() returns a busy snapshot after
+its limit without failing, and an energy failure does not change the exit code.
+
+usage: account_cmd.py --plan PLAN --output runs/NAME [--label NAME] [--source DIR] [--drain-seconds N] -- CMD ...
 """
 import argparse
 import json
+import math
 import re
 import subprocess
 import sys
@@ -32,6 +45,10 @@ import energy  # noqa: E402
 
 FLUSH_OK = 'Cache flushed'
 DRAIN_SECONDS = 120
+MIN_ENERGY_COVERAGE = 0.9
+PLACEHOLDERS = ('{admission}', '{output}')
+SAFE_NAME = re.compile(r'^[A-Za-z0-9._-]+$')
+FLUSH_REMOTE = 'curl -sS -f -m 30 -w "\\n%{http_code}" -X POST 127.0.0.1:30000/flush_cache'
 
 
 class AccountingError(RuntimeError):
@@ -57,35 +74,65 @@ def missing_counters(text):
 
 
 def snapshot():
-    """arms.snapshot with a completeness check: every counter of arms.COUNTERS must be exported by every node
-    (arms.parse would silently count a missing counter as 0)."""
+    """arms.snapshot with checks: transport and parse errors, missing and non-finite counters raise AccountingError."""
     snap = dict(utc=datetime.now(timezone.utc).isoformat(), nodes={})
     for i, n in enumerate(arms.NODES):
-        text = fetch_metrics(i)
+        try:
+            text = fetch_metrics(i)
+            values = arms.parse(text)
+        except Exception as exc:
+            raise AccountingError(f'node {n}: metrics unavailable: {type(exc).__name__}: {exc}') from exc
         missing = missing_counters(text)
         if missing:
             raise AccountingError(f'node {n}: counters missing: {missing}')
-        snap['nodes'][n] = arms.parse(text)
+        bad = sorted(k for k, x in values.items() if not math.isfinite(x))
+        if bad:
+            raise AccountingError(f'node {n}: non-finite counters: {bad}')
+        snap['nodes'][n] = values
     return snap
 
 
 def drain(limit):
-    """Wait until every node is idle; AccountingError on timeout (never a silent partial window)."""
-    start = time.monotonic()
+    """Wait until every node is idle. Only a snapshot completed before the deadline counts; AccountingError otherwise."""
+    deadline = time.monotonic() + limit
     while True:
         snap = snapshot()
+        if time.monotonic() > deadline:
+            raise AccountingError(f'fleet not idle within {limit} s')
         if arms.idle(snap):
             return snap
-        if time.monotonic() - start > limit:
-            raise AccountingError(f'fleet not idle after {limit} s')
         time.sleep(2)
 
 
+def checked_delta(before, after):
+    """arms.delta, refusing a negative delta (counter reset or wrong node) and non-finite values."""
+    d = arms.delta(before, after)
+    bad = sorted(f'{n}.{k}' for n, per in d['per_node'].items() for k, x in per.items() if not math.isfinite(x) or x < 0)
+    if bad:
+        raise AccountingError(f'negative or non-finite counter deltas (counter reset?): {bad}')
+    return d
+
+
+def ssh(node, remote):
+    return subprocess.run(['ssh', '-o', 'BatchMode=yes', f'Spark_{node}', remote], capture_output=True, text=True,
+                          timeout=60)
+
+
 def flush_checked():
-    out = arms.flush_caches()
-    bad = {n: r for n, r in out.items() if not str(r).startswith(FLUSH_OK)}
-    if bad or set(out) != set(arms.NODES):
-        raise AccountingError(f'prefix-cache flush failed: {bad or out}')
+    """Prefix-cache flush on every node with the ssh exit status, the HTTP status (curl -f) and the body checked."""
+    out, bad = {}, {}
+    for n in arms.NODES:
+        try:
+            res = ssh(n, FLUSH_REMOTE)
+        except Exception as exc:
+            bad[n] = f'{type(exc).__name__}: {exc}'
+            continue
+        body, _, status = res.stdout.rstrip('\n').rpartition('\n')
+        out[n] = dict(exit=res.returncode, http_status=status.strip(), body=body.strip()[:200])
+        if res.returncode != 0 or not re.fullmatch(r'2\d\d', status.strip()) or not body.strip().startswith(FLUSH_OK):
+            bad[n] = dict(out[n], stderr=res.stderr.strip()[:200])
+    if bad:
+        raise AccountingError(f'prefix-cache flush failed: {bad}')
     return out
 
 
@@ -99,13 +146,37 @@ def admit(plan_path, source, admission, note):
 
 def run_command(command, log_path):
     with open(log_path, 'x') as log:
-        return subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT).returncode
+        return subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, shell=False).returncode
+
+
+def substitute(command, admission, out):
+    """Whole-element placeholder substitution only (exec list, no shell)."""
+    result = []
+    for arg in command:
+        if arg == '{admission}':
+            result.append(str(admission))
+        elif arg == '{output}':
+            result.append(str(out))
+        elif any(ph in arg for ph in PLACEHOLDERS):
+            raise SystemExit(f'placeholder must be a whole argument: {arg!r}')
+        else:
+            result.append(arg)
+    return result
+
+
+def energy_fault(joules):
+    if not isinstance(joules, dict) or 'error' in joules:
+        return f"energy unavailable: {(joules or {}).get('error') if isinstance(joules, dict) else joules}"
+    nodes = joules.get('nodes') or {}
+    bad = sorted(n for n in arms.NODES if not (nodes.get(n) or {}).get('joules')
+                 or (nodes[n].get('coverage') or 0) < MIN_ENERGY_COVERAGE)
+    return f'energy samples missing or incomplete on nodes {bad}' if bad else None
 
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if '--' not in argv:
-        raise SystemExit('usage: account_cmd.py --plan PLAN --output DIR [...] -- CMD ...')
+        raise SystemExit('usage: account_cmd.py --plan PLAN --output runs/NAME [...] -- CMD ...')
     split = argv.index('--')
     own, command = argv[:split], argv[split + 1:]
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -118,50 +189,63 @@ def main(argv=None):
     if not command:
         raise SystemExit('no command after --')
     plan = json.loads(a.plan.read_text())
-    out = a.output.resolve()
+    out = (a.output if a.output.is_absolute() else ROOT / a.output).resolve()
+    runs = (ROOT / 'runs').resolve()
+    if runs not in out.parents:
+        raise SystemExit(f'output must be under {runs}')
     if out.exists() or Path(str(out) + '.log').exists():
         raise SystemExit('output or its log exists')
     label = a.label or out.name
+    if not (SAFE_NAME.match(str(plan.get('study', ''))) and SAFE_NAME.match(label)):
+        raise SystemExit('study and label must be letters, digits, ".", "_" or "-"')
     admission = ROOT / '.runtime' / f"{plan['study']}-{label}-ADMISSION.json".upper().replace('-', '_')
-    command = [c.replace('{admission}', str(admission)).replace('{output}', str(out)) for c in command]
+    if admission.exists() or admission.resolve().parent != (ROOT / '.runtime').resolve():
+        raise SystemExit(f'admission receipt exists or escapes .runtime: {admission}')
+    command = substitute(command, admission, out)
+    record = dict(protocol='swarm-arm-accounting-v1', plan=str(a.plan), study=plan['study'], arm=label, output=str(out),
+                  runner_exit=None, runner_wall_seconds=None, admission=str(admission), cache_flush=None, before=None,
+                  after=None, idle_after=False, server=None, energy=None, resumed_from=None, command=command)
+
+    def finish(code):
+        out.mkdir(parents=True, exist_ok=True)
+        (out / 'arm_accounting.json').write_text(json.dumps(record, indent=1) + '\n')
+        print(json.dumps(dict(label=label, exit=code, runner_exit=record['runner_exit'],
+                              accounting_error=record.get('accounting_error'), energy_error=record.get('energy_error'),
+                              server=(record['server'] or {}).get('total'),
+                              energy_wh=(record['energy'] or {}).get('total_wh') if isinstance(record['energy'], dict)
+                              else None)), flush=True)
+        return code
     try:
         admit(a.plan, a.source, admission, f'account_cmd {label} of {plan["study"]}')
-        flushed = flush_checked()
-        before = drain(a.drain_seconds)
+        record['cache_flush'] = flush_checked()
+        record['before'] = drain(a.drain_seconds)
     except AccountingError as exc:
-        print(json.dumps(dict(error=str(exc), command_started=False)), flush=True)
-        return 2
+        record.update(accounting_error=str(exc), command_started=False)
+        return finish(2)
     start = time.monotonic()
     code = run_command(command, str(out) + '.log')
-    wall = time.monotonic() - start
-    error = after = None
+    record.update(runner_exit=code, runner_wall_seconds=round(time.monotonic() - start, 1))
     try:
-        after = drain(a.drain_seconds)
+        record['after'] = drain(a.drain_seconds)
+        record['idle_after'] = True
+        record['server'] = checked_delta(record['before'], record['after'])
     except AccountingError as exc:
-        error = str(exc)
-        try:  # keep whatever the fleet reports now, flagged as not idle / incomplete
-            after = snapshot()
-        except AccountingError as exc2:
-            error += f'; {exc2}'
-    joules = None
-    if after is not None:
-        try:
-            joules = energy.window(before['utc'], after['utc'])
-        except Exception as exc:  # energy is secondary; never lose the token accounting
-            joules = dict(error=f'{type(exc).__name__}: {exc}')
-    record = dict(protocol='swarm-arm-accounting-v1', plan=str(a.plan), study=plan['study'], arm=label,
-                  output=str(out), runner_exit=code, runner_wall_seconds=round(wall, 1), admission=str(admission),
-                  cache_flush=flushed, before=before, after=after, idle_after=bool(after and arms.idle(after)),
-                  server=arms.delta(before, after) if after is not None else None, energy=joules, resumed_from=None,
-                  command=command)
-    if error:
-        record['accounting_error'] = error
-    out.mkdir(parents=True, exist_ok=True)
-    (out / 'arm_accounting.json').write_text(json.dumps(record, indent=1) + '\n')
-    print(json.dumps(dict(label=label, exit=code, wall=round(wall), accounting_error=error,
-                          server=record['server']['total'] if record['server'] else None,
-                          energy_wh=(joules or {}).get('total_wh'))), flush=True)
-    return 3 if error and code == 0 else code
+        record['accounting_error'] = str(exc)
+        if record['after'] is None:
+            try:  # keep what the fleet reports now, flagged by accounting_error
+                record['after'] = snapshot()
+                record['idle_after'] = arms.idle(record['after'])
+            except AccountingError as exc2:
+                record['accounting_error'] += f'; {exc2}'
+    end = (record['after'] or {}).get('utc') or datetime.now(timezone.utc).isoformat()
+    try:
+        record['energy'] = energy.window(record['before']['utc'], end)
+    except Exception as exc:  # energy is secondary to tokens, but its absence must never look like success
+        record['energy'] = dict(error=f'{type(exc).__name__}: {exc}')
+    fault = energy_fault(record['energy'])
+    if fault:
+        record['energy_error'] = fault
+    return finish(code if code else 3 if record.get('accounting_error') else 4 if fault else 0)
 
 
 if __name__ == '__main__':

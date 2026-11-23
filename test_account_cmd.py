@@ -1,7 +1,9 @@
 """Offline tests for inkling/account_cmd.py (admission, ssh flush, metrics and energy mocked; no network)."""
 import contextlib
 import io
+import itertools
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -11,23 +13,34 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'inkling'))
 import account_cmd as ac  # noqa: E402
 
-FLUSHED = {n: 'Cache flushed.\nPlease check backend logs for more details.' for n in ('01', '02', '03', '04')}
+NODES = ('01', '02', '03', '04')
 
 
-def metrics(generated=0.0, running=0.0, drop=None):
+def metrics(generated=0.0, running=0.0, drop=None, value=None):
     lines = ['# HELP sglang:generation_tokens_total x']
     for name, (metric, label) in ac.arms.COUNTERS.items():
         if metric == drop:
             continue
-        value = generated if name == 'generation_tokens' else running if name == 'running' else \
+        x = generated if name == 'generation_tokens' else running if name == 'running' else \
             0.0 if name == 'queued' else 1.0
-        lines.append(f'{metric}{{{label}}} {value}' if label else f'{metric} {value}')
+        if value is not None and name == 'prompt_tokens':
+            x = value
+        lines.append(f'{metric}{{{label}}} {x}' if label else f'{metric} {x}')
     return '\n'.join(lines) + '\n'
 
 
+def flush_ok(node, remote):
+    return subprocess.CompletedProcess([], 0, 'Cache flushed.\nPlease check backend logs.\n200', '')
+
+
+def energy_ok(start, end):
+    return dict(start=start, end=end, total_wh=1.5, nodes={n: dict(joules=100, coverage=1.0) for n in NODES})
+
+
 class AccountCmdTests(unittest.TestCase):
-    def run_main(self, command, texts, flush=FLUSHED, admit_error=None, energy_error=False, drain=1):
-        """texts: callable(call_number, node_index) -> metrics text."""
+    def run_main(self, command, texts, flush=flush_ok, admit_error=None, window=energy_ok, drain=1, output='runs/screen-v1',
+                 extra=(), plan=None, setup=None):
+        """texts: callable(call_number, node_index) -> metrics text (or raises)."""
         calls = dict(n=0, admit=[])
 
         def fetch(i):
@@ -35,31 +48,28 @@ class AccountCmdTests(unittest.TestCase):
             return texts(calls['n'], i)
 
         def admit(plan_path, source, admission, note):
-            calls['admit'].append((str(plan_path), str(admission)))
+            calls['admit'].append(str(admission))
             if admit_error:
                 raise ac.AccountingError(admit_error)
-
-        def window(start, end):
-            if energy_error:
-                raise OSError('ssh down')
-            return dict(start=start, end=end, total_wh=1.5)
         buf = io.StringIO()
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            (root / 'plan.json').write_text(json.dumps(dict(study='swarm-x-v1', source_revision='r')))
-            out = root / 'runs' / 'screen-v1'
-            out.parent.mkdir()
-            with patch.object(ac, 'fetch_metrics', fetch), patch.object(ac, 'admit', admit), \
-                    patch.object(ac.arms, 'flush_caches', lambda: flush), patch.object(ac.energy, 'window', window), \
+            (root / 'runs').mkdir()
+            (root / '.runtime').mkdir()
+            (root / 'plan.json').write_text(json.dumps(plan or dict(study='swarm-x-v1', source_revision='r')))
+            if setup:
+                setup(root)
+            with patch.object(ac, 'ROOT', root), patch.object(ac, 'fetch_metrics', fetch), patch.object(ac, 'admit', admit), \
+                    patch.object(ac, 'ssh', flush), patch.object(ac.energy, 'window', window), \
                     patch.object(ac.time, 'sleep', lambda s: None), contextlib.redirect_stdout(buf):
-                code = ac.main(['--plan', str(root / 'plan.json'), '--output', str(out), '--drain-seconds', str(drain),
-                                '--'] + command)
+                code = ac.main(['--plan', str(root / 'plan.json'), '--output', output, '--drain-seconds', str(drain)]
+                               + list(extra) + ['--'] + command)
+            out = root / output
             record = json.loads((out / 'arm_accounting.json').read_text()) if (out / 'arm_accounting.json').exists() else None
             log = Path(str(out) + '.log').read_text() if Path(str(out) + '.log').exists() else None
         return code, record, log, calls
 
     def test_full_sequence_and_schema(self):
-        # before: idle, 0 generated; after the command: idle, 500 generated per node
         texts = lambda n, i: metrics(generated=0.0 if n <= 4 else 500.0)
         cmd = [sys.executable, '-c', 'import sys; print("hello", sys.argv[1:])', '{admission}', '{output}']
         code, rec, log, calls = self.run_main(cmd, texts)
@@ -68,64 +78,119 @@ class AccountCmdTests(unittest.TestCase):
         for key in ('plan', 'study', 'arm', 'output', 'runner_exit', 'runner_wall_seconds', 'admission', 'cache_flush',
                     'before', 'after', 'idle_after', 'server', 'energy', 'resumed_from', 'command'):
             self.assertIn(key, rec)
-        self.assertEqual((rec['study'], rec['arm'], rec['idle_after']), ('swarm-x-v1', 'screen-v1', True))
+        self.assertEqual((rec['study'], rec['arm'], rec['idle_after'], rec['runner_exit']), ('swarm-x-v1', 'screen-v1', True, 0))
         self.assertEqual(rec['server']['total']['generation_tokens'], 2000.0)
-        self.assertEqual(rec['energy']['total_wh'], 1.5)
+        self.assertEqual(rec['cache_flush']['01'], dict(exit=0, http_status='200', body='Cache flushed.\nPlease check backend logs.'))
         self.assertTrue(rec['admission'].endswith('SWARM_X_V1_SCREEN_V1_ADMISSION.JSON'))
-        self.assertEqual(rec['command'][3:], [rec['admission'], rec['output']])  # placeholders substituted
+        self.assertEqual(rec['command'][3:], [rec['admission'], rec['output']])
         self.assertIn('hello', log)
-        self.assertEqual(len(calls['admit']), 1)
         self.assertNotIn('accounting_error', rec)
+        self.assertNotIn('energy_error', rec)
 
     def test_command_exit_code_is_returned(self):
         code, rec, _, _ = self.run_main([sys.executable, '-c', 'raise SystemExit(7)'], lambda n, i: metrics())
         self.assertEqual((code, rec['runner_exit']), (7, 7))
 
-    def test_failed_flush_or_admission_never_runs_the_command(self):
-        bad = dict(FLUSHED, **{'03': 'curl: (7) Failed to connect'})
-        for kwargs in (dict(flush=bad), dict(flush={'01': FLUSHED['01']}), dict(admit_error='node 02 busy')):
-            code, rec, log, _ = self.run_main([sys.executable, '-c', 'print(1)'], lambda n, i: metrics(), **kwargs)
-            self.assertEqual((code, rec, log), (2, None, None), kwargs)
+    def test_flush_checks_exit_status_http_status_and_body(self):
+        cases = (lambda n, r: subprocess.CompletedProcess([], 255, '', 'ssh: connect refused'),
+                 lambda n, r: subprocess.CompletedProcess([], 22, 'curl: (22) error\n500', ''),
+                 lambda n, r: subprocess.CompletedProcess([], 0, 'Internal error\n200', ''),
+                 lambda n, r: subprocess.CompletedProcess([], 0, 'Cache flushed.\n503', ''),
+                 lambda n, r: flush_ok(n, r) if n != '03' else (_ for _ in ()).throw(subprocess.TimeoutExpired('ssh', 60)))
+        for flush in cases:
+            code, rec, log, _ = self.run_main([sys.executable, '-c', 'print(1)'], lambda n, i: metrics(), flush=flush)
+            self.assertEqual((code, log, rec['command_started']), (2, None, False))
+            self.assertIn('flush failed', rec['accounting_error'])
 
-    def test_missing_counters_before_never_run_the_command(self):
-        code, rec, log, _ = self.run_main([sys.executable, '-c', 'print(1)'],
-                                          lambda n, i: metrics(drop='shim:client_cancels' if i == 2 else None))
-        self.assertEqual((code, rec, log), (2, None, None))
+    def test_pre_command_faults_write_a_record_and_never_run_the_command(self):
+        for kwargs, texts, msg in ((dict(admit_error='node 02 busy'), lambda n, i: metrics(), 'busy'),
+                                   ({}, lambda n, i: metrics(drop='shim:client_cancels' if i == 2 else None), 'missing'),
+                                   ({}, lambda n, i: metrics(running=3.0), 'not idle')):
+            code, rec, log, _ = self.run_main([sys.executable, '-c', 'print(1)'], texts, **kwargs)
+            self.assertEqual((code, log), (2, None), msg)
+            self.assertIn(msg, rec['accounting_error'])
 
-    def test_busy_fleet_before_never_runs_the_command(self):
-        code, rec, log, _ = self.run_main([sys.executable, '-c', 'print(1)'], lambda n, i: metrics(running=3.0))
-        self.assertEqual((code, rec), (2, None))
-
-    def test_drain_timeout_after_is_nonzero_with_record(self):
-        texts = lambda n, i: metrics(running=0.0 if n <= 4 else 2.0)
-        import itertools
-        clock = itertools.count(0, 10)
+    def test_drain_only_counts_idle_samples_before_the_deadline(self):
+        clock = itertools.count(0, 10)  # every monotonic() call advances 10 s; the drain limit is 5 s
+        texts = lambda n, i: metrics()  # always idle, but the idle sample after CMD completes after the deadline
         with patch.object(ac.time, 'monotonic', lambda: next(clock)):
             code, rec, _, _ = self.run_main([sys.executable, '-c', 'print(1)'], texts, drain=5)
+        self.assertEqual(code, 2)  # already the pre-command idle sample was late
+        self.assertIn('not idle within', rec['accounting_error'])
+
+    def test_drain_timeout_after_command_is_exit_3_with_record(self):
+        texts = lambda n, i: metrics(running=0.0 if n <= 4 else 2.0)
+        code, rec, _, _ = self.run_main([sys.executable, '-c', 'print(1)'], texts, drain=1)
         self.assertEqual(code, 3)
         self.assertIn('not idle', rec['accounting_error'])
         self.assertFalse(rec['idle_after'])
-
-    def test_missing_counters_after_is_nonzero(self):
-        texts = lambda n, i: metrics(drop=None if n <= 4 else 'sglang:prompt_tokens_total')
-        code, rec, _, _ = self.run_main([sys.executable, '-c', 'print(1)'], texts)
-        self.assertEqual(code, 3)
-        self.assertIn('counters missing', rec['accounting_error'])
         self.assertIsNone(rec['server'])
 
-    def test_energy_failure_keeps_token_accounting(self):
-        code, rec, _, _ = self.run_main([sys.executable, '-c', 'print(1)'], lambda n, i: metrics(), energy_error=True)
-        self.assertEqual(code, 0)
-        self.assertIn('ssh down', rec['energy']['error'])
-        self.assertIsNotNone(rec['server'])
+    def test_metrics_transport_and_parse_errors_after_command_are_recorded(self):
+        def refused(n, i):
+            if n > 4:
+                raise OSError('Connection refused')
+            return metrics()
+        for texts, msg in ((refused, 'Connection refused'),
+                           (lambda n, i: metrics() if n <= 4 else metrics().replace(' 1.0', ' abc', 1), 'metrics unavailable'),
+                           (lambda n, i: metrics(value=float('nan') if n > 4 else None), 'non-finite'),
+                           (lambda n, i: metrics(drop=None if n <= 4 else 'sglang:prompt_tokens_total'), 'counters missing')):
+            code, rec, _, _ = self.run_main([sys.executable, '-c', 'print(1)'], texts)
+            self.assertEqual(code, 3, msg)
+            self.assertIn(msg, rec['accounting_error'])
+            self.assertIsNone(rec['server'], msg)
 
-    def test_requires_a_command_and_a_new_output(self):
+    def test_negative_delta_counter_reset_is_exit_3(self):
+        texts = lambda n, i: metrics(generated=500.0 if n <= 4 else 10.0)
+        code, rec, _, _ = self.run_main([sys.executable, '-c', 'print(1)'], texts)
+        self.assertEqual(code, 3)
+        self.assertIn('negative or non-finite counter deltas', rec['accounting_error'])
+
+    def test_energy_failure_or_missing_node_is_exit_4(self):
+        def partial(start, end):
+            e = energy_ok(start, end)
+            e['nodes']['02'] = dict(joules=None, coverage=0.0)
+            return e
+
+        def low(start, end):
+            e = energy_ok(start, end)
+            e['nodes']['04']['coverage'] = 0.5
+            return e
+
+        def down(start, end):
+            raise OSError('ssh down')
+        for window, msg in ((down, 'ssh down'), (partial, "['02']"), (low, "['04']")):
+            code, rec, _, _ = self.run_main([sys.executable, '-c', 'print(1)'], lambda n, i: metrics(), window=window)
+            self.assertEqual(code, 4, msg)
+            self.assertIn(msg, rec['energy_error'])
+            self.assertIsNotNone(rec['server'])  # token accounting kept
+
+    def test_paths_and_placeholders(self):
+        ok = [sys.executable, '-c', 'print(1)']
+        for output in ('elsewhere/x', 'runs/../x', '/tmp/x'):
+            with self.assertRaisesRegex(SystemExit, 'must be under'):
+                self.run_main(ok, lambda n, i: metrics(), output=output)
+        with self.assertRaisesRegex(SystemExit, 'output or its log exists'):
+            self.run_main(ok, lambda n, i: metrics(), setup=lambda root: (root / 'runs' / 'screen-v1').mkdir())
+        with self.assertRaisesRegex(SystemExit, 'receipt exists'):
+            self.run_main(ok, lambda n, i: metrics(),
+                          setup=lambda root: (root / '.runtime' / 'SWARM_X_V1_SCREEN_V1_ADMISSION.JSON').write_text('{}'))
+        for bad in (dict(study='../x', source_revision='r'), dict(study='a b', source_revision='r')):
+            with self.assertRaisesRegex(SystemExit, 'letters, digits'):
+                self.run_main(ok, lambda n, i: metrics(), plan=bad)
+        with self.assertRaisesRegex(SystemExit, 'letters, digits'):
+            self.run_main(ok, lambda n, i: metrics(), extra=['--label', 'x/../../y'])
+        with self.assertRaisesRegex(SystemExit, 'whole argument'):
+            self.run_main(ok + ['--admission={admission}'], lambda n, i: metrics())
+        # whole-element substitution keeps shell metacharacters inert (no shell)
+        code, rec, log, _ = self.run_main([sys.executable, '-c', 'import sys; print(sys.argv[1])', '$(echo hi); {x}'],
+                                          lambda n, i: metrics())
+        self.assertEqual(code, 0)
+        self.assertIn('$(echo hi); {x}', log)
+
+    def test_requires_a_command(self):
         with self.assertRaises(SystemExit):
-            ac.main(['--plan', 'p.json', '--output', 'o'])
-        with tempfile.TemporaryDirectory() as d:
-            (Path(d) / 'plan.json').write_text(json.dumps(dict(study='s')))
-            with self.assertRaisesRegex(SystemExit, 'exists'):
-                ac.main(['--plan', str(Path(d) / 'plan.json'), '--output', d, '--', 'true'])
+            ac.main(['--plan', 'p.json', '--output', 'runs/o'])
 
     def test_missing_counters_matches_labels(self):
         self.assertEqual(ac.missing_counters(metrics()), [])
