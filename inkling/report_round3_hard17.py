@@ -14,10 +14,18 @@ Inputs (paths relative to the repo root; override with the flags):
 Resume segments are merged with the frozen resume rule (run_variants.arm_latest). Server tokens are the
 sglang:generation_tokens_total deltas of each segment's arm_accounting.json (summed over segments).
 
-Mechanism (L plan): for winners whose accepted plan leaves a number unused (fewer than n-1 moves), the completion
-tokens generated after the first thinking line on which a statement `expr = target` is detected (closers.line_statements;
-the task restatement 'Target T' is not a statement). Tokens before that point inside the request are estimated in
-proportion to characters (thinking + answer text of that request); later requests count in full.
+Mechanism (L plan; offline analysis only): for winners whose accepted plan leaves a number unused (fewer than n-1
+moves), discovery = the first thinking line of the accepted plan's stream (the last error-free request and, for a
+forced/continued answer, the request it continues; a transport-retried earlier attempt is not part of it) holding an
+equation (closers.line_statements) that is arithmetically TRUE when evaluated exactly with Fraction and whose result
+is the target. Tokens after discovery are counted only within that stream: the rest of the discovery request
+(estimated in proportion to characters of its thinking + answer text) plus the continuation request in full.
+
+Decisions use unrounded values and are made only for complete inputs: D, L and X need no unresolved infra case under
+the frozen resume rule and a valid arm_accounting.json for every segment (token counter present, finite, no negative
+per-node delta, idle after the window, no accounting error); C and R need their case file without faulted rows, a
+valid account_cmd record (runner exit 0, no accounting or energy error) and a passing dev-screen gate; every add-on
+decision also needs D complete. Anything else is 'incomplete' with the reason, never zero-filled.
 
 usage: report_round3_hard17.py [--root DIR] [--out DIR] [--d DIR] [--l DIR] [--x DIR] [--c DIR] [--r-cases FILE]
                                [--r-accounting DIR] [--closer-screen PATH] [--recall-screen PATH]
@@ -27,6 +35,7 @@ import json
 import math
 import re
 import sys
+from fractions import Fraction
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -65,17 +74,39 @@ def median(values):
     return values[mid] if len(values) % 2 else (values[mid - 1] + values[mid]) / 2
 
 
-def accounting(dirs):
-    """Server generation tokens, wall and Wh summed over the arm_accounting.json files of the given directories."""
-    found = [json.loads((Path(d) / 'arm_accounting.json').read_text()) for d in dirs if (Path(d) / 'arm_accounting.json').exists()]
-    if not found:
-        return dict(server_tokens=None, wall_seconds=None, wh=None, segments_with_accounting=0, accounting_complete=False)
-    tokens = [((a.get('server') or {}).get('total') or {}).get('generation_tokens') for a in found]
-    whs = [(a.get('energy') or {}).get('total_wh') if isinstance(a.get('energy'), dict) else None for a in found]
-    return dict(server_tokens=sum(t for t in tokens if t is not None), wall_seconds=round(sum(a.get('runner_wall_seconds') or 0 for a in found), 1),
-                wh=round(sum(w for w in whs if w is not None), 2), segments_with_accounting=len(found),
-                accounting_complete=len(found) == len(dirs) and None not in tokens and None not in whs
-                and not any(a.get('accounting_error') or a.get('energy_error') for a in found))
+def accounting(dirs, wrapper=False):
+    """Server generation tokens, wall and Wh summed over the arm_accounting.json of every directory, with validity:
+    every directory has a record, its token counter is present and finite, no per-node delta is negative, the fleet
+    was idle after the window and there is no accounting error; wrapper (account_cmd) records also need runner exit 0
+    and no energy error. Invalid -> server_tokens None and the problems listed (never zero-filled)."""
+    problems, tokens, wall, whs = [], 0, 0.0, []
+    for d in dirs:
+        f = Path(d) / 'arm_accounting.json'
+        if not f.exists():
+            problems.append(f'{Path(d).name}: no arm_accounting.json')
+            continue
+        a = json.loads(f.read_text())
+        total = ((a.get('server') or {}).get('total') or {}).get('generation_tokens')
+        per_node = ((a.get('server') or {}).get('per_node') or {})
+        if not isinstance(total, (int, float)) or not math.isfinite(total) or total < 0:
+            problems.append(f'{Path(d).name}: generation_tokens missing or invalid')
+        else:
+            tokens += total
+        if any(not isinstance(x, (int, float)) or not math.isfinite(x) or x < 0 for n in per_node.values() for x in n.values()):
+            problems.append(f'{Path(d).name}: negative or non-finite per-node delta')
+        if a.get('idle_after') is False:
+            problems.append(f'{Path(d).name}: fleet not idle after the window')
+        if a.get('accounting_error'):
+            problems.append(f"{Path(d).name}: {a['accounting_error'][:120]}")
+        if wrapper and (a.get('runner_exit') != 0 or a.get('energy_error') or 'command' not in a):
+            problems.append(f"{Path(d).name}: account_cmd record not clean (runner_exit {a.get('runner_exit')}, "
+                            f"energy_error {a.get('energy_error')})")
+        wall += a.get('runner_wall_seconds') or 0
+        energy = a.get('energy') if isinstance(a.get('energy'), dict) else {}
+        whs.append(energy.get('total_wh') if not energy.get('error') else None)
+    return dict(server_tokens=None if problems or not dirs else tokens, wall_seconds=wall,
+                wh=sum(whs) if whs and None not in whs else None, accounting_valid=not problems and bool(dirs),
+                accounting_problems=problems)
 
 
 def load_arm(path, root, policy):
@@ -85,43 +116,98 @@ def load_arm(path, root, policy):
     try:
         arm = run_variants.arm_latest(path, root, policy=policy)
     except Exception as exc:  # mid-run: segments do not cover the plan's cases yet
-        return dict(status='incomplete', dir=str(path), reason=str(exc)[:300])
+        return dict(status='incomplete', dir=str(path), reasons=[str(exc)[:300]])
     rows = {k: row for k, (_, row) in arm['latest'].items() if k in arm['clean']}
     acct = accounting(arm['segments'])
-    return dict(status='complete' if not arm['unresolved'] else 'unresolved infra', dir=str(path), arm=arm, rows=rows,
+    reasons = ([f"{len(arm['unresolved'])} unresolved infra case(s)"] if arm['unresolved'] else []) + acct['accounting_problems']
+    return dict(status='incomplete' if reasons else 'complete', reasons=reasons, dir=str(path), arm=arm, rows=rows,
                 segments=[s.name for s in arm['segments']], superseded=arm['superseded'], unresolved=arm['unresolved'],
                 tasks={t['id']: t for t in arm['tasks']}, **acct)
 
 
 def arm_summary(a):
     if 'rows' not in a:
-        return {k: a[k] for k in ('status', 'dir', 'reason') if k in a}
+        return {k: a[k] for k in ('status', 'dir', 'reasons') if k in a}
     rows = list(a['rows'].values())
     n, solved, wrong = len(rows), sum(bool(r['solved']) for r in rows), sum(bool(r['wrong']) for r in rows)
     tok = a['server_tokens']
-    return dict(status=a['status'], segments=a['segments'], cases=n, solved=solved, wrong=wrong,
+    return dict(status=a['status'], reasons=a['reasons'], segments=a['segments'], cases=n, solved=solved, wrong=wrong,
                 abstain=sum(not r['answered'] for r in rows), unresolved=len(a['unresolved']), server_tokens=tok,
-                server_tokens_per_case=round(tok / n) if tok is not None and n else None,
-                server_tokens_per_solved=round(tok / solved) if tok is not None and solved else None,
-                wall_seconds=a['wall_seconds'], wh=a['wh'], accounting_complete=a['accounting_complete'])
+                server_tokens_per_case=tok / n if tok is not None and n else None,
+                server_tokens_per_solved=tok / solved if tok is not None and solved else None,
+                wall_seconds=a['wall_seconds'], wh=a['wh'])
+
+
+def evaluate(tokens):
+    """Exact value of an expression of numbers, + - * / and parentheses (Fraction); None if malformed or /0.
+    Offline analysis only (the mechanism measure); no runtime decision uses it."""
+    pos = 0
+
+    def atom():
+        nonlocal pos
+        if pos < len(tokens) and tokens[pos] == '(':
+            pos += 1
+            value = expr()
+            if pos >= len(tokens) or tokens[pos] != ')':
+                raise ValueError
+            pos += 1
+            return value
+        if pos < len(tokens) and tokens[pos].isdigit():
+            pos += 1
+            return Fraction(int(tokens[pos - 1]))
+        raise ValueError
+
+    def term():
+        nonlocal pos
+        value = atom()
+        while pos < len(tokens) and tokens[pos] in '*/':
+            op = tokens[pos]
+            pos += 1
+            rhs = atom()
+            value = value * rhs if op == '*' else value / rhs
+        return value
+
+    def expr():
+        nonlocal pos
+        value = term()
+        while pos < len(tokens) and tokens[pos] in '+-':
+            op = tokens[pos]
+            pos += 1
+            value = value + term() if op == '+' else value - term()
+        return value
+    try:
+        value = expr()
+    except (ValueError, ZeroDivisionError):
+        return None
+    return value if pos == len(tokens) else None
+
+
+def accepted_stream(ends):
+    """The request_end events of the stream that produced the answer: the last error-free request and, if it continues
+    another request (parent_request_id), that request first."""
+    last = next((e for e in reversed(ends) if not e.get('error')), None)
+    if last is None:
+        return []
+    parent = next((e for e in ends if last.get('parent_request_id') and e.get('request_id') == last['parent_request_id']), None)
+    return [parent, last] if parent else [last]
 
 
 def tokens_after_target(trace, target):
-    """Completion tokens after the first thinking line with a detected statement whose value is the target, or None."""
+    """Completion tokens after discovery (first TRUE equation with result = target) within the accepted stream."""
     ends = [json.loads(line) for line in Path(trace).read_text().splitlines() if line.strip()]
-    ends = [e for e in ends if e.get('type') == 'request_end']
+    stream = accepted_stream([e for e in ends if e.get('type') == 'request_end'])
 
     def tokens(e):
         return (e.get('usage') or {}).get('completion_tokens') or e.get('completion_tokens_charged') or len(e.get('token_ids') or [])
-    for i, e in enumerate(ends):
+    for i, e in enumerate(stream):
         text = e.get('reasoning') or ''
         pos = 0
         for line in text.splitlines(keepends=True):
             pos += len(line)
-            if any(st['value'] == target for st in closers.line_statements(line)):
+            if any(st['value'] == target and evaluate(st['tokens']) == target for st in closers.line_statements(line)):
                 chars = len(text) + len(e.get('response') or '')
                 after = tokens(e) * (1 - pos / chars) if chars else 0
-                return round(after + sum(tokens(x) for x in ends[i + 1:]))
+                return after + sum(tokens(x) for x in stream[i + 1:])
     return None
 
 
@@ -147,58 +233,69 @@ def mechanism(a, policy):
                 median=median(values), p90=pct(values, .9))
 
 
-def addon_rescues(kind, root, paths):
-    """{(task, seed): dict(rescued, wrong, slot)} of an add-on, plus status and accounting."""
+def addon_rescues(kind, root, paths, screens):
+    """{(task, seed): dict(rescued, wrong, slot)} of an add-on, plus status (complete only when decidable)."""
     if kind == 'X':
         a = load_arm(paths['x'], root, 'esc_extra')
         if 'rows' not in a:
             return a
         cases = {k: dict(rescued=bool(r['solved']), wrong=bool(r['wrong']), slot=r.get('selected_slot'))
                  for k, r in a['rows'].items()}
-        return dict(status=a['status'], cases=cases, unresolved=len(a['unresolved']), **{k: a[k] for k in (
-            'server_tokens', 'wall_seconds', 'wh', 'accounting_complete')})
+        return dict(status=a['status'], reasons=a['reasons'], cases=cases, unresolved=len(a['unresolved']),
+                    **{k: a[k] for k in ('server_tokens', 'wall_seconds', 'wh')})
     if kind == 'C':
         d = root / paths['c']
         if not (d / 'cases.jsonl').exists():
             return dict(status='not run', dir=str(d))
-        rows = round3_gate.read_rows(d / 'cases.jsonl')
         cases = {(r['task_id'], r['seed']): dict(rescued=bool(r['solved']), wrong=bool(r['wrong']), slot=r.get('selected_slot'),
-                                                 infra=bool(r.get('infra'))) for r in rows}
-        return dict(status='complete', cases=cases, unresolved=sum(c['infra'] for c in cases.values()), **accounting([d]))
-    f = root / paths['r_cases']
-    if not f.exists():
-        return dict(status='not run', dir=str(f))
-    cases = {}
-    for r in round3_gate.read_rows(f):
-        _, rescued, wrong, fault = round3_gate.case_outcome(r)
-        if rescued is not None:
-            cases[(r['task_id'], r['seed'])] = dict(rescued=rescued, wrong=wrong, slot=None, infra=fault)
-    return dict(status='complete', cases=cases, unresolved=sum(c['infra'] for c in cases.values()),
-                **accounting([root / paths['r_accounting']]))
+                                                 infra=bool(r.get('infra'))) for r in round3_gate.read_rows(d / 'cases.jsonl')}
+        acct, screen = accounting([d], wrapper=True), screens.get('closer')
+    else:
+        f = root / paths['r_cases']
+        if not f.exists():
+            return dict(status='not run', dir=str(f))
+        cases = {}
+        for r in round3_gate.read_rows(f):
+            _, rescued, wrong, fault = round3_gate.case_outcome(r)
+            if rescued is not None:
+                cases[(r['task_id'], r['seed'])] = dict(rescued=rescued, wrong=wrong, slot=None, infra=fault)
+        acct, screen = accounting([root / paths['r_accounting']], wrapper=True), screens.get('recall')
+    faulted = sum(c['infra'] for c in cases.values())
+    reasons = ([f'{faulted} faulted case row(s)'] if faulted else []) + acct['accounting_problems']
+    if not (isinstance(screen, dict) and screen.get('pass') is True):
+        reasons.append(f'dev-screen gate not passed or not recorded: {screen if isinstance(screen, str) else "FAIL"}')
+    return dict(status='incomplete' if reasons else 'complete', reasons=reasons, cases=cases, unresolved=faulted,
+                **{k: acct[k] for k in ('server_tokens', 'wall_seconds', 'wh')})
 
 
 def addon_summary(name, x, d_abst, d_tokens):
     if 'cases' not in x:
-        return {k: x[k] for k in ('status', 'dir', 'reason') if k in x}
+        return {k: x[k] for k in ('status', 'dir', 'reasons') if k in x}
     rescued = sorted(k for k, c in x['cases'].items() if c['rescued'] and k in d_abst)
     wrong = sorted(k for k, c in x['cases'].items() if c['wrong'])
     tok = x['server_tokens']
-    share = round(tok / d_tokens, 4) if tok is not None and d_tokens else None
-    out = dict(status=x['status'], cases=len(x['cases']), d_abstentions=len(d_abst),
+    share = tok / d_tokens if tok is not None and d_tokens else None
+    out = dict(status=x['status'], reasons=x['reasons'], cases=len(x['cases']), d_abstentions=len(d_abst),
                outside_d_abstentions=len(set(x['cases']) - d_abst), rescued=len(rescued), wrong=len(wrong),
                unresolved=x['unresolved'], server_tokens=tok, share_of_d_tokens=share, wall_seconds=x.get('wall_seconds'),
-               wh=x.get('wh'), accounting_complete=x.get('accounting_complete'),
-               rescued_cases=[list(k) for k in rescued], wrong_cases=[list(k) for k in wrong])
+               wh=x.get('wh'), rescued_cases=[list(k) for k in rescued], wrong_cases=[list(k) for k in wrong])
     if name == 'X':
         out['rescue_slots'] = sorted(x['cases'][k]['slot'] for k in rescued)
     return out
 
 
 def decisions(s):
+    """Each plan's frozen rule on unrounded values, only for complete inputs (else 'incomplete: reasons')."""
     D, L = s['arms']['D'], s['arms']['L']
     X, C, R = (s['addons'][k] for k in 'XCR')
+
+    def blocked(name, *parts):
+        why = [f"{n}: {p.get('status')}" + (f" ({'; '.join(p.get('reasons') or [])})" if p.get('reasons') else '')
+               for n, p in parts if p.get('status') != 'complete']
+        return f"incomplete - {' | '.join(why)}" if why else None
     out = {}
-    if 'solved' in D and 'solved' in L:
+    out['L'] = blocked('L', ('D', D), ('L', L))
+    if out['L'] is None:
         cheaper = (L['server_tokens_per_solved'] is not None and D['server_tokens_per_solved'] is not None
                    and L['server_tokens_per_solved'] < D['server_tokens_per_solved'])
         rule = dict(zero_wrong=L['wrong'] == 0, solved_within_noise=L['solved'] >= D['solved'] - NOISE,
@@ -206,25 +303,21 @@ def decisions(s):
         rule['adopt_sentence'] = all(rule.values())
         rule['rejected_pending_review'] = L['solved'] <= D['solved'] - NOISE - 1
         out['L'] = rule
-    else:
-        out['L'] = 'not evaluable (D or L not complete)'
-    if 'rescued' in X:
+    out['X'] = blocked('X', ('D', D), ('X', X))
+    if out['X'] is None:
         ok = X['rescued'] >= ADDON_RESCUES and X['wrong'] == 0
         cap = ('cap 16' if all(slot is not None and slot <= 15 for slot in X['rescue_slots']) else 'cap 20') if ok else 'no change'
         out['X'] = dict(rescued_at_least_2=X['rescued'] >= ADDON_RESCUES, zero_wrong=X['wrong'] == 0, outcome=cap)
-    else:
-        out['X'] = 'not evaluable (X not run)'
     for name, a in (('C', C), ('R', R)):
-        if 'rescued' in a:
+        out[name] = blocked(name, ('D', D), (name, a))
+        if out[name] is None:
             rule = dict(zero_wrong=a['wrong'] == 0, rescued_at_least_2=a['rescued'] >= ADDON_RESCUES,
                         tokens_at_most_10pct_of_d=a['share_of_d_tokens'] is not None and a['share_of_d_tokens'] <= ADDON_SHARE)
             rule['adopt'] = all(rule.values())
             out[name] = rule
-        else:
-            out[name] = f'not evaluable ({name} not run)'
     passing = [n for n in ('C', 'R') if isinstance(out[n], dict) and out[n]['adopt']]
     if len(passing) == 2:
-        first = sorted(passing, key=lambda n: (-s['addons'][n]['rescued'], s['addons'][n]['server_tokens'] or 0))[0]
+        first = sorted(passing, key=lambda n: (-s['addons'][n]['rescued'], s['addons'][n]['server_tokens']))[0]
         out['C_and_R'] = f'both pass: adopt {first} first, re-test the other on top'
     return out
 
@@ -254,8 +347,6 @@ def build(root, paths):
     s['mechanism'] = dict(D=mechanism(D, 'roll12strategy'), L=mechanism(L, 'roll12strategy'))
     d_abst = {k for k, r in D.get('rows', {}).items() if not r['answered']}
     d_tokens = s['arms']['D'].get('server_tokens')
-    s['addons'] = {k: addon_summary(k, addon_rescues(k, root, paths), d_abst, d_tokens) for k in 'XCR'}
-    s['overlap'] = overlap(s['addons'])
     s['screens'] = {}
     for name, key in (('closer', 'closer_screen'), ('recall', 'recall_screen')):
         p = root / paths[key]
@@ -263,6 +354,8 @@ def build(root, paths):
             s['screens'][name] = round3_gate.screen(p) if p.exists() else 'not run'
         except (SystemExit, ValueError) as exc:
             s['screens'][name] = f'unreadable: {exc}'
+    s['addons'] = {k: addon_summary(k, addon_rescues(k, root, paths, s['screens']), d_abst, d_tokens) for k in 'XCR'}
+    s['overlap'] = overlap(s['addons'])
     s['decisions'] = decisions(s)
     s['plans'] = {k: (json.loads((root / f).read_text()).get('decision_rule') or json.loads((root / f).read_text()).get('gate'))
                   if (root / f).exists() else 'plan not written' for k, f in PLANS.items()}
@@ -288,10 +381,16 @@ def markdown(s):
         a = s['arms'][k]
         out.append(f"| {k} | {a['status']} | " + ' | '.join(fmt(a.get(c)) for c in (
             'cases', 'solved', 'wrong', 'abstain', 'server_tokens_per_case', 'server_tokens_per_solved', 'wall_seconds', 'wh')) + ' |')
+    for k in 'DL':
+        if s['arms'][k].get('reasons'):
+            out.append(f"\n{k} incomplete: {'; '.join(s['arms'][k]['reasons'])}")
     if 'paired_L_vs_D' in s:
         p = s['paired_L_vs_D']
         out += ['', f"Paired: L-only solved {p['l_only']}, D-only {p['d_only']}, exact sign test p = {p['sign_test_p']}."]
-    out += ['', '### Mechanism: tokens after the target first appears (winners that leave a number unused)', '',
+    out += ['', '### Mechanism: tokens after discovery (winners that leave a number unused)', '',
+            'Discovery = the first thinking line of the accepted plan\'s stream with an arithmetically true equation '
+            '(exact Fraction evaluation, offline analysis only) whose result is the target; tokens after it are counted '
+            'only within that stream (rest of the discovery request, estimated by characters, plus its continuation).', '',
             '| arm | leftover winners | measured | median | p90 |', '|---|---|---|---|---|']
     for k in 'DL':
         m = s['mechanism'][k]
@@ -303,6 +402,9 @@ def markdown(s):
         a = s['addons'][k]
         out.append(f"| {k} | {a['status']} | " + ' | '.join(fmt(a.get(c)) for c in (
             'cases', 'rescued', 'wrong', 'server_tokens', 'share_of_d_tokens', 'wh')) + ' |')
+    for k in 'XCR':
+        if s['addons'][k].get('reasons'):
+            out.append(f"\n{k} incomplete: {'; '.join(s['addons'][k]['reasons'])}")
     o = s['overlap']
     out += ['', f"Rescued overlap: {o['pairwise']}; in all: {o['all']}; union: {o['union']}.", '', '## Screens', '']
     for name, g in s['screens'].items():

@@ -489,6 +489,49 @@ class CaseListTests(unittest.TestCase):
                            paired_with=dict(seed_offset=15400))
 
 
+class MultiResumeTests(unittest.TestCase):
+    """--resume-from skips the clean cases of the arm and ALL its -resumeN segments (frozen resume rule)."""
+    def plan_cases(self, resume_dir_name, segments):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            tasks = [dict(id=f't{i}', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7) for i in range(4)]
+            (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=tasks)))
+            plan = dict(protocol='swarm-variants-screen-v1', source_revision='x', dataset=str(root / 'data.json'),
+                        dataset_protocol='p', split='evaluation', tasks=4, seeds=[1], policies=['roll12strategy'],
+                        agent_variant='xl_forced_original', seed_offsets=dict(roll12strategy=1), concurrent_policy_cases=1)
+            (root / 'plan.json').write_text(json.dumps(plan))
+            row = lambda t, **kw: dict(dict(task_id=t, seed=1, policy='roll12strategy', answered=False, infra=0), **kw)
+            for i, rows in enumerate(segments):
+                seg = root / 'runs' / ('arm' if i == 0 else f'arm-resume{i}')
+                seg.mkdir(parents=True)
+                resume = dict(resumed_from=str(root / 'runs' / 'arm')) if i else None
+                (seg / 'metadata.json').write_text(json.dumps(dict(protocol=plan, resume=resume)))
+                (seg / 'cases.jsonl').write_text(''.join(json.dumps(row(r) if isinstance(r, str) else row(r[0], **r[1])) + '\n'
+                                                         for r in rows))
+            buf = __import__('io').StringIO()
+            with patch.object(v, 'validate_source', lambda *a: None), __import__('contextlib').redirect_stdout(buf):
+                v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d,
+                        '--resume-from', str(root / 'runs' / resume_dir_name)])
+            return json.loads(buf.getvalue().strip().splitlines()[-1])['policy_cases']
+
+    def test_second_resume_never_reruns_a_clean_case(self):
+        # base stopped after t0 clean, t1 infra (t2, t3 never ran); resume1: t1 infra again, t2 clean (t3 never ran)
+        base = ['t0', ('t1', dict(infra=1))]
+        resume1 = [('t1', dict(infra=1)), 't2']
+        # resuming from either segment reruns exactly t1 and t3 (t0 from the base, t2 from resume1 are clean)
+        self.assertEqual(self.plan_cases('arm-resume1', [base, resume1]), 2)
+        self.assertEqual(self.plan_cases('arm', [base, resume1]), 2)
+        # base + resume1 + resume2 (resume2 finished t1 cleanly, t3 errored): only t3 is left
+        resume2 = ['t1', ('t3', dict(error='boom'))]
+        self.assertEqual(self.plan_cases('arm-resume2', [base, resume1, resume2]), 1)
+        self.assertEqual(self.plan_cases('arm-resume1', [base, resume1, resume2]), 1)
+
+    def test_resume_segment_rerunning_a_clean_case_is_refused(self):
+        with self.assertRaisesRegex(Exception, 'reruns the clean case'):
+            self.plan_cases('arm-resume1', [['t0'], ['t0']])
+
+
 class StrictHardCasesTests(unittest.TestCase):
     from inkling import strict_hard_cases as shc
     EXPECTED = {('a', 1), ('a', 2), ('b', 1), ('b', 2)}

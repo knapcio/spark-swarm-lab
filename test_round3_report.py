@@ -32,9 +32,17 @@ def write_run(path, plan, rows, tokens, resume_of=None, wh=1.0):
     meta = dict(protocol=plan, policies=plan['policies'], resume=dict(resumed_from=str(resume_of)) if resume_of else None)
     (path / 'metadata.json').write_text(json.dumps(meta))
     (path / 'cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
-    (path / 'arm_accounting.json').write_text(json.dumps(dict(
-        protocol='swarm-arm-accounting-v1', runner_wall_seconds=10, server=dict(total=dict(generation_tokens=tokens)),
-        energy=dict(total_wh=wh))))
+    (path / 'arm_accounting.json').write_text(json.dumps(acct(tokens, wh=wh)))
+
+
+def acct(tokens, wh=1.0, wrapper=False, **changes):
+    rec = dict(protocol='swarm-arm-accounting-v1', runner_wall_seconds=10, runner_exit=0, idle_after=True,
+               server=dict(total=dict(generation_tokens=tokens), per_node={'01': dict(generation_tokens=tokens)}),
+               energy=dict(total_wh=wh))
+    if wrapper:
+        rec['command'] = ['python3', 'x.py']
+    rec.update(changes)
+    return rec
 
 
 def trace(path, reasoning=REASONING, response=RESPONSE, tokens=100):
@@ -78,13 +86,16 @@ class Study:
         (c / 'cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in (
             dict(run='d', task_id='t1', seed=1, closers=[{}], rescue=True, solved=True, wrong=False, infra=0),
             dict(run='d', task_id='t2', seed=1, closers=[{}], rescue=True, solved=False, wrong=True, infra=0))))
-        (c / 'arm_accounting.json').write_text(json.dumps(dict(runner_wall_seconds=5, server=dict(total=dict(generation_tokens=50)),
-                                                               energy=dict(total_wh=0.1))))
+        (c / 'arm_accounting.json').write_text(json.dumps(acct(50, wh=0.1, wrapper=True)))
         (runs / f'{STUDY}-r.cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in (
             recall_row('t1', 'none'), recall_row('t2', 'case_rescue', accepted=1, solved=1))))
         (runs / f'{STUDY}-r').mkdir()
-        (runs / f'{STUDY}-r' / 'arm_accounting.json').write_text(json.dumps(dict(
-            runner_wall_seconds=5, server=dict(total=dict(generation_tokens=80)), energy=dict(total_wh=0.1))))
+        (runs / f'{STUDY}-r' / 'arm_accounting.json').write_text(json.dumps(acct(80, wh=0.1, wrapper=True)))
+        for name, rows in (('closer_screen', [closer_row(f's{i}', solved=True) for i in range(4)]),
+                           ('recall_screen', [recall_row(f's{i}', 'case_rescue', accepted=1, solved=1) for i in range(4)])):
+            (root / '.runtime' / name).mkdir(parents=True)
+            fname = 'cases.jsonl' if name == 'closer_screen' else 'recall.cases.jsonl'
+            (root / '.runtime' / name / fname).write_text(''.join(json.dumps(r) + '\n' for r in rows))
 
 
 def recall_row(task, outcome, accepted=0, solved=0, wrong=0, answered=False, errors=0):
@@ -161,19 +172,19 @@ class ReportTests(unittest.TestCase):
             js = json.loads((root / 'results' / STUDY / 'report.json').read_text())
         D, L = s['arms']['D'], s['arms']['L']
         self.assertEqual((D['cases'], D['solved'], D['wrong'], D['abstain'], D['server_tokens']), (4, 1, 1, 2, 1200))
-        self.assertEqual((D['server_tokens_per_case'], D['server_tokens_per_solved'], D['wh']), (300, 1200, 2.0))
+        self.assertEqual((D['server_tokens_per_case'], D['server_tokens_per_solved'], D['wh'], D['status']), (300, 1200, 2.0, 'complete'))
         self.assertEqual(len(D['segments']), 2)
         self.assertEqual((L['solved'], L['abstain'], L['server_tokens_per_solved']), (2, 2, 450))
         self.assertEqual(s['paired_L_vs_D'], dict(cases=4, l_only=1, d_only=0, sign_test_p=1.0))
         pos = REASONING.index('822 done\n') + len('822 done\n')
-        expected = round(100 * (1 - pos / (len(REASONING) + len(RESPONSE))))
+        expected = 100 * (1 - pos / (len(REASONING) + len(RESPONSE)))  # unrounded
         self.assertEqual(s['mechanism']['D'], dict(leftover_winners=1, measured=1, target_statement_not_found=0,
                                                    median=expected, p90=expected))
         self.assertEqual(s['mechanism']['L']['leftover_winners'], 0)
         X, C, R = (s['addons'][k] for k in 'XCR')
         self.assertEqual((X['rescued'], X['wrong'], X['rescue_slots'], X['share_of_d_tokens']), (1, 0, [13], 0.25))
-        self.assertEqual((C['rescued'], C['wrong'], C['server_tokens']), (1, 1, 50))
-        self.assertEqual((R['rescued'], R['wrong'], R['share_of_d_tokens']), (1, 0, round(80 / 1200, 4)))
+        self.assertEqual((C['status'], C['rescued'], C['wrong'], C['server_tokens']), ('complete', 1, 1, 50))
+        self.assertEqual((R['status'], R['rescued'], R['wrong'], R['share_of_d_tokens']), ('complete', 1, 0, 80 / 1200))
         self.assertEqual(s['overlap']['pairwise'], {'C&R': 0, 'C&X': 1, 'R&X': 0})
         self.assertEqual(s['overlap']['union'], 2)
         dec = s['decisions']
@@ -198,20 +209,126 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(s['arms']['L']['status'], 'incomplete')
         self.assertEqual({k: v['status'] for k, v in s['addons'].items()}, dict(X='not run', C='not run', R='not run'))
         self.assertEqual(s['screens'], dict(closer='not run', recall='not run'))
-        self.assertIn('not evaluable', s['decisions']['L'])
+        self.assertTrue(s['decisions']['L'].startswith('incomplete'))
+        self.assertTrue(all(s['decisions'][k].startswith('incomplete') for k in 'XCR'))
         self.assertEqual(s['plans']['D'], 'plan not written')
 
+    @staticmethod
+    def complete(**kw):
+        return dict(status='complete', reasons=[], **kw)
+
+    def synthetic(self):
+        return dict(arms=dict(D=self.complete(solved=10, server_tokens_per_solved=5.0),
+                              L=self.complete(solved=7, wrong=0, server_tokens_per_solved=4.0)),
+                    addons=dict(X=self.complete(rescued=2, wrong=0, rescue_slots=[12, 15]),
+                                C=self.complete(rescued=3, wrong=0, share_of_d_tokens=0.05, server_tokens=10),
+                                R=self.complete(rescued=3, wrong=0, share_of_d_tokens=0.04, server_tokens=8)))
+
     def test_x_rule_cap16_and_both_addons_pass(self):
-        s = dict(arms=dict(D=dict(solved=10, server_tokens_per_solved=5), L=dict(solved=7, wrong=0, server_tokens_per_solved=4)),
-                 addons=dict(X=dict(rescued=2, wrong=0, rescue_slots=[12, 15]),
-                             C=dict(rescued=3, wrong=0, share_of_d_tokens=0.05, server_tokens=10),
-                             R=dict(rescued=3, wrong=0, share_of_d_tokens=0.04, server_tokens=8)))
+        s = self.synthetic()
         dec = rep.decisions(s)
         self.assertEqual(dec['X']['outcome'], 'cap 16')
         self.assertTrue(dec['L']['rejected_pending_review'])
         self.assertIn('adopt R first', dec['C_and_R'])
         s['addons']['X']['rescue_slots'] = [12, 18]
         self.assertEqual(rep.decisions(s)['X']['outcome'], 'cap 20')
+
+    def test_decisions_use_unrounded_values(self):
+        s = self.synthetic()
+        s['arms']['D'].update(solved=3, server_tokens_per_solved=1000 / 3)  # 333.33
+        s['arms']['L'].update(solved=4, server_tokens_per_solved=1332 / 4)  # 333.0: equal when rounded, cheaper unrounded
+        self.assertTrue(rep.decisions(s)['L']['cheaper_per_solved'])
+        s['addons']['C']['share_of_d_tokens'] = 0.1000001  # rounds to 0.1 but is above the 10 % ceiling
+        self.assertFalse(rep.decisions(s)['C']['tokens_at_most_10pct_of_d'])
+
+    def test_no_decision_without_complete_inputs(self):
+        for arm, part in (('D', 'arms'), ('L', 'arms'), ('X', 'addons'), ('C', 'addons')):
+            s = self.synthetic()
+            s[part][arm] = dict(status='incomplete', reasons=['why'])
+            dec = rep.decisions(s)
+            blocked = {'D': 'LXCR', 'L': 'L', 'X': 'X', 'C': 'C'}[arm]
+            for k in 'LXCR':
+                self.assertEqual(isinstance(dec[k], str) and dec[k].startswith('incomplete'), k in blocked, (arm, k))
+
+    def study_status(self, mutate):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            Study(root)
+            mutate(root)
+            return self.build(root)
+
+    def test_incomplete_inputs_are_reported_with_reasons(self):
+        runs = lambda root: root / 'runs'
+
+        def drop_counter(root):
+            f = runs(root) / f'{STUDY}-d-roll12strategy-resume1' / 'arm_accounting.json'
+            rec = json.loads(f.read_text())
+            del rec['server']['total']['generation_tokens']
+            f.write_text(json.dumps(rec))
+        s = self.study_status(drop_counter)
+        self.assertEqual(s['arms']['D']['status'], 'incomplete')
+        self.assertIsNone(s['arms']['D']['server_tokens'])  # never a partial total
+        self.assertTrue(all(isinstance(s['decisions'][k], str) for k in 'LXCR'))
+
+        def negative_delta(root):
+            (runs(root) / f'{STUDY}-l-roll12strategy' / 'arm_accounting.json').write_text(json.dumps(
+                acct(900, server=dict(total=dict(generation_tokens=900), per_node={'01': dict(generation_tokens=-5)}))))
+        s = self.study_status(negative_delta)
+        self.assertIn('negative', ' '.join(s['arms']['L']['reasons']))
+
+        def no_screen(root):
+            import shutil
+            shutil.rmtree(root / '.runtime' / 'closer_screen')
+        s = self.study_status(no_screen)
+        self.assertEqual(s['addons']['C']['status'], 'incomplete')
+        self.assertIn('dev-screen gate', ' '.join(s['addons']['C']['reasons']))
+        self.assertEqual(s['addons']['R']['status'], 'complete')
+
+        def dirty_wrapper(root):
+            (runs(root) / f'{STUDY}-r' / 'arm_accounting.json').write_text(json.dumps(
+                acct(80, wrapper=True, energy_error='energy samples missing on nodes [02]')))
+        s = self.study_status(dirty_wrapper)
+        self.assertEqual(s['addons']['R']['status'], 'incomplete')
+
+        def faulted_row(root):
+            with (runs(root) / f'{STUDY}-r.cases.jsonl').open('a') as f:
+                f.write(json.dumps(recall_row('t3', 'none', errors=1)) + '\n')
+        s = self.study_status(faulted_row)
+        self.assertIn('faulted', ' '.join(s['addons']['R']['reasons']))
+
+    def test_unresolved_infra_blocks_the_arm(self):
+        def unresolved(root):
+            f = root / 'runs' / f'{STUDY}-l-roll12strategy' / 'cases.jsonl'
+            rows = [json.loads(line) for line in f.read_text().splitlines()]
+            rows[2]['infra'] = 1
+            f.write_text(''.join(json.dumps(r) + '\n' for r in rows))
+        s = self.study_status(unresolved)
+        self.assertEqual(s['arms']['L']['status'], 'incomplete')
+        self.assertTrue(s['decisions']['L'].startswith('incomplete'))
+
+
+class MechanismTests(unittest.TestCase):
+    def test_discovery_needs_a_true_equation_in_the_accepted_stream(self):
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / 'a.jsonl'
+            failed = dict(type='request_end', request_id='r1', error='ConnectionError: stream ended without finish_reason',
+                          reasoning='first try\n825-3 = 822 found early\n', response=None, usage=dict(completion_tokens=500))
+            plan = dict(type='request_end', request_id='r2', error=None, finish_reason='length',
+                        reasoning='2+3 = 822 is false\nTry 55*15=825\n(825-3) = 822 yes\ncheck again\n', response=None,
+                        usage=dict(completion_tokens=100))
+            forced = dict(type='request_end', request_id='r3', parent_request_id='r2', error=None, reasoning='',
+                          response=RESPONSE, usage=dict(completion_tokens=20))
+            f.write_text(''.join(json.dumps(e) + '\n' for e in (failed, plan, forced)))
+            after = rep.tokens_after_target(f, 822)
+        text = plan['reasoning']
+        pos = text.index('yes\n') + len('yes\n')
+        self.assertAlmostEqual(after, 100 * (1 - pos / len(text)) + 20)  # failed attempt r1 not counted
+
+    def test_evaluate(self):
+        self.assertEqual(rep.evaluate(['(', '25', '*', '4', '-', '2', ')', '*', '8']), 784)
+        self.assertEqual(rep.evaluate(['7', '/', '2']), rep.Fraction(7, 2))
+        self.assertIsNone(rep.evaluate(['1', '/', '0']))
+        self.assertIsNone(rep.evaluate(['1', '+']))
 
 
 if __name__ == '__main__':

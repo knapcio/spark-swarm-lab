@@ -563,7 +563,7 @@ def arm_segments(base):
     return [base] + [d for _, d in sorted(found)]
 
 
-def arm_latest(run_dir, root=HERE, policy=None):
+def arm_latest(run_dir, root=HERE, policy=None, complete=True):
     """Frozen resume rule over an arm's segments: per (task, seed) the latest row counts; a later segment may only
     rerun an infra/error row; the segments must cover the plan's cases exactly. Returns base, segments, plan, tasks,
     index (case index), latest {key: (segment, row)}, clean keys, superseded and unresolved lists."""
@@ -596,7 +596,10 @@ def arm_latest(run_dir, root=HERE, policy=None):
                 require('error' in prev or prev.get('infra'), f'{seg.name} reruns the clean case {key}')
                 superseded.append(dict(task_id=key[0], seed=key[1], segment=prev_seg.name))
             latest[key] = (seg, row)
-    require(set(latest) == expected, f'{base.name}: segments do not cover the plan cases exactly')
+    if complete:
+        require(set(latest) == expected, f'{base.name}: segments do not cover the plan cases exactly')
+    else:  # a stopped arm (resume): rows may be missing, never unknown
+        require(set(latest) <= expected, f'{base.name}: segments hold cases outside the plan')
     clean = {k for k, (_, row) in latest.items() if 'error' not in row and not row.get('infra')}
     return dict(base=base, segments=segs, plan=plan, tasks=tasks, index=index, latest=latest, clean=clean,
                 superseded=superseded, unresolved=[dict(task_id=k[0], seed=k[1]) for k in latest if k not in clean])
@@ -705,10 +708,15 @@ def main(argv=None):
         concurrent = plan.get('concurrent_policy_cases_by_policy', {}).get(policies[0], concurrent)
     resumed = None
     if a.resume_from:  # continuation after an infrastructure stop: same plan, only unfinished policy cases
-        prev = [json.loads(line) for line in (a.resume_from / 'cases.jsonl').read_text().splitlines()]
-        finished = {(r['task_id'], r['seed'], r['policy']) for r in prev if 'error' not in r and not r['infra']}
+        # the union of finished clean cases over the arm and ALL its -resumeN segments (frozen resume rule), so a
+        # second resume never reruns a clean case
+        finished, segments = set(), None
+        for pol in policies:
+            arm = arm_latest(a.resume_from, HERE, policy=pol, complete=False)
+            finished |= {(k[0], k[1], pol) for k in arm['clean']}
+            segments = [d.name for d in arm['segments']]
         jobs = [j for j in jobs if (j[0]['id'], j[1], j[3]) not in finished]
-        resumed = dict(resumed_from=str(a.resume_from.resolve()), skipped_finished=len(finished))
+        resumed = dict(resumed_from=str(a.resume_from.resolve()), skipped_finished=len(finished), segments=segments)
     require(plan.get('concurrent_requests_per_endpoint', 0) <= MAX_REQUESTS_PER_NODE, 'Per-node request cap above 25')
     if not a.run:
         print(json.dumps(dict(mode='plan', policy_cases=len(jobs), model_calls=0)))
