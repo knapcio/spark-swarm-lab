@@ -181,8 +181,8 @@ pre-registered pooled hard-v12 + v14: 173 vs 167 of 192 (+9/-3, p = 0.15), 4 noi
 
 Fable idea 1, plans 205783b frozen before seeds 13-15. Early stop in every arm. S (stagger 4+4 at 300 s, old default)
 65/72, 5 wrong (public tests pass, hidden fail); R4 (replace failures, 4 in flight) 69, 2 wrong, -25 % tokens; R2 (2 in
-flight) 71, 1 wrong, -52 % tokens, 1.01 vs 1.52 Wh per solved, R2 vs S +6/-0 (p = 0.031). Fewer racing agents means a
-fast, lucky public-test pass wins less often. **R2 is the coding default.**
+flight) 71, 1 wrong, -52 % tokens, 1.01 vs 1.52 Wh per solved, R2 vs S +6/-0 (p = 0.031); a pool replay puts R2 at
+about 69 solved, so part of the +6 is seed luck. **R2 is the coding default** (not worse, half the tokens).
 
 ## 2026-11-23 (13): loop watchdog ([swarm-loop-hard15-v1](swarm-loop-hard15-v1/REPORT.md))
 
