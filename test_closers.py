@@ -151,15 +151,31 @@ class StatementTests(unittest.TestCase):
                 self.assertFalse(any(c in line for c in '^²₂٣½%!'), (line, eq))
         self.assertGreater(checked, 200)  # the generator does produce statements
 
-    def test_leads_tiers_dedup_and_limit(self):
-        text = ('Hmm 55*15=825. Also 55 * 15 = 825 again. target? 800+22 = 822. 83*12=996 no. '
-                '(25*4-2)*8=784 meh. 822/2 = 411')
+    def test_leads_are_verbatim_lines_tiered_by_matched_value(self):
+        text = ('Hmm 55*15=825. Also 55 * 15 = 825 again.\n'
+                '   target? 800+22 = 822.  \n'
+                '83*12=996 no. (25*4-2)*8=784 meh.\n'
+                'Hmm 55*15=825. Also 55 * 15 = 825 again.\n'
+                '822/2 = 411 and 800+22 = 822')
         res = closers.leads(text, wanted={825, 819, 411, 2466}, target=822)
-        self.assertEqual(res['tier1'], ['55 * 15 = 825', '822 / 2 = 411'])
-        self.assertEqual(res['tier2'], ['800 + 22 = 822'])
-        self.assertEqual(res['lines'], ['55 * 15 = 825', '822 / 2 = 411', '800 + 22 = 822'])
+        self.assertEqual(res['tier1'], ['Hmm 55*15=825. Also 55 * 15 = 825 again.', '822/2 = 411 and 800+22 = 822'])
+        self.assertEqual(res['tier2'], ['target? 800+22 = 822.'])
+        self.assertEqual(res['lines'], res['tier1'] + res['tier2'])
+        m = res['matches'][0]
+        self.assertEqual((m['tier'], [(p['a'], p['op'], p['b'], p['value']) for p in m['parsed']]),
+                         (1, [(55, '*', 15, 825), (55, '*', 15, 825)]))
+        self.assertEqual([(p['a'], p['op'], p['b'], p['value']) for p in res['matches'][1]['parsed']], [(822, '/', 2, 411)])
+        self.assertEqual(res['matches'][2]['parsed'][0]['expr'], '800 + 22')
         self.assertEqual(closers.leads(text, {825, 411}, 822, limit=2)['truncated'], 1)
         self.assertEqual(closers.leads('nothing here', {825}, 822)['lines'], [])
+
+    def test_grouping_and_non_ascii_whitespace_reject(self):
+        for text in ('125*8 = 1, 000', '125*8 = 1,000', '125*8 = 1 ,000', '125*8 = 1 , 000', 'so 8/2 = 4\u00a0(1+1)',
+                     'so 8/2\u00a0= 4', 'so 8/2 = 4\u2009ok', '\u202f8/2 = 4', '1 , 125*8 = 1000', '1, 125*8 = 1000',
+                     '125*8 = 1000.5', '8/2 = 4\u200b'):
+            self.assertEqual(self.lines(text), [], repr(text))
+        for text in ('125*8 = 1000, then', '125*8 = 1000. Next', 'so, 125*8 = 1000'):
+            self.assertEqual(self.lines(text), ['125 * 8 = 1000'], repr(text))
 
     def test_extra_text(self):
         extra = closers.closer_extra(['55 * 15 = 825'])
@@ -358,6 +374,47 @@ class AskWantedRetryTests(unittest.TestCase):
         self.assertEqual(files, ['w.jsonl', 'w.retry.jsonl'])
 
 
+RUNS = next((d for d in (Path(__file__).resolve().parent / 'runs', Path(__file__).resolve().parents[2] / 'runs')
+             if (d / 'swarm-cap12-hard14-v1-roll12strategy' / 'cases.jsonl').exists()), None)
+REAL_RUNS = ('swarm-cap12-hard14-v1-roll12strategy', 'swarm-cap12-hard12-v1-roll12strategy',
+             'swarm-loop-hard15-v1-d-roll12strategy')
+
+
+@unittest.skipUnless(RUNS, 'recorded runs not available')
+class RealTraceVerbatimTests(unittest.TestCase):
+    def test_every_quoted_line_is_a_verbatim_source_line(self):
+        runs = closer_replay.load_cohort([RUNS / r for r in REAL_RUNS])
+        prompts = quoted = 0
+        for run in runs:
+            for c in run['cases']:
+                task = c['task']
+                wanted = closers.reference_wanted_values(task['numbers'], task['target'])
+                rows = closers.case_leads(c['seg'], c['row'], wanted, task['target'])
+                chosen, _ = closers.select_closers(rows, closers.MAX_CLOSERS_PER_CASE)
+                for r in chosen:
+                    trace = closers.agent_events(c['seg'], c['row'], r['slot'])
+                    thinking = closers.agent_thinking(trace)
+                    source_lines = {line.strip() for line in thinking.splitlines()}
+                    raw = trace.read_text()
+                    extra = closers.closer_extra(r['lines'])
+                    head, tail = 'Another solver computed these lines:\n', '\n' + closers.CLOSER_TAIL
+                    self.assertTrue(extra.startswith(head) and extra.endswith(tail))
+                    body = extra[len(head):-len(tail)].split('\n')
+                    self.assertEqual(body, r['lines'])
+                    prompts += 1
+                    for line in body:
+                        quoted += 1
+                        self.assertIn(line, source_lines, (trace.name, line))
+                        self.assertIn(json.dumps(line, ensure_ascii=False)[1:-1], raw, (trace.name, line))  # as recorded in the trace
+                        self.assertEqual(line, line.strip())
+                    for m in r['matches']:
+                        self.assertIn(m['line'], body)
+                        self.assertTrue(m['parsed'])
+        self.assertEqual(sum(len(r['cases']) for r in runs), 30)
+        self.assertGreater(prompts, 100)
+        self.assertGreater(quoted, prompts)
+
+
 class AskWantedFaultTests(unittest.TestCase):
     def ask(self, behaviors, failing_trace=None):
         import run_judge
@@ -467,12 +524,12 @@ class PlanOnlyTests(unittest.TestCase):
         self.assertEqual([(c['task_id'], c['seed'], c['case_index']) for c in cases], [('a', 1, 0), ('b', 2, 3)])
         a, b = cases
         self.assertEqual((a['failed_agents'], a['tier1_agents'], a['tier2_agents'], a['closers'], a['tier1_lines'], a['tier2_lines']),
-                         (3, 1, 2, 2, 1, 2))
+                         (3, 1, 1, 2, 2, 1))  # a line is tiered once (tier 1 wins); tier-1 lines are verbatim lines
         self.assertEqual((b['failed_agents'], b['missing_traces'], b['tier1_agents'], b['closers']), (2, 1, 1, 1))
         total = out[-1]['total']
         self.assertEqual(out[-1]['model_calls'], 0)
         self.assertEqual((total['cases'], total['failed_agents'], total['tier1_agents'], total['tier2_agents'], total['closers']),
-                         (2, 5, 2, 2, 3))
+                         (2, 5, 2, 1, 3))
 
     def test_plan_only_cap_from_cli_and_plan(self):
         with tempfile.TemporaryDirectory() as d:

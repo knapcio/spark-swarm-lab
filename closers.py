@@ -45,7 +45,7 @@ _LETTER_X = re.compile(r'(?<=[0-9]) ?[xX] ?(?=[0-9])', re.ASCII)  # 55 x 15 -> 5
 # percent or factorial, not glued to a letter or non-ASCII character, not the start of a longer expression
 _RHS = re.compile(r'(?<![<>!=])=(?!=) ?([0-9]+)'
                   r'(?![0-9A-Za-z_]|[^\x00-\x7f]|[.,][0-9]|[ \t]*[-+*/][ \t]*[0-9(]|[ \t]*[\^%!]|[ \t]+[0-9]'
-                  r'|[ \t]?[(\-+*/]|[ \t]?[xX](?![A-Za-z_])|[ \t]{2,}(?=\S)|\t)', re.ASCII)
+                  r'|[ \t]?[(\-+*/]|[ \t]?[xX](?![A-Za-z_])|[ \t]{2,}(?=\S)|\t|[ \t]?[,.][ \t]?[0-9])', re.ASCII)
 _UNPARSED_LINE = re.compile(r'\^|\*\*|[0-9][eE][+-]?[0-9]|\\(?:frac|sqrt|pow)|√|%|!(?!=)'
                             r'|[0-9][     -  ][0-9]')
 _LHS = re.compile(r'[0-9()+\-*/ \t]*$', re.ASCII)
@@ -63,7 +63,8 @@ def normalize(text):
 def _unparsed_line(line):
     if _UNPARSED_LINE.search(line):
         return True
-    return any(not c.isascii() and (c.isdigit() or c.isnumeric() or unicodedata.category(c) in ('Nd', 'Nl', 'No'))
+    return any(not c.isascii() and (c.isspace() or c.isdigit() or c.isnumeric()
+                                    or unicodedata.category(c) in ('Nd', 'Nl', 'No', 'Zs', 'Cf'))
                for c in line)
 
 
@@ -107,8 +108,8 @@ def _expression(left, line_start=True):
         else:
             if prev and not (prev[-1].isalpha() or prev[-1] in _SAFE_SPACED) or prev[-1:] in ('x', 'X'):
                 return None  # left neighbour is a digit, operator or 'x' (multiplication) one space away
-            if prev[-1:] in ('.', ',') and prev[-2:-1].isdigit():
-                return None  # '1, 250*4' / '2. 5*4': possibly one number
+            if prev[-1:] in ('.', ',') and prev[:-1].rstrip(' ')[-1:].isdigit() and len(prev[:-1]) - len(prev[:-1].rstrip(' ')) <= 1:
+                return None  # '1, 250*4' / '1 , 250*4' / '2. 5*4': possibly one number
     if _kind(tokens[0]) not in ('num', '('):
         return None  # a leading sign or operator belongs to the statement; never strip it
     while tokens[0] == '(' and tokens.count('(') > tokens.count(')'):  # opening paren of an outer group
@@ -127,16 +128,16 @@ def _expression(left, line_start=True):
     return ' '.join(tokens).replace('( ', '(').replace(' )', ')')
 
 
-def statements(text):
-    """Every statement `expr = v` (expr with at least one of + - * /, v a positive integer) in order of appearance.
-    Returns (line, v) with line canonicalised as 'a op b = v'; nothing is evaluated or checked."""
-    text = normalize(text)
+def line_statements(raw):
+    """Statements `expr = v` DETECTED in one source line (expr with at least one of + - * /, v a positive integer), in
+    order: dicts with expr (canonical, for matching only), value, tokens and, for one operation, a/op/b. Nothing is
+    evaluated or checked; the canonical form is never shown to a model (closers quote the verbatim source line)."""
+    line = normalize(raw)
+    if _unparsed_line(line):
+        return []
     out = []
-    for m in _RHS.finditer(text):
-        line_start, line_end = text.rfind('\n', 0, m.start()) + 1, text.find('\n', m.end())
-        if _unparsed_line(text[line_start:None if line_end < 0 else line_end]):
-            continue
-        left = text[line_start:m.start()]
+    for m in _RHS.finditer(line):
+        left = line[:m.start()]
         at_start = '=' not in left
         if not at_start:
             left = left.rsplit('=', 1)[-1]
@@ -145,32 +146,43 @@ def statements(text):
             if marker:
                 left = left[marker.end():]
         expr = _expression(left, at_start)
-        if expr is None:
-            continue
         digits = m.group(1)
-        if digits[0] == '0':
-            continue  # zero or a leading zero: not a positive plain integer
-        out.append((f'{expr} = {digits}', int(digits)))
+        if expr is None or digits[0] == '0':
+            continue  # unparsed span, zero or a leading zero
+        tokens = expr.replace('(', ' ( ').replace(')', ' ) ').split()
+        rec = dict(expr=expr, value=int(digits), tokens=tokens)
+        if len(tokens) == 3:
+            rec.update(a=int(tokens[0]), op=tokens[1], b=int(tokens[2]))
+        out.append(rec)
     return out
 
 
+def statements(text):
+    """(canonical 'expr = v', v) for every detected statement of every line of text, in order (tests, reports)."""
+    return [(f"{st['expr']} = {st['value']}", st['value']) for raw in text.splitlines() for st in line_statements(raw)]
+
+
 def leads(text, wanted, target, limit=MAX_LEAD_LINES):
-    """Tier 1: statements whose value is on the wanted list; tier 2: statements whose value is the target.
-    Distinct lines in order of first appearance; at most `limit` lines in total, tier 1 first."""
+    """Lead LINES of a thinking text: tier 1 if a detected statement's value is on the wanted list, else tier 2 if one
+    equals the target. Lines are the verbatim source lines (only leading/trailing whitespace stripped), distinct, in
+    order of first appearance; at most `limit` in total, tier 1 first. matches holds the parsed statements per line."""
     wanted = set(wanted)
-    tier1, tier2, seen = [], [], set()
-    for line, value in statements(text):
-        if line in seen:
+    tier1, tier2, matches, seen = [], [], {}, set()
+    for raw in text.splitlines():
+        found = line_statements(raw)
+        if not found:
             continue
-        if value in wanted and value != target:
-            tier1.append(line)
-        elif value == target:
-            tier2.append(line)
-        else:
+        verbatim = raw.strip()
+        hit1 = [f for f in found if f['value'] in wanted and f['value'] != target]
+        hit2 = [f for f in found if f['value'] == target]
+        if not (hit1 or hit2) or verbatim in seen:
             continue
-        seen.add(line)
+        seen.add(verbatim)
+        (tier1 if hit1 else tier2).append(verbatim)
+        matches[verbatim] = dict(line=verbatim, tier=1 if hit1 else 2, parsed=hit1 or hit2)
     chosen = (tier1 + tier2)[:limit]
-    return dict(tier1=tier1, tier2=tier2, lines=chosen, truncated=len(tier1) + len(tier2) - len(chosen))
+    return dict(tier1=tier1, tier2=tier2, lines=chosen, matches=[matches[line] for line in chosen],
+                truncated=len(tier1) + len(tier2) - len(chosen))
 
 
 def closer_extra(lines):
@@ -342,7 +354,8 @@ def run_case(plan, source, out, task, seed, case_index, agent_leads_fn, slots, e
                                           seed_offset, t0, race, endpoints=endpoints)
         except Exception as exc:  # an infra record for this closer (and so the case), with every charge kept
             info = run_variants.fault_record(slot, extra, exc)
-        return dict(info, source_slot=r['slot'], tier1=len(r['tier1']), tier2=len(r['tier2']), lines=r['lines'])
+        return dict(info, source_slot=r['slot'], tier1=len(r['tier1']), tier2=len(r['tier2']), lines=r['lines'],
+                    matches=r.get('matches', []))
     closers = run_variants.parallel([lambda r=r: closer(r) for r in with_leads])
     selected = next((c for c in closers if c['slot'] == race['winner']), None)
     return dict(task_id=task['id'], seed=seed, case_index=case_index, numbers=task['numbers'], target=task['target'],
