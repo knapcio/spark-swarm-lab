@@ -1,0 +1,76 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "status": "FROZEN",
+ "study": "swarm-loop-hard15-v1-l",
+ "dataset": "datasets/arithmetic-hard-v15/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v15",
+ "split": "evaluation",
+ "tasks": 48,
+ "seeds": [
+  1,
+  2
+ ],
+ "policies": [
+  "roll12strategy"
+ ],
+ "arm_order": [
+  "D",
+  "L"
+ ],
+ "agent_variant": "xl_forced_watchdog",
+ "seed_offsets": {
+  "roll12strategy": 15400
+ },
+ "source_revision": "1692ae6ec4867d10b3d43ec467bab9cc64eba1e7",
+ "source_path": ".runtime/xl-watchdog-source",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason), unchanged; the exact verifier only scores",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_policy_cases": 20,
+ "concurrent_policy_cases_by_policy": {
+  "roll12strategy": 20
+ },
+ "concurrent_requests_per_endpoint": 20,
+ "concurrency_note": "At most 4 agents in flight per case in every arm, 20 cases at once, per-endpoint slot cap 20 (agents and judges) <= 25. Escalation agents run on the node of the agent they replace.",
+ "runner": "run_variants.py --policy ARM, one arm at a time, driven by inkling/arms.py",
+ "execution": "Arms run sequentially in arm_order, each alone on the fleet via inkling/arms.py (fresh admission with the shim sha and mem fraction below, prefix-cache flush, server counters, idle wait, GPU energy). Watchdog inkling/watch.sh; MemAvailable logged every 60 s.",
+ "resume_rule": "If an arm stops on an infrastructure fault (runner stop flag, worker or judge infra failure, node fault), the fault is fixed and the same arm is continued with arms.py --resume-from (skips its cases that finished without infra faults; reruns the others with the same seeds) and documented as an amendment. Server tokens, wall and energy of an arm are then the sums over its segments (wasted work of the stopped segment included and reported separately). Never a silent restart; no case is dropped.",
+ "exclusions": "None. All 96 cases of each arm count.",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh, MEM=0.75 since 2026-11-21 16:25 Europe/Warsaw (KV ~1.08M tokens per node)",
+  "adapter": "inkling/shim.py (vLLM dialect; client disconnects close the upstream stream and count as shim:client_cancels)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "temperature": "0.8 (harness constant)",
+  "mem_fraction": "0.75"
+ },
+ "baseline_note": "Defaults: arithmetic roll12strategy (cap 12, adopted after swarm-cap12-hard14-v1; 4 in flight, cancel on accept, failure-driven escalation with strategy hints); coding early stop + staggered start.",
+ "frozen_note": "Frozen 2026-11-22 BEFORE arithmetic-hard-v15 exists. Fable round-2 idea 3 (IDEAS-swarm-round2-fable.md): 43 % of budget-exhausted agents are in a hard repetition loop by a median of 20.5K tokens; budget-exhausted agents hold 79 % of the tokens and win 2 %. The watchdog stops a looping thinking stream (zlib ratio < 0.06 on two consecutive 2,000-character windows, checked every 500 characters) and forces the answer exactly like a length cut; the failed agent is then replaced as usual. Replay: -8 % tokens, no solved loss; the detector fires on 2 of 1,802 winners. The default is roll12strategy (cap 12) since swarm-cap12-hard14-v1.",
+ "question": "Does the loop watchdog keep the accuracy of the default (roll12strategy) at fewer server tokens?",
+ "study_group": "swarm-loop-hard15-v1",
+ "pairing": "Same tasks, seeds, agent seeds (1000*seed + 15400 + slot), nodes and judge seeds in both arms; the arms differ only in the worker variant (xl_forced_original vs xl_forced_watchdog). Run-to-run noise (~4 cases per 96) applies to paired solved counts.",
+ "arms": {
+  "D": "roll12strategy with xl_forced_original (source d94c893, the default)",
+  "L": "roll12strategy with xl_forced_watchdog (source 1692ae6 = d94c893 + the loop watchdog in forced72.py)"
+ },
+ "primary_outcomes": {
+  "tokens": "Server-counted generated tokens per case, L vs D.",
+  "accuracy": "Solved and wrong per arm; L vs D paired two-sided exact sign test.",
+  "wall": "Arm wall time, L vs D."
+ },
+ "decision_rule": "The watchdog becomes part of the default if: 0 wrong answers in L AND L solved >= D solved - 2 AND L server tokens per case <= 0.95 x D. Otherwise the default stays without it.",
+ "secondary_outcomes": "Loop stops per arm and per case; plans and accepted plans obtained at a loop stop; GPU energy per solved case; escalation agents.",
+ "generator": "make_arithmetic_hard.py --seed 2026112111 --protocol arithmetic-hard-v15 --output datasets/arithmetic-hard-v15 (after these plans are committed and pushed); same rules as hard-v5..v14",
+ "report": "inkling/report_loop_hard15.py -> results/swarm-loop-hard15-v1/REPORT.md + report.json",
+ "code_sha256": {
+  "run_variants.py": "dd3b8aa9fdd95b579abbab1e58c148d66a5304432a5e4727d5ca782b0617d15c",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "445349b83e910f1189df8908aff2428ab3ee1dd0bb862f1fc46978b31bda82c6",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "inkling/report_loop_hard15.py": "1812e6a68a36a4afe501d0635b5a79e7d611d18199ab35d28c23a76d97c9c72b",
+  ".runtime/xl-watchdog-source/forced72.py": "02104b8fc8c2ef43ebd64229fbd62b8d4eaef54acea204800d83f4ba241015e6",
+  ".runtime/xl-watchdog-source/forced72_worker.py": "4f82ee70e771dc81ad249a31a1dcac71968b968baf3df563dc2990f6320cf112"
+ },
+ "smoke": "Throwaway smoke after this freeze and before corpus generation: one hard development task, roll12strategy, xl_forced_watchdog (.runtime/SWARM_LOOP_SMOKE_PLAN.json). A failed smoke stops the chain before hard-v15 exists; any fix then means a new plan revision."
+}
