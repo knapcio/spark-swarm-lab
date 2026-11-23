@@ -14,6 +14,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / 'inkling'))
 import account_cmd as ac  # noqa: E402
 
 NODES = ('01', '02', '03', '04')
+SGLANG_FLUSHED = ('Cache flushed.\nPlease check backend logs for more details. (When there are running or waiting '
+                  'requests, the operation will not be performed.)')
+OK = [sys.executable, 'ok.py']
+SCRIPTS = {'ok.py': 'print(1)\n', 'exit7.py': 'raise SystemExit(7)\n',
+           'echo.py': 'import sys\nprint("hello", sys.argv[1:])\n'}
 
 
 def metrics(generated=0.0, running=0.0, drop=None, value=None):
@@ -30,7 +35,7 @@ def metrics(generated=0.0, running=0.0, drop=None, value=None):
 
 
 def flush_ok(node, remote):
-    return subprocess.CompletedProcess([], 0, 'Cache flushed.\nPlease check backend logs.\n200', '')
+    return subprocess.CompletedProcess([], 0, SGLANG_FLUSHED + '\n200', '')
 
 
 def energy_ok(start, end):
@@ -51,11 +56,13 @@ class AccountCmdTests(unittest.TestCase):
             calls['admit'].append(str(admission))
             if admit_error:
                 raise ac.AccountingError(admit_error)
+            Path(admission).write_text('{}')  # as admit.py does: fails if the wrapper did not create .runtime
         buf = io.StringIO()
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            (root / 'runs').mkdir()
-            (root / '.runtime').mkdir()
+            (root / 'runs').mkdir()  # .runtime is created by the wrapper
+            for name, code in SCRIPTS.items():
+                (root / name).write_text(code)
             (root / 'plan.json').write_text(json.dumps(plan or dict(study='swarm-x-v1', source_revision='r')))
             if setup:
                 setup(root)
@@ -71,7 +78,7 @@ class AccountCmdTests(unittest.TestCase):
 
     def test_full_sequence_and_schema(self):
         texts = lambda n, i: metrics(generated=0.0 if n <= 4 else 500.0)
-        cmd = [sys.executable, '-c', 'import sys; print("hello", sys.argv[1:])', '{admission}', '{output}']
+        cmd = [sys.executable, 'echo.py', '{admission}', '{output}']
         code, rec, log, calls = self.run_main(cmd, texts)
         self.assertEqual(code, 0)
         self.assertEqual(rec['protocol'], 'swarm-arm-accounting-v1')
@@ -80,15 +87,15 @@ class AccountCmdTests(unittest.TestCase):
             self.assertIn(key, rec)
         self.assertEqual((rec['study'], rec['arm'], rec['idle_after'], rec['runner_exit']), ('swarm-x-v1', 'screen-v1', True, 0))
         self.assertEqual(rec['server']['total']['generation_tokens'], 2000.0)
-        self.assertEqual(rec['cache_flush']['01'], dict(exit=0, http_status='200', body='Cache flushed.\nPlease check backend logs.'))
+        self.assertEqual(rec['cache_flush']['01'], dict(exit=0, http_status='200', body=SGLANG_FLUSHED[:200]))
         self.assertTrue(rec['admission'].endswith('SWARM_X_V1_SCREEN_V1_ADMISSION.JSON'))
-        self.assertEqual(rec['command'][3:], [rec['admission'], rec['output']])
+        self.assertEqual(rec['command'][2:], [rec['admission'], rec['output']])
         self.assertIn('hello', log)
         self.assertNotIn('accounting_error', rec)
         self.assertNotIn('energy_error', rec)
 
     def test_command_exit_code_is_returned(self):
-        code, rec, _, _ = self.run_main([sys.executable, '-c', 'raise SystemExit(7)'], lambda n, i: metrics())
+        code, rec, _, _ = self.run_main([sys.executable, 'exit7.py'], lambda n, i: metrics())
         self.assertEqual((code, rec['runner_exit']), (7, 7))
 
     def test_flush_checks_exit_status_http_status_and_body(self):
@@ -96,9 +103,12 @@ class AccountCmdTests(unittest.TestCase):
                  lambda n, r: subprocess.CompletedProcess([], 22, 'curl: (22) error\n500', ''),
                  lambda n, r: subprocess.CompletedProcess([], 0, 'Internal error\n200', ''),
                  lambda n, r: subprocess.CompletedProcess([], 0, 'Cache flushed.\n503', ''),
+                 lambda n, r: subprocess.CompletedProcess([], 0, 'Cache flushed failed\n200', ''),
+                 lambda n, r: subprocess.CompletedProcess([], 0, 'Cache flushed\n200', ''),
+                 lambda n, r: subprocess.CompletedProcess([], 0, 'Cache flushed. Internal Error on rank 1\n200', ''),
                  lambda n, r: flush_ok(n, r) if n != '03' else (_ for _ in ()).throw(subprocess.TimeoutExpired('ssh', 60)))
         for flush in cases:
-            code, rec, log, _ = self.run_main([sys.executable, '-c', 'print(1)'], lambda n, i: metrics(), flush=flush)
+            code, rec, log, _ = self.run_main(OK, lambda n, i: metrics(), flush=flush)
             self.assertEqual((code, log, rec['command_started']), (2, None, False))
             self.assertIn('flush failed', rec['accounting_error'])
 
@@ -106,7 +116,7 @@ class AccountCmdTests(unittest.TestCase):
         for kwargs, texts, msg in ((dict(admit_error='node 02 busy'), lambda n, i: metrics(), 'busy'),
                                    ({}, lambda n, i: metrics(drop='shim:client_cancels' if i == 2 else None), 'missing'),
                                    ({}, lambda n, i: metrics(running=3.0), 'not idle')):
-            code, rec, log, _ = self.run_main([sys.executable, '-c', 'print(1)'], texts, **kwargs)
+            code, rec, log, _ = self.run_main(OK, texts, **kwargs)
             self.assertEqual((code, log), (2, None), msg)
             self.assertIn(msg, rec['accounting_error'])
 
@@ -114,13 +124,13 @@ class AccountCmdTests(unittest.TestCase):
         clock = itertools.count(0, 10)  # every monotonic() call advances 10 s; the drain limit is 5 s
         texts = lambda n, i: metrics()  # always idle, but the idle sample after CMD completes after the deadline
         with patch.object(ac.time, 'monotonic', lambda: next(clock)):
-            code, rec, _, _ = self.run_main([sys.executable, '-c', 'print(1)'], texts, drain=5)
+            code, rec, _, _ = self.run_main(OK, texts, drain=5)
         self.assertEqual(code, 2)  # already the pre-command idle sample was late
         self.assertIn('not idle within', rec['accounting_error'])
 
     def test_drain_timeout_after_command_is_exit_3_with_record(self):
         texts = lambda n, i: metrics(running=0.0 if n <= 4 else 2.0)
-        code, rec, _, _ = self.run_main([sys.executable, '-c', 'print(1)'], texts, drain=1)
+        code, rec, _, _ = self.run_main(OK, texts, drain=1)
         self.assertEqual(code, 3)
         self.assertIn('not idle', rec['accounting_error'])
         self.assertFalse(rec['idle_after'])
@@ -135,14 +145,14 @@ class AccountCmdTests(unittest.TestCase):
                            (lambda n, i: metrics() if n <= 4 else metrics().replace(' 1.0', ' abc', 1), 'metrics unavailable'),
                            (lambda n, i: metrics(value=float('nan') if n > 4 else None), 'non-finite'),
                            (lambda n, i: metrics(drop=None if n <= 4 else 'sglang:prompt_tokens_total'), 'counters missing')):
-            code, rec, _, _ = self.run_main([sys.executable, '-c', 'print(1)'], texts)
+            code, rec, _, _ = self.run_main(OK, texts)
             self.assertEqual(code, 3, msg)
             self.assertIn(msg, rec['accounting_error'])
             self.assertIsNone(rec['server'], msg)
 
     def test_negative_delta_counter_reset_is_exit_3(self):
         texts = lambda n, i: metrics(generated=500.0 if n <= 4 else 10.0)
-        code, rec, _, _ = self.run_main([sys.executable, '-c', 'print(1)'], texts)
+        code, rec, _, _ = self.run_main(OK, texts)
         self.assertEqual(code, 3)
         self.assertIn('negative or non-finite counter deltas', rec['accounting_error'])
 
@@ -160,13 +170,13 @@ class AccountCmdTests(unittest.TestCase):
         def down(start, end):
             raise OSError('ssh down')
         for window, msg in ((down, 'ssh down'), (partial, "['02']"), (low, "['04']")):
-            code, rec, _, _ = self.run_main([sys.executable, '-c', 'print(1)'], lambda n, i: metrics(), window=window)
+            code, rec, _, _ = self.run_main(OK, lambda n, i: metrics(), window=window)
             self.assertEqual(code, 4, msg)
             self.assertIn(msg, rec['energy_error'])
             self.assertIsNotNone(rec['server'])  # token accounting kept
 
     def test_paths_and_placeholders(self):
-        ok = [sys.executable, '-c', 'print(1)']
+        ok = OK
         for output in ('elsewhere/x', 'runs/../x', '/tmp/x'):
             with self.assertRaisesRegex(SystemExit, 'must be under'):
                 self.run_main(ok, lambda n, i: metrics(), output=output)
@@ -174,7 +184,8 @@ class AccountCmdTests(unittest.TestCase):
             self.run_main(ok, lambda n, i: metrics(), setup=lambda root: (root / 'runs' / 'screen-v1').mkdir())
         with self.assertRaisesRegex(SystemExit, 'receipt exists'):
             self.run_main(ok, lambda n, i: metrics(),
-                          setup=lambda root: (root / '.runtime' / 'SWARM_X_V1_SCREEN_V1_ADMISSION.JSON').write_text('{}'))
+                          setup=lambda root: ((root / '.runtime').mkdir(),
+                                              (root / '.runtime' / 'SWARM_X_V1_SCREEN_V1_ADMISSION.JSON').write_text('{}')))
         for bad in (dict(study='../x', source_revision='r'), dict(study='a b', source_revision='r')):
             with self.assertRaisesRegex(SystemExit, 'letters, digits'):
                 self.run_main(ok, lambda n, i: metrics(), plan=bad)
@@ -183,10 +194,32 @@ class AccountCmdTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, 'whole argument'):
             self.run_main(ok + ['--admission={admission}'], lambda n, i: metrics())
         # whole-element substitution keeps shell metacharacters inert (no shell)
-        code, rec, log, _ = self.run_main([sys.executable, '-c', 'import sys; print(sys.argv[1])', '$(echo hi); {x}'],
+        code, rec, log, _ = self.run_main([sys.executable, 'echo.py', '$(echo hi); {x}'],
                                           lambda n, i: metrics())
         self.assertEqual(code, 0)
         self.assertIn('$(echo hi); {x}', log)
+
+    def test_shells_and_inline_code_are_refused(self):
+        for cmd, msg in ((['sh', '-c', '{output}'], 'shell'), (['/bin/bash', 'x.sh'], 'shell'), (['zsh'], 'shell'),
+                         (['dash', '-c', 'true'], 'shell'), (['env', 'A=1', 'bash', '-c', 'true'], 'shell'),
+                         (['/usr/bin/env', '-i', 'sh', 'ok.py'], 'shell'), ([sys.executable, '-c', 'print(1)'], 'inline'),
+                         (['python3', '-c', 'print(1)'], 'inline'), (['python3.12', '-Ic', 'print(1)'], 'inline'),
+                         (['python', '-'], 'inline'), (['perl', '-e', '1'], 'inline'), (['node', '--eval', '1'], 'inline'),
+                         ([sys.executable, 'missing.py'], 'script not found'), ([sys.executable, '-u'], 'without a script'),
+                         (['env'], 'empty')):
+            with self.assertRaisesRegex(SystemExit, msg):
+                self.run_main(cmd, lambda n, i: metrics())
+        # allowed: script paths (also via env and with interpreter options), python -m, real programs
+        for cmd in (OK, ['env', 'PYTHONHASHSEED=0', sys.executable, '-u', 'ok.py'], [sys.executable, '-m', 'json.tool', '-h']):
+            code, rec, _, _ = self.run_main(cmd, lambda n, i: metrics())
+            self.assertEqual(code, 0, cmd)
+
+    def test_admission_directory_is_created(self):
+        def setup(root):
+            self.assertFalse((root / '.runtime').exists())
+        code, rec, _, calls = self.run_main(OK, lambda n, i: metrics(), setup=setup)
+        self.assertEqual(code, 0)  # the mocked admission wrote the receipt into the created .runtime
+        self.assertTrue(calls['admit'][0].endswith('/.runtime/SWARM_X_V1_SCREEN_V1_ADMISSION.JSON'))
 
     def test_requires_a_command(self):
         with self.assertRaises(SystemExit):

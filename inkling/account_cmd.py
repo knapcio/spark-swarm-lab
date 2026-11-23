@@ -11,7 +11,9 @@ plus 'command', and on any fault 'accounting_error' / 'energy_error'. The comman
 
 Counters: every counter of arms.COUNTERS must be exported by every node (label filters matched as arms.parse does),
 finite, and no cumulative counter may decrease over the window (a reset makes the window unusable).
-CMD argv elements that are exactly '{admission}' or '{output}' are replaced by the receipt path / OUTPUT; any other
+CMD must be a real program or script: no shell (sh, bash, zsh, dash, ... also via env) and no interpreter with inline
+code (python -c, perl -e, ...); an interpreter needs an existing script file. CMD argv elements that are exactly
+'{admission}' or '{output}' are replaced by the receipt path / OUTPUT; any other
 occurrence of a placeholder is refused. OUTPUT must be a new path under runs/; the receipt
 .runtime/<STUDY>_<LABEL>_ADMISSION.JSON must not exist yet (study and label: letters, digits, '.', '_', '-').
 
@@ -43,7 +45,9 @@ sys.path.insert(0, str(HERE))
 import arms  # noqa: E402
 import energy  # noqa: E402
 
-FLUSH_OK = 'Cache flushed'
+FLUSH_OK = 'Cache flushed.'  # SGLang's success body starts with exactly this (see runs/*/arm_accounting.json)
+SHELLS = {'sh', 'bash', 'zsh', 'dash', 'ksh', 'fish', 'csh', 'tcsh', 'ash', 'busybox'}
+INLINE = {'python': ('-c', '-'), 'perl': ('-e', '-E'), 'ruby': ('-e',), 'node': ('-e', '--eval', '-p', '--print')}
 DRAIN_SECONDS = 120
 MIN_ENERGY_COVERAGE = 0.9
 PLACEHOLDERS = ('{admission}', '{output}')
@@ -129,7 +133,9 @@ def flush_checked():
             continue
         body, _, status = res.stdout.rstrip('\n').rpartition('\n')
         out[n] = dict(exit=res.returncode, http_status=status.strip(), body=body.strip()[:200])
-        if res.returncode != 0 or not re.fullmatch(r'2\d\d', status.strip()) or not body.strip().startswith(FLUSH_OK):
+        text = body.strip()
+        if (res.returncode != 0 or not re.fullmatch(r'2\d\d', status.strip()) or not text.startswith(FLUSH_OK)
+                or re.search(r'fail|error', text, re.IGNORECASE)):
             bad[n] = dict(out[n], stderr=res.stderr.strip()[:200])
     if bad:
         raise AccountingError(f'prefix-cache flush failed: {bad}')
@@ -147,6 +153,35 @@ def admit(plan_path, source, admission, note):
 def run_command(command, log_path):
     with open(log_path, 'x') as log:
         return subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, shell=False).returncode
+
+
+def check_command(command, root):
+    """Only real programs or scripts: no shell (directly or via env), no interpreter running inline code; an
+    interpreter's first non-option argument must be an existing script file (python -m MODULE is allowed)."""
+    argv = list(command)
+    if argv and Path(argv[0]).name == 'env':
+        argv = argv[1:]
+        while argv and (argv[0].startswith('-') or '=' in argv[0]):
+            argv = argv[1:]
+    if not argv:
+        raise SystemExit('empty command')
+    name = Path(argv[0]).name
+    if name in SHELLS:
+        raise SystemExit(f'shell commands are not allowed: {name}')
+    family = next((k for k in INLINE if re.fullmatch(re.escape(k) + r'[0-9.]*', name)), None)
+    if family is None:
+        return
+    for i, arg in enumerate(argv[1:], 1):
+        if arg in INLINE[family] or (family == 'python' and re.fullmatch(r'-[A-Za-z]*c', arg)):
+            raise SystemExit(f'inline code is not allowed: {name} {arg}')
+        if family == 'python' and arg == '-m':
+            return
+        if not arg.startswith('-'):
+            script = Path(arg) if Path(arg).is_absolute() else root / arg
+            if not script.is_file():
+                raise SystemExit(f'script not found: {arg}')
+            return
+    raise SystemExit(f'{name} without a script path')
 
 
 def substitute(command, admission, out):
@@ -198,9 +233,11 @@ def main(argv=None):
     label = a.label or out.name
     if not (SAFE_NAME.match(str(plan.get('study', ''))) and SAFE_NAME.match(label)):
         raise SystemExit('study and label must be letters, digits, ".", "_" or "-"')
+    (ROOT / '.runtime').mkdir(parents=True, exist_ok=True)  # admit.py writes the receipt there
     admission = ROOT / '.runtime' / f"{plan['study']}-{label}-ADMISSION.json".upper().replace('-', '_')
     if admission.exists() or admission.resolve().parent != (ROOT / '.runtime').resolve():
         raise SystemExit(f'admission receipt exists or escapes .runtime: {admission}')
+    check_command(command, ROOT)
     command = substitute(command, admission, out)
     record = dict(protocol='swarm-arm-accounting-v1', plan=str(a.plan), study=plan['study'], arm=label, output=str(out),
                   runner_exit=None, runner_wall_seconds=None, admission=str(admission), cache_flush=None, before=None,
