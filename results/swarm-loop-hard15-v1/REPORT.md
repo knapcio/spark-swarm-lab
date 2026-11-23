@@ -26,15 +26,20 @@ D wall, energy and tokens include the resume segment (one case, 25 min). Frozen 
 9.8 % of D's completed plan-stream characters lie after the point where the watchdog would have stopped them.
 Measured L/D server tokens: 0.918 with the frozen accounting, which charges D the wasted infra attempt of
 eva-h247d88a63ba s1 plus its rerun; without that waste 0.966 (-3.4 %),
-which would not pass the 0.95 gate. The accuracy side: offline replay of the same detector on 708 streams from 13 arms
-that ran without it (`inkling/replay_loop_watchdog.py`, [replay.json](replay.json)) finds 9 streams that met the stop
-criterion and later produced the accepted, correct answer of their case (1.3 %, about
-0.7 solved cases per 96). They had looped for 9-53 consecutive checks, no differently from
-streams that never recovered, so no longer trigger spares them (6 of 9 still lost at 20 checks). In this
-study 2 of L's 3 lost cases are cases whose D-winning agent looped in L and was stopped.
+a sensitivity estimate (it removes the resume segment, which has the size of the faulted attempt), which would not pass
+the 0.95 gate. The accuracy side: offline replay of the same detector on 708 streams from 13 arms that ran without
+it (`inkling/replay_loop_watchdog.py`, [replay.json](replay.json); it checks exact 500-character steps, the online detector
+checks arriving chunks, so the replay is approximate) finds 9 streams that met the stop criterion and later gave the
+accepted, correct answer of their case. 8 of these 9 ran to the thinking-budget limit and then received a forced answer;
+one closed its thinking normally. So these are not shown to be streams that escaped their loop: the observed contrast is a
+forced answer at loop detection (0 of 102 accepted in L) versus a forced answer at the budget limit (8 accepted
+in the replay), and whether those cases would be lost under the watchdog is not established. A trigger of at least
+54 consecutive checks would have spared all 9 in this replay (99 stops instead of 708); that threshold is fitted to these
+data and untested. In this study 2 of L's 3 lost cases are cases whose D-winning agent looped in L and was stopped.
 
-**Verdict (mechanism, owner priority quality): the default stays without the watchdog.** It removes a small but real
-source of solved cases for a net token saving of about 3 %; the frozen rule passed only with the infra
-waste counted on D's side.
+**Verdict: provisionally not adopted.** The frozen rule passed; this is a policy decision under the owner's
+quality-first priority, not a failed pre-registered test. The independent review (astra, 2026-11-23) suggests the fair
+follow-up: validate the detector on recorded chunk boundaries, then a prospective three-arm study with no intervention,
+the forced answer, and one bounded "change approach" nudge, with frozen cost accounting and case-level accuracy criteria.
 
 Files: worker `forced72.py` on research/xl-watchdog-v1, `inkling/arms.py`, `inkling/report_loop_hard15.py`, numbers in [report.json](report.json).

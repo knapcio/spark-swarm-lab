@@ -187,9 +187,17 @@ fast, lucky public-test pass wins less often. **R2 is the coding default.**
 ## 2026-11-23 (13): loop watchdog ([swarm-loop-hard15-v1](swarm-loop-hard15-v1/REPORT.md))
 
 Fable idea 3, plans 9ffceec before hard-v15 (6919fe4). D (roll12strategy) 85/96 vs L (+ zlib loop watchdog) 83/96, 0 wrong
-in both; 102 streams stopped, 0 of their forced answers accepted. Frozen rule: adopt (L/D tokens 0.918), but that ratio
-charges D a wasted infra attempt; without it 0.966. Offline replay on 708 looping streams from 13 earlier arms: 9 (1.3 %)
-escaped the loop and solved their case, at any loop length. **Watchdog not adopted** (quality first; ~3 % tokens).
+in both; 102 streams stopped, 0 of their forced answers accepted. Frozen rule: adopt (L/D tokens 0.918, partly a D-side
+infra waste). Replay: 9 of 708 streams that met the criterion still gave their case's correct answer, 8 of them via a
+forced answer at the thinking-budget limit (astra review: not proven loop escapes; a 54-check trigger would spare all 9).
+**Watchdog provisionally not adopted** (quality first); fair follow-up: none vs forced answer vs a "change approach" nudge.
+
+## 2026-11-23 (14): table relay prototype screen (codex-tablerelay, not a study)
+
+24 development six-number cases: 0 solved, 0 wrong; builder tables covered 0.07 % of reachable values and 92 % of kept
+rows were false. Astra review: the screen was unfair to the idea (all 360 builders hit the 1,600-token thinking cap and
+answered only after forced closure; ~147 rows per group). **This prototype is rejected; the idea stays open** for a fair
+re-screen (worked examples, one group per builder, calibrated budgets, direct answer vs thinking).
 
 ## Incidents
 
