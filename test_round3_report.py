@@ -89,6 +89,8 @@ class Study:
         (c / 'arm_accounting.json').write_text(json.dumps(acct(50, wh=0.1, wrapper=True)))
         (runs / f'{STUDY}-r.cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in (
             recall_row('t1', 'none'), recall_row('t2', 'case_rescue', accepted=1, solved=1))))
+        (runs / f'{STUDY}-r.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in (
+            replay_record('t1'), replay_record('t2', verdict=True))))
         (runs / f'{STUDY}-r').mkdir()
         (runs / f'{STUDY}-r' / 'arm_accounting.json').write_text(json.dumps(acct(80, wh=0.1, wrapper=True)))
         for name, rows in (('closer_screen', [closer_row(f's{i}', solved=True) for i in range(4)]),
@@ -102,6 +104,11 @@ def recall_row(task, outcome, accepted=0, solved=0, wrong=0, answered=False, err
     return dict(run='d', task_id=task, seed=1, recorded_answered=answered, recorded_solved=False, replays=2,
                 replay_errors=errors, replay_plans=1, judge_accepted=accepted, judge_accepted_verifier_solved=solved,
                 judge_accepted_wrong=wrong, outcome=outcome, accepted_stems=[], tokens_generated=10)
+
+
+def replay_record(task, verdict=None, **changes):
+    return dict(dict(run='d', task_id=task, seed=1, stem=f'{task}-a0', error=None, verdict=verdict, judge_error=None,
+                     judge_infra=0, verifier_solved=bool(verdict)), **changes)
 
 
 def closer_row(task, solved=False, wrong=False):
@@ -135,6 +142,18 @@ class GateTests(unittest.TestCase):
         mixed = recall_row('t5', 'case_rescue', accepted=2, solved=1, wrong=1)  # one right, one wrong accept
         code, out = self.screen(rows + [mixed], 'x.cases.jsonl', as_dir=False)
         self.assertEqual((code, out['rescued'], out['wrong'], out['pass']), (10, 4, 1, False))
+
+    def test_recall_screen_counts_judge_faults_from_the_records(self):
+        with tempfile.TemporaryDirectory() as d:
+            rows = [recall_row(f't{i}', 'case_rescue', accepted=1, solved=1) for i in range(4)]
+            (Path(d) / 'x.cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
+            out = gate.screen(Path(d) / 'x.cases.jsonl')
+            self.assertEqual(out['faults'], 4)  # no records file: judge outcomes unverifiable
+            (Path(d) / 'x.jsonl').write_text(''.join(json.dumps(replay_record(f't{i}', verdict=True,
+                                                                              judge_error='boom' if i == 2 else None)) + '\n'
+                                                     for i in range(4)))
+            out = gate.screen(Path(d) / 'x.cases.jsonl')
+            self.assertEqual((out['faults'], out['rescued'], out['pass']), (1, 4, True))
 
     def test_abstentions_follow_the_resume_rule(self):
         with tempfile.TemporaryDirectory() as d:
@@ -296,6 +315,61 @@ class ReportTests(unittest.TestCase):
         s = self.study_status(faulted_row)
         self.assertIn('faulted', ' '.join(s['addons']['R']['reasons']))
 
+    def test_replay_cohort_and_judge_faults(self):
+        runs = lambda root: root / 'runs'
+
+        def judge_fault(root):
+            (runs(root) / f'{STUDY}-r.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in (
+                replay_record('t1', judge_infra=1), replay_record('t2', verdict=True))))
+        s = self.study_status(judge_fault)
+        self.assertEqual(s['addons']['R']['status'], 'incomplete')
+        self.assertIn('faulted', ' '.join(s['addons']['R']['reasons']))
+
+        def no_records(root):
+            (runs(root) / f'{STUDY}-r.jsonl').unlink()
+        self.assertEqual(self.study_status(no_records)['addons']['R']['status'], 'incomplete')
+
+        def partial_cohort(root):
+            f = runs(root) / f'{STUDY}-c' / 'cases.jsonl'
+            f.write_text(f.read_text().splitlines()[0] + '\n')
+        s = self.study_status(partial_cohort)
+        self.assertEqual(s['addons']['C']['status'], 'incomplete')
+        self.assertIn("cohort differs from D's clean abstentions (0 extra, 1 missing)", ' '.join(s['addons']['C']['reasons']))
+        self.assertTrue(s['decisions']['C'].startswith('incomplete'))
+
+        def extra_case(root):
+            with (runs(root) / f'{STUDY}-r.cases.jsonl').open('a') as f:
+                f.write(json.dumps(recall_row('t3', 'none')) + '\n')
+            with (runs(root) / f'{STUDY}-r.jsonl').open('a') as f:
+                f.write(json.dumps(replay_record('t3')) + '\n')
+        self.assertIn('1 extra', ' '.join(self.study_status(extra_case)['addons']['R']['reasons']))
+
+    def test_zero_node_delta_and_every_segment_counts(self):
+        runs = lambda root: root / 'runs'
+
+        def zero_node(root):
+            (runs(root) / f'{STUDY}-l-roll12strategy' / 'arm_accounting.json').write_text(json.dumps(acct(
+                900, server=dict(total=dict(generation_tokens=900),
+                                 per_node={'01': dict(generation_tokens=900), '02': dict(generation_tokens=0)}))))
+        s = self.study_status(zero_node)
+        self.assertEqual(s['arms']['L']['status'], 'incomplete')
+        self.assertIn("delta 0 on node(s) ['02']", ' '.join(s['arms']['L']['reasons']))
+
+        def caseless_segment(root):  # a resume that crashed before writing any case still cost server tokens
+            seg = runs(root) / f'{STUDY}-d-roll12strategy-resume2'
+            seg.mkdir()
+            (seg / 'arm_accounting.json').write_text(json.dumps(acct(
+                55, server=dict(total=dict(generation_tokens=55), per_node={'01': dict(generation_tokens=0)}))))
+        s = self.study_status(caseless_segment)
+        self.assertEqual((s['arms']['D']['status'], s['arms']['D']['server_tokens']), ('complete', 1255))
+        self.assertEqual(len(s['arms']['D']['segments']), 3)
+
+        def caseless_without_accounting(root):
+            (runs(root) / f'{STUDY}-d-roll12strategy-resume2').mkdir()
+        s = self.study_status(caseless_without_accounting)
+        self.assertEqual(s['arms']['D']['status'], 'incomplete')
+        self.assertIsNone(s['arms']['D']['server_tokens'])
+
     def test_unresolved_infra_blocks_the_arm(self):
         def unresolved(root):
             f = root / 'runs' / f'{STUDY}-l-roll12strategy' / 'cases.jsonl'
@@ -323,6 +397,20 @@ class MechanismTests(unittest.TestCase):
         text = plan['reasoning']
         pos = text.index('yes\n') + len('yes\n')
         self.assertAlmostEqual(after, 100 * (1 - pos / len(text)) + 20)  # failed attempt r1 not counted
+
+    def test_lost_attempt_tokens_are_excluded(self):
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / 'a.jsonl'
+            text = 'Try 55*15=825\n825-3 = 822 yes\nmore\n'
+            # transport-retried request: usage charges lost 400 + delivered 100; only the delivered 100 count
+            plan = dict(type='request_end', request_id='r1', error=None, reasoning=text, response=RESPONSE,
+                        usage=dict(completion_tokens=500, lost_attempt_completion_tokens=400), attempts=2,
+                        attempt_completion_tokens=[400, 100], token_ids=[0] * 100)
+            f.write_text(json.dumps(dict(type='request_retry', request_id='r1', lost_completion_tokens=400)) + '\n' +
+                         json.dumps(plan) + '\n')
+            after = rep.tokens_after_target(f, 822)
+        pos = text.index('yes\n') + len('yes\n')
+        self.assertAlmostEqual(after, 100 * (1 - pos / (len(text) + len(RESPONSE))))
 
     def test_evaluate(self):
         self.assertEqual(rep.evaluate(['(', '25', '*', '4', '-', '2', ')', '*', '8']), 784)

@@ -10,7 +10,8 @@ screen PATH
       tail_replay rows: replays are independent (no first-accept order), so a case counts as wrong if ANY accepted
       replay plan is verifier-wrong, and as rescued only if it was an abstention (outcome case_rescue), at least one
       accepted plan is verifier-correct and none is wrong. Rows whose case was already answered are not counted.
-    faults = rows with infra/replay errors (reported; the gate itself is the frozen rule above).
+    faults = rows with infra/replay errors, or (recall) a replay or judge error / judge infra in the replay records
+    file next to the cases file (X.jsonl), or no such records file (reported; the gate is the frozen rule above).
 
 abstentions --run RUN_DIR [--output FILE]
     D's clean abstentions under the frozen resume rule (run_variants.arm_latest: latest clean row per case, resume
@@ -49,12 +50,29 @@ def screen_file(path):
     return path
 
 
-def case_outcome(row):
-    """(kind, rescued, wrong, fault) of one screen row; kind 'closer' or 'recall'; rescued/wrong None if not counted."""
+def recall_faults(cases_path):
+    """Judge or replay faults per case from the replay records next to a tail_replay cases file (X.cases.jsonl ->
+    X.jsonl): {(run, task_id, seed): True} for every case with a replay error, a judge error or judge infra. Returns
+    None if the records file is missing (then every case counts as faulted: its judge outcome is unverifiable)."""
+    cases_path = Path(cases_path)
+    records = cases_path.with_name(cases_path.name.removesuffix('.cases.jsonl') + '.jsonl')
+    if not records.exists() or records == cases_path:
+        return None
+    faults = {}
+    for r in read_rows(records):
+        if r.get('error') or r.get('judge_error') or (r.get('judge_infra') or 0) > 0:
+            faults[(r.get('run'), r['task_id'], r['seed'])] = True
+    return faults
+
+
+def case_outcome(row, judge_faults=None):
+    """(kind, rescued, wrong, fault) of one screen row; kind 'closer' or 'recall'; rescued/wrong None if not counted.
+    judge_faults: recall_faults() of the screen (None: records missing -> every recall row faulted)."""
     if 'closers' in row or 'rescue' in row:
         return 'closer', bool(row.get('solved')), bool(row.get('wrong')), bool(row.get('infra'))
     if 'outcome' in row and 'judge_accepted' in row:
-        fault = bool(row.get('replay_errors'))
+        fault = bool(row.get('replay_errors')) or judge_faults is None or \
+            judge_faults.get((row.get('run'), row['task_id'], row['seed']), False)
         if row.get('recorded_answered') is not False:
             return 'recall', None, None, fault
         wrong = (row.get('judge_accepted_wrong') or 0) > 0
@@ -64,10 +82,12 @@ def case_outcome(row):
 
 
 def screen(path):
-    rows = read_rows(screen_file(path))
+    cases_file = screen_file(path)
+    rows = read_rows(cases_file)
+    judge_faults = recall_faults(cases_file)
     kinds, cases, rescued, wrong, faults, rescued_cases = set(), 0, 0, 0, 0, []
     for row in rows:
-        kind, r, w, f = case_outcome(row)
+        kind, r, w, f = case_outcome(row, judge_faults)
         kinds.add(kind)
         faults += f
         if r is None:

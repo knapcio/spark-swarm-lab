@@ -18,14 +18,18 @@ Mechanism (L plan; offline analysis only): for winners whose accepted plan leave
 moves), discovery = the first thinking line of the accepted plan's stream (the last error-free request and, for a
 forced/continued answer, the request it continues; a transport-retried earlier attempt is not part of it) holding an
 equation (closers.line_statements) that is arithmetically TRUE when evaluated exactly with Fraction and whose result
-is the target. Tokens after discovery are counted only within that stream: the rest of the discovery request
+is the target. Tokens after discovery are counted only within that stream and only for the final attempt of a
+transport-retried request (its generated ids; the lost attempt is excluded): the rest of the discovery request
 (estimated in proportion to characters of its thinking + answer text) plus the continuation request in full.
 
 Decisions use unrounded values and are made only for complete inputs: D, L and X need no unresolved infra case under
 the frozen resume rule and a valid arm_accounting.json for every segment (token counter present, finite, no negative
 per-node delta, idle after the window, no accounting error); C and R need their case file without faulted rows, a
-valid account_cmd record (runner exit 0, no accounting or energy error) and a passing dev-screen gate; every add-on
-decision also needs D complete. Anything else is 'incomplete' with the reason, never zero-filled.
+valid account_cmd record (runner exit 0, no accounting or energy error), a passing dev-screen gate, no replay or
+judge fault (recall: from the replay records file next to its cases file) and a cohort exactly equal to D's clean
+abstentions; every add-on decision also needs D complete. Cost totals include the accounting of every segment
+directory present (base and every -resumeN, with or without a case file); an arms.py record whose node shows a
+0 generation delta in a segment that ran cases counts as a missing counter. Anything else is 'incomplete' with the reason, never zero-filled.
 
 usage: report_round3_hard17.py [--root DIR] [--out DIR] [--d DIR] [--l DIR] [--x DIR] [--c DIR] [--r-cases FILE]
                                [--r-accounting DIR] [--closer-screen PATH] [--recall-screen PATH]
@@ -74,11 +78,27 @@ def median(values):
     return values[mid] if len(values) % 2 else (values[mid - 1] + values[mid]) / 2
 
 
+def segment_dirs(base):
+    """The arm directory and EVERY -resumeN directory present (with or without a case file): all of their accounting
+    counts toward the arm's cost."""
+    base = Path(base)
+    found = [(int(m.group(2)), d) for d in base.parent.glob(base.name + '-resume*')
+             if d.is_dir() and (m := run_variants._RESUME.match(d.name)) and m.group(1) == base.name]
+    return [base] + [d for _, d in sorted(found)]
+
+
+def case_count(d):
+    f = Path(d) / 'cases.jsonl'
+    return sum(1 for line in f.read_text().splitlines() if line.strip()) if f.exists() else 0
+
+
 def accounting(dirs, wrapper=False):
     """Server generation tokens, wall and Wh summed over the arm_accounting.json of every directory, with validity:
     every directory has a record, its token counter is present and finite, no per-node delta is negative, the fleet
     was idle after the window and there is no accounting error; wrapper (account_cmd) records also need runner exit 0
-    and no energy error. Invalid -> server_tokens None and the problems listed (never zero-filled)."""
+    and no energy error. arms.py records (not wrapper) also need per-node deltas, and a segment that ran cases must
+    show generation on every node: arms.py writes a counter it could not read as 0, so a 0 delta there is treated as
+    a missing counter. Invalid -> server_tokens None and the problems listed (never zero-filled)."""
     problems, tokens, wall, whs = [], 0, 0.0, []
     for d in dirs:
         f = Path(d) / 'arm_accounting.json'
@@ -94,6 +114,13 @@ def accounting(dirs, wrapper=False):
             tokens += total
         if any(not isinstance(x, (int, float)) or not math.isfinite(x) or x < 0 for n in per_node.values() for x in n.values()):
             problems.append(f'{Path(d).name}: negative or non-finite per-node delta')
+        if not wrapper:
+            if not per_node:
+                problems.append(f'{Path(d).name}: no per-node deltas')
+            elif case_count(d) and any((n or {}).get('generation_tokens') == 0 for n in per_node.values()):
+                zero = sorted(k for k, n in per_node.items() if (n or {}).get('generation_tokens') == 0)
+                problems.append(f'{Path(d).name}: generation_tokens delta 0 on node(s) {zero} although the segment ran '
+                                'cases (an unread counter is written as 0 by arms.py)')
         if a.get('idle_after') is False:
             problems.append(f'{Path(d).name}: fleet not idle after the window')
         if a.get('accounting_error'):
@@ -118,10 +145,10 @@ def load_arm(path, root, policy):
     except Exception as exc:  # mid-run: segments do not cover the plan's cases yet
         return dict(status='incomplete', dir=str(path), reasons=[str(exc)[:300]])
     rows = {k: row for k, (_, row) in arm['latest'].items() if k in arm['clean']}
-    acct = accounting(arm['segments'])
+    acct = accounting(segment_dirs(arm['base']))
     reasons = ([f"{len(arm['unresolved'])} unresolved infra case(s)"] if arm['unresolved'] else []) + acct['accounting_problems']
     return dict(status='incomplete' if reasons else 'complete', reasons=reasons, dir=str(path), arm=arm, rows=rows,
-                segments=[s.name for s in arm['segments']], superseded=arm['superseded'], unresolved=arm['unresolved'],
+                segments=[s.name for s in segment_dirs(arm['base'])], superseded=arm['superseded'], unresolved=arm['unresolved'],
                 tasks={t['id']: t for t in arm['tasks']}, **acct)
 
 
@@ -197,8 +224,13 @@ def tokens_after_target(trace, target):
     ends = [json.loads(line) for line in Path(trace).read_text().splitlines() if line.strip()]
     stream = accepted_stream([e for e in ends if e.get('type') == 'request_end'])
 
-    def tokens(e):
-        return (e.get('usage') or {}).get('completion_tokens') or e.get('completion_tokens_charged') or len(e.get('token_ids') or [])
+    def tokens(e):  # the final attempt's generated ids only (a transport-retried request also charges its lost attempt)
+        if e.get('attempt_completion_tokens'):
+            return e['attempt_completion_tokens'][-1]
+        if e.get('token_ids') is not None:
+            return len(e['token_ids'])
+        usage = e.get('usage') or {}
+        return (usage.get('completion_tokens') or 0) - (usage.get('lost_attempt_completion_tokens') or 0)
     for i, e in enumerate(stream):
         text = e.get('reasoning') or ''
         pos = 0
@@ -255,8 +287,9 @@ def addon_rescues(kind, root, paths, screens):
         if not f.exists():
             return dict(status='not run', dir=str(f))
         cases = {}
+        judge_faults = round3_gate.recall_faults(f)
         for r in round3_gate.read_rows(f):
-            _, rescued, wrong, fault = round3_gate.case_outcome(r)
+            _, rescued, wrong, fault = round3_gate.case_outcome(r, judge_faults)
             if rescued is not None:
                 cases[(r['task_id'], r['seed'])] = dict(rescued=rescued, wrong=wrong, slot=None, infra=fault)
         acct, screen = accounting([root / paths['r_accounting']], wrapper=True), screens.get('recall')
@@ -268,9 +301,16 @@ def addon_rescues(kind, root, paths, screens):
                 **{k: acct[k] for k in ('server_tokens', 'wall_seconds', 'wh')})
 
 
-def addon_summary(name, x, d_abst, d_tokens):
+def addon_summary(name, x, d_abst, d_tokens, d_complete=True):
     if 'cases' not in x:
         return {k: x[k] for k in ('status', 'dir', 'reasons') if k in x}
+    if name in 'CR' and x['status'] == 'complete':  # a replay add-on's cohort must be exactly D's clean abstentions
+        cohort = set(x['cases'])
+        if not d_complete:
+            x = dict(x, status='incomplete', reasons=x['reasons'] + ["D is not complete: its clean-abstention set is not final"])
+        elif cohort != d_abst:
+            x = dict(x, status='incomplete', reasons=x['reasons'] + [
+                f'cohort differs from D\'s clean abstentions ({len(cohort - d_abst)} extra, {len(d_abst - cohort)} missing)'])
     rescued = sorted(k for k, c in x['cases'].items() if c['rescued'] and k in d_abst)
     wrong = sorted(k for k, c in x['cases'].items() if c['wrong'])
     tok = x['server_tokens']
@@ -354,7 +394,9 @@ def build(root, paths):
             s['screens'][name] = round3_gate.screen(p) if p.exists() else 'not run'
         except (SystemExit, ValueError) as exc:
             s['screens'][name] = f'unreadable: {exc}'
-    s['addons'] = {k: addon_summary(k, addon_rescues(k, root, paths, s['screens']), d_abst, d_tokens) for k in 'XCR'}
+    d_complete = s['arms']['D'].get('status') == 'complete'
+    s['addons'] = {k: addon_summary(k, addon_rescues(k, root, paths, s['screens']), d_abst, d_tokens, d_complete)
+                   for k in 'XCR'}
     s['overlap'] = overlap(s['addons'])
     s['decisions'] = decisions(s)
     s['plans'] = {k: (json.loads((root / f).read_text()).get('decision_rule') or json.loads((root / f).read_text()).get('gate'))
