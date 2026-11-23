@@ -3,6 +3,7 @@ from fractions import Fraction as F
 import io
 import json
 import unittest
+import urllib.error
 import harness as h
 import forced72 as f
 from test_followup72 import Recorder, engine
@@ -94,10 +95,10 @@ class ForcedTests(unittest.TestCase):
         self.assertEqual(c.bodies[1]['prompt'], [1, 2, 3] + first)
 
     def test_stream_error_chunk_is_infrastructure_failure(self):
-        bad = lambda: io.BytesIO(b'data: {"error": {"message": "boom"}}\n\n')
-        c, result = self.run_case([bad(), bad()])
+        bad = io.BytesIO(b'data: {"error": {"message": "boom"}}\n\n')
+        c, result = self.run_case([bad])
         self.assertFalse(result['solved'])
-        self.assertEqual((c.infra_failures, len(c.bodies)), (1, 2))  # retried once, then a failure as before
+        self.assertEqual((c.infra_failures, len(c.bodies)), (1, 1))  # a server-reported error is not retried
 
     def test_forced_answer_logged_and_token_ids_traced(self):
         c, _ = self.run_case([sse('notes', [7] * f.THINK_CAP, 'length'), sse(GOOD, [8] * 20, 'stop')])
@@ -143,17 +144,28 @@ class RetryTests(unittest.TestCase):
     def rows(self, c, kind):
         return [r for r in c.events.rows if r['type'] == kind]
 
-    def test_disconnect_is_retried_once_with_the_same_body(self):
+    def test_disconnect_is_retried_once_with_the_same_body_and_charged(self):
         c, result = self.run_case([disconnect_after('partial', [4] * 17), sse('notes</think>' + GOOD, [5] * 40, 'stop')])
         self.assertTrue(result['solved'])
         self.assertEqual((c.infra_failures, len(c.bodies)), (0, 2))
         self.assertEqual(c.bodies[0], c.bodies[1])  # same prompt, seed and caps
         retry, = self.rows(c, 'request_retry')
-        self.assertEqual((retry['attempt'], retry['lost_completion_tokens'], retry['stage']), (1, 17, 'plan'))
+        self.assertEqual((retry['attempt'], retry['lost_completion_tokens'], retry['stage']), (2, 17, 'plan'))
+        self.assertTrue(retry['lost_completion_tokens_is_lower_bound'])
         self.assertIn('ServerDisconnectedError', retry['error'])
         end, = self.rows(c, 'request_end')
-        self.assertEqual((end['error'], end['retries'], end['token_ids']), (None, 1, [5] * 40))
-        self.assertEqual(c.budget.snapshot()['completion_tokens_charged'], 40)  # lost attempt is logged, not charged
+        self.assertEqual((end['error'], end['attempts'], end['attempt_completion_tokens']), (None, 2, [17, 40]))
+        self.assertEqual(end['usage'], dict(prompt_tokens=10, completion_tokens=57, estimated=False))
+        self.assertEqual((end['completion_tokens_charged'], end['lost_completion_tokens_lower_bound']), (57, 17))
+        self.assertEqual(end['token_ids'], [5] * 40)  # the sequence itself is the successful attempt's
+        self.assertEqual(c.budget.snapshot()['completion_tokens_charged'], 57)
+        self.assertEqual(len(self.rows(c, 'request_start')), 1)
+
+    def test_lost_tokens_reduce_the_forced_answer_budget(self):
+        c, result = self.run_case([disconnect_after('', [4] * 100), sse('notes', [7] * f.THINK_CAP, 'length'),
+                                   sse(GOOD, [8] * 20, 'stop')])
+        self.assertTrue(result['solved'] and result['budget_forced'])
+        self.assertEqual(c.bodies[2]['max_tokens'], f.TOTAL - f.THINK_CAP - 100)
 
     def test_second_disconnect_fails_like_before(self):
         c, result = self.run_case([disconnect_after('a', [4] * 3), disconnect_after('b', [4] * 5)])
@@ -162,21 +174,51 @@ class RetryTests(unittest.TestCase):
         end, = self.rows(c, 'request_end')
         self.assertTrue(end['error'].startswith('ConnectionError: server stream error'))
         self.assertFalse(end['response_received'])
+        self.assertEqual((end['attempts'], end['completion_tokens_charged']), (2, f.THINK_CAP + 3))
 
-    def test_raw_connection_reset_and_cut_stream_are_retried(self):
-        cut = io.BytesIO(b'data: ' + json.dumps(dict(choices=[dict(text='x', token_ids=[1], finish_reason=None)])).encode() + b'\n\n')
-        c, result = self.run_case([ConnectionResetError('reset by peer'), sse('n</think>' + GOOD, [5], 'stop')])
-        self.assertTrue(result['solved'])
-        self.assertEqual(self.rows(c, 'request_retry')[0]['lost_completion_tokens'], 0)
-        c, result = self.run_case([cut, sse('n</think>' + GOOD, [5], 'stop')])
-        self.assertTrue(result['solved'])
-        self.assertIn('without finish_reason', self.rows(c, 'request_retry')[0]['error'])
+    def test_socket_loss_and_eof_are_retried(self):
+        cut = lambda: io.BytesIO(b'data: ' + json.dumps(dict(choices=[dict(text='x', token_ids=[1], finish_reason=None)])).encode() + b'\n\n')
+        torn = lambda: io.BytesIO(b'data: ' + json.dumps(dict(choices=[dict(text='x', token_ids=[1, 2], finish_reason=None)])).encode()
+                                  + b'\n\ndata: {"choices": [{"text": "y", "tok')
+        for first, lost in ((ConnectionResetError('reset by peer'), 0), (BrokenPipeError('pipe'), 0),
+                            (ConnectionRefusedError('refused'), 0), (cut(), 1), (torn(), 2)):
+            c, result = self.run_case([first, sse('n</think>' + GOOD, [5], 'stop')])
+            self.assertTrue(result['solved'], first)
+            self.assertEqual(self.rows(c, 'request_retry')[0]['lost_completion_tokens'], lost)
 
-    def test_timeouts_and_upstream_4xx_are_not_retried(self):
-        for reply in (TimeoutError('read timed out'),
-                      io.BytesIO(b'data: {"error": {"message": "ConnectionError: upstream HTTP 400: too long"}}\n\n')):
+    def test_not_retried(self):
+        def chunk(message):
+            return io.BytesIO(b'data: ' + json.dumps({'error': {'message': message}}).encode() + b'\n\n')
+        bad_mid_stream = io.BytesIO(b'data: {"choices": [\n\ndata: ' + json.dumps(dict(choices=[dict(
+            text='x', token_ids=[1], finish_reason='stop')])).encode() + b'\n\n')
+        for reply in (TimeoutError('read timed out'), chunk('ConnectionError: upstream HTTP 500: boom'),
+                      chunk('ConnectionError: upstream HTTP 400: too long'), chunk('ServerTimeoutError: Timeout'),
+                      chunk('ConnectionError: {"message": "invalid sampling params"}'), chunk('boom'),
+                      urllib.error.HTTPError('http://x', 502, 'Bad Gateway', {}, io.BytesIO(b'{}')),
+                      ConnectionError('generic'), bad_mid_stream):
             c, result = self.run_case([reply])
-            self.assertEqual((c.infra_failures, len(c.bodies), self.rows(c, 'request_retry')), (1, 1, []))
+            self.assertEqual((c.infra_failures, len(c.bodies), self.rows(c, 'request_retry')), (1, 1, []), reply)
+            self.assertNotIn('attempts', self.rows(c, 'request_end')[0])
+
+    def test_shim_disconnect_names(self):
+        for name in ('ServerDisconnectedError: Server disconnected', 'ClientConnectionError: Connection closed',
+                     'ClientOSError: [Errno 104] Connection reset by peer', 'ConnectionResetError: reset'):
+            self.assertTrue(f.shim_disconnect({'message': name}), name)
+        for name in ('ServerTimeoutError: Timeout on reading data from socket', 'ConnectionError: upstream HTTP 503: x',
+                     'TimeoutError: ', 'ServerDisconnected'):
+            self.assertFalse(f.shim_disconnect({'message': name}), name)
+
+    def test_no_retry_when_wall_limit_would_pass(self):
+        c = FakeForced([disconnect_after('a', [4] * 3), sse('n</think>' + GOOD, [5], 'stop')])
+        c.retry_delay, c.wall_limit = 5, 3
+        e = engine(c)
+        c.events = e.events
+        result = f.run_forced(e, STATE, 'p', 'forced_explicit')
+        self.assertFalse(result['solved'])
+        self.assertEqual((len(c.bodies), self.rows(c, 'request_retry'), c.infra_failures), (1, [], 1))
+        end = self.rows(c, 'request_end')[0]
+        self.assertTrue(end['error'].startswith('ConnectionError: server stream error'))
+        self.assertNotIn('attempts', end)
 
     def test_retry_inside_forced_answer(self):
         c, result = self.run_case([sse('notes', [7] * f.THINK_CAP, 'length'), disconnect_after('', []),
@@ -189,17 +231,23 @@ class RetryTests(unittest.TestCase):
         c, _ = self.run_case([sse('notes</think>' + GOOD, [5] * 40, 'stop')])
         self.assertEqual(self.rows(c, 'request_retry'), [])
         end, = self.rows(c, 'request_end')
-        self.assertNotIn('retries', end)
-        self.assertEqual(list(end)[:6], ['type', 'request_id', 'agent_id', 'endpoint_index', 'stage', 'latency_ms'])
+        for key in ('attempts', 'attempt_completion_tokens', 'lost_completion_tokens_lower_bound'):
+            self.assertNotIn(key, end)
+        self.assertEqual(list(end), ['type', 'request_id', 'agent_id', 'endpoint_index', 'stage', 'latency_ms', 'usage',
+                                     'completion_tokens_charged', 'error', 'response', 'reasoning', 'finish_reason',
+                                     'response_received', 'closed_thinking', 'token_ids', 'request_body_sha256',
+                                     'node_id', 'puzzle_id', 'variant', 'followup_phase'])
+        self.assertEqual((end['usage'], end['completion_tokens_charged']),
+                         (dict(prompt_tokens=10, completion_tokens=40, estimated=False), 40))
 
-    def test_retryable_classification(self):
-        import http.client, urllib.error
-        self.assertTrue(f.retryable(http.client.RemoteDisconnected('closed')))
-        self.assertTrue(f.retryable(http.client.IncompleteRead(b'')))
-        self.assertTrue(f.retryable(urllib.error.URLError(ConnectionResetError('reset'))))
-        self.assertTrue(f.retryable(urllib.error.URLError(ConnectionRefusedError('refused'))))  # one 2 s retry, harmless
-        self.assertFalse(f.retryable(TimeoutError('idle')))
-        self.assertFalse(f.retryable(ValueError('bad json')))
+    def test_transport_lost_classification(self):
+        import http.client
+        self.assertTrue(f.transport_lost(http.client.RemoteDisconnected('closed')))
+        self.assertTrue(f.transport_lost(http.client.IncompleteRead(b'')))
+        self.assertTrue(f.transport_lost(urllib.error.URLError(ConnectionResetError('reset'))))
+        self.assertFalse(f.transport_lost(urllib.error.URLError('no route')))
+        self.assertFalse(f.transport_lost(TimeoutError('idle')))
+        self.assertFalse(f.transport_lost(ValueError('bad json')))
 
 
 class LeftoverTests(unittest.TestCase):

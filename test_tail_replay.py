@@ -22,7 +22,7 @@ LOOP = 'so the answer is 5 and the answer is 5. ' * 600
 
 
 def agent_file(directory, stem, *, reasoning='notes', response=None, ids=None, finish='length', max_tokens=THINK,
-               prompt_sha=None, extra='', started=True, variant='xl_forced_original'):
+               prompt_sha=None, extra='', started=True, variant='xl_forced_original', usage=True):
     ids = [7] * THINK if ids is None else ids
     rows = [dict(type='run_start', config=dict(variant=variant, puzzle='2,6,25,100:187', seed=16400)),
             dict(type='extra_prompt', text=extra)]
@@ -31,7 +31,7 @@ def agent_file(directory, stem, *, reasoning='notes', response=None, ids=None, f
                          request_body=dict(seed=123), prompt_ids_sha256=prompt_sha or sha(json.dumps(PROMPT_IDS))))
         rows.append(dict(type='request_end', request_id='orig1', stage='plan', error=None, response_received=True,
                          finish_reason=finish, closed_thinking=response is not None, reasoning=reasoning,
-                         response=response, token_ids=ids, usage=dict(completion_tokens=len(ids))))
+                         response=response, token_ids=ids, usage=dict(completion_tokens=len(ids)) if usage else {}))
         rows.append(dict(type='puzzle_end', plan=None, solved=False))
     path = Path(directory) / 'agents' / (stem + '.jsonl')
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -39,10 +39,24 @@ def agent_file(directory, stem, *, reasoning='notes', response=None, ids=None, f
     return path
 
 
-def cases_file(directory, verdicts):
+def cases_file(directory, verdicts, answered):
     with open(Path(directory) / 'cases.jsonl', 'w') as handle:
         for (task, seed), slots in verdicts.items():
-            handle.write(json.dumps(dict(task_id=task, seed=seed, agents=[dict(slot=s, verdict=v) for s, v in slots.items()])) + '\n')
+            handle.write(json.dumps(dict(task_id=task, seed=seed, answered=answered[(task, seed)],
+                                         solved=answered[(task, seed)], wrong=False,
+                                         agents=[dict(slot=s, verdict=v) for s, v in slots.items()])) + '\n')
+
+
+def corpus(root, run):
+    """metadata + corpus so case_index follows run_variants: seeds [1, 2] x tasks [eva-h1, eva-h2]."""
+    data = Path(root) / 'datasets' / 'd' / 'tasks.json'
+    data.parent.mkdir(parents=True, exist_ok=True)
+    data.write_text(json.dumps(dict(protocol='d', tasks=[dict(id='eva-h0', split='development', numbers=NUMBERS),
+                                                         dict(id='eva-h1', split='evaluation', numbers=NUMBERS),
+                                                         dict(id='eva-h2', split='evaluation', numbers=NUMBERS)])))
+    Path(run).mkdir(parents=True, exist_ok=True)
+    (Path(run) / 'metadata.json').write_text(json.dumps(dict(protocol=dict(
+        dataset='datasets/d/tasks.json', dataset_protocol='d', split='evaluation', tasks=2, seeds=[1, 2]))))
 
 
 class Transport:
@@ -101,44 +115,91 @@ class ControllerTextTests(unittest.TestCase):
 class RunDir(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.run = Path(self.tmp.name) / 'swarm-x'
+        self.root = Path(self.tmp.name)
+        self.run = self.root / 'runs' / 'swarm-x'
         self.addCleanup(self.tmp.cleanup)
 
     def build(self):
         loop_text = VARIED + LOOP
+        corpus(self.root, self.run)
+        # (eva-h1, 1): abstained in the recording
         agent_file(self.run, 'eva-h1-s1-roll12strategy-a0')                          # exhausted, rejected
         agent_file(self.run, 'eva-h1-s1-roll12strategy-a1', reasoning=loop_text, ids=[7] * 5000)  # loop, rejected
         agent_file(self.run, 'eva-h1-s1-roll12strategy-a2', started=False)            # cancelled
-        agent_file(self.run, 'eva-h1-s1-roll12strategy-a3', reasoning='n', response=GOOD, ids=[5] * 40,
+        agent_file(self.run, 'eva-h1-s1-roll12strategy-a3', reasoning='n', response=GOOD, ids=[5] * 40, finish='stop')
+        # (eva-h2, 1): answered in the recording
+        agent_file(self.run, 'eva-h2-s1-roll12strategy-a0', usage=False)              # exhausted, usage missing
+        agent_file(self.run, 'eva-h2-s1-roll12strategy-a1', reasoning='n', response=GOOD, ids=[5] * 40,
                    finish='stop')                                                     # accepted
-        agent_file(self.run, 'eva-h1-s1-roll12strategy-a4', reasoning=loop_text)      # exhausted AND looping, accepted
-        agent_file(self.run, 'eva-h2-s1-roll12strategy-a0', ids=[7] * 100)            # length, below budget
-        cases_file(self.run, {('eva-h1', 1): {0: False, 1: False, 2: None, 3: True, 4: True}, ('eva-h2', 1): {0: None}})
+        agent_file(self.run, 'eva-h2-s1-roll12strategy-a4', reasoning=loop_text)      # exhausted AND looping, accepted
+        agent_file(self.run, 'eva-h2-s1-roll12strategy-a5', reasoning='n', response=GOOD, ids=[5] * 40,
+                   finish='stop', usage=False)                                        # no usage, not a length cut
+        # (eva-h1, 2): not in cases.jsonl
+        agent_file(self.run, 'eva-h1-s2-roll12strategy-a0')
+        cases_file(self.run, {('eva-h1', 1): {0: False, 1: False, 2: None, 3: False},
+                              ('eva-h2', 1): {0: None, 1: True, 4: True, 5: False}},
+                   {('eva-h1', 1): False, ('eva-h2', 1): True})
         return t.load_runs([self.run])
 
 
 class PlanOnlyTests(RunDir):
-    def test_listing_counts_both_modes(self):
+    def test_default_cohort_is_the_recorded_abstentions(self):
         agents = self.build()
         recall = t.plan_listing(agents, 'recall')
         self.assertEqual([i['stem'] for i in recall['items']], ['eva-h1-s1-roll12strategy-a0'])
-        self.assertEqual(recall['skipped'], {'accepted': 1, 'no_finished_plan_stream': 1, 'not_at_thinking_budget': 2,
-                                             'not_length': 1})
+        self.assertEqual(recall['skipped'], {'case_answered': 4, 'case_not_recorded': 1, 'no_finished_plan_stream': 1,
+                                             'not_at_thinking_budget': 1, 'not_length': 1})
+        self.assertEqual((recall['cohort'], recall['cohort_cases'], recall['cases'], recall['experimental']),
+                         ('abstained', 1, 1, False))
         rewind = t.plan_listing(agents, 'rewind')
+        self.assertTrue(rewind['experimental'])
         self.assertEqual([i['stem'] for i in rewind['items']], ['eva-h1-s1-roll12strategy-a1'])
-        self.assertEqual(rewind['skipped'], {'accepted': 1, 'no_finished_plan_stream': 1, 'no_loop_trigger': 3})
         item = rewind['items'][0]
         self.assertEqual(item['kept_tokens_estimate'], round(item['cut_char'] * 5000 / len(VARIED + LOOP)))
-        self.assertEqual(t.plan_listing(agents, 'recall', include_accepted=True)['eligible'], 2)
+
+    def test_case_list_freezes_the_cohort(self):
+        agents = self.build()
+        cohort = {('eva-h2', 1), ('eva-h9', 1)}
+        recall = t.plan_listing(agents, 'recall', cohort=cohort)
+        self.assertEqual([i['stem'] for i in recall['items']], ['eva-h2-s1-roll12strategy-a0'])  # usage missing, length
+        self.assertEqual(recall['skipped'], {'accepted': 1, 'case_not_in_case_list': 5, 'not_length': 1,
+                                             'token_ids_missing_or_inconsistent': 1})
+        self.assertEqual((recall['cohort'], recall['case_list_missing']), ('case_list', [['eva-h9', 1]]))
+        self.assertEqual(t.plan_listing(agents, 'recall', include_accepted=True, cohort=cohort)['eligible'], 2)
+
+    def test_case_index_follows_run_variants(self):
+        agents = self.build()
+        index = {(a['task_id'], a['seed']): a['case_index'] for a in agents}
+        self.assertEqual((index['eva-h1', 1], index['eva-h2', 1], index['eva-h1', 2]), (0, 1, 2))
+        self.assertEqual(t.judge_seed(agents[0]), 90000 + 1000 * 1 + 10 * 0 + 0)
+
+    def test_read_case_list(self):
+        path = self.root / 'cases.json'
+        path.write_text(json.dumps([['eva-h1', 1], ['eva-h2', 2]]))
+        self.assertEqual(t.read_case_list(path), {('eva-h1', 1), ('eva-h2', 2)})
+        for bad in ([['eva-h1', 1], ['eva-h1', 1]], [['eva-h1', '1']], {'cases': []}):
+            path.write_text(json.dumps(bad))
+            with self.assertRaises(ValueError):
+                t.read_case_list(path)
 
     def test_main_plan_only_makes_no_request(self):
         self.build()
+        (self.root / 'list.json').write_text(json.dumps([['eva-h1', 1]]))
         out = io.StringIO()
         with mock.patch.object(f.ForcedClient, 'post', side_effect=AssertionError('network')), \
+                mock.patch.object(t, 'load_judge', side_effect=AssertionError('judge')), \
                 contextlib.redirect_stdout(out):
-            self.assertEqual(t.main(['--plan-only', '--mode', 'rewind', '--runs', str(self.run)]), 0)
+            self.assertEqual(t.main(['--plan-only', '--mode', 'rewind', '--runs', str(self.run),
+                                     '--case-list', str(self.root / 'list.json')]), 0)
         listing = json.loads(out.getvalue())
-        self.assertEqual((listing['model_calls'], listing['eligible'], listing['cases']), (0, 1, 1))
+        self.assertEqual((listing['model_calls'], listing['eligible'], listing['cases'], listing['experimental']),
+                         (0, 1, 1, True))
+
+    def test_help_marks_rewind_experimental(self):
+        out = io.StringIO()
+        with self.assertRaises(SystemExit), contextlib.redirect_stdout(out):
+            t.main(['--help'])
+        self.assertIn('EXPERIMENTAL', out.getvalue())
 
     def test_concurrency_limit(self):
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
@@ -150,7 +211,7 @@ class PlanOnlyTests(RunDir):
 class ReplayTests(RunDir):
     def replay(self, stem, mode, replies, **file_kwargs):
         path = agent_file(self.run, stem, **file_kwargs)
-        agent = t.load_agent(path, {})
+        agent = t.load_agent(path, {})  # no cases.jsonl / corpus: case_index unknown
         transport = Transport(replies)
         with mock.patch.object(f.ForcedClient, 'post', lambda client, p, b, timeout: transport(client, p, b, timeout)), \
                 mock.patch.object(f, 'RETRY_DELAY', 0):
@@ -228,20 +289,55 @@ class ReplayTests(RunDir):
         self.assertEqual(tr.bodies[0], tr.bodies[1])
         self.assertIsNone(record['error'])
 
-    def test_run_replays_writes_records(self):
-        self.build()
-        agents = t.load_runs([self.run])
-        transport = Transport([sse('x</think>' + GOOD, [8] * 4, 'stop')])
-        out = Path(self.tmp.name) / 'recall.jsonl'
+    def test_run_replays_judges_and_marks_rescues(self):
+        agents = self.build()
+        transport = Transport([sse('x</think>' + GOOD, [8] * 4, 'stop') for _ in range(2)])
+        seeds = []
+
+        def judge(candidate, endpoint, events_path, seed):
+            seeds.append(seed)
+            self.assertEqual(set(candidate), {'numbers', 'target', 'plan'})
+            return dict(verdict=True, reason='', tokens=11, infra=0)
+        out = self.root / 'recall.jsonl'
         with mock.patch.object(f.ForcedClient, 'post', lambda client, p, b, timeout: transport(client, p, b, timeout)):
-            summary = t.run_replays(agents, 'recall', ['http://a/v1', 'http://b/v1'], out, 8, 'm')
-        self.assertEqual((summary['replays'], summary['plans'], summary['errors'], summary['tokens_generated']), (1, 1, 0, 4))
-        record, = map(json.loads, out.read_text().splitlines())
-        self.assertEqual(record['stem'], 'eva-h1-s1-roll12strategy-a0')
-        self.assertTrue(Path(record['events']).exists())
+            summary = t.run_replays(agents, 'recall', ['http://a/v1'], out, 1, 'm',
+                                    cohort={('eva-h1', 1), ('eva-h2', 1)}, judge=judge)
+        self.assertEqual(sorted(seeds), [91000, 91010])  # 90000 + 1000*seed + 10*case_index + slot
+        self.assertEqual((summary['replays'], summary['plans'], summary['judge_accepted'], summary['case_rescues'],
+                          summary['agent_accept_cases'], summary['judge_accepted_wrong']), (2, 2, 2, 1, 1, 0))
+        records = {r['stem']: r for r in map(json.loads, out.read_text().splitlines())}
+        self.assertEqual(records['eva-h1-s1-roll12strategy-a0']['accept_kind'], 'case_rescue')
+        self.assertEqual(records['eva-h2-s1-roll12strategy-a0']['accept_kind'], 'agent_accept')
+        rows = {(r['task_id'], r['seed']): r for r in map(json.loads, (self.root / 'recall.cases.jsonl').read_text().splitlines())}
+        self.assertEqual(rows['eva-h1', 1]['outcome'], 'case_rescue')
+        self.assertEqual(rows['eva-h2', 1]['outcome'], 'agent_accept')
+        self.assertEqual(rows['eva-h1', 1]['accepted_stems'], ['eva-h1-s1-roll12strategy-a0'])
         with self.assertRaises(FileExistsError):  # never overwrites earlier replays
             t.run_replays(agents, 'recall', ['http://a/v1'], out, 8, 'm')
 
+    def test_rejected_or_wrong_accepts_are_not_rescues(self):
+        agents = self.build()
+        base = dict(run='swarm-x', task_id='eva-h1', seed=1, error=None, tokens_generated=5)
+        records = [dict(base, stem='a', plan={'moves': [1]}, verdict=True, verifier_solved=False),
+                   dict(base, stem='b', plan={'moves': [1]}, verdict=False, verifier_solved=True),
+                   dict(base, stem='c', plan=None, verdict=None, verifier_solved=False)]
+        row, = t.case_rows(agents, records)
+        self.assertEqual((row['outcome'], row['judge_accepted'], row['judge_accepted_wrong'], row['replay_plans']),
+                         ('case_rescue', 1, 1, 2))  # a judge accept counts; 'wrong' flags the verifier disagreement
+        row, = t.case_rows(agents, records[1:])
+        self.assertEqual(row['outcome'], 'none')
+
+    def test_unknown_case_index_skips_the_judge(self):
+        record, _ = self.replay('eva-h1-s1-p-a0', 'recall', [sse('x</think>' + GOOD, [8], 'stop')])
+        agent = t.load_agent(self.run / 'agents' / 'eva-h1-s1-p-a0.jsonl', {})
+        t.judge_record(record, agent, 'http://x/v1', self.root / 'j.jsonl', judge=None)
+        self.assertIn('case_index unknown', record['judge_error'])
+        self.assertIsNone(record['verdict'])
+
+    def test_rewind_records_are_marked_experimental(self):
+        record, _ = self.replay('eva-h1-s1-p-a1', 'rewind', [sse('x</think>' + GOOD, [8] * 3, 'stop')],
+                                reasoning=VARIED + LOOP, ids=[7] * 5000)
+        self.assertTrue(record['experimental'])
 
 if __name__ == '__main__':
     unittest.main()
