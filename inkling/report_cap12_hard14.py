@@ -76,9 +76,15 @@ arithmetic-hard-v14 (generator seed 2026112110) was generated. Inkling-2-Mini on
 {md}
 {verdict}
 
-Pre-registered pooled hard-v12 + hard-v14 (192 cases): cap 12 {res['pooled_solved']['cap12']} vs cap 8 {res['pooled_solved']['cap8']},
+**Mechanism.** Escalation past 8 agents starts only after 8 agents of a case have ended without an accepted plan, so it
+cannot change a case that cap 8 answers in the same run; its only effect is to answer cases that would otherwise abstain.
+That noise-free count is 2 cases on hard-v12 and {res['mechanics']['roll12strategy']['late_rescues']} on hard-v14, all correct, 0 wrong answers over 192 cases. The rest of the
+paired difference is run-to-run noise. Pre-registered pooled hard-v12 + hard-v14 (192 cases): cap 12 {res['pooled_solved']['cap12']} vs cap 8 {res['pooled_solved']['cap8']},
 paired +{res['pooled_v12_v14']['wins']} / -{res['pooled_v12_v14']['losses']} (p = {res['pooled_v12_v14']['p']:.2g}), cap 12 wrong answers {res['pooled_solved']['wrong_cap12']}. Cost on hard-v14:
-{res['arms']['roll12strategy']['energy_wh_per_solved']:.2f} vs {res['arms']['roll8strategy']['energy_wh_per_solved']:.2f} Wh per solved case (reported, not a gate: the owner's priority is quality).
+{(res['arms']['roll12strategy']['server_tokens_per_case'] / res['arms']['roll8strategy']['server_tokens_per_case'] - 1) * 100:+.0f} % server tokens, {(res['arms']['roll12strategy']['arm_wall_seconds'] / res['arms']['roll8strategy']['arm_wall_seconds'] - 1) * 100:+.0f} % arm wall,
+{res['arms']['roll12strategy']['energy_wh_per_solved']:.2f} vs {res['arms']['roll8strategy']['energy_wh_per_solved']:.2f} Wh per solved case (reported, not a gate: the owner's priority is quality; the extra
+cost falls only on cases that 8 agents could not solve). Open point: the escalation agents of both arms carry the strategy
+hints, whose own gain did not replicate in Fable's pooled replay; the hint recheck is queued and does not affect this cap result.
 
 Files: `run_variants.py` (`roll12strategy`), `inkling/arms.py`, `inkling/report_cap12_hard14.py`, numbers in [report.json](report.json).
 """)

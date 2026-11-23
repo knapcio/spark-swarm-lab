@@ -170,6 +170,13 @@ requests per node): 141 min, 267 Wh, arithmetic 86/96 (0 wrong), coding 67/72. O
 124 min, 238 Wh, 88/96 and 65/72. **Run them one after the other**: the static split leaves half the fleet idle once the
 shorter workload ends; accuracy is the same within noise.
 
+## Night 2026-11-22/23 (11): cap 12 replicated ([swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md))
+
+Fresh hard-v14 (plan 0de332a frozen first). Cap 12 88/96 vs cap 8 86/96, 0 wrong, 2 cases answered only by agents 9-12;
+pre-registered pooled hard-v12 + v14: 173 vs 167 of 192 (+9/-3, p = 0.15), 4 noise-free late rescues, 0 wrong. Cost:
++17 % tokens and +25 % wall on hard-v14 (1.96 vs 1.65 Wh per solved case), paid only on cases 8 agents cannot solve.
+**roll12strategy (cap 12) is now the arithmetic default** (owner: quality first).
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -182,4 +189,4 @@ shorter workload ends; accuracy is the same within noise.
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md)
