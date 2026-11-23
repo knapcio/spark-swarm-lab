@@ -29,13 +29,13 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
   roll12burst   roll8cancel with a cap of 12 agents and a time trigger: if no plan is accepted BURST_SECONDS after the
                 case started, 8 agents are kept in flight instead of 4 (failures still replaced, first accept cancels)
 Every agent record carries timing (seconds from case start); decisions of the original policies are unchanged.
-A judge call that fails with a transport error (connection refused / disconnected, server stream error) is retried
-once after JUDGE_RETRY_SECONDS with the same seed (agent field judge_retry); only a failed retry counts as infra.
+A judge call lost to transport (connection refused / reset / disconnected, stream ended without a result) is retried
+once after JUDGE_RETRY_SECONDS with the same seed (agent fields judge_retry, judge_attempts); only a failed retry counts
+as infra. Client-side limits (wall limit, timeouts, budget) are never retried.
 The exact verifier never influences decisions; it only scores the selected plan.
 """
 import argparse
 import json
-import re
 import subprocess
 import sys
 import threading
@@ -77,61 +77,85 @@ JUDGE_TAIL = 'Return only a JSON object {"valid": true} if every move is legal a
 REASON_TAIL = ('Return only a JSON object {"valid": true} if every move is legal and the target appears; otherwise '
                '{"valid": false, "reason": "<one sentence: the first illegal move, or why the target never appears>"}.')
 JUDGE_RETRY_SECONDS = 2
-TRANSPORT_ERRORS = {'ConnectionError', 'ConnectionRefusedError', 'ConnectionResetError', 'ConnectionAbortedError',
-                    'BrokenPipeError', 'RemoteDisconnected', 'IncompleteRead', 'URLError', 'TimeoutError', 'timeout'}
+# Transport LOSS only: the connection or the stream was lost before a result arrived. Client-side limits (wall limit,
+# idle/socket timeout, deadline, budget), accounting mismatches, HTTP status errors and server-reported errors that are
+# not a disconnect are never retried.
+LOSS_TYPES = {'ConnectionRefusedError', 'ConnectionResetError', 'ConnectionAbortedError', 'BrokenPipeError',
+              'RemoteDisconnected', 'IncompleteRead', 'JSONDecodeError'}  # JSONDecodeError = truncated stream frame
+LOSS_MARKERS = ('connection refused', 'connection reset', 'connection aborted', 'disconnected', 'remote end closed',
+                'broken pipe', 'stream ended without finish_reason', 'incompleteread', 'unexpected eof')
+LOCAL_LIMIT_MARKERS = ('timed out', 'timeout', 'wall limit', 'deadline', 'budget')
 
 
 def transport_error(error):
-    """True for a request error string (as ForcedClient records it: 'ExcType: message') that is a transport fault:
-    connection refused / reset / disconnected, server stream error, stream ended without finish, silent server, or an
-    HTTP 5xx from the adapter. Accounting faults (token id count mismatch) and budget denials are not transport."""
+    """True for a request error string (as ForcedClient records it: 'ExcType: message') that is a transport loss:
+    connection refused / reset / disconnected, a server stream error reporting a disconnect, or a stream that ended
+    without a result (EOF, truncated frame). False for the client's own limits and every other fault."""
     if not error:
         return False
     kind, _, message = str(error).partition(':')
-    kind = kind.strip()
-    return kind in TRANSPORT_ERRORS or (kind == 'HTTPError' and re.search(r'HTTP Error 5\d\d', message) is not None)
+    kind, text = kind.strip(), str(error).lower()
+    if any(m in text for m in LOCAL_LIMIT_MARKERS):
+        return False
+    if kind in LOSS_TYPES:
+        return True
+    return kind in ('ConnectionError', 'URLError', 'OSError') and any(m in message.lower() for m in LOSS_MARKERS)
+
+
+class JudgeFault(RuntimeError):
+    """A judge attempt raised (not a recorded request error); .record keeps every attempt's charges and errors."""
+    def __init__(self, message, record):
+        super().__init__(message)
+        self.record = record
 
 
 def judge_with_reason(candidate, endpoint, events_path, seed):
-    """Thinking judge with a one-sentence reason (judge_once). A transport failure of the call is retried once after
-    JUDGE_RETRY_SECONDS with the same seed (events in <stem>.retry.jsonl); a successful call returns exactly as before.
-    If the retry also fails, its infra result is returned as before (a raised transport exception propagates)."""
-    try:
-        first = judge_once(candidate, endpoint, events_path, seed)
-    except Exception as exc:  # e.g. connection refused on /tokenize
-        error = f'{type(exc).__name__}: {exc}'
-        if not transport_error(error):
-            raise
-        first = dict(verdict=None, reason='', infra=1, tokens=0, transport=error[:300])
-    first_error = first.pop('transport')
-    if not first_error:
-        return first
-    time.sleep(JUDGE_RETRY_SECONDS)
-    second = judge_once(candidate, endpoint, Path(events_path).with_suffix('.retry.jsonl'), seed)
-    second.pop('transport')
-    second.update(tokens=first['tokens'] + second['tokens'], retry=True, first_error=first_error)
-    return second
+    """Thinking judge with a one-sentence reason (judge_once). An attempt that failed by transport loss is retried once
+    after JUDGE_RETRY_SECONDS with the same seed (events in <stem>.retry.jsonl). A clean first call returns exactly as
+    before (verdict, reason, infra, tokens). After a retry or any fault the record also holds judge_attempts (tokens,
+    infra, error per attempt; tokens is their sum); if the last attempt raised, JudgeFault carries that record."""
+    attempts = [judge_once(candidate, endpoint, events_path, seed)]
+    if attempts[0]['infra'] and transport_error(attempts[0]['error']):
+        time.sleep(JUDGE_RETRY_SECONDS)
+        attempts.append(judge_once(candidate, endpoint, Path(events_path).with_suffix('.retry.jsonl'), seed))
+    last = attempts[-1]
+    out = dict(verdict=last['verdict'], reason=last['reason'], infra=last['infra'], tokens=sum(a['tokens'] for a in attempts))
+    if len(attempts) > 1:
+        out.update(retry=True, first_error=attempts[0]['error'])
+    if len(attempts) > 1 or any(a['infra'] for a in attempts):
+        out['judge_attempts'] = [{k: a[k] for k in ('tokens', 'infra', 'error', 'raised', 'verdict')} for a in attempts]
+    if last['raised']:
+        raise JudgeFault(last['error'], out)
+    return out
 
 
 def judge_once(candidate, endpoint, events_path, seed):
-    """Same thinking judge as run_judge.judge, but asks for a one-sentence reason when rejecting. Returns the verdict
-    record plus 'transport': the first transport error string of a failed call ('' if none)."""
+    """One attempt of the thinking judge (same prompt and budgets as before). Never raises after the events file is
+    open: an exception (e.g. /tokenize refused after the first completion) is recorded with the tokens already charged.
+    Returns verdict, reason, infra, tokens, error (first transport-loss error, else first error) and raised."""
     events = run_judge.Events(events_path, 'judge_reason')
-    errors = []
+    errors, client = [], None
     try:
-        client = run_judge.ChatJudge(endpoint, 'nemotron-lightning', run_judge.Budget(2, 8192), events, seed)
-        prompt = run_judge.judge_prompt(candidate['numbers'], candidate['target'], candidate['plan'])
-        require(prompt.endswith(JUDGE_TAIL), 'judge prompt changed')
-        prompt = prompt[:-len(JUDGE_TAIL)] + REASON_TAIL
-        ids = client.chat_prompt_ids(prompt, thinking=True)
-        first = client.complete(0, 'judge', ids, 6144)
-        errors.append(first['error'])
-        answer = first['answer']
-        if answer is None and first['finish_reason'] == 'length' and first['error'] is None:
-            second = client.complete(0, 'judge_forced', ids + first['token_ids'] + client.force_ids(),
-                                     8192 - client.budget.snapshot()['completion_tokens_charged'], thinking_closed=True)
-            errors.append(second['error'])
-            answer = second['answer']
+        try:
+            client = run_judge.ChatJudge(endpoint, 'nemotron-lightning', run_judge.Budget(2, 8192), events, seed)
+            prompt = run_judge.judge_prompt(candidate['numbers'], candidate['target'], candidate['plan'])
+            require(prompt.endswith(JUDGE_TAIL), 'judge prompt changed')
+            prompt = prompt[:-len(JUDGE_TAIL)] + REASON_TAIL
+            ids = client.chat_prompt_ids(prompt, thinking=True)
+            first = client.complete(0, 'judge', ids, 6144)
+            errors.append(first['error'])
+            answer = first['answer']
+            if answer is None and first['finish_reason'] == 'length' and first['error'] is None:
+                second = client.complete(0, 'judge_forced', ids + first['token_ids'] + client.force_ids(),
+                                         8192 - client.budget.snapshot()['completion_tokens_charged'], thinking_closed=True)
+                errors.append(second['error'])
+                answer = second['answer']
+        except Exception as exc:
+            error = f'{type(exc).__name__}: {exc}'[:300]
+            out = dict(verdict=None, reason='', infra=(client.infra_failures if client else 0) + 1,
+                       tokens=client.budget.snapshot()['completion_tokens_charged'] if client else 0)
+            events.emit('judge_end', error=error, **out)
+            return dict(out, error=error, raised=True)
         verdict, reason = None, ''
         try:
             value = json.loads((answer or '').strip().strip('`').removeprefix('json').strip())
@@ -142,10 +166,33 @@ def judge_once(candidate, endpoint, events_path, seed):
         out = dict(verdict=verdict, reason=reason, infra=client.infra_failures,
                    tokens=client.budget.snapshot()['completion_tokens_charged'])
         events.emit('judge_end', **out)
-        out['transport'] = next((str(e)[:300] for e in errors if transport_error(e)), '') if client.infra_failures else ''
-        return out
+        errors = [str(e)[:300] for e in errors if e]
+        error = next((e for e in errors if transport_error(e)), errors[0] if errors else None)
+        return dict(out, error=error, raised=False)
     finally:
         events.close()
+
+
+def judge_fields(j):
+    """Agent-record fields of a judge record (judge_with_reason result or JudgeFault.record)."""
+    f = dict(verdict=j['verdict'], reason=j['reason'], judge_tokens=j['tokens'], judge_infra=j['infra'],
+             judge_retry=bool(j.get('retry')))
+    if j.get('retry'):
+        f['judge_first_error'] = j['first_error']
+    if 'judge_attempts' in j:
+        f['judge_attempts'] = j['judge_attempts']
+    return f
+
+
+def fault_record(slot, extra, exc):
+    """Agent record for a controller exception: an infra fault that keeps whatever the agent already recorded
+    (exc.partial_info from run_agent: worker tokens, judge attempts and charges, retry fields)."""
+    info = dict(plan=None, verifier_solved=False, tokens=0, infra=0, slot=slot, extra=bool(extra), deadline=False,
+                verdict=None, reason='', judge_tokens=0, judge_infra=0, judge_retry=False, started=True,
+                cancelled=False, judge_skipped=False)
+    info.update(getattr(exc, 'partial_info', None) or {})
+    info.update(slot=slot, infra=info['infra'] + 1, agent_error=f'{type(exc).__name__}: {exc}'[:300])
+    return info
 
 
 def execute_cancellable(case, deadline_seconds, cancel):
@@ -235,11 +282,15 @@ def run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, sl
             if cancel is not None and cancel.is_set():
                 info['judge_skipped'] = True
             else:
-                j = judge_with_reason(cand, endpoint, out / 'judges' / (stem + '.jsonl'), 90000 + 1000 * seed + 10 * case_index + slot)
-                info.update(verdict=j['verdict'], reason=j['reason'], judge_tokens=j['tokens'], judge_infra=j['infra'],
-                            judge_retry=bool(j.get('retry')))
-                if j.get('retry'):
-                    info['judge_first_error'] = j['first_error']
+                try:
+                    j = judge_with_reason(cand, endpoint, out / 'judges' / (stem + '.jsonl'),
+                                          90000 + 1000 * seed + 10 * case_index + slot)
+                except Exception as exc:  # keep the agent's and the judge's charges for the fault record (fault_record)
+                    if isinstance(exc, JudgeFault):
+                        info.update(judge_fields(exc.record))
+                    exc.partial_info = dict(info, **timing)
+                    raise
+                info.update(judge_fields(j))
                 timing['judged_s'] = round(time.monotonic() - t0, 3)
                 if race and info['verdict'] is True:
                     race['accept'](slot)
@@ -281,9 +332,7 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
         try:
             info = agent(slot, node, extra) if feedback else agent(slot, node)
         except Exception as exc:  # never lose a slot: record it as an infra fault (resume reruns the case)
-            info = dict(plan=None, verifier_solved=False, tokens=0, infra=1, slot=slot, extra=bool(extra), deadline=False,
-                        verdict=None, reason='', judge_tokens=0, judge_infra=0, judge_retry=False, started=True,
-                        cancelled=False, judge_skipped=False, agent_error=f'{type(exc).__name__}: {exc}')
+            info = fault_record(slot, extra, exc)
         with lock:
             results.append(info)
             state['running'] -= 1
@@ -440,6 +489,31 @@ def plan_tasks(plan, root=HERE):
     return tasks
 
 
+def check_pairing(plan, policies, root=HERE):
+    """Escalation-only arms (esc_*, esc_extra) are add-ons to a first wave: they must run on a case_list, and if the
+    plan names what it is paired with ('paired_with': {agent_variant, seed_offset} and/or {plan: PATH, policy: NAME}),
+    the plan's agent_variant and every run policy's seed offset must equal the paired values."""
+    esc = [pol for pol in policies if pol in ESC_HINTS]
+    require(not esc or plan.get('case_list'), f'escalation-only policies {esc} require a case_list')
+    paired = plan.get('paired_with')
+    if not paired:
+        return
+    expected = {}
+    if paired.get('plan'):
+        other = read(root / paired['plan'])
+        expected = dict(agent_variant=other['agent_variant'], seed_offset=other['seed_offsets'][paired['policy']])
+    for key in ('agent_variant', 'seed_offset'):
+        if key in paired:
+            require(expected.get(key, paired[key]) == paired[key], f'paired_with {key} disagrees with its plan')
+            expected[key] = paired[key]
+    require(expected, 'paired_with names no agent_variant / seed_offset')
+    if 'agent_variant' in expected:
+        require(plan['agent_variant'] == expected['agent_variant'], 'agent_variant differs from paired_with')
+    if 'seed_offset' in expected:
+        for pol in policies:
+            require(plan['seed_offsets'][pol] == expected['seed_offset'], f'seed offset of {pol} differs from paired_with')
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--plan', type=Path, required=True)
@@ -457,6 +531,7 @@ def main(argv=None):
     tasks = plan_tasks(plan)
     policies = a.policy or plan['policies']
     require(set(policies) <= set(plan['policies']), 'Policy not in plan')
+    check_pairing(plan, policies)
     jobs = [(t, s, si * len(tasks) + ti, pol) for si, s in enumerate(plan['seeds']) for ti, t in enumerate(tasks) for pol in policies]
     if plan.get('case_list'):  # optional: only these (task_id, seed) cases; case indices (node placement) are kept
         listed = [(c[0], c[1]) for c in read(HERE / plan['case_list'])['cases']]
@@ -483,6 +558,8 @@ def main(argv=None):
     for d in ('agents', 'judges', 'extra'):
         (out / d).mkdir(parents=True, exist_ok=d != 'agents')
     write(out / 'metadata.json', dict(protocol=plan, runner_sha256=sha(Path(__file__)), resume=resumed, policies=policies,
+                                      agent_variant=plan['agent_variant'],
+                                      seed_offsets={pol: plan['seed_offsets'][pol] for pol in policies},
                                       concurrent_policy_cases=concurrent, started_utc=datetime.now(timezone.utc).isoformat(), admission=adm))
     slots, lock, stop, rows = Slots(plan['concurrent_requests_per_endpoint']), threading.Lock(), threading.Event(), []
 

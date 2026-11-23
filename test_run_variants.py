@@ -269,9 +269,10 @@ class CancelPolicyTests(unittest.TestCase):
             root = Path(d)
             tasks = [dict(id='t0', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7)]
             (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=tasks)))
+            (root / 'cases.json').write_text(json.dumps(dict(cases=[['t0', 1]])))
             plan = dict(protocol='swarm-variants-screen-v1', source_revision='x', dataset=str(root / 'data.json'),
                         dataset_protocol='p', split='evaluation', tasks=1, seeds=[1], policies=['esc_extra'],
-                        concurrent_policy_cases=1, concurrent_requests_per_endpoint=26)
+                        case_list=str(root / 'cases.json'), concurrent_policy_cases=1, concurrent_requests_per_endpoint=26)
             (root / 'plan.json').write_text(json.dumps(plan))
             with patch.object(v, 'validate_source', lambda *a: None), self.assertRaisesRegex(Exception, 'above 25'):
                 v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d])
@@ -341,6 +342,45 @@ class CaseListTests(unittest.TestCase):
         with self.assertRaisesRegex(Exception, 'duplicate'):
             self.plan_mode([['t0', 1], ['t2', 2], ['t0', 1]])
 
+    def plan_main(self, **changes):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            tasks = [dict(id='t0', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7)]
+            (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=tasks)))
+            (root / 'cases.json').write_text(json.dumps(dict(cases=[['t0', 1]])))
+            (root / 'first.json').write_text(json.dumps(dict(agent_variant='xl_forced_original',
+                                                             seed_offsets=dict(roll12strategy=15400))))
+            plan = dict(protocol='swarm-variants-screen-v1', source_revision='x', dataset=str(root / 'data.json'),
+                        dataset_protocol='p', split='evaluation', tasks=1, seeds=[1], policies=['esc_extra'],
+                        agent_variant='xl_forced_original', seed_offsets=dict(esc_extra=15400),
+                        case_list=str(root / 'cases.json'), concurrent_policy_cases=1, concurrent_requests_per_endpoint=20)
+            plan.update(changes)
+            if isinstance(plan.get('paired_with'), dict) and plan['paired_with'].get('plan') == 'FIRST':
+                plan['paired_with'] = dict(plan['paired_with'], plan=str(root / 'first.json'))
+            plan = {k: x for k, x in plan.items() if x is not None}
+            (root / 'plan.json').write_text(json.dumps(plan))
+            with patch.object(v, 'validate_source', lambda *a: None):
+                return v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d])
+
+    def test_escalation_arms_require_a_case_list(self):
+        for pol in ('esc_extra', 'esc_none'):
+            with self.assertRaisesRegex(Exception, 'require a case_list'):
+                self.plan_main(case_list=None, policies=[pol], seed_offsets={pol: 15400})
+        self.assertEqual(self.plan_main(), 0)
+
+    def test_paired_with_values_and_plan(self):
+        self.assertEqual(self.plan_main(paired_with=dict(agent_variant='xl_forced_original', seed_offset=15400)), 0)
+        self.assertEqual(self.plan_main(paired_with=dict(plan='FIRST', policy='roll12strategy')), 0)
+        with self.assertRaisesRegex(Exception, 'seed offset of esc_extra differs'):
+            self.plan_main(paired_with=dict(seed_offset=15500))
+        with self.assertRaisesRegex(Exception, 'agent_variant differs'):
+            self.plan_main(paired_with=dict(plan='FIRST', policy='roll12strategy'), agent_variant='long_forced_original')
+        with self.assertRaisesRegex(Exception, 'seed offset of esc_extra differs'):
+            self.plan_main(paired_with=dict(plan='FIRST', policy='roll12strategy'), seed_offsets=dict(esc_extra=1400))
+        with self.assertRaisesRegex(Exception, 'disagrees with its plan'):
+            self.plan_main(paired_with=dict(plan='FIRST', policy='roll12strategy', seed_offset=1))
+
     def test_case_list_rejects_unknown(self):
         with self.assertRaisesRegex(Exception, 'does not match'):
             self.plan_mode([['t0', 1], ['t9', 1]])
@@ -396,7 +436,8 @@ class JudgeRetryTests(unittest.TestCase):
     def run_judge(self, behaviors):
         import json, urllib.error
         import run_judge
-        made = []
+        made, http_errors = [], []
+        stream = self.STREAM
 
         class Fake:
             def __init__(self, endpoint, model, budget, events, seed):
@@ -408,23 +449,32 @@ class JudgeRetryTests(unittest.TestCase):
                 if self.behavior == 'refused':
                     raise urllib.error.URLError(ConnectionRefusedError(61, 'Connection refused'))
                 if self.behavior == 'bad_request':
-                    raise urllib.error.HTTPError('u', 400, 'Bad Request', {}, None)
+                    http_errors.append(urllib.error.HTTPError('u', 400, 'Bad Request', {}, None))
+                    raise http_errors[-1]
                 return [1, 2, 3]
 
             def force_ids(self):
+                if self.behavior == 'length_then_refused':
+                    raise urllib.error.URLError(ConnectionRefusedError(61, 'Connection refused'))
                 return [9]
 
             def complete(self, agent_id, stage, ids, max_tokens, thinking_closed=False):
                 self.budget.reserve(max_tokens)
-                if self.behavior in ('stream', 'mismatch'):
+                errors = dict(stream=stream, mismatch='token id count 99 != reported 100',
+                              wall='TimeoutError: wall limit 14400s exceeded', idle='TimeoutError: timed out',
+                              eof='ConnectionError: stream ended without finish_reason',
+                              frame='JSONDecodeError: Unterminated string starting at: line 1 column 9 (char 8)',
+                              context='ConnectionError: server stream error: {\'message\': \'context length exceeded\'}')
+                if self.behavior in errors:
                     self.infra_failures += 1
-                    self.budget.settle(max_tokens, None if self.behavior == 'stream' else 100)
-                    error = Self.STREAM if self.behavior == 'stream' else 'token id count 99 != reported 100'
-                    return dict(error=error, answer=None, finish_reason=None, token_ids=[])
+                    self.budget.settle(max_tokens, None if self.behavior != 'mismatch' else 100)
+                    return dict(error=errors[self.behavior], answer=None, finish_reason=None, token_ids=[])
+                if self.behavior == 'length_then_refused':
+                    self.budget.settle(max_tokens, max_tokens)
+                    return dict(error=None, answer=None, finish_reason='length', token_ids=[5] * max_tokens)
                 self.budget.settle(max_tokens, 100)
                 return dict(error=None, answer=json.dumps(dict(valid=self.behavior == 'ok_true', reason='r')),
                             finish_reason='stop', token_ids=[5] * 100)
-        Self = self
         sleeps = []
         cand = dict(numbers=[1, 2, 3, 4], target=10, plan={'moves': [{'i': 0, 'j': 1, 'op': '+'}]})
         with tempfile.TemporaryDirectory() as d, patch.object(run_judge, 'ChatJudge', Fake), \
@@ -434,9 +484,11 @@ class JudgeRetryTests(unittest.TestCase):
                 result = v.judge_with_reason(cand, 'http://e/v1', path, 4242)
             except Exception as exc:
                 result = exc
-                if isinstance(exc, urllib.error.HTTPError):
-                    exc.close()
             files = sorted(p.name for p in Path(d).iterdir())
+            ends = [json.loads(l) for f in sorted(Path(d).iterdir()) for l in f.read_text().splitlines()]
+        for e in http_errors:
+            e.close()
+        self.ends = [e for e in ends if e['type'] == 'judge_end']
         return result, made, sleeps, files
 
     def test_success_is_unchanged(self):
@@ -444,58 +496,105 @@ class JudgeRetryTests(unittest.TestCase):
         self.assertEqual(res, dict(verdict=True, reason='r', infra=0, tokens=100))
         self.assertEqual((len(made), sleeps, files), (1, [], ['t-s1-esc_extra-a12.jsonl']))
 
-    def test_stream_error_retried_once_with_same_seed(self):
+    def test_stream_disconnect_retried_once_with_same_seed(self):
         res, made, sleeps, files = self.run_judge(['stream', 'ok_false'])
         self.assertEqual((res['verdict'], res['infra'], res['retry']), (False, 0, True))
-        self.assertIn('server stream error', res['first_error'])
+        self.assertIn('Server disconnected', res['first_error'])
         self.assertEqual(res['tokens'], 6144 + 100)
+        self.assertEqual([(a['tokens'], a['infra'], a['error'] is None) for a in res['judge_attempts']], [(6144, 1, False), (100, 0, True)])
         self.assertEqual([m.seed for m in made], [4242, 4242])
         self.assertEqual(sleeps, [v.JUDGE_RETRY_SECONDS])
         self.assertEqual(files, ['t-s1-esc_extra-a12.jsonl', 't-s1-esc_extra-a12.retry.jsonl'])
 
-    def test_retry_failure_returns_infra(self):
+    def test_eof_and_truncated_frame_are_retried(self):
+        for first in ('eof', 'frame'):
+            res, made, _, _ = self.run_judge([first, 'ok_true'])
+            self.assertEqual((res['verdict'], res['infra'], len(made)), (True, 0, 2), first)
+
+    def test_retry_failure_returns_infra_with_both_attempts(self):
         res, made, sleeps, _ = self.run_judge(['stream', 'stream'])
         self.assertEqual((res['verdict'], res['infra'], res['retry'], len(made)), (None, 1, True, 2))
+        self.assertEqual(res['tokens'], 2 * 6144)
+        self.assertEqual([a['error'] for a in res['judge_attempts']], [self.STREAM, self.STREAM])
 
     def test_refused_connection_on_tokenize_is_retried(self):
         res, made, sleeps, _ = self.run_judge(['refused', 'ok_true'])
         self.assertEqual((res['verdict'], res['infra'], res['retry'], res['tokens']), (True, 0, True, 100))
         self.assertIn('Connection refused', res['first_error'])
+        self.assertTrue(res['judge_attempts'][0]['raised'])
 
-    def test_refused_twice_raises_as_today(self):
-        res, made, _, _ = self.run_judge(['refused', 'refused'])
-        self.assertIsInstance(res, OSError)
+    def test_force_tokenize_failure_after_completion_keeps_its_charge(self):
+        res, made, _, _ = self.run_judge(['length_then_refused', 'ok_true'])
+        self.assertEqual((res['verdict'], res['infra'], res['tokens']), (True, 0, 6144 + 100))
+        self.assertEqual(res['judge_attempts'][0]['tokens'], 6144)
+        self.assertEqual(self.ends[0]['tokens'], 6144)  # the attempt's judge_end event records the charge too
+
+    def test_refused_twice_raises_with_full_record(self):
+        res, made, _, _ = self.run_judge(['refused', 'length_then_refused'])
+        self.assertIsInstance(res, v.JudgeFault)
         self.assertEqual(len(made), 2)
+        self.assertEqual((res.record['tokens'], res.record['infra'], res.record['retry']), (6144, 1, True))
+        self.assertEqual([a['raised'] for a in res.record['judge_attempts']], [True, True])
 
-    def test_non_transport_faults_are_not_retried(self):
-        res, made, sleeps, _ = self.run_judge(['mismatch'])
-        self.assertEqual((res['infra'], len(made), sleeps), (1, 1, []))
-        self.assertNotIn('retry', res)
+    def test_local_limits_and_other_faults_are_not_retried(self):
+        for first in ('wall', 'idle', 'mismatch', 'context'):
+            res, made, sleeps, _ = self.run_judge([first])
+            self.assertEqual((res['infra'], len(made), sleeps), (1, 1, []), first)
+            self.assertNotIn('retry', res, first)
+            self.assertEqual(len(res['judge_attempts']), 1, first)
         res, made, _, _ = self.run_judge(['bad_request'])
-        self.assertIsInstance(res, Exception)
+        self.assertIsInstance(res, v.JudgeFault)
         self.assertEqual(len(made), 1)
 
     def test_transport_classifier(self):
         for e in (self.STREAM, 'ConnectionError: stream ended without finish_reason',
                   'URLError: <urlopen error [Errno 61] Connection refused>', 'RemoteDisconnected: Remote end closed',
-                  'TimeoutError: timed out', 'HTTPError: HTTP Error 503: Service Unavailable'):
+                  'ConnectionResetError: [Errno 54] Connection reset by peer', 'IncompleteRead: IncompleteRead(10 bytes read)',
+                  'JSONDecodeError: Unterminated string starting at: line 1 column 9 (char 8)'):
             self.assertTrue(v.transport_error(e), e)
         for e in (None, '', 'token id count 3 != reported 4', 'budget_exhausted', 'HTTPError: HTTP Error 400: Bad Request',
-                  'ValueError: bad json'):
+                  'HTTPError: HTTP Error 503: Service Unavailable', 'ValueError: bad json', 'TimeoutError: timed out',
+                  'TimeoutError: wall limit 14400s exceeded', 'URLError: <urlopen error timed out>',
+                  "ConnectionError: server stream error: {'message': 'context length exceeded'}"):
             self.assertFalse(v.transport_error(e), e)
 
-    def test_agent_records_judge_retry(self):
-        def judge(cand, endpoint, events_path, seed):
-            return dict(verdict=True, reason='', infra=0, tokens=7, retry=True, first_error=self.STREAM)
+    def judged_agent(self, judge, policy='deep4'):
         with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute', lambda job, deadline_seconds: dict(deadline=False)), \
-                patch.object(v, 'plan_of', lambda p: dict(plan={'moves': [1]}, verifier_solved=True, tokens=1, infra=0)), \
+                patch.object(v, 'execute_cancellable', lambda job, deadline, cancel: dict(deadline=False, cancelled=False, returncode=0)), \
+                patch.object(v, 'plan_of', lambda p: dict(plan={'moves': [1]}, verifier_solved=True, tokens=11, infra=0)), \
                 patch.object(v, 'judge_with_reason', judge):
             out = Path(d)
             (out / 'agents').mkdir(); (out / 'extra').mkdir(); (out / 'judges').mkdir()
-            rec = v.run_policy(PLAN, Path('/src'), out, TASK, 1, 0, 'deep4', v.Slots(8))
+            plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], esc_extra=1400))
+            return v.run_policy(plan, Path('/src'), out, TASK, 1, 0, policy, v.Slots(8))
+
+    def test_agent_records_judge_retry(self):
+        def judge(cand, endpoint, events_path, seed):
+            return dict(verdict=True, reason='', infra=0, tokens=7, retry=True, first_error=self.STREAM,
+                        judge_attempts=[dict(tokens=5, infra=1, error=self.STREAM, raised=False, verdict=None),
+                                        dict(tokens=2, infra=0, error=None, raised=False, verdict=True)])
+        rec = self.judged_agent(judge)
         self.assertTrue(all(a['judge_retry'] for a in rec['agents']))
         self.assertEqual(rec['agents'][0]['judge_first_error'], self.STREAM)
+        self.assertEqual(len(rec['agents'][0]['judge_attempts']), 2)
         self.assertEqual(rec['infra'], 0)
+
+    def test_rolling_fault_keeps_retry_fields_and_charges(self):
+        record = dict(verdict=None, reason='', infra=1, tokens=6144, retry=True, first_error=self.STREAM,
+                      judge_attempts=[dict(tokens=6144, infra=1, error=self.STREAM, raised=False, verdict=None),
+                                      dict(tokens=0, infra=1, error='URLError: refused', raised=True, verdict=None)])
+
+        def judge(cand, endpoint, events_path, seed):
+            if str(events_path).endswith('-a13.jsonl'):
+                raise v.JudgeFault('URLError: refused', record)
+            return dict(verdict=False, reason='', infra=0, tokens=3)
+        rec = self.judged_agent(judge, 'esc_extra')
+        a13 = next(a for a in rec['agents'] if a['slot'] == 13)
+        self.assertIn('JudgeFault', a13['agent_error'])
+        self.assertEqual((a13['tokens'], a13['judge_tokens'], a13['judge_retry'], len(a13['judge_attempts'])), (11, 6144, True, 2))
+        self.assertGreaterEqual(a13['infra'], 1)
+        self.assertEqual(rec['tokens'], 8 * 11 + 7 * 3 + 6144)
+        self.assertGreaterEqual(rec['infra'], 2)
 
 
 class ExecuteCancellableTests(unittest.TestCase):

@@ -56,24 +56,41 @@ def _kind(tok):
 
 
 _BAD_PAIRS = {('num', 'num'), ('num', '('), ('op', 'op'), ('op', ')'), ('(', 'op'), ('(', ')'), (')', 'num'), (')', '(')}
+# a cut is allowed only where one complete operand ends and a separate expression starts ('6 25*4', '(3+4) 5*2')
+_SAFE_CUTS = {('num', 'num'), (')', 'num')}
+# characters that may touch the start of an expression without being part of it ('$55*15', 'is:25*4', '[3+4')
+_SAFE_PREV = set(' \t=:;"\'[{`$<>|')
 
 
 def _expression(left):
-    """Longest well-formed arithmetic suffix of the text left of '=' (tokens only, never evaluated), or None."""
+    """The arithmetic expression that ends just left of '=' (tokens only, never evaluated), or None. The expression is
+    never shortened in a way that could change its meaning: a sign, decimal point, digit group, power or any other
+    prefix glued to it (-3+5, 2.5*4, 1,250*4, 2^3*4, 3*-2, 2(3+4), x-3) drops the statement instead of being stripped.
+    Only a separate preceding expression ('6 25*4') or unmatched outer '(' are left out."""
     m = _LHS.search(left)
-    tokens = _TOKEN.findall(m.group()) if m else []
-    if '**' in (m.group() if m else ''):
+    seg = m.group() if m else ''
+    if '**' in seg:
         return None  # power, not one of the four operations
+    tokens = _TOKEN.findall(seg)
+    if not tokens:
+        return None
     start = 0
-    for i in range(1, len(tokens)):  # cut at the last adjacency that cannot occur inside one expression
+    for i in range(1, len(tokens)):  # the last adjacency that cannot occur inside one expression
         if (_kind(tokens[i - 1]), _kind(tokens[i])) in _BAD_PAIRS:
             start = i
+    if start:
+        if (_kind(tokens[start - 1]), _kind(tokens[start])) not in _SAFE_CUTS:
+            return None
+    elif m.start() > 0 and not seg[0].isspace() and left[m.start() - 1] not in _SAFE_PREV:
+        return None  # glued to a decimal point, digit group, letter, '^', ... : the true left operand is unknown
     tokens = tokens[start:]
-    while tokens and _kind(tokens[0]) not in ('num', '('):  # leading operator or stray ')'
+    if _kind(tokens[0]) not in ('num', '('):
+        return None  # a leading sign or operator belongs to the statement; never strip it
+    while tokens[0] == '(' and tokens.count('(') > tokens.count(')'):  # opening paren of an outer group
         tokens = tokens[1:]
-    while tokens and tokens[0] == '(' and tokens.count('(') > tokens.count(')'):  # opening paren of an outer group
-        tokens = tokens[1:]
-    if not tokens or _kind(tokens[-1]) not in ('num', ')') or 'op' not in map(_kind, tokens):
+        if not tokens:
+            return None
+    if _kind(tokens[0]) not in ('num', '(') or _kind(tokens[-1]) not in ('num', ')') or 'op' not in map(_kind, tokens):
         return None
     depth = 0
     for tok in tokens:
@@ -257,18 +274,26 @@ def run_case(plan, source, out, task, seed, case_index, agent_leads_fn, slots, e
     wins and cancels the rest."""
     t0 = time.monotonic()
     endpoint = endpoints[case_index % len(endpoints)]
-    with slots(endpoint):
-        wanted = wanted_fn(endpoint, out / 'wanted' / f"{task['id']}-s{seed}.jsonl",
-                           WANTED_SEED_BASE + 1000 * seed + 10 * case_index, task['numbers'], task['target'])
+    try:
+        with slots(endpoint):
+            wanted = wanted_fn(endpoint, out / 'wanted' / f"{task['id']}-s{seed}.jsonl",
+                               WANTED_SEED_BASE + 1000 * seed + 10 * case_index, task['numbers'], task['target'])
+    except Exception as exc:  # never lose the case: an infra record (resume reruns it)
+        wanted = dict(lines=[], values=[], infra=1, error=f'{type(exc).__name__}: {exc}'[:300], tokens=0, retry=False)
     rows = agent_leads_fn(wanted['values'])
-    with_leads, skipped = select_closers(rows, max_closers)
+    # a failed wanted call makes the case infra: no closers (tier 1 would be empty); the resume reruns the case
+    with_leads, skipped = select_closers(rows, 0 if wanted['infra'] else max_closers)
     race = run_variants.new_race(t0)
-    closers = run_variants.parallel([
-        lambda r=r: dict(run_variants.run_agent(plan, source, out, task, seed, case_index, CLOSER_POLICY,
-                                                CLOSER_SLOT_BASE + r['slot'], closer_extra(r['lines']), slots,
-                                                seed_offset, t0, race, endpoints=endpoints),
-                         source_slot=r['slot'], tier1=len(r['tier1']), tier2=len(r['tier2']), lines=r['lines'])
-        for r in with_leads])
+
+    def closer(r):
+        slot, extra = CLOSER_SLOT_BASE + r['slot'], closer_extra(r['lines'])
+        try:
+            info = run_variants.run_agent(plan, source, out, task, seed, case_index, CLOSER_POLICY, slot, extra, slots,
+                                          seed_offset, t0, race, endpoints=endpoints)
+        except Exception as exc:  # an infra record for this closer (and so the case), with every charge kept
+            info = run_variants.fault_record(slot, extra, exc)
+        return dict(info, source_slot=r['slot'], tier1=len(r['tier1']), tier2=len(r['tier2']), lines=r['lines'])
+    closers = run_variants.parallel([lambda r=r: closer(r) for r in with_leads])
     selected = next((c for c in closers if c['slot'] == race['winner']), None)
     return dict(task_id=task['id'], seed=seed, case_index=case_index, numbers=task['numbers'], target=task['target'],
                 wanted=wanted, failed_agents=len(rows), missing_traces=sum(r['missing'] for r in rows),
@@ -279,7 +304,9 @@ def run_case(plan, source, out, task, seed, case_index, agent_leads_fn, slots, e
                 selected_slot=race['winner'], answer_seconds=race['answer_s'],
                 solved=bool(selected and selected['verifier_solved']), wrong=bool(selected and not selected['verifier_solved']),
                 oracle=any(c['verifier_solved'] for c in closers),
-                tokens=wanted['tokens'] + sum(c['tokens'] + c['judge_tokens'] for c in closers),
+                # client-side completion tokens (workers + judges + wanted call); cancelled work is undercounted, so
+                # server-side cost must come from the arm driver's counters (inkling/arms.py), never from this field
+                client_tokens=wanted['tokens'] + sum(c['tokens'] + c['judge_tokens'] for c in closers),
                 infra=wanted['infra'] + sum(c['infra'] + c['judge_infra'] for c in closers),
                 cancelled_closers=sum(c.get('cancelled', False) for c in closers),
                 unstarted_closers=sum(not c.get('started', True) for c in closers),

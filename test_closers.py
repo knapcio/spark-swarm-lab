@@ -43,6 +43,16 @@ class StatementTests(unittest.TestCase):
                      'so 2**3 = 8', '1650/4 = 412,5', '100/8 = 25/2', 'a != 3*5', 'n == 3*5', '3*5 = -15'):
             self.assertEqual(self.lines(text), [], text)
 
+    def test_meaning_is_never_changed_by_stripping(self):
+        for text in ('2.5*4 = 10', '0.5*8 = 4', 'a = 2.5*4 = 10', '-3+5 = 2', 'so -3+5 = 2', 'x-3+5 = 2', '3*-2*4 = 24',
+                     '(-3+5)*2 = 4', '2^3*4 = 32', '1,250*4 = 5000', '√16*2 = 8', '2(3+4) = 14', '2*((25*4-2)*8 = 784',
+                     'f(25*4-2)*8 = 784', '−3 + 5 = 2', '1.5 × 4 = 6'):
+            self.assertEqual(self.lines(text), [], text)
+        # kept: separate preceding material, list numbering, unmatched outer parens, fractions written in full
+        self.assertEqual(self.lines('1/2*4 = 2'), ['1 / 2 * 4 = 2'])
+        self.assertEqual(self.lines('(3+4) 5*2 = 10'), ['5 * 2 = 10'])
+        self.assertEqual(self.lines('is:25*4 = 100'), ['25 * 4 = 100'])
+
     def test_fraction_right_side_rejected_but_fraction_left_ok(self):
         self.assertEqual(self.lines('825/2 = 412 1/2'), [])
         self.assertEqual(self.lines('3/4*8 = 6'), ['3 / 4 * 8 = 6'])
@@ -104,12 +114,14 @@ def fake_events(path, reasonings):
 class RunCaseTests(unittest.TestCase):
     TASK = dict(id='t', numbers=[3, 15, 55, 7, 2, 9], target=822)
 
-    def run_case(self, rows, fast, accept, solved=()):
+    def run_case(self, rows, fast, accept, solved=(), boom=(), wanted_boom=False):
         launched, extras = [], {}
 
         def execute(job, deadline_seconds, cancel=None):
             slot = int(job['events'].rsplit('-a', 1)[1].split('.')[0])
             launched.append(slot)
+            if slot in boom:
+                raise RuntimeError('controller bug')
             c = job['command']
             extras[slot] = Path(c[c.index('--extra-file') + 1]).read_text()
             self.assertEqual(c[c.index('--variant') + 1], 'forced_original')
@@ -133,6 +145,8 @@ class RunCaseTests(unittest.TestCase):
 
         def wanted(endpoint, path, seed, numbers, target):
             wanted_calls.append((endpoint, seed))
+            if wanted_boom:
+                raise ValueError('wanted parser bug')
             return dict(lines=['822+3 = 825'], values=[825], infra=0, error=None, tokens=50, retry=False)
         seen_values = []
 
@@ -147,7 +161,7 @@ class RunCaseTests(unittest.TestCase):
                 (out / sub).mkdir()
             rec = closers.run_case(plan, Path('/src'), out, self.TASK, 2, 5, leads_fn, closers.EndpointSlots(v.ENDPOINTS, 8),
                                    v.ENDPOINTS, wanted_fn=wanted)
-        self.assertEqual(seen_values, [[825]])
+        self.assertEqual(seen_values, [[] if wanted_boom else [825]])
         self.assertEqual(len(wanted_calls), 1)
         return rec, launched, extras
 
@@ -165,7 +179,8 @@ class RunCaseTests(unittest.TestCase):
         self.assertEqual([(c['source_slot'], c['tier1'], c['tier2']) for c in rec['closers']], [(0, 1, 0), (2, 0, 1)])
         self.assertFalse(rec['rescue'])
         self.assertEqual((rec['failed_agents'], rec['agents_tier1'], rec['agents_tier2']), (4, 1, 1))
-        self.assertEqual(rec['tokens'], 50 + 2 * (10 + 3))
+        self.assertEqual(rec['client_tokens'], 50 + 2 * (10 + 3))
+        self.assertNotIn('tokens', rec)
         self.assertEqual(rec['calls'], 3)
 
     def test_ranking_and_cap(self):
@@ -186,9 +201,25 @@ class RunCaseTests(unittest.TestCase):
         self.assertEqual((rec['max_closers'], rec['skipped_closers'], rec['skipped_slots']), (4, 3, [0, 3, 6]))
         self.assertEqual(rec['calls'], 5)
 
+    def test_closer_exception_is_an_infra_record(self):
+        rows = [self.row(s, ['55 * 15 = 825']) for s in range(3)]
+        rec, launched, _ = self.run_case(rows, fast={100, 102}, accept=set(), boom={101})
+        self.assertEqual([c['slot'] for c in rec['closers']], [100, 101, 102])
+        bad = rec['closers'][1]
+        self.assertIn('RuntimeError', bad['agent_error'])
+        self.assertEqual((bad['infra'], bad['source_slot']), (1, 1))
+        self.assertGreaterEqual(rec['infra'], 1)
+        self.assertEqual(rec['client_tokens'], 50 + 2 * (10 + 3))
+        json.dumps(rec)  # the record is complete and serialisable (nothing None in closers)
+
+    def test_wanted_exception_is_infra_without_closers(self):
+        rec, launched, _ = self.run_case([self.row(0, ['55 * 15 = 825'])], fast=set(), accept=set(), wanted_boom=True)
+        self.assertEqual((launched, rec['closers'], rec['infra']), ([], [], 1))
+        self.assertIn('wanted parser bug', rec['wanted']['error'])
+
     def test_no_leads_no_closers(self):
         rec, launched, _ = self.run_case([self.row(0), self.row(1)], fast=set(), accept=set())
-        self.assertEqual((launched, rec['closers'], rec['rescue'], rec['tokens']), ([], [], False, 50))
+        self.assertEqual((launched, rec['closers'], rec['rescue'], rec['client_tokens']), ([], [], False, 50))
 
     def test_first_accept_wins_and_cancels(self):
         rows = [self.row(s, ['55 * 15 = 825']) for s in range(4)]
@@ -255,7 +286,8 @@ class PlanOnlyTests(unittest.TestCase):
             return dict(slot=slot, plan=None, verdict=verdict, started=True, cancelled=False, tokens=5)
         rows = [dict(task_id='a', seed=1, policy='roll12strategy', answered=False, tokens=100, agents=[agent(0), agent(1), agent(2, False)]),
                 dict(task_id='b', seed=1, policy='roll12strategy', answered=True, tokens=40, agents=[agent(0, True)]),
-                dict(task_id='b', seed=2, policy='roll12strategy', answered=False, tokens=60, agents=[agent(0), agent(1)])]
+                dict(task_id='b', seed=2, policy='roll12strategy', answered=False, tokens=60, agents=[agent(0), agent(1)]),
+                dict(task_id='a', seed=2, policy='roll12strategy', answered=True, tokens=60, agents=[agent(0, True)])]
         (run / 'cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
         stem = run / 'agents'
         fake_events(stem / 'a-s1-roll12strategy-a0.jsonl', ['so 55*15=825 and 825-3 = 822', 'again 55 × 15 = 825'])
@@ -302,6 +334,108 @@ class PlanOnlyTests(unittest.TestCase):
                 totals[name] = (last['max_closers_per_case'], last['total']['closers'], last['total']['skipped_closers'])
         # case a has 2 agents with leads, case b has 1
         self.assertEqual(totals, dict(default=(4, 3, 0), cli=(1, 2, 1), plan=(1, 2, 1), cli_wins=(3, 3, 0)))
+
+    def add_resume(self, run, rows, files=()):
+        seg = run.parent / (run.name + '-resume1')
+        (seg / 'agents').mkdir(parents=True)
+        meta = json.loads((run / 'metadata.json').read_text())
+        (seg / 'metadata.json').write_text(json.dumps(dict(meta, resume=dict(resumed_from=str(run)))))
+        (seg / 'cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
+        for name, reasonings in files:
+            fake_events(seg / 'agents' / name, reasonings)
+        return seg
+
+    def rewrite_row(self, run, task, seed, **changes):
+        rows = [json.loads(l) for l in (run / 'cases.jsonl').read_text().splitlines()]
+        rows = [dict(r, **changes) if (r['task_id'], r['seed']) == (task, seed) else r for r in rows]
+        (run / 'cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
+
+    def plan_only(self, root, *args):
+        buf = io.StringIO()
+        with patch.object(closer_replay, 'HERE', root), contextlib.redirect_stdout(buf):
+            closer_replay.main(['--plan-only'] + list(args))
+        return [json.loads(line) for line in buf.getvalue().splitlines()]
+
+    def test_resume_segment_supersedes_infra_row_once(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            run = self.make_run(root)
+            self.rewrite_row(run, 'b', 2, infra=1)
+            agent = dict(slot=0, plan=None, verdict=None, started=True, cancelled=False, tokens=5)
+            seg = self.add_resume(run, [dict(task_id='b', seed=2, policy='roll12strategy', answered=False, infra=0,
+                                             tokens=9, agents=[agent])],
+                                  [('b-s2-roll12strategy-a0.jsonl', ['700+3 = 703 and 703-3 = 700'])])
+            for runs in ([str(run)], [str(run), str(seg)], [str(seg)]):
+                out = self.plan_only(root, '--runs', *runs)
+                cases = [o for o in out if 'task_id' in o]
+                self.assertEqual([(c['task_id'], c['seed'], c['segment']) for c in cases],
+                                 [('a', 1, 'arm'), ('b', 2, 'arm-resume1')], runs)
+                self.assertEqual(cases[1]['failed_agents'], 1)
+                summary = next(o['summary'] for o in out if 'summary' in o)
+                self.assertEqual(summary['superseded'], [dict(task_id='b', seed=2, segment='arm')])
+                self.assertEqual(out[-1]['total']['cases'], 2)
+
+    def test_unresolved_infra_case_is_left_out(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            run = self.make_run(root)
+            self.rewrite_row(run, 'b', 2, infra=1)
+            out = self.plan_only(root, '--runs', str(run))
+            self.assertEqual([o['task_id'] for o in out if 'task_id' in o], ['a'])
+            self.assertEqual(next(o['summary'] for o in out if 'summary' in o)['unresolved'], [dict(task_id='b', seed=2)])
+
+    def test_resume_may_not_rerun_a_clean_case_or_miss_cases(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            run = self.make_run(root)
+            self.add_resume(run, [dict(task_id='a', seed=1, policy='roll12strategy', answered=False, infra=0, agents=[])])
+            with self.assertRaisesRegex(Exception, 'reruns the clean case'):
+                self.plan_only(root, '--runs', str(run))
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            run = self.make_run(root)
+            rows = (run / 'cases.jsonl').read_text().splitlines()
+            (run / 'cases.jsonl').write_text('\n'.join(rows[:-1]) + '\n')
+            with self.assertRaisesRegex(Exception, 'do not cover'):
+                self.plan_only(root, '--runs', str(run))
+
+    def test_case_list_freezes_the_cohort(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            run = self.make_run(root)
+            self.plan_only(root, '--runs', str(run), '--write-case-list', str(root / 'cohort.json'))
+            cohort = json.loads((root / 'cohort.json').read_text())
+            self.assertEqual(cohort['cases'], [['arm', 'a', 1], ['arm', 'b', 2]])
+            (root / 'one.json').write_text(json.dumps(dict(cases=[['arm', 'b', 2]])))
+            out = self.plan_only(root, '--runs', str(run), '--case-list', str(root / 'one.json'))
+            self.assertEqual([(o['task_id'], o['seed']) for o in out if 'task_id' in o], [('b', 2)])
+            for bad, msg in (([['arm', 'b', 1]], 'outside'), ([['arm', 'b', 2], ['arm', 'b', 2]], 'duplicate')):
+                (root / 'bad.json').write_text(json.dumps(dict(cases=bad)))
+                with self.assertRaisesRegex(Exception, msg):
+                    self.plan_only(root, '--runs', str(run), '--case-list', str(root / 'bad.json'))
+            with self.assertRaisesRegex(Exception, 'exists'):
+                self.plan_only(root, '--runs', str(run), '--write-case-list', str(root / 'cohort.json'))
+
+    def test_endpoints_must_be_admitted(self):
+        from datetime import datetime, timezone
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            run = self.make_run(root)
+            (root / 'plan.json').write_text(json.dumps(dict(source_revision='x', agent_wall_deadline_seconds=60)))
+            nodes = [dict(node=f'0{i}', ok=True) for i in range(1, 5)]
+            (root / 'adm.json').write_text(json.dumps(dict(verified=True, verified_utc=datetime.now(timezone.utc).isoformat(),
+                                                           nodes=nodes)))
+            self.assertEqual(closer_replay.admitted_endpoints(dict(nodes=nodes)), set(v.ENDPOINTS))
+            self.assertEqual(closer_replay.admitted_endpoints(dict(nodes=nodes[:3] + [dict(node='04', ok=False)])),
+                             set(v.ENDPOINTS[:3]))
+            base = ['--runs', str(run), '--plan', str(root / 'plan.json'), '--admission', str(root / 'adm.json'),
+                    '--output', str(root / 'out')]
+            with patch.object(closer_replay, 'HERE', root), \
+                    patch.object(closer_replay, 'validate_source', side_effect=AssertionError('reached source check')):
+                with self.assertRaisesRegex(Exception, 'not verified by the admission'):
+                    closer_replay.main(base + ['--endpoints', 'http://10.0.0.9:8000/v1'])
+                with self.assertRaisesRegex(AssertionError, 'reached source check'):
+                    closer_replay.main(base)  # the default four tunnels pass the endpoint check
 
     def test_cli_limits(self):
         with tempfile.TemporaryDirectory() as d:
