@@ -27,7 +27,8 @@ Modes
           len(generated ids) / len(tok(text))), so the kept ids are the model's own ids (cache-friendly).
 
 Cohort: by default only the cases the recorded run did NOT answer (cases.jsonl answered false: abstentions);
---case-list FILE (JSON list of [task_id, seed]) freezes an explicit cohort instead. Agents whose plan the judge
+--case-list FILE (JSON list of [task_id, seed]) freezes an explicit cohort instead. A run dir brings its frozen-resume
+segments RUN-resumeN with it: per (task, seed) the latest clean segment supplies the case row and all agent traces. Agents whose plan the judge
 accepted are skipped unless --include-accepted. A recorded stream whose usage lacks completion_tokens is accepted
 when its finish_reason is 'length' (the count is taken from token_ids; a watchdog stop never saw the usage chunk).
 
@@ -141,7 +142,7 @@ def load_cases(run_dir):
         for case in read_jsonl(path):
             cases[(case.get('task_id'), case.get('seed'))] = dict(
                 answered=case.get('answered'), solved=case.get('solved'), wrong=case.get('wrong'),
-                verdicts={a.get('slot'): a.get('verdict') for a in case.get('agents') or []})
+                infra=case.get('infra') or 0, verdicts={a.get('slot'): a.get('verdict') for a in case.get('agents') or []})
     return cases
 
 
@@ -184,7 +185,7 @@ def load_agent(path, cases, indices=None):
     plan = puzzle_end.get('plan')
     case = cases.get((task_id, seed))
     verdict = case['verdicts'].get(slot) if case else None
-    return dict(path=str(path), run=path.parent.parent.name, stem=path.stem, task_id=task_id, seed=seed, slot=slot,
+    return dict(path=str(path), run=path.parent.parent.name, segment=path.parent.parent.name, stem=path.stem, task_id=task_id, seed=seed, slot=slot,
                 policy=policy, variant=config['variant'], base_variant=VARIANT_ALIASES.get(config['variant'],
                 config['variant']), agent_seed=config['seed'], puzzle=config['puzzle'],
                 numbers=[int(n) for n in numbers.split(',')], target=int(target),
@@ -196,14 +197,51 @@ def load_agent(path, cases, indices=None):
                 else None)
 
 
+RESUME = re.compile(r'^(?P<base>.+)-resume(?P<n>\d+)$')
+
+
+def resume_base(run_dir):
+    match = RESUME.match(Path(run_dir).name)
+    return Path(run_dir).with_name(match['base']) if match else Path(run_dir)
+
+
+def segments(base):
+    """The run dir and its frozen-resume segments BASE-resumeN, in N order."""
+    found = [(int(m['n']), d) for d in base.parent.glob(base.name + '-resume*')
+             if d.is_dir() and (m := RESUME.match(d.name)) and m['base'] == base.name]
+    return [base] + [d for _, d in sorted(found)]
+
+
+def merge_segments(parts):
+    """(task_id, seed) -> (segment, case row): a later segment replaces an earlier row unless the earlier row is
+    clean (infra 0) and the later one is not; so the latest clean row wins (the frozen resume rule)."""
+    chosen = {}
+    for segment, cases in parts:
+        for key, case in cases.items():
+            previous = chosen.get(key)
+            if previous is None or case['infra'] == 0 or previous[1]['infra'] != 0:
+                chosen[key] = (segment, case)
+    return chosen
+
+
 def load_runs(run_dirs):
-    agents = []
-    for run_dir in run_dirs:
-        cases, indices = load_cases(run_dir), case_indices(run_dir)
-        for path in sorted((Path(run_dir) / 'agents').glob('*.jsonl')):
-            agent = load_agent(path, cases, indices)
-            if agent is not None:
-                agents.append(agent)
+    """Agents of each run, resume segments merged: per case the chosen segment supplies the case row AND every agent
+    trace; traces of a superseded (faulted) segment are dropped. A resume dir given explicitly maps to its run."""
+    agents, bases = [], list(dict.fromkeys(resume_base(Path(d).resolve()) for d in run_dirs))
+    for base in bases:
+        parts = [(segment, load_cases(segment)) for segment in segments(base)]
+        chosen, indices = merge_segments(parts), case_indices(base)
+        for segment, _ in parts:
+            for path in sorted((segment / 'agents').glob('*.jsonl')):
+                match = STEM.match(path.stem)
+                key = (match['task'], int(match['seed'])) if match else None
+                owner = chosen.get(key, (base, None))[0]  # cases without any row: the base segment's traces
+                if owner != segment:
+                    continue
+                agent = load_agent(path, {key: chosen[key][1]} if key in chosen else {}, indices)
+                if agent is not None:
+                    agent.update(run=base.name, segment=segment.name)
+                    agents.append(agent)
     return agents
 
 
@@ -218,6 +256,8 @@ def stream_problem(agent):
         return 'stream_error'
     ids = end.get('token_ids') or []
     reported = (end.get('usage') or {}).get('completion_tokens')
+    if end.get('attempts'):  # a retried request: usage also counts the lost attempt; check the delivered one
+        reported = (end.get('attempt_completion_tokens') or [None])[-1]
     if not ids or (reported != len(ids) and not (reported is None and end.get('finish_reason') == 'length')):
         return 'token_ids_missing_or_inconsistent'
     return None
@@ -275,8 +315,8 @@ def plan_listing(agents, mode, include_accepted=False, cohort=None):
             skipped[reason] += 1
             continue
         items.append(dict(run=agent['run'], stem=agent['stem'], task_id=agent['task_id'], seed=agent['seed'],
-                          slot=agent['slot'], variant=agent['variant'], verdict=agent['verdict'],
-                          case_answered=agent['case_answered'], finish_reason=agent['end']['finish_reason'],
+                          slot=agent['slot'], segment=agent['segment'], variant=agent['variant'],
+                          verdict=agent['verdict'], case_answered=agent['case_answered'], finish_reason=agent['end']['finish_reason'],
                           recorded_tokens=len(agent['end']['token_ids']), **splice))
     listing = dict(mode=mode, experimental=mode in EXPERIMENTAL_MODES,
                    cohort='case_list' if cohort is not None else 'abstained', agents=len(agents),
@@ -337,12 +377,12 @@ def timed(calls, client, stage, prompt_ids, max_tokens, **kwargs):
 def finish_like_worker(client, calls, prefix_ids, first, **context):
     """forced72.run_forced after its first call, with prefix_ids in place of the prompt ids."""
     plan, second, forced = parse_plan(first['answer']), None, False
+    budget = client.budget.snapshot()
+    remaining = budget['max_completion_tokens'] - budget['completion_tokens_charged']
     eligible = (plan is None and first['response_received'] and first['finish_reason'] == 'length'
-                and len(first['token_ids']) > 0 and first['error'] is None)
+                and len(first['token_ids']) > 0 and first['error'] is None and remaining > 0)
     if eligible:
         forced = first['answer'] is None
-        budget = client.budget.snapshot()
-        remaining = budget['max_completion_tokens'] - budget['completion_tokens_charged']
         suffix = client.force_ids() if forced else []
         second = timed(calls, client, 'forced_answer' if forced else 'continued_answer',
                        prefix_ids + first['token_ids'] + suffix, remaining, thinking_closed=True,
@@ -358,7 +398,8 @@ def finish_like_worker(client, calls, prefix_ids, first, **context):
 def replay_one(agent, mode, endpoint, model, events_path):
     think_cap, total = CAPS[agent['base_variant']]
     end, gen = agent['end'], agent['end']['token_ids']
-    record = dict(mode=mode, experimental=mode in EXPERIMENTAL_MODES, run=agent['run'], agent_file=agent['path'], stem=agent['stem'], task_id=agent['task_id'],
+    record = dict(mode=mode, experimental=mode in EXPERIMENTAL_MODES, run=agent['run'], segment=agent['segment'],
+                  agent_file=agent['path'], stem=agent['stem'], task_id=agent['task_id'],
                   seed=agent['seed'], slot=agent['slot'], policy=agent['policy'], variant=agent['variant'],
                   agent_seed=agent['agent_seed'], numbers=agent['numbers'], target=agent['target'], endpoint=endpoint,
                   events=str(events_path),

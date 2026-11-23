@@ -39,11 +39,13 @@ def agent_file(directory, stem, *, reasoning='notes', response=None, ids=None, f
     return path
 
 
-def cases_file(directory, verdicts, answered):
+def cases_file(directory, verdicts, answered, infra=None):
+    Path(directory).mkdir(parents=True, exist_ok=True)
     with open(Path(directory) / 'cases.jsonl', 'w') as handle:
         for (task, seed), slots in verdicts.items():
             handle.write(json.dumps(dict(task_id=task, seed=seed, answered=answered[(task, seed)],
                                          solved=answered[(task, seed)], wrong=False,
+                                         infra=(infra or {}).get((task, seed), 0),
                                          agents=[dict(slot=s, verdict=v) for s, v in slots.items()])) + '\n')
 
 
@@ -194,6 +196,38 @@ class PlanOnlyTests(RunDir):
         listing = json.loads(out.getvalue())
         self.assertEqual((listing['model_calls'], listing['eligible'], listing['cases'], listing['experimental']),
                          (0, 1, 1, True))
+
+    def test_resume_segments_replace_the_faulted_case(self):
+        corpus(self.root, self.run)
+        resume = self.run.with_name(self.run.name + '-resume1')
+        agent_file(self.run, 'eva-h1-s1-roll12strategy-a0')                 # faulted segment: superseded
+        agent_file(self.run, 'eva-h1-s1-roll12strategy-a1')
+        agent_file(self.run, 'eva-h2-s1-roll12strategy-a0')                 # clean in the first segment
+        cases_file(self.run, {('eva-h1', 1): {0: False, 1: False}, ('eva-h2', 1): {0: False}},
+                   {('eva-h1', 1): False, ('eva-h2', 1): False}, infra={('eva-h1', 1): 1})
+        for slot in range(3):
+            agent_file(resume, f'eva-h1-s1-roll12strategy-a{slot}')
+        agent_file(resume, 'eva-h2-s1-roll12strategy-a0')                   # faulted rerun never replaces clean
+        cases_file(resume, {('eva-h1', 1): {0: False, 1: False, 2: False}, ('eva-h2', 1): {0: False}},
+                   {('eva-h1', 1): False, ('eva-h2', 1): False}, infra={('eva-h2', 1): 1})
+        for runs in ([self.run], [self.run, resume], [resume]):
+            agents = t.load_runs(runs)
+            where = sorted((a['task_id'], a['slot'], a['segment']) for a in agents)
+            self.assertEqual(where, [('eva-h1', 0, 'swarm-x-resume1'), ('eva-h1', 1, 'swarm-x-resume1'),
+                                     ('eva-h1', 2, 'swarm-x-resume1'), ('eva-h2', 0, 'swarm-x')], runs)
+            self.assertEqual({a['run'] for a in agents}, {'swarm-x'})
+            self.assertEqual({a['case_index'] for a in agents if a['task_id'] == 'eva-h1'}, {0})  # base plan order
+            listing = t.plan_listing(agents, 'recall')
+            self.assertEqual((listing['cohort_cases'], listing['eligible']), (2, 4))
+
+    def test_retried_recorded_request_is_checked_on_its_delivered_attempt(self):
+        path = agent_file(self.run, 'eva-h1-s1-p-a0')
+        agent = t.load_agent(path, {})
+        agent['end'].update(attempts=2, attempt_completion_tokens=[100, THINK],
+                            usage=dict(completion_tokens=THINK + 100, lost_attempt_completion_tokens=100))
+        self.assertIsNone(t.stream_problem(agent))
+        agent['end']['attempt_completion_tokens'] = [100, THINK - 1]
+        self.assertEqual(t.stream_problem(agent), 'token_ids_missing_or_inconsistent')
 
     def test_help_marks_rewind_experimental(self):
         out = io.StringIO()

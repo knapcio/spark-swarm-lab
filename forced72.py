@@ -10,9 +10,10 @@ prefix cache. Same rules, verifier, parser and Budget(2 calls, 8192 completion t
 Transport has no wall-clock quality limit: responses stream, and only a gap of IDLE_TIMEOUT seconds
 without any streamed byte (a hung server) or the WALL_LIMIT catastrophe stop counts as a failure.
 A genuine transport loss (see transport_lost) is re-sent once, same body and seed, after RETRY_DELAY s and only
-within WALL_LIMIT ('request_retry' event). The lost attempt's streamed token count (a lower bound) is charged to the
-request (budget, usage.completion_tokens, completion_tokens_charged; request_end gets attempts=2 and per-attempt
-counts). A second failure is a failure as before; a request that succeeds at once is unchanged.
+within WALL_LIMIT ('request_retry' event). The lost attempt's streamed token count (a lower bound) is charged once in
+the accounting (usage.completion_tokens, which the controller tallies, and completion_tokens_charged; request_end gets
+attempts=2 and per-attempt counts) but NOT in the Budget: the retry and the forced answer get exactly the budgets an
+unretried request gets. A second failure is a failure as before; a request that succeeds at once is unchanged.
 No CPU search, teacher, gold answer or cross-case memory.
 """
 import hashlib
@@ -147,20 +148,20 @@ class ForcedClient:
             try:
                 # Socket timeout applies per read: it detects a silent server, not a slow one.
                 with self.post('/v1/completions', body, self.idle_timeout) as response:
-                    torn = None  # a frame that did not parse: transport loss if nothing follows it
                     for raw in response:
                         if time.monotonic() - start > self.wall_limit:
                             raise TimeoutError(f'wall limit {self.wall_limit}s exceeded')
-                        line = raw.decode().strip()
-                        if torn is not None and line:
-                            raise torn
-                        if not line.startswith('data:') or line == 'data: [DONE]':
-                            continue
+                        # Only the last line of a stream cut at EOF lacks its newline. A complete line that does not
+                        # decode or parse is a server fault (not retried); a cut one (torn JSON, half a UTF-8
+                        # character) is transport loss.
+                        torn = not raw.endswith(b'\n')
                         try:
+                            line = raw.decode().strip()
+                            if not line.startswith('data:') or line == 'data: [DONE]':
+                                continue
                             chunk = json.loads(line[5:])
-                        except json.JSONDecodeError as exc:
-                            torn = exc
-                            continue
+                        except ValueError as exc:  # UnicodeDecodeError, JSONDecodeError
+                            raise lost(exc) if torn else exc
                         if chunk.get('error'):
                             exc = ConnectionError(f"server stream error: {str(chunk['error'])[:200]}")
                             raise lost(exc) if shim_disconnect(chunk['error']) else exc
@@ -171,23 +172,22 @@ class ForcedClient:
                         if chunk.get('usage'):
                             usage = {k: v for k, v in chunk['usage'].items()
                                      if k in ('prompt_tokens', 'completion_tokens', 'total_tokens') and type(v) is int}
-                    if torn is not None:
-                        raise lost(torn)
                 received = finish is not None
                 if not received:
                     raise lost(ConnectionError('stream ended without finish_reason'))
             except Exception as exc:
                 elapsed = time.monotonic() - start if not attempts and transport_lost(exc) else None
                 if elapsed is not None and elapsed + self.retry_delay <= self.wall_limit:
-                    # Upstream lost: send the same body (same seed) once more; the lost attempt is charged below.
-                    attempts.append(len(token_ids))
-                    self.events.emit('request_retry', request_id=request_id, agent_id=agent_id, stage=stage,
-                                     attempt=2, error=f'{type(exc).__name__}: {str(exc)[:300]}',
-                                     lost_completion_tokens=len(token_ids), lost_completion_tokens_is_lower_bound=True,
-                                     lost_text_chars=len(text), elapsed_ms=round(elapsed * 1000, 2),
-                                     retry_delay_s=self.retry_delay, request_body_sha256=wire_sha, **context)
                     time.sleep(self.retry_delay)
                     if time.monotonic() - start <= self.wall_limit:  # never dispatch past the wall limit
+                        # Upstream lost: send the same body (same seed) once more; the lost attempt is charged below.
+                        attempts.append(len(token_ids))
+                        self.events.emit('request_retry', request_id=request_id, agent_id=agent_id, stage=stage,
+                                         attempt=2, error=f'{type(exc).__name__}: {str(exc)[:300]}',
+                                         lost_completion_tokens=len(token_ids),
+                                         lost_completion_tokens_is_lower_bound=True, lost_text_chars=len(text),
+                                         elapsed_ms=round(elapsed * 1000, 2), retry_delay_s=self.retry_delay,
+                                         request_body_sha256=wire_sha, **context)
                         continue
                 error = f'{type(exc).__name__}: {str(exc)[:300]}'
                 self.infra_failures += 1
@@ -196,22 +196,22 @@ class ForcedClient:
         if received and reported is not None and reported != len(token_ids):
             error = error or f'token id count {len(token_ids)} != reported {reported}'
             self.infra_failures += 1  # accounting fault: stop admissions rather than silently skip forcing
+        # The Budget (and so every later max_tokens) sees only the delivered attempt, exactly as without a retry.
+        self.budget.settle(max_tokens, reported)
+        charged = max_tokens if reported is None else reported
         retry_fields = {}
         if attempts:
-            # Charge the lost attempt (streamed ids, a lower bound) to this request: budget, usage and charged tokens.
+            # Accounting charges the lost attempt once (its streamed ids, a lower bound on the server's work):
+            # completion_tokens_charged and usage.completion_tokens, the field the controller tallies (plan_of).
             extra = sum(attempts)
-            charged = (max_tokens if reported is None else reported) + extra
-            self.budget.settle(max_tokens, charged)
-            if reported is not None:
-                usage['completion_tokens'] = reported + extra
-                if 'total_tokens' in usage:
-                    usage['total_tokens'] += extra
+            charged += extra
+            usage['completion_tokens'] = (reported or 0) + extra
+            if 'total_tokens' in usage:
+                usage['total_tokens'] += extra
+            usage['lost_attempt_completion_tokens'] = extra
             retry_fields = dict(attempts=len(attempts) + 1,
                                 attempt_completion_tokens=attempts + [len(token_ids) if reported is None else reported],
                                 lost_completion_tokens_lower_bound=extra)
-        else:
-            charged = max_tokens if reported is None else reported
-            self.budget.settle(max_tokens, reported)
         usage['estimated'] = reported is None
         answer, reasoning = split_answer(text)
         if answer is None and thinking_closed:  # thinking was already closed before this call
@@ -255,11 +255,11 @@ def run_forced(experiment, initial, puzzle_id, variant, agent_id=0, extra=''):
                             puzzle_id=puzzle_id, variant=variant, followup_phase='think')
     plan, second, forced = parse_plan(first['answer']), None, False
     # Same trigger as the scribe commit: no parsed plan, cut by length, own tokens available.
+    remaining = total - client.budget.snapshot()['completion_tokens_charged']
     eligible = (not plain and plan is None and first['response_received'] and first['finish_reason'] == 'length'
-                and len(first['token_ids']) > 0 and first['error'] is None)
+                and len(first['token_ids']) > 0 and first['error'] is None and remaining > 0)
     if eligible:
         forced = first['answer'] is None  # still thinking -> force the end; else just let the answer finish
-        remaining = total - client.budget.snapshot()['completion_tokens_charged']
         suffix = client.force_ids() if forced else []
         e.events.emit('budget_forced' if forced else 'answer_continued', node_id=root, puzzle_id=puzzle_id,
                       variant=variant, parent_request_id=first['request_id'],

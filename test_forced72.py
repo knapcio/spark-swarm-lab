@@ -4,6 +4,8 @@ import io
 import json
 import unittest
 import urllib.error
+from types import SimpleNamespace
+from unittest import mock
 import harness as h
 import forced72 as f
 from test_followup72 import Recorder, engine
@@ -155,17 +157,79 @@ class RetryTests(unittest.TestCase):
         self.assertIn('ServerDisconnectedError', retry['error'])
         end, = self.rows(c, 'request_end')
         self.assertEqual((end['error'], end['attempts'], end['attempt_completion_tokens']), (None, 2, [17, 40]))
-        self.assertEqual(end['usage'], dict(prompt_tokens=10, completion_tokens=57, estimated=False))
+        self.assertEqual(end['usage'], dict(prompt_tokens=10, completion_tokens=57, lost_attempt_completion_tokens=17,
+                                            estimated=False))
         self.assertEqual((end['completion_tokens_charged'], end['lost_completion_tokens_lower_bound']), (57, 17))
         self.assertEqual(end['token_ids'], [5] * 40)  # the sequence itself is the successful attempt's
-        self.assertEqual(c.budget.snapshot()['completion_tokens_charged'], 57)
+        self.assertEqual(c.budget.snapshot()['completion_tokens_charged'], 40)  # budgets as if never lost
         self.assertEqual(len(self.rows(c, 'request_start')), 1)
 
-    def test_lost_tokens_reduce_the_forced_answer_budget(self):
-        c, result = self.run_case([disconnect_after('', [4] * 100), sse('notes', [7] * f.THINK_CAP, 'length'),
-                                   sse(GOOD, [8] * 20, 'stop')])
+    def tally(self, c):  # run_arbiterfree.plan_of: sum of usage.completion_tokens over request_end
+        return sum(r.get('usage', {}).get('completion_tokens', 0) for r in self.rows(c, 'request_end'))
+
+    def test_lost_tokens_never_shrink_the_forced_answer_budget(self):
+        # The re-review fixture: 2,500 lost tokens, then a full XL thinking retry; the forced answer used to get -452.
+        c = FakeForced([disconnect_after('', [4] * 2500), sse('notes', [7] * 30720, 'length'), sse(GOOD, [8] * 20, 'stop')])
+        c.budget = h.Budget(2, 32768)
+        e = engine(c)
+        c.events = e.events
+        result = f.run_forced(e, STATE, 'p', 'xl_forced_original')
         self.assertTrue(result['solved'] and result['budget_forced'])
-        self.assertEqual(c.bodies[2]['max_tokens'], f.TOTAL - f.THINK_CAP - 100)
+        self.assertEqual([b['max_tokens'] for b in c.bodies], [30720, 30720, 2048])  # as for an unretried agent
+        self.assertEqual(c.budget.snapshot()['completion_tokens_charged'], 30720 + 20)
+        self.assertEqual(self.tally(c), 2500 + 30720 + 20)  # the controller still sees the lost work, once
+        ends = self.rows(c, 'request_end')
+        self.assertEqual(sum(r['completion_tokens_charged'] for r in ends), 2500 + 30720 + 20)
+
+    def test_no_forced_dispatch_without_budget(self):
+        c = FakeForced([sse('notes', [7] * f.TOTAL, 'length', completion=f.TOTAL)])  # server overran the cap
+        e = engine(c)
+        c.events = e.events
+        c.budget = h.Budget(2, f.TOTAL)
+        result = f.run_forced(e, STATE, 'p', 'forced_explicit')
+        self.assertFalse(result['budget_forced'])
+        self.assertEqual(len(c.bodies), 1)
+
+    def test_lost_tokens_reach_the_tally_when_the_retry_has_no_usage(self):
+        no_usage = io.BytesIO(b'data: ' + json.dumps(dict(choices=[dict(text='n</think>' + GOOD, token_ids=[5] * 9,
+                                                                         finish_reason='stop')])).encode() + b'\n\ndata: [DONE]\n\n')
+        c, result = self.run_case([disconnect_after('a', [4] * 30), no_usage])
+        self.assertTrue(result['solved'])
+        end, = self.rows(c, 'request_end')
+        self.assertEqual((end['usage']['completion_tokens'], end['usage']['estimated']), (30, True))
+        self.assertEqual(end['attempt_completion_tokens'], [30, 9])
+        self.assertEqual(self.tally(c), 30)
+        self.assertEqual(end['completion_tokens_charged'], f.THINK_CAP + 30)  # unreported delivery: full reservation
+        self.assertEqual(c.budget.snapshot()['completion_tokens_charged'], f.THINK_CAP)
+
+    def test_wall_check_after_backoff_blocks_the_retry_without_a_phantom_attempt(self):
+        clock = [0.0]
+        fake_time = SimpleNamespace(monotonic=lambda: clock[0], sleep=lambda d: clock.__setitem__(0, clock[0] + 10))
+        c = FakeForced([disconnect_after('a', [4] * 3), sse('n</think>' + GOOD, [5], 'stop')])
+        c.retry_delay, c.wall_limit = 1, 5  # 0 + 1 <= 5 passes before the sleep; the sleep overruns to 10
+        e = engine(c)
+        c.events = e.events
+        with mock.patch.object(f, 'time', fake_time):
+            result = f.run_forced(e, STATE, 'p', 'forced_explicit')
+        self.assertFalse(result['solved'])
+        self.assertEqual((len(c.bodies), self.rows(c, 'request_retry'), c.infra_failures), (1, [], 1))
+        end, = self.rows(c, 'request_end')
+        self.assertNotIn('attempts', end)
+        self.assertNotIn('completion_tokens', end['usage'])  # exactly as without a retry
+        self.assertEqual(end['completion_tokens_charged'], f.THINK_CAP)
+
+    def test_frames_cut_at_eof_retry_complete_bad_frames_do_not(self):
+        head = b'data: ' + json.dumps(dict(choices=[dict(text='x', token_ids=[1], finish_reason=None)])).encode() + b'\n\n'
+        cut_utf8 = head + 'data: {"choices": [{"text": "\u0105'.encode()[:-1]  # half of a 2-byte character
+        cut_utf8_json = head + b'data: {"choices": [{"text": "' + 'ą'.encode()[:1]
+        for reply in (cut_utf8, cut_utf8_json):
+            c, result = self.run_case([io.BytesIO(reply), sse('n</think>' + GOOD, [5], 'stop')])
+            self.assertTrue(result['solved'], reply)
+            self.assertIn('UnicodeDecodeError', self.rows(c, 'request_retry')[0]['error'])
+        complete_bad = [head + b'data: {"choices": [}\n\n', head + b'data: {"choices": [{"text": "' + 'ą'.encode()[:1] + b'"}]}\n\n']
+        for reply in complete_bad:
+            c, result = self.run_case([io.BytesIO(reply)])
+            self.assertEqual((len(c.bodies), self.rows(c, 'request_retry'), c.infra_failures), (1, [], 1), reply)
 
     def test_second_disconnect_fails_like_before(self):
         c, result = self.run_case([disconnect_after('a', [4] * 3), disconnect_after('b', [4] * 5)])
@@ -175,6 +239,8 @@ class RetryTests(unittest.TestCase):
         self.assertTrue(end['error'].startswith('ConnectionError: server stream error'))
         self.assertFalse(end['response_received'])
         self.assertEqual((end['attempts'], end['completion_tokens_charged']), (2, f.THINK_CAP + 3))
+        self.assertEqual(end['usage']['completion_tokens'], 3)  # the lost attempt reaches the controller tally
+        self.assertEqual(c.budget.snapshot()['completion_tokens_charged'], f.THINK_CAP)
 
     def test_socket_loss_and_eof_are_retried(self):
         cut = lambda: io.BytesIO(b'data: ' + json.dumps(dict(choices=[dict(text='x', token_ids=[1], finish_reason=None)])).encode() + b'\n\n')
@@ -208,7 +274,7 @@ class RetryTests(unittest.TestCase):
                      'TimeoutError: ', 'ServerDisconnected'):
             self.assertFalse(f.shim_disconnect({'message': name}), name)
 
-    def test_no_retry_when_wall_limit_would_pass(self):
+    def test_no_retry_when_wall_limit_would_pass_before_the_backoff(self):
         c = FakeForced([disconnect_after('a', [4] * 3), sse('n</think>' + GOOD, [5], 'stop')])
         c.retry_delay, c.wall_limit = 5, 3
         e = engine(c)
