@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Report for swarm-loop-hard15-v1: default roll8strategy with xl_forced_original (D) vs with the loop watchdog
+"""Report for swarm-loop-hard15-v1: default roll12strategy with xl_forced_original (D) vs with the loop watchdog
 xl_forced_watchdog (L) on arithmetic-hard-v15. Writes results/swarm-loop-hard15-v1/{REPORT.md, report.json, tables.md}."""
 import json
 from pathlib import Path
@@ -9,16 +9,36 @@ from report_cancel_hard6 import RUNS, ROOT, load, paired, summarize
 OUT = ROOT / 'results' / 'swarm-loop-hard15-v1'
 ARMS = [('D', 'swarm-loop-hard15-v1-d-roll12strategy'), ('L', 'swarm-loop-hard15-v1-l-roll12strategy')]
 
+AMENDMENT = ('\nAmendment (2026-11-23, before arm L finished): arm D case eva-h247d88a63ba seed 1 lost one judge request to a '
+             'transient upstream disconnect on Spark_03 (shim_upstream_errors 1, no container restart); per the frozen resume '
+             'rule it was rerun with the same seeds in segment `-resume1` after arm L. This report script (frozen sha256 '
+             '1812e6a68a36) was changed only to merge resume segments and to count wrong answers in superseded infra '
+             'attempts against the arm; the runtime code is unchanged.\n')
+
+
+def segments(run):
+    """The arm's directory plus its resume segments (frozen resume rule), in order."""
+    return [run] + [f'{run}-resume{i}' for i in range(1, 10) if (RUNS / f'{run}-resume{i}' / 'cases.jsonl').exists()]
+
+
+def superseded(run):
+    """Infra-faulted attempts that a resume segment replaced; a wrong answer there would still count against the arm."""
+    segs = segments(run)
+    rows = [json.loads(l) for d in segs[:-1] for l in (RUNS / d / 'cases.jsonl').read_text().splitlines() if l.strip()]
+    bad = [r for r in rows if r.get('infra')]
+    return dict(segments=len(segs), infra_attempts=len(bad), infra_attempts_wrong=sum(bool(r.get('wrong')) for r in bad),
+                cases=[f"{r['task_id']} s{r['seed']}" for r in bad])
+
 
 def loop_stats(run):
     stops = plans = accepted = 0
-    for f in (RUNS / run / 'agents').glob('*.jsonl'):
+    for f in (f for seg in segments(run) for f in (RUNS / seg / 'agents').glob('*.jsonl')):
         recs = [json.loads(l) for l in f.read_text().splitlines() if l.strip()]
         if any(r.get('type') == 'request_end' and r.get('loop_stop') for r in recs):
             stops += 1
             end = next((r for r in reversed(recs) if r.get('type') == 'puzzle_end'), {})
             plans += isinstance(end.get('plan'), dict)
-            judge = RUNS / run / 'judges' / f.name
+            judge = f.parent.parent / 'judges' / f.name
             if judge.exists():
                 accepted += any(json.loads(l).get('type') == 'judge_end' and json.loads(l).get('verdict') is True
                                 for l in judge.read_text().splitlines() if l.strip())
@@ -26,13 +46,14 @@ def loop_stats(run):
 
 
 def main():
-    data = {k: load([d]) for k, d in ARMS if (RUNS / d / 'cases.jsonl').exists()}
-    res = dict(arms={k: summarize(*v) for k, v in data.items()}, loops={k: loop_stats(d) for k, d in ARMS if k in data})
+    data = {k: load(segments(d)) for k, d in ARMS if (RUNS / d / 'cases.jsonl').exists()}
+    res = dict(arms={k: summarize(*v) for k, v in data.items()}, loops={k: loop_stats(d) for k, d in ARMS if k in data},
+               resumes={k: superseded(d) for k, d in ARMS if k in data})
     if len(data) == 2:
         d, l = res['arms']['D'], res['arms']['L']
         res['paired'] = paired(data['L'][0], data['D'][0])
         res['ratios'] = dict(tokens=round(l['server_tokens_per_case'] / d['server_tokens_per_case'], 3), wall=round(l['arm_wall_seconds'] / d['arm_wall_seconds'], 3))
-        res['decision'] = dict(zero_wrong=l['wrong'] == 0, solved_at_least_d_minus_2=l['solved'] >= d['solved'] - 2,
+        res['decision'] = dict(zero_wrong=l['wrong'] == 0 and res['resumes']['L']['infra_attempts_wrong'] == 0, solved_at_least_d_minus_2=l['solved'] >= d['solved'] - 2,
                                tokens_at_most_95pct=res['ratios']['tokens'] <= .95)
         res['decision']['adopt_watchdog'] = all(res['decision'].values())
     OUT.mkdir(parents=True, exist_ok=True)
@@ -48,7 +69,8 @@ def main():
     if 'paired' in res:
         p = res['paired']
         md += (f"\nL vs D paired: +{p['wins']} / -{p['losses']} (p = {p['p']:.3g}); L/D tokens {res['ratios']['tokens']}, wall {res['ratios']['wall']}.\n\n"
-               'Frozen decision rule: ' + ', '.join(f'{k} = {v}' for k, v in res['decision'].items()) + '\n')
+               'Frozen decision rule: ' + ', '.join(f'{k} = {v}' for k, v in res['decision'].items()) + '\n'
+               + AMENDMENT)
         verdict = ('**The loop watchdog becomes part of the default.**' if res['decision']['adopt_watchdog'] else
                    '**The default stays without the watchdog** (' + ', '.join(k for k, v in res['decision'].items() if v is False) + ').')
         (OUT / 'REPORT.md').write_text(f"""# Loop watchdog (swarm-loop-hard15-v1)

@@ -62,6 +62,14 @@ the public tests; each ran alone on the fleet (Inkling-2-Mini x4, mem fraction 0
 ## Result
 
 {md}
+**Mechanism.** Tokens: under early stop every agent still running when one passes the public tests is wasted work;
+R2 keeps 2 agents in flight and starts the next only after a failure, so it starts 2.15 agents per case instead of 6.11.
+Accuracy: a "wrong" coding answer passed the public tests but fails the hidden ones, which the swarm cannot see. In S,
+4 of the 5 wrong answers were the first of 4 racing agents to pass, after 128-293 s; with fewer agents racing, a quick
+answer that only happens to pass is less likely to win, and R2 answered 4 of those 5 cases correctly (stop 228-905 s).
+R2 lost no case that S solved (+6 / -0). The price is latency: median stop 405 s vs 340 s, p90 about the same.
+**R2 (failure-driven replacement, 2 in flight) becomes the coding default.**
+
 Files: `run_coding_earlystop.py` (`rolling`), `inkling/coding_arms.py`, `inkling/report_coding_roll.py`, numbers in [report.json](report.json).
 """)
     (OUT / 'tables.md').write_text(md)
