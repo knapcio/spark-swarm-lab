@@ -53,11 +53,11 @@
  "dataset_protocol": "arithmetic-hard-v16",
  "numbers_count": 6,
  "code_sha256": {
-  "run_variants.py": "fa9c433e73cd318891b9b03fa47c05b5d432d262d842e7186362c002961380bb",
+  "run_variants.py": "4952152f5350657a52c691e68c9c819b8f0eaa614d2a0e7053d7ae2da361a113",
   "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
   "inkling/admit.py": "445349b83e910f1189df8908aff2428ab3ee1dd0bb862f1fc46978b31bda82c6",
   "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
-  "inkling/strict_hard_cases.py": "812ca1cdd7d8d567a4864e9e8eb6f40d88f9fd38873d524daa5aa4c5e4888540",
+  "inkling/strict_hard_cases.py": "fc8c355d1215076cea42ded15081ecbdcd29ad17dc556621cf04c29dd2877567",
   ".runtime/xl-source/forced72.py": "0a8c26ac8f10fdd539933327a100ff709d8a46101da75d4ff775a2c8a041da94",
   ".runtime/xl-source/forced72_worker.py": "4614d49ed3cca7e8cad5c8c7d033e4d95f7d28dc8099c07beb9f78b9403260f1"
  },
@@ -87,5 +87,12 @@
  },
  "secondary_outcomes": "Server tokens per case and per rescue, accepted agents per hint, rescue time, GPU energy.",
  "decision_rule": "The default escalation hints change from S to arm X only if X has 0 wrong answers, more rescues than S, and McNemar p < 0.05 vs S (if several qualify, the one with most rescues); a change is then confirmed by a full-swarm fresh-corpus study before the headline. If N rescues at least as many as S, record that the current hints show no measurable benefit on this corpus (no change without significance). Tokens are reported, not gated (owner priority: quality).",
- "report": "inkling/report_hints_hard16.py -> results/swarm-hints-hard16-v1/REPORT.md + report.json"
+ "report": "inkling/report_hints_hard16.py -> results/swarm-hints-hard16-v1/REPORT.md + report.json",
+ "amendments": [
+  {
+   "date": "2026-11-23",
+   "before_phase2_data": true,
+   "text": "Code review (codex sol, NO-GO as frozen) before any phase-2 call: (1) an exception inside a rolling agent thread could drop the slot with infra=0, so a resume would skip the case; it is now recorded as an infra fault and no further agent is launched for that case; (2) the strict-hard list could be built from an incomplete first wave; strict_hard_cases.py now requires all 192 wave cases clean (a faulted case counts once a resume segment reran it cleanly) and case_list rejects duplicates; (3) unstarted_agents now counts unlaunched rolling slots. Pins updated (were run_variants.py fa9c433e73cd, strict_hard_cases.py 812ca1cdd7d8); the WAVE plan pins describe the code that ran phase 1. Disclosed, unchanged: escalation slots 8-11 take the node of the agent that ended first (as in the default), sampling seeds are hashed with the prompt so they differ by hint text, and the arm order is fixed."
+  }
+ ]
 }

@@ -56,13 +56,15 @@ class VariantTests(unittest.TestCase):
 
 class CancelPolicyTests(unittest.TestCase):
     """deep4cancel / waves2cancel with a fake worker that runs until cancelled unless it is a 'fast' slot."""
-    def run_policy(self, policy, fast, accept):
+    def run_policy(self, policy, fast, accept, boom=()):
         import threading, time
         started = []
 
         def execute(job, deadline_seconds, cancel=None):
             slot = int(job['events'].rsplit('-a', 1)[1].split('.')[0])
             started.append(slot)
+            if slot in boom:
+                raise RuntimeError('controller bug')
             if slot in fast:
                 return dict(deadline=False, cancelled=False, returncode=0)
             for _ in range(200):  # slow agent: runs until the controller cancels it
@@ -215,10 +217,114 @@ class CancelPolicyTests(unittest.TestCase):
         self.assertTrue(set(started) <= set(range(4, 12)))
         self.assertLess(rec['case_seconds'], 1.5)
 
+    def test_rolling_agent_exception_is_an_infra_fault(self):
+        # slot 4 raises at once; 5-7 run until their deadline loop ends; no replacement may start after the fault
+        rec, started = self.run_policy('esc_none', fast=set(), accept=set(), boom={4})
+        self.assertEqual(sorted(started), [4, 5, 6, 7])
+        self.assertEqual([a['slot'] for a in rec['agents']], [4, 5, 6, 7])
+        self.assertEqual(rec['infra'], 1)
+        self.assertIn('RuntimeError', rec['agents'][0]['agent_error'])
+        self.assertEqual(rec['unstarted_agents'], 4)
+        self.assertFalse(rec['answered'])
+
+    def test_rolling_exception_never_drops_a_slot(self):
+        for policy in ('roll12strategy', 'roll8repair', 'esc_strategy'):
+            rec, started = self.run_policy(policy, fast=set(range(12)), accept=set(), boom={5})
+            self.assertEqual(sorted(a['slot'] for a in rec['agents']), sorted(started), policy)
+            self.assertGreaterEqual(rec['infra'], 1, policy)
+
+    def test_unstarted_counts_unlaunched_rolling_slots(self):
+        for policy, eligible in (('esc_split', 8), ('roll12strategy', 12), ('roll8strategy', 8)):
+            first = 4 if policy.startswith('esc_') else 0
+            rec, started = self.run_policy(policy, fast={first + 1}, accept={first + 1})
+            self.assertEqual(rec['selected_slot'], first + 1, policy)
+            # all four first slots launch; one that reaches its slot after the accept never starts (started=False)
+            self.assertEqual([a['slot'] for a in rec['agents']], list(range(first, first + 4)), policy)
+            self.assertEqual(rec['cancelled_agents'], len(started) - 1, policy)
+            self.assertEqual(rec['unstarted_agents'], eligible - len(started), policy)
+            self.assertGreaterEqual(rec['unstarted_agents'], eligible - 4, policy)
+
+    def test_unstarted_width3_and_full_cap(self):
+        rec, started = self.run_policy('roll3to8', fast={1}, accept={1})
+        self.assertEqual(rec['unstarted_agents'], 8 - len(started))
+        self.assertGreaterEqual(rec['unstarted_agents'], 5)
+        rec, _ = self.run_policy('roll8cancel', fast=set(range(8)), accept=set())
+        self.assertEqual(rec['unstarted_agents'], 0)
+
     def test_deep4_keeps_slot_order_selection(self):
         rec, started = self.run_policy('deep4', fast={0, 1, 2, 3}, accept={1, 3})
         self.assertEqual(rec['selected_slot'], 1)
         self.assertNotIn('cancelled_agents', rec)
+
+
+class CaseListTests(unittest.TestCase):
+    def plan_mode(self, cases):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            tasks = [dict(id=f't{i}', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7) for i in range(3)]
+            (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=tasks)))
+            (root / 'cases.json').write_text(json.dumps(dict(cases=cases)))
+            (root / 'plan.json').write_text(json.dumps(dict(
+                protocol='swarm-variants-screen-v1', source_revision='x', dataset=str(root / 'data.json'),
+                dataset_protocol='p', split='evaluation', tasks=3, numbers_count=6, seeds=[1, 2], policies=['esc_none'],
+                case_list=str(root / 'cases.json'), concurrent_policy_cases=1)))
+            with patch.object(v, 'validate_source', lambda *a: None):
+                return v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d])
+
+    def test_case_list_filters(self):
+        self.assertEqual(self.plan_mode([['t0', 1], ['t2', 2]]), 0)
+
+    def test_case_list_rejects_duplicates(self):
+        with self.assertRaisesRegex(Exception, 'duplicate'):
+            self.plan_mode([['t0', 1], ['t2', 2], ['t0', 1]])
+
+    def test_case_list_rejects_unknown(self):
+        with self.assertRaisesRegex(Exception, 'does not match'):
+            self.plan_mode([['t0', 1], ['t9', 1]])
+
+
+class StrictHardCasesTests(unittest.TestCase):
+    from inkling import strict_hard_cases as shc
+    EXPECTED = {('a', 1), ('a', 2), ('b', 1), ('b', 2)}
+
+    def row(self, t, s, **kw):
+        return dict(dict(task_id=t, seed=s, infra=0, answered=False, solved=False, wrong=False), **kw)
+
+    def test_expected_keys_follow_wave_plan(self):
+        import json
+        plan = json.loads((Path(v.HERE) / 'SWARM_HINTS_HARD16_WAVE_PLAN.json').read_text())
+        tasks = [dict(id=f't{i}', split='evaluation', numbers=[1] * 6) for i in range(24)]
+        tasks += [dict(id='x5', split='evaluation', numbers=[1] * 5), dict(id='d6', split='development', numbers=[1] * 6)]
+        self.assertEqual(len(self.shc.expected_keys(plan, dict(tasks=tasks))), 192)
+        with self.assertRaises(ValueError):
+            self.shc.expected_keys(plan, dict(tasks=tasks[1:]))
+
+    def test_complete_wave_selects(self):
+        rows = [self.row(t, s, answered=(t == 'a')) for t, s in sorted(self.EXPECTED)]
+        self.assertEqual(set(self.shc.select([rows], self.EXPECTED)), self.EXPECTED)
+
+    def test_missing_case_fails(self):
+        with self.assertRaisesRegex(ValueError, 'missing'):
+            self.shc.select([[self.row(t, s) for t, s in sorted(self.EXPECTED)[:3]]], self.EXPECTED)
+
+    def test_unresolved_infra_or_error_fails(self):
+        clean = [self.row(t, s) for t, s in sorted(self.EXPECTED)[:3]]
+        for bad in (self.row('b', 2, infra=1), dict(task_id='b', seed=2, error='boom')):
+            with self.assertRaisesRegex(ValueError, 'infra fault or error'):
+                self.shc.select([clean + [bad]], self.EXPECTED)
+
+    def test_fault_rerun_in_resume_segment_is_accepted(self):
+        seg0 = [self.row(t, s) for t, s in sorted(self.EXPECTED)[:3]] + [self.row('b', 2, infra=1)]
+        cases = self.shc.select([seg0, [self.row('b', 2)]], self.EXPECTED)
+        self.assertEqual(cases[('b', 2)]['infra'], 0)
+
+    def test_duplicate_clean_or_unknown_case_fails(self):
+        rows = [self.row(t, s) for t, s in sorted(self.EXPECTED)]
+        with self.assertRaisesRegex(ValueError, 'duplicate'):
+            self.shc.select([rows, [self.row('a', 1)]], self.EXPECTED)
+        with self.assertRaisesRegex(ValueError, 'unexpected'):
+            self.shc.select([rows + [self.row('z', 1)]], self.EXPECTED)
 
 
 class ExecuteCancellableTests(unittest.TestCase):

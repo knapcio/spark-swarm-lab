@@ -58,6 +58,9 @@ SPLIT_HINTS = [
 ]
 ESC_HINTS = {'esc_none': lambda slot: '', 'esc_strategy': lambda slot: STRATEGIES[(slot - 4) % 4],
              'esc_h02': lambda slot: STRATEGIES[(0, 2)[(slot - 4) % 2]], 'esc_split': lambda slot: SPLIT_HINTS[(slot - 4) % 4]}
+# rolling policies: slots that may launch per case (cap - first slot); unstarted_agents counts the ones that never did
+ELIGIBLE_SLOTS = dict(roll8cancel=8, roll8repair=8, roll8strategy=8, roll3to8=8, roll3strategy=8, roll12strategy=12,
+                      roll12burst=12, **{p: 8 for p in ESC_HINTS})
 JUDGE_TAIL = 'Return only a JSON object {"valid": true} if every move is legal and the target appears, otherwise {"valid": false}.'
 REASON_TAIL = ('Return only a JSON object {"valid": true} if every move is legal and the target appears; otherwise '
                '{"valid": false, "reason": "<one sentence: the first illegal move, or why the target never appears>"}.')
@@ -217,11 +220,18 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
         t.start()
 
     def run(slot, node, extra=None):
-        info = agent(slot, node, extra) if feedback else agent(slot, node)
+        try:
+            info = agent(slot, node, extra) if feedback else agent(slot, node)
+        except Exception as exc:  # never lose a slot: record it as an infra fault (resume reruns the case)
+            info = dict(plan=None, verifier_solved=False, tokens=0, infra=1, slot=slot, extra=bool(extra), deadline=False,
+                        verdict=None, reason='', judge_tokens=0, judge_infra=0, started=True, cancelled=False,
+                        judge_skipped=False, agent_error=f'{type(exc).__name__}: {exc}')
         with lock:
             results.append(info)
             state['running'] -= 1
-            while (race['winner'] is None and not race['cancel'].is_set() and state['next'] < cap
+            if 'agent_error' in info:
+                state['failed'] = True  # no replacements after a controller fault; running agents end normally
+            while (race['winner'] is None and not race['cancel'].is_set() and not state.get('failed') and state['next'] < cap
                    and state['running'] < state['width']):
                 nxt = state['next']
                 state['next'] += 1
@@ -231,7 +241,7 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
         if race['cancel'].wait(burst_seconds):
             return
         with lock:
-            if race['winner'] is not None or state.get('closed'):
+            if race['winner'] is not None or state.get('closed') or state.get('failed'):
                 return
             state['width'] = burst_width
             race['burst_at'] = True
@@ -342,7 +352,7 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
         selected = next((a for a in agents if a['slot'] == race['winner']), None)
         selection = dict(selected_slot=race['winner'], answer_seconds=race['answer_s'],
                      cancelled_agents=sum(a['cancelled'] for a in agents),
-                     unstarted_agents=sum(not a['started'] for a in agents) + max(0, 4 - len(agents)),
+                     unstarted_agents=sum(not a['started'] for a in agents) + max(0, ELIGIBLE_SLOTS.get(policy, 4) - len(agents)),
                      escalated_agents=sum(a['slot'] >= (3 if policy in ('roll3to8', 'roll3strategy') else 4) and a['started'] for a in agents),
                      burst=bool(race.get('burst_at')),
                      skipped_judges=sum(a['judge_skipped'] for a in agents))
@@ -383,7 +393,9 @@ def main(argv=None):
     require(set(policies) <= set(plan['policies']), 'Policy not in plan')
     jobs = [(t, s, si * len(tasks) + ti, pol) for si, s in enumerate(plan['seeds']) for ti, t in enumerate(tasks) for pol in policies]
     if plan.get('case_list'):  # optional: only these (task_id, seed) cases; case indices (node placement) are kept
-        keep = {(c[0], c[1]) for c in read(HERE / plan['case_list'])['cases']}
+        listed = [(c[0], c[1]) for c in read(HERE / plan['case_list'])['cases']]
+        keep = set(listed)
+        require(len(keep) == len(listed), 'case_list has duplicate cases')
         jobs = [j for j in jobs if (j[0]['id'], j[1]) in keep]
         require(len(jobs) == len(keep) * len(policies), 'case_list does not match the corpus')
     concurrent = plan['concurrent_policy_cases']
