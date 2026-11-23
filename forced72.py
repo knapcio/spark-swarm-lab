@@ -9,11 +9,15 @@ prefix cache. Same rules, verifier, parser and Budget(2 calls, 8192 completion t
 
 Transport has no wall-clock quality limit: responses stream, and only a gap of IDLE_TIMEOUT seconds
 without any streamed byte (a hung server) or the WALL_LIMIT catastrophe stop counts as a failure.
+An upstream disconnect mid-request (see retryable) is re-sent once, same body and seed, after RETRY_DELAY s
+('request_retry' event with the tokens the lost attempt had streamed); a second failure is a failure as before.
 No CPU search, teacher, gold answer or cross-case memory.
 """
 import hashlib
+import http.client
 import json
 import time
+import urllib.error
 import urllib.request
 import uuid
 
@@ -25,7 +29,7 @@ SYSTEM = 'Solve the precise arithmetic task. Return only the requested JSON obje
 VARIANTS = {'forced_explicit': 'index_explicit', 'forced_original': 'index_original',
             'plain_original': 'index_original', 'long_forced_explicit': 'index_explicit',
             'long_forced_original': 'index_original', 'xl_forced_original': 'index_original',
-            'xxl_forced_original': 'index_original'}
+            'xxl_forced_original': 'index_original', 'xl_forced_leftover': 'index_original'}
 # long_*: same agent with the whole 16K context: thinking up to 14848, total completion 16000.
 # plain_original = the original single reasoning call (index_original, 8192, no second call) on this transport.
 THINK_CAP = 7168
@@ -35,10 +39,25 @@ CAPS = {name: (14848, 16000) if name.startswith('long_') else (THINK_CAP, TOTAL)
 CAPS['xl_forced_original'] = (30720, 32768)
 # xxl_*: thinking-budget scaling point: thinking up to 61440, total 65536 (128K serving).
 CAPS['xxl_forced_original'] = (61440, 65536)
+# xl_forced_leftover: xl_forced_original plus one sentence at the end of the task prompt (see task_prompt).
+CAPS['xl_forced_leftover'] = (30720, 32768)
+LEFTOVER_SENTENCE = 'Unused numbers are allowed; stop as soon as the target appears.'
+LEFTOVER_VARIANTS = {'xl_forced_leftover'}
 END_THINK = '</think>'
 FORCE_TEXT = '\n</think>\n'
 IDLE_TIMEOUT = 120
 WALL_LIMIT = 14400  # catastrophe stop only; a 61K-token thinking request under load can exceed 30 min
+RETRY_DELAY = 2.0  # one re-dispatch of the same body after an upstream disconnect (all variants)
+
+
+def retryable(exc):
+    """An upstream disconnect mid-request (shim error chunk 'ServerDisconnectedError', reset socket, stream cut
+    without finish_reason). Idle/wall timeouts and deterministic upstream 4xx errors are not retried."""
+    if isinstance(exc, urllib.error.URLError):
+        exc = exc.reason if isinstance(exc.reason, BaseException) else exc
+    if isinstance(exc, http.client.IncompleteRead):
+        return True
+    return isinstance(exc, ConnectionError) and 'upstream HTTP 4' not in str(exc)
 
 
 def split_answer(text):
@@ -64,6 +83,7 @@ class ForcedClient:
         self.model, self.budget, self.events, self.seed = model, budget, events, seed
         self.idle_timeout, self.wall_limit = idle_timeout, wall_limit
         self.infra_failures = self.budget_failures = 0
+        self.retries, self.retry_delay = 1, RETRY_DELAY
 
     def post(self, path, body, timeout):
         request = urllib.request.Request(self.base + path, data=json.dumps(body).encode(),
@@ -97,32 +117,45 @@ class ForcedClient:
                          prompt_token_count=len(prompt_ids), prompt_ids_sha256=sha(json.dumps(prompt_ids)),
                          request_body_sha256=wire_sha, request_max_tokens=max_tokens, request_thinking=True, **context)
         start = time.monotonic()
-        text, token_ids, finish, usage, error, received = '', [], None, {}, None, False
-        try:
-            # Socket timeout applies per read: it detects a silent server, not a slow one.
-            with self.post('/v1/completions', body, self.idle_timeout) as response:
-                for raw in response:
-                    if time.monotonic() - start > self.wall_limit:
-                        raise TimeoutError(f'wall limit {self.wall_limit}s exceeded')
-                    line = raw.decode().strip()
-                    if not line.startswith('data:') or line == 'data: [DONE]':
-                        continue
-                    chunk = json.loads(line[5:])
-                    if chunk.get('error'):
-                        raise ConnectionError(f"server stream error: {str(chunk['error'])[:200]}")
-                    for choice in chunk.get('choices', []):
-                        text += choice.get('text') or ''
-                        token_ids += choice.get('token_ids') or []
-                        finish = choice.get('finish_reason') or finish
-                    if chunk.get('usage'):
-                        usage = {k: v for k, v in chunk['usage'].items()
-                                 if k in ('prompt_tokens', 'completion_tokens', 'total_tokens') and type(v) is int}
-            received = finish is not None
-            if not received:
-                raise ConnectionError('stream ended without finish_reason')
-        except Exception as exc:
-            error = f'{type(exc).__name__}: {str(exc)[:300]}'
-            self.infra_failures += 1
+        attempt = 0
+        while True:
+            text, token_ids, finish, usage, error, received = '', [], None, {}, None, False
+            try:
+                # Socket timeout applies per read: it detects a silent server, not a slow one.
+                with self.post('/v1/completions', body, self.idle_timeout) as response:
+                    for raw in response:
+                        if time.monotonic() - start > self.wall_limit:
+                            raise TimeoutError(f'wall limit {self.wall_limit}s exceeded')
+                        line = raw.decode().strip()
+                        if not line.startswith('data:') or line == 'data: [DONE]':
+                            continue
+                        chunk = json.loads(line[5:])
+                        if chunk.get('error'):
+                            raise ConnectionError(f"server stream error: {str(chunk['error'])[:200]}")
+                        for choice in chunk.get('choices', []):
+                            text += choice.get('text') or ''
+                            token_ids += choice.get('token_ids') or []
+                            finish = choice.get('finish_reason') or finish
+                        if chunk.get('usage'):
+                            usage = {k: v for k, v in chunk['usage'].items()
+                                     if k in ('prompt_tokens', 'completion_tokens', 'total_tokens') and type(v) is int}
+                received = finish is not None
+                if not received:
+                    raise ConnectionError('stream ended without finish_reason')
+            except Exception as exc:
+                if attempt < self.retries and retryable(exc):
+                    # Upstream disconnect: send the same body (same seed) once more; the lost attempt is logged.
+                    attempt += 1
+                    self.events.emit('request_retry', request_id=request_id, agent_id=agent_id, stage=stage,
+                                     attempt=attempt, error=f'{type(exc).__name__}: {str(exc)[:300]}',
+                                     lost_completion_tokens=len(token_ids), lost_text_chars=len(text),
+                                     elapsed_ms=round((time.monotonic() - start) * 1000, 2),
+                                     retry_delay_s=self.retry_delay, request_body_sha256=wire_sha, **context)
+                    time.sleep(self.retry_delay)
+                    continue
+                error = f'{type(exc).__name__}: {str(exc)[:300]}'
+                self.infra_failures += 1
+            break
         reported = usage.get('completion_tokens')
         if received and reported is not None and reported != len(token_ids):
             error = error or f'token id count {len(token_ids)} != reported {reported}'
@@ -136,9 +169,21 @@ class ForcedClient:
                          latency_ms=round((time.monotonic() - start) * 1000, 2), usage=usage,
                          completion_tokens_charged=max_tokens if reported is None else reported, error=error,
                          response=answer, reasoning=reasoning, finish_reason=finish, response_received=received,
-                         closed_thinking=answer is not None, token_ids=token_ids, request_body_sha256=wire_sha, **context)
+                         closed_thinking=answer is not None, token_ids=token_ids, request_body_sha256=wire_sha,
+                         **({'retries': attempt} if attempt else {}), **context)
         return dict(request_id=request_id, dispatched=True, response_received=received, text=text,
                     token_ids=token_ids, finish_reason=finish, usage=usage, error=error, answer=answer)
+
+
+def task_prompt(e, initial, variant, extra=''):
+    prompt = prompt_for(e, initial, VARIANTS[variant])
+    if variant in LEFTOVER_VARIANTS:
+        # Last sentence of the task text, before any per-agent extra: everything up to here is byte-identical to
+        # xl_forced_original, and all agents of a case still share the prompt through this sentence.
+        prompt += ' ' + LEFTOVER_SENTENCE
+    if extra:  # controller-supplied context (strategy hint, judge critique, shared board); never gold information
+        prompt += '\n' + extra.strip()
+    return prompt
 
 
 def run_forced(experiment, initial, puzzle_id, variant, agent_id=0, extra=''):
@@ -152,9 +197,7 @@ def run_forced(experiment, initial, puzzle_id, variant, agent_id=0, extra=''):
             or budget['calls'] != 0 or budget['completion_tokens_reserved'] != 0):
         raise ValueError('fresh case Budget(2, variant total) and integer rules required')
     root = e.node(initial, None, 0, puzzle_id, agent_id)
-    prompt = prompt_for(e, initial, VARIANTS[variant])
-    if extra:  # controller-supplied context (strategy hint, judge critique, shared board); never gold information
-        prompt += '\n' + extra.strip()
+    prompt = task_prompt(e, initial, variant, extra)
     prompt_ids = client.chat_prompt_ids(prompt)
     plain = variant.startswith('plain_')
     first = client.complete(agent_id, 'plan', prompt_ids, total if plain else think_cap, node_id=root,
