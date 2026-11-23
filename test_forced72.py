@@ -181,14 +181,24 @@ class RetryTests(unittest.TestCase):
         ends = self.rows(c, 'request_end')
         self.assertEqual(sum(r['completion_tokens_charged'] for r in ends), 2500 + 30720 + 20)
 
-    def test_no_forced_dispatch_without_budget(self):
-        c = FakeForced([sse('notes', [7] * f.TOTAL, 'length', completion=f.TOTAL)])  # server overran the cap
+    def full_budget_case(self, replies):
+        c = FakeForced(replies)
         e = engine(c)
         c.events = e.events
         c.budget = h.Budget(2, f.TOTAL)
-        result = f.run_forced(e, STATE, 'p', 'forced_explicit')
+        return c, f.run_forced(e, STATE, 'p', 'forced_explicit')
+
+    def test_unretried_full_budget_keeps_the_d94c893_zero_token_dispatch(self):
+        # The server overran the cap and the first stream used the whole case budget: d94c893 still dispatches the
+        # forced answer with max_tokens 0, and an unretried request must do exactly the same.
+        c, result = self.full_budget_case([sse('notes', [7] * f.TOTAL, 'length'), sse(GOOD, [], 'stop')])
+        self.assertTrue(result['budget_forced'])
+        self.assertEqual([b['max_tokens'] for b in c.bodies], [f.THINK_CAP, 0])
+
+    def test_retried_full_budget_never_dispatches_max_tokens_zero(self):
+        c, result = self.full_budget_case([disconnect_after('', [4] * 5), sse('notes', [7] * f.TOTAL, 'length')])
         self.assertFalse(result['budget_forced'])
-        self.assertEqual(len(c.bodies), 1)
+        self.assertEqual([b['max_tokens'] for b in c.bodies], [f.THINK_CAP, f.THINK_CAP])
 
     def test_lost_tokens_reach_the_tally_when_the_retry_has_no_usage(self):
         no_usage = io.BytesIO(b'data: ' + json.dumps(dict(choices=[dict(text='n</think>' + GOOD, token_ids=[5] * 9,

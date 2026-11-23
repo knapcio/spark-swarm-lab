@@ -235,7 +235,8 @@ class ForcedClient:
                          closed_thinking=answer is not None, token_ids=token_ids, request_body_sha256=wire_sha,
                          **retry_fields, **context)
         return dict(request_id=request_id, dispatched=True, response_received=received, text=text,
-                    token_ids=token_ids, finish_reason=finish, usage=usage, error=error, answer=answer)
+                    token_ids=token_ids, finish_reason=finish, usage=usage, error=error, answer=answer,
+                    **({'attempts': len(attempts) + 1} if attempts else {}))
 
 
 def task_prompt(e, initial, variant, extra=''):
@@ -269,7 +270,8 @@ def run_forced(experiment, initial, puzzle_id, variant, agent_id=0, extra=''):
     # Same trigger as the scribe commit: no parsed plan, cut by length, own tokens available.
     remaining = total - client.budget.snapshot()['completion_tokens_charged']
     eligible = (not plain and plan is None and first['response_received'] and first['finish_reason'] == 'length'
-                and len(first['token_ids']) > 0 and first['error'] is None and remaining > 0)
+                and len(first['token_ids']) > 0 and first['error'] is None
+                and (remaining > 0 or not first.get('attempts')))  # guard retried requests only; else as d94c893
     if eligible:
         forced = first['answer'] is None  # still thinking -> force the end; else just let the answer finish
         suffix = client.force_ids() if forced else []
