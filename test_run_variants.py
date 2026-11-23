@@ -393,8 +393,8 @@ class CaseListTests(unittest.TestCase):
     def test_esc_extra_pairs_only_with_the_default_policy(self):
         with self.assertRaisesRegex(Exception, 'is not the default roll12strategy'):
             self.plan_main(base_policy='roll8strategy')
-        # an explicit restatement in paired_with.default_policy allows another baseline whose run used it
-        self.assertEqual(self.plan_main(base_policy='roll8strategy', paired_extra=dict(default_policy='roll8strategy')), 0)
+        with self.assertRaisesRegex(Exception, 'is not the default roll12strategy'):  # no override exists
+            self.plan_main(base_policy='roll8strategy', paired_extra=dict(default_policy='roll8strategy'))
 
     def test_esc_extra_requires_the_exact_paired_plan_file(self):
         with self.assertRaisesRegex(Exception, 'plan_sha256 does not match'):

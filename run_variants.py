@@ -70,7 +70,7 @@ ESC_HINTS = {'esc_none': lambda slot: '', 'esc_strategy': lambda slot: STRATEGIE
 ESC_SHAPE = {'esc_extra': (12, 8, 20)}
 ESC_DEFAULT_SHAPE = (4, 4, 12)
 PAIRED_ADDONS = {'esc_extra'}
-ADDON_DEFAULT_POLICY = 'roll12strategy'  # the arithmetic default an add-on pairs with unless paired_with restates another  # add-on arms on a recorded default arm's clean abstentions (check_pairing)
+ADDON_DEFAULT_POLICY = 'roll12strategy'  # the only baseline an add-on may pair with  # add-on arms on a recorded default arm's clean abstentions (check_pairing)
 MAX_REQUESTS_PER_NODE = 25  # fleet rule: never more than 25 concurrent requests on one Spark
 # rolling policies: slots that may launch per case (cap - first slot); unstarted_agents counts the ones that never did
 ELIGIBLE_SLOTS = dict(roll8cancel=8, roll8repair=8, roll8strategy=8, roll3to8=8, roll3strategy=8, roll12strategy=12,
@@ -644,12 +644,12 @@ def _resolve(path, root):
 
 
 def check_addon_run(plan, paired, expected, root=HERE):
-    """esc_extra pairing: the paired policy is the default (ADDON_DEFAULT_POLICY) unless paired_with.default_policy
-    restates it explicitly; paired_with.plan_sha256 pins the paired plan file; the run (all its segments) ran exactly
+    """esc_extra pairing: the paired policy is the default ADDON_DEFAULT_POLICY (roll12strategy; other baselines need
+    an explicit code change); paired_with.plan_sha256 pins the paired plan file; the run (all its segments) ran exactly
     that plan file (admission path, plan content) with only that policy; the add-on uses the same dataset, task order
     and seed order (identical case indices); the case_list is exactly the run's clean abstentions."""
-    default = paired.get('default_policy', ADDON_DEFAULT_POLICY)
-    require(paired['policy'] == default, f"paired policy {paired['policy']} is not the default {default}")
+    require(paired['policy'] == ADDON_DEFAULT_POLICY,
+            f"paired policy {paired['policy']} is not the default {ADDON_DEFAULT_POLICY}")
     plan_file = _resolve(paired['plan'], root)
     require(paired.get('plan_sha256') == sha(plan_file), 'paired_with.plan_sha256 does not match the paired plan file')
     other = read(plan_file)

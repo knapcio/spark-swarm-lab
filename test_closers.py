@@ -71,7 +71,8 @@ class StatementTests(unittest.TestCase):
         self.assertEqual(self.lines('numbers 6 25*4 = 100'), [])  # '6 25' may be one digit-grouped number
         self.assertEqual(self.lines('Step 2: 25*4 = 100'), ['25 * 4 = 100'])
         self.assertEqual(self.lines('3. 25*4 = 100'), ['25 * 4 = 100'])
-        self.assertEqual(self.lines('1) 10/5 = 2 (indices 5 and 1)'), ['10 / 5 = 2'])
+        self.assertEqual(self.lines('1) 10/5 = 2 means indices 5 and 1'), ['10 / 5 = 2'])
+        self.assertEqual(self.lines('1) 10/5 = 2 (indices 5 and 1)'), [])  # '(' one space after the value
         self.assertEqual(self.lines('so 1, 250*4 = 1000'), [])
 
     def test_digit_groups_and_unicode_digits_drop_the_line(self):
@@ -81,12 +82,48 @@ class StatementTests(unittest.TestCase):
             self.assertEqual(self.lines(text), [], repr(text))
         self.assertEqual(self.lines('25 * 4 = 100 and 25 *4 = 100.'), ['25 * 4 = 100', '25 * 4 = 100'])
 
+    def test_span_boundaries(self):
+        self.assertEqual(self.lines('Try 2 x 3*4 = 24'), ['2 * 3 * 4 = 24'])  # single-spaced x is multiplication
+        for text in ('Try 2 x  3*4 = 24', 'Try 8/2 = 4(1+1)', 'so 25*4 = 100 (1+1)', 'so 25*4 = 100 -3', 'so 25*4 = 100 x',
+                     'so 25*4 = 100 *2', 'so 25*4 = 100 x 2', 'so 25*4 = 100  then', 'so  25*4 = 100', 'so 25*4 = 100\tok',
+                     'so 25*4 = 100-', 'a =  25*4 = 100', '1)  25*4 = 100'):
+            self.assertEqual(self.lines(text), [], repr(text))
+        for text in ('so 25*4 = 100 then', 'so 25*4 = 100, then', 'so 25*4 = 100.', 'so 25*4 = 100;', 'so 25*4 = 100: ok',
+                     'so 25*4 = 100)', '(25*4 = 100)', '25*4 = 100', '    25*4 = 100', 'so 25*4 = 100  '):
+            self.assertEqual(self.lines(text), ['25 * 4 = 100'], repr(text))
+
+    @staticmethod
+    def delimited(norm, first, last):
+        """Left of the first operand (over its own parens) and right of the value: at most one space to a neighbour
+        that is not a digit, operator or 'x'; on the right also not '('."""
+        i = first
+        while i > 0 and norm[i - 1] == '(':
+            i -= 1
+        j = i
+        while j > 0 and norm[j - 1] in ' \t':
+            j -= 1
+        gap, left = norm[j:i], norm[:j]
+        if left.strip() and gap not in ('', ' '):
+            return False
+        if left and (left[-1] in '0123456789+-*/xX' or left[-1] == '\t'):
+            return False
+        k = last
+        while k < len(norm) and norm[k] in ' \t':
+            k += 1
+        gap, right = norm[last:k], norm[k:]
+        if right and (gap not in ('', ' ') or right[0] in '(0123456789+-*/'
+                      or (right[0] in 'xX' and not right[1:2].isalpha() and right[1:2] != '_')
+                      or (not gap and right[0].isalnum())):
+            return False
+        return True
+
     def test_fuzz_operands_are_exact_digit_runs_of_the_line(self):
         import random
         rng = random.Random(20261123)
         pieces = ['12', '7', '250', '1', '0', '99', '+', '-', '*', '/', ' x ', '×', '·', '÷', '−', '(', ')', ' ', '  ', '=',
                   ' = ', '.', ',', '^', '**', '²', '₂', 'e', 'E', '%', '!', '\u2009', '\u00a0', '٣', '½', 'so ', 'Try ',
-                  ': ', '1) ', '\\times', 'abc', '?', '->', '<=', '==']
+                  ': ', '1) ', '\\times', 'abc', '?', '->', '<=', '==', ' x  ', ' x ', 'x', 'X', '4(', ' (', '(1+1)',
+                  '  ', ' 3', '3 ', ' - ', ' *', '\t']
         allowed_between = set(' ()+-*/=')
         checked = 0
         clean = ['12', '7', '250', '1', '99', '+', '-', '*', '/', ' x ', '×', '(', ')', ' ', '=', ' = ', 'so ', ': ', '1) ']
@@ -106,6 +143,7 @@ class StatementTests(unittest.TestCase):
                 self.assertEqual(int(nums[-1]), value)
                 ok = any([r[0] for r in runs[k:k + len(nums)]] == nums and
                          all(set(norm[runs[i][2]:runs[i + 1][1]]) <= allowed_between for i in range(k, k + len(nums) - 1))
+                         and self.delimited(norm, runs[k][1], runs[k + len(nums) - 1][2])
                          for k in range(len(runs) - len(nums) + 1))
                 self.assertTrue(ok, (line, eq))
                 for n in nums:  # every operand is a maximal ASCII digit run of the ORIGINAL line

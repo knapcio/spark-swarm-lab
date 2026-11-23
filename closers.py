@@ -44,12 +44,13 @@ _LETTER_X = re.compile(r'(?<=[0-9]) ?[xX] ?(?=[0-9])', re.ASCII)  # 55 x 15 -> 5
 # value: one ASCII integer that is the whole right-hand side: not a decimal, fraction, digit group, exponent, power,
 # percent or factorial, not glued to a letter or non-ASCII character, not the start of a longer expression
 _RHS = re.compile(r'(?<![<>!=])=(?!=) ?([0-9]+)'
-                  r'(?![0-9A-Za-z_]|[^\x00-\x7f]|[.,][0-9]|[ \t]*[-+*/][ \t]*[0-9(]|[ \t]*[\^%!]|[ \t]+[0-9])', re.ASCII)
+                  r'(?![0-9A-Za-z_]|[^\x00-\x7f]|[.,][0-9]|[ \t]*[-+*/][ \t]*[0-9(]|[ \t]*[\^%!]|[ \t]+[0-9]'
+                  r'|[ \t]?[(\-+*/]|[ \t]?[xX](?![A-Za-z_])|[ \t]{2,}(?=\S)|\t)', re.ASCII)
 _UNPARSED_LINE = re.compile(r'\^|\*\*|[0-9][eE][+-]?[0-9]|\\(?:frac|sqrt|pow)|√|%|!(?!=)'
                             r'|[0-9][     -  ][0-9]')
 _LHS = re.compile(r'[0-9()+\-*/ \t]*$', re.ASCII)
 _TOKEN = re.compile(r'[0-9]+|[()+\-*/]', re.ASCII)
-_LIST_MARKER = re.compile(r'[ \t]*[0-9]{1,2}[).][ \t]+', re.ASCII)  # '1) ' / '3. ' at the start of a line
+_LIST_MARKER = re.compile(r'[ \t]*[0-9]{1,2}[).] (?=[0-9(])', re.ASCII)  # '1) ' / '3. ' at the start of a line
 
 
 def normalize(text):
@@ -76,7 +77,7 @@ _SAFE_PREV = set(' \t=:;"\'[{`$>')  # characters that may touch the expression's
 _SAFE_SPACED = set('=:;"\'[{`$>.,?→⇒')
 
 
-def _expression(left):
+def _expression(left, line_start=True):
     """The expression that ends just left of '=' (tokens only, never evaluated), or None. The whole span from its
     first character to '=' must be consumed by the grammar; the expression is never shortened."""
     m = _LHS.search(left)
@@ -96,13 +97,16 @@ def _expression(left):
             return None
     before = left[:start]
     if before:
+        gap = before[len(before.rstrip(' \t')):]
+        prev = before.rstrip(' \t')
+        if (prev or not line_start) and gap not in ('', ' '):
+            return None  # 2+ spaces (or a tab) next to the expression; only indentation at a line start is allowed
         if start == m.start():  # glued
             if left[start - 1] not in _SAFE_PREV:
                 return None
         else:
-            prev = before.rstrip(' \t')
-            if prev and not (prev[-1].isalpha() or prev[-1] in _SAFE_SPACED):
-                return None
+            if prev and not (prev[-1].isalpha() or prev[-1] in _SAFE_SPACED) or prev[-1:] in ('x', 'X'):
+                return None  # left neighbour is a digit, operator or 'x' (multiplication) one space away
             if prev[-1:] in ('.', ',') and prev[-2:-1].isdigit():
                 return None  # '1, 250*4' / '2. 5*4': possibly one number
     if _kind(tokens[0]) not in ('num', '('):
@@ -133,13 +137,14 @@ def statements(text):
         if _unparsed_line(text[line_start:None if line_end < 0 else line_end]):
             continue
         left = text[line_start:m.start()]
-        if '=' in left:
+        at_start = '=' not in left
+        if not at_start:
             left = left.rsplit('=', 1)[-1]
         else:
             marker = _LIST_MARKER.match(left)
             if marker:
                 left = left[marker.end():]
-        expr = _expression(left)
+        expr = _expression(left, at_start)
         if expr is None:
             continue
         digits = m.group(1)
