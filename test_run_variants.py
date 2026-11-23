@@ -386,12 +386,32 @@ class CaseListTests(unittest.TestCase):
         self.assertEqual(self.plan_main(), 0)
         self.assertEqual(self.plan_main(policies=['esc_none'], seed_offsets=dict(esc_none=15400)), 0)
 
-    def test_escalation_arms_require_case_list_and_full_pairing(self):
+    def test_frozen_hints_hard16_esc_plan_still_validates(self):
+        import contextlib, io, json
+        plan = json.loads((Path(v.HERE) / 'SWARM_HINTS_HARD16_ESC_PLAN.json').read_text())
+        self.assertEqual(plan['case_list'], 'results/swarm-hints-hard16-v1/strict_hard_cases.json')
+        self.assertNotIn('paired_with', plan)
+        cases = json.loads((Path(v.HERE) / plan['case_list']).read_text())['cases']
+        buf = io.StringIO()
+        with tempfile.TemporaryDirectory() as d, patch.object(v, 'validate_source', lambda *a: None), \
+                contextlib.redirect_stdout(buf):
+            code = v.main(['--plan', str(Path(v.HERE) / 'SWARM_HINTS_HARD16_ESC_PLAN.json'),
+                           '--output', str(Path(d) / 'out'), '--source', d])
+        self.assertEqual(code, 0)
+        out = json.loads(buf.getvalue().strip().splitlines()[-1])
+        self.assertEqual((out['mode'], out['model_calls']), ('plan', 0))
+        self.assertEqual(out['policy_cases'], len(cases) * len(plan['policies']))
+
+    def test_escalation_arms_require_case_list_and_esc_extra_full_pairing(self):
         for pol in ('esc_extra', 'esc_none'):
             with self.assertRaisesRegex(Exception, 'require a case_list'):
                 self.plan_main(case_list=None, policies=[pol], seed_offsets={pol: 15400})
-            with self.assertRaisesRegex(Exception, r'require paired_with = \{plan, policy, run\}'):
-                self.plan_main(paired_with=None, policies=[pol], seed_offsets={pol: 15400})
+        with self.assertRaisesRegex(Exception, r'require paired_with = \{plan, policy, run\}'):
+            self.plan_main(paired_with=None)
+        # esc_* keep their frozen semantics: no paired_with, case list not tied to a run's abstentions
+        for pol in ('esc_none', 'esc_strategy', 'esc_h02', 'esc_split'):
+            self.assertEqual(self.plan_main(paired_with=None, policies=[pol], seed_offsets={pol: 15400},
+                                            cases=[['t0', 1], ['t1', 1]]), 0, pol)
         for partial in (dict(agent_variant='xl_forced_original', seed_offset=15400), dict(plan='x', policy='y')):
             with self.assertRaisesRegex(Exception, 'require paired_with'):
                 self.plan_main(paired_with=partial)

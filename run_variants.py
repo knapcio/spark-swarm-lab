@@ -69,6 +69,7 @@ ESC_HINTS = {'esc_none': lambda slot: '', 'esc_strategy': lambda slot: STRATEGIE
 # escalation-only arms: (first slot, agents in flight, end slot exclusive); default slots 4-11, 4 in flight
 ESC_SHAPE = {'esc_extra': (12, 8, 20)}
 ESC_DEFAULT_SHAPE = (4, 4, 12)
+PAIRED_ADDONS = {'esc_extra'}  # add-on arms on a recorded default arm's clean abstentions (check_pairing)
 MAX_REQUESTS_PER_NODE = 25  # fleet rule: never more than 25 concurrent requests on one Spark
 # rolling policies: slots that may launch per case (cap - first slot); unstarted_agents counts the ones that never did
 ELIGIBLE_SLOTS = dict(roll8cancel=8, roll8repair=8, roll8strategy=8, roll3to8=8, roll3strategy=8, roll12strategy=12,
@@ -567,17 +568,21 @@ def arm_latest(run_dir, root=HERE, policy=None):
 
 
 def check_pairing(plan, policies, root=HERE):
-    """Escalation-only arms (esc_*, esc_extra) are add-ons to a recorded first wave. They require
-    'paired_with': {plan, policy, run}: the plan's agent_variant and each arm's seed offset must equal that plan's
-    agent_variant and seed_offsets[policy], and the case_list must be exactly the clean abstentions (answered False,
-    latest clean row per case under the frozen resume rule) of that policy in that run (no unresolved infra cases).
-    Other policies: a present paired_with ({agent_variant, seed_offset} and/or {plan, policy}) must match too."""
+    """Escalation-only arms (esc_*, esc_extra) require a case_list. The esc_* arms keep their frozen semantics (case
+    list built by inkling/strict_hard_cases.py from a shared first wave; paired_with optional). The add-on arms in
+    PAIRED_ADDONS (esc_extra, on a default arm's abstentions) require 'paired_with': {plan, policy, run}: the plan's
+    agent_variant and each arm's seed offset must equal that plan's agent_variant and seed_offsets[policy], and the
+    case_list must be exactly the clean abstentions (answered False, latest clean row per case under the frozen resume
+    rule) of that policy in that run (no unresolved infra cases).
+    Any present paired_with ({agent_variant, seed_offset} and/or {plan, policy}) must match the plan."""
     esc = [pol for pol in policies if pol in ESC_HINTS]
+    addons = [pol for pol in policies if pol in PAIRED_ADDONS]
     paired = plan.get('paired_with')
     if esc:
         require(plan.get('case_list'), f'escalation-only policies {esc} require a case_list')
+    if addons:
         require(isinstance(paired, dict) and all(paired.get(k) for k in ('plan', 'policy', 'run')),
-                f'escalation-only policies {esc} require paired_with = {{plan, policy, run}}')
+                f'add-on policies {addons} require paired_with = {{plan, policy, run}}')
     if not paired:
         return
     expected = {}
@@ -594,7 +599,7 @@ def check_pairing(plan, policies, root=HERE):
     if 'seed_offset' in expected:
         for pol in policies:
             require(plan['seed_offsets'][pol] == expected['seed_offset'], f'seed offset of {pol} differs from paired_with')
-    if esc:
+    if addons:
         arm = arm_latest(root / paired['run'], root, policy=paired['policy'])
         require(arm['plan'].get('agent_variant') == expected['agent_variant']
                 and arm['plan'].get('seed_offsets', {}).get(paired['policy']) == expected['seed_offset'],
