@@ -1,0 +1,69 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "status": "FROZEN",
+ "split": "evaluation",
+ "tasks": 24,
+ "seeds": [
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8
+ ],
+ "policies": [
+  "deep4cancel"
+ ],
+ "agent_variant": "xl_forced_original",
+ "seed_offsets": {
+  "deep4cancel": 16400,
+  "esc_none": 16400,
+  "esc_strategy": 16400,
+  "esc_h02": 16400,
+  "esc_split": 16400
+ },
+ "source_revision": "d94c893efb2a77041ef9086139cc570b994687c0",
+ "source_path": ".runtime/xl-source",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason), unchanged; the exact verifier only scores",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_policy_cases": 20,
+ "concurrent_requests_per_endpoint": 20,
+ "concurrency_note": "4 agents per case, 20 cases at once, per-endpoint slot cap 20 (agents and judges) <= 25.",
+ "runner": "run_variants.py --policy ARM, one arm at a time, driven by inkling/arms.py",
+ "execution": "Arms run sequentially in arm_order, each alone on the fleet via inkling/arms.py (fresh admission with the shim sha and mem fraction below, prefix-cache flush, server counters, idle wait, GPU energy). Watchdog inkling/watch.sh; MemAvailable logged every 60 s.",
+ "resume_rule": "If an arm stops on an infrastructure fault (runner stop flag, worker or judge infra failure, node fault), the fault is fixed and the same arm is continued with arms.py --resume-from (skips its cases that finished without infra faults; reruns the others with the same seeds) and documented as an amendment. Server tokens, wall and energy of an arm are then the sums over its segments (wasted work of the stopped segment included and reported separately). Never a silent restart; no case is dropped.",
+ "exclusions": "None. All 96 cases of each arm count.",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh, MEM=0.75 since 2026-11-21 16:25 Europe/Warsaw (KV ~1.08M tokens per node)",
+  "adapter": "inkling/shim.py (vLLM dialect; client disconnects close the upstream stream and count as shim:client_cancels)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "temperature": "0.8 (harness constant)",
+  "mem_fraction": "0.75"
+ },
+ "study_group": "swarm-hints-hard16-v1",
+ "dataset": "datasets/arithmetic-hard-v16/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v16",
+ "numbers_count": 6,
+ "code_sha256": {
+  "run_variants.py": "fa9c433e73cd318891b9b03fa47c05b5d432d262d842e7186362c002961380bb",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "445349b83e910f1189df8908aff2428ab3ee1dd0bb862f1fc46978b31bda82c6",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "inkling/strict_hard_cases.py": "812ca1cdd7d8d567a4864e9e8eb6f40d88f9fd38873d524daa5aa4c5e4888540",
+  ".runtime/xl-source/forced72.py": "0a8c26ac8f10fdd539933327a100ff709d8a46101da75d4ff775a2c8a041da94",
+  ".runtime/xl-source/forced72_worker.py": "4614d49ed3cca7e8cad5c8c7d033e4d95f7d28dc8099c07beb9f78b9403260f1"
+ },
+ "generator": "make_arithmetic_hard.py --seed 2026112316 --protocol arithmetic-hard-v16 --output datasets/arithmetic-hard-v16 (after both plans are committed and pushed); same rules as hard-v5..v15",
+ "design": "Fable round-2 idea 4 (shared first wave, hard-enriched escalation comparison) carrying idea 5 (hints that partition the last move) and the recheck of the current strategy hints (finding 11: the hint gain did not replicate in pooled data).",
+ "selection_caveat": "Cases are selected by the swarm's own first-wave failure, so rescue counts are conditional on that selection and are NOT a solved rate. In the default policy escalation agents start as soon as a first-wave agent fails, not after all four failed; the enriched comparison isolates the hint effect, not the default's solved rate.",
+ "baseline_note": "Defaults: arithmetic roll12strategy (cap 12; escalation agents slots 4-11 get STRATEGIES[(slot-4)%4]); coding R2 replacement.",
+ "study": "swarm-hints-hard16-v1-wave",
+ "question": "Phase 1 (shared first wave): run the default first wave once on 192 six-number cases (24 evaluation tasks x 8 seeds) to find the strict-hard cases.",
+ "phase_output": "runs/swarm-hints-hard16-v1-wave-deep4cancel; then inkling/strict_hard_cases.py writes results/swarm-hints-hard16-v1/strict_hard_cases.json",
+ "pairing": "Agent seeds 1000*seed + 16400 + slot (slots 0-3), the same seeds the default roll12strategy would use with this offset."
+}

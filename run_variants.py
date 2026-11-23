@@ -18,6 +18,11 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
   roll12strategy roll8strategy with a cap of 12 agents (failure-driven only, no time trigger)
   roll8strategy roll8cancel, but each escalation agent (slot >= 4) gets one of the four task-agnostic strategy hints
                 (STRATEGIES[slot - 4]); the first four agents are unchanged
+  esc_none, esc_strategy, esc_h02, esc_split
+                escalation-only arms for a shared first wave (deep4cancel run once): slots 4-11 only, 4 in flight,
+                failure-driven replacement, cancel on accept, on the plan's case_list (cases whose first wave had no
+                accepted plan). Hints per escalation slot: none / STRATEGIES[(slot-4)%4] (as roll12strategy) /
+                STRATEGIES[(0, 2)[(slot-4)%2]] / SPLIT_HINTS[(slot-4)%4] (partition of the last move).
   roll12burst   roll8cancel with a cap of 12 agents and a time trigger: if no plan is accepted BURST_SECONDS after the
                 case started, 8 agents are kept in flight instead of 4 (failures still replaced, first accept cancels)
 Every agent record carries timing (seconds from case start); decisions of the original policies are unchanged.
@@ -45,6 +50,14 @@ STRATEGIES = [
     'Strategy hint: consider using every number; subtraction and division can create the small values you need.',
     'Strategy hint: build one large intermediate from the biggest numbers first, then correct it with the small numbers.',
 ]
+SPLIT_HINTS = [
+    'Strategy hint: assume the last move subtracts one of the given numbers x. For each x, compute target + x and try to build that value from the other numbers; first list what small groups of the other numbers can make.',
+    'Strategy hint: assume the last move adds one of the given numbers x. For each x, compute target - x and try to build that value from the other numbers; first list what small groups of the other numbers can make.',
+    'Strategy hint: assume the last move multiplies or divides by one of the given numbers x. For each x, try to build target / x (when it is a whole number) or target * x from the other numbers; first list what small groups of the other numbers can make.',
+    'Strategy hint: assume the last move combines two values that are each built from different numbers. Split the numbers into two groups, list what each group can make, and look for a pair that gives the target in one operation.',
+]
+ESC_HINTS = {'esc_none': lambda slot: '', 'esc_strategy': lambda slot: STRATEGIES[(slot - 4) % 4],
+             'esc_h02': lambda slot: STRATEGIES[(0, 2)[(slot - 4) % 2]], 'esc_split': lambda slot: SPLIT_HINTS[(slot - 4) % 4]}
 JUDGE_TAIL = 'Return only a JSON object {"valid": true} if every move is legal and the target appears, otherwise {"valid": false}.'
 REASON_TAIL = ('Return only a JSON object {"valid": true} if every move is legal and the target appears; otherwise '
                '{"valid": false, "reason": "<one sentence: the first illegal move, or why the target never appears>"}.')
@@ -189,11 +202,12 @@ def critique(info):
     return f"A previous attempt proposed {json.dumps(info['plan'])}; a careful checker rejected it: {info['reason'] or 'invalid'}."
 
 
-def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_width=8, feedback=None):
+def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_width=8, feedback=None, first=0):
     """Keep `width` agents in flight; an agent that ends without an accept is replaced by the next slot on its node.
     burst_seconds: if the case has no accept by then, raise the in-flight width to burst_width (new slots on nodes
-    (case_index + slot) % 4), still within `cap` agents in total."""
-    lock, state, results, threads = threading.Lock(), dict(next=width, running=0, width=width), [], []
+    (case_index + slot) % 4), still within `cap` agents in total. first: number of the first slot (escalation-only arms
+    start at 4; `cap` is then the end slot, exclusive)."""
+    lock, state, results, threads = threading.Lock(), dict(next=first + width, running=0, width=width), [], []
 
     def launch(slot, node):  # caller holds the lock
         state['running'] += 1
@@ -226,7 +240,7 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
                 state['next'] += 1
                 launch(nxt, (case_index + nxt) % 4)
     with lock:
-        for s in range(width):
+        for s in range(first, first + width):
             launch(s, (case_index + s) % 4)
     if burst_seconds is not None:
         timer = threading.Thread(target=burst, daemon=True)
@@ -259,7 +273,7 @@ def new_race(t0):
 def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     off = plan['seed_offsets'][policy]
     t0 = time.monotonic()
-    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll3to8', 'roll3strategy', 'roll8repair', 'roll8strategy', 'roll12strategy', 'roll12burst') else None
+    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll3to8', 'roll3strategy', 'roll8repair', 'roll8strategy', 'roll12strategy', 'roll12burst') or policy in ESC_HINTS else None
     agent = lambda slot, extra='': run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off, t0, race)
     if policy == 'deep4':
         agents = parallel([lambda s=s: agent(s) for s in range(4)])
@@ -314,6 +328,10 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
         agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot,
                                                       STRATEGIES[(slot - 4) % 4] if slot >= 4 else '', slots, off, t0, race, node),
                          race, case_index)
+    elif policy in ESC_HINTS:
+        hint = ESC_HINTS[policy]
+        agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, hint(slot), slots,
+                                                      off, t0, race, node), race, case_index, cap=12, first=4)
     elif policy == 'roll12burst':
         agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, '', slots,
                                                       off, t0, race, node), race, case_index, cap=12,
@@ -358,10 +376,16 @@ def main(argv=None):
     tasks = [t for t in data['tasks'] if t['split'] == plan['split']]
     if plan.get('task_ids'):  # optional subset (smoke plans)
         tasks = [t for t in tasks if t['id'] in plan['task_ids']]
+    if plan.get('numbers_count'):  # optional: only tasks with this many numbers
+        tasks = [t for t in tasks if len(t['numbers']) == plan['numbers_count']]
     require(len(tasks) == plan['tasks'], 'Wrong task count')
     policies = a.policy or plan['policies']
     require(set(policies) <= set(plan['policies']), 'Policy not in plan')
     jobs = [(t, s, si * len(tasks) + ti, pol) for si, s in enumerate(plan['seeds']) for ti, t in enumerate(tasks) for pol in policies]
+    if plan.get('case_list'):  # optional: only these (task_id, seed) cases; case indices (node placement) are kept
+        keep = {(c[0], c[1]) for c in read(HERE / plan['case_list'])['cases']}
+        jobs = [j for j in jobs if (j[0]['id'], j[1]) in keep]
+        require(len(jobs) == len(keep) * len(policies), 'case_list does not match the corpus')
     concurrent = plan['concurrent_policy_cases']
     if len(policies) == 1:  # optional per-arm case concurrency (e.g. two-agent waves keep the same per-node load)
         concurrent = plan.get('concurrent_policy_cases_by_policy', {}).get(policies[0], concurrent)
