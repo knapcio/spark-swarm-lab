@@ -6,7 +6,7 @@ For a case that the swarm left unanswered:
   (b) the recorded thinking text of each failed agent is scanned for statements `a op b = v` whose v is on the wanted
       list (tier 1) or equals the target (tier 2): regex extraction and string/integer equality only, nothing is
       evaluated,
-  (c) every failed agent with at least one such line gets one closer: the unchanged worker with a small budget
+  (c) the top max_closers failed agents with such a line (ranked by tier-1, tier-2 line counts) get one closer each: the unchanged worker with a small budget
       (forced_original, 7,168 / 8,192) on the original task, the lines appended as extra text,
   (d) each closer plan goes to the unchanged judge (run_variants.judge_with_reason); the first accepted plan (in time)
       answers the case and cancels the other closers. The exact verifier only scores afterwards.
@@ -26,6 +26,7 @@ CLOSER_SLOT_BASE = 100  # closer slot = 100 + slot of the failed agent it reads 
 CLOSER_SEED_OFFSET = 18000  # agent seed 1000*seed + offset + closer slot (same formula as every arm)
 WANTED_SEED_BASE = 70000
 WANTED_MAX_TOKENS = 1024
+MAX_CLOSERS_PER_CASE = 4  # closers started per case (top-ranked failed agents with leads); the rest are recorded as skipped
 MAX_LEAD_LINES = 24  # lines handed to one closer (tier 1 first, then tier 2, each in order of first appearance)
 CLOSER_TAIL = ('Check whether one of them can be completed to the target with the unused numbers; if so give the full '
                'plan, otherwise answer with no moves.')
@@ -242,17 +243,25 @@ def case_leads(run_dir, case, wanted, target, limit=MAX_LEAD_LINES):
 
 
 # ---------------------------------------------------------------- one case
+def select_closers(rows, max_closers=MAX_CLOSERS_PER_CASE):
+    """Failed agents with at least one lead, ranked by (tier-1 lines desc, tier-2 lines desc, slot asc): the top
+    max_closers get a closer, the rest are skipped. Counting and sorting only. Returns (chosen rows, skipped slots)."""
+    ranked = sorted((r for r in rows if r['lines']), key=lambda r: (-len(r['tier1']), -len(r['tier2']), r['slot']))
+    return ranked[:max_closers], [r['slot'] for r in ranked[max_closers:]]
+
+
 def run_case(plan, source, out, task, seed, case_index, agent_leads_fn, slots, endpoints, seed_offset=CLOSER_SEED_OFFSET,
-             wanted_fn=ask_wanted):
+             wanted_fn=ask_wanted, max_closers=MAX_CLOSERS_PER_CASE):
     """(a) wanted list -> (b) leads per failed agent (agent_leads_fn(wanted_values) -> case_leads rows) -> (c) one
-    closer per agent with a lead -> (d) judge; first accepted in time wins and cancels the rest."""
+    closer for each of the top max_closers agents with a lead (select_closers) -> (d) judge; first accepted in time
+    wins and cancels the rest."""
     t0 = time.monotonic()
     endpoint = endpoints[case_index % len(endpoints)]
     with slots(endpoint):
         wanted = wanted_fn(endpoint, out / 'wanted' / f"{task['id']}-s{seed}.jsonl",
                            WANTED_SEED_BASE + 1000 * seed + 10 * case_index, task['numbers'], task['target'])
     rows = agent_leads_fn(wanted['values'])
-    with_leads = [r for r in rows if r['lines']]
+    with_leads, skipped = select_closers(rows, max_closers)
     race = run_variants.new_race(t0)
     closers = run_variants.parallel([
         lambda r=r: dict(run_variants.run_agent(plan, source, out, task, seed, case_index, CLOSER_POLICY,
@@ -265,7 +274,8 @@ def run_case(plan, source, out, task, seed, case_index, agent_leads_fn, slots, e
                 wanted=wanted, failed_agents=len(rows), missing_traces=sum(r['missing'] for r in rows),
                 agents_tier1=sum(bool(r['tier1']) for r in rows), agents_tier2=sum(bool(r['tier2']) for r in rows),
                 lead_rows=[{k: r[k] for k in ('slot', 'tier1', 'tier2', 'truncated', 'missing')} for r in rows],
-                closers=closers, calls=len(closers) + 1, rescue=selected is not None,
+                closers=closers, calls=len(closers) + 1, max_closers=max_closers, skipped_closers=len(skipped),
+                skipped_slots=skipped, rescue=selected is not None,
                 selected_slot=race['winner'], answer_seconds=race['answer_s'],
                 solved=bool(selected and selected['verifier_solved']), wrong=bool(selected and not selected['verifier_solved']),
                 oracle=any(c['verifier_solved'] for c in closers),

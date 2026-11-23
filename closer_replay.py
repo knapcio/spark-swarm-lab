@@ -3,8 +3,8 @@
 
 For every case of the given run directories that the arm left unanswered: one short Inkling call writes the wanted
 list (T+x, T-x, T*x, T/x for each given number x); the recorded thinking text of each failed agent is scanned for
-statements `a op b = v` with v on that list (tier 1) or v = target (tier 2) (regex and equality only); each failed
-agent with a lead gets one closer (worker variant forced_original, original task + the lines); closer plans go to the
+statements `a op b = v` with v on that list (tier 1) or v = target (tier 2) (regex and equality only); the top-ranked
+failed agents with a lead get one closer each (worker variant forced_original, original task + the lines); plans go to the
 unchanged judge (run_variants.judge_with_reason); the first accepted plan of a case is its rescue and cancels the
 other closers. The exact verifier only scores afterwards. Agent/judge records, seeds (1000*seed + offset + slot) and
 the per-endpoint Slots cap are those of run_variants.run_agent.
@@ -12,7 +12,10 @@ the per-endpoint Slots cap are those of run_variants.run_agent.
 --plan-only lists cases, failed agents and lead counts with no model call. Tier 1 is then ESTIMATED with the exact
 wanted values (reporting only; in a run the model writes the list, so run-time tier-1 counts can differ).
 
-usage: closer_replay.py --runs runs/A runs/B ... [--plan-only]
+Closers per case: the top --max-closers-per-case (default plan closers.max_per_case, else 4) failed agents with a
+lead, ranked by (tier-1 lines desc, tier-2 lines desc, slot asc); the others are recorded as skipped.
+
+usage: closer_replay.py --runs runs/A runs/B ... [--plan-only] [--max-closers-per-case N]
        closer_replay.py --runs ... --plan PLAN.json --admission ADM.json --output runs/NAME [--source DIR]
 """
 import argparse
@@ -53,8 +56,9 @@ def load_run(run_dir):
                 arm_tokens=sum(r.get('tokens', 0) for r in rows if 'error' not in r))
 
 
-def plan_only(runs):
+def plan_only(runs, max_closers):
     report, total = [], dict(cases=0, failed_agents=0, missing_traces=0, tier1_agents=0, tier2_agents=0, closers=0,
+                             skipped_closers=0,
                              tier1_lines=0, tier2_lines=0, cases_tier1=0, cases_any=0)
     for run in runs:
         agg = dict(run=run['run'], **{k: 0 for k in total})
@@ -65,10 +69,12 @@ def plan_only(runs):
             line = dict(run=run['run'], task_id=task['id'], seed=c['seed'], case_index=c['case_index'],
                         failed_agents=len(rows), missing_traces=sum(r['missing'] for r in rows),
                         tier1_agents=sum(bool(r['tier1']) for r in rows), tier2_agents=sum(bool(r['tier2']) for r in rows),
-                        closers=sum(bool(r['lines']) for r in rows),
+                        closers=len(closers.select_closers(rows, max_closers)[0]),
+                        skipped_closers=len(closers.select_closers(rows, max_closers)[1]),
                         tier1_lines=sum(len(r['tier1']) for r in rows), tier2_lines=sum(len(r['tier2']) for r in rows))
             print(json.dumps(line))
-            for k in ('failed_agents', 'missing_traces', 'tier1_agents', 'tier2_agents', 'closers', 'tier1_lines', 'tier2_lines'):
+            for k in ('failed_agents', 'missing_traces', 'tier1_agents', 'tier2_agents', 'closers', 'skipped_closers',
+                      'tier1_lines', 'tier2_lines'):
                 agg[k] += line[k]
             agg['cases'] += 1
             agg['cases_tier1'] += line['tier1_agents'] > 0
@@ -78,7 +84,7 @@ def plan_only(runs):
             total[k] += agg[k]
     for agg in report:
         print(json.dumps(dict(summary=agg)))
-    print(json.dumps(dict(mode='plan', model_calls=0, tier1='estimated with exact wanted values (report only)', total=total)))
+    print(json.dumps(dict(mode='plan', model_calls=0, max_closers_per_case=max_closers, tier1='estimated with exact wanted values (report only)', total=total)))
     return 0
 
 
@@ -92,15 +98,21 @@ def main(argv=None):
     p.add_argument('--admission', type=Path)
     p.add_argument('--endpoints', nargs='+', default=list(run_variants.ENDPOINTS))
     p.add_argument('--max-per-endpoint', type=int, default=8)
+    p.add_argument('--max-closers-per-case', type=int,
+                   help=f'closers started per case (default: plan closers.max_per_case, else {closers.MAX_CLOSERS_PER_CASE})')
     p.add_argument('--plan-only', action='store_true')
     a = p.parse_args(argv)
     require(1 <= a.max_per_endpoint <= MAX_PER_ENDPOINT, 'max-per-endpoint must be 1..20')
     require(len(set(a.endpoints)) == len(a.endpoints), 'duplicate endpoints')
     runs = [load_run(r) for r in a.runs]
+    plan = read(a.plan) if a.plan else {}
+    max_closers = a.max_closers_per_case
+    if max_closers is None:
+        max_closers = plan.get('closers', {}).get('max_per_case', closers.MAX_CLOSERS_PER_CASE)
+    require(isinstance(max_closers, int) and max_closers >= 1, 'max closers per case must be >= 1')
     if a.plan_only:
-        return plan_only(runs)
+        return plan_only(runs, max_closers)
     require(a.plan and a.output and a.admission, '--plan, --output and --admission are required for a run')
-    plan = read(a.plan)
     out = a.output.resolve()
     require(not out.exists(), 'output exists')
     adm = read(a.admission)
@@ -119,7 +131,7 @@ def main(argv=None):
                                       serving=plan.get('serving'), runner_sha256=sha(Path(__file__)),
                                       closers_sha256=sha(HERE / 'closers.py'), run_variants_sha256=sha(HERE / 'run_variants.py'),
                                       runs=[str(r['dir']) for r in runs], source=str(source), closer_variant=closers.CLOSER_VARIANT,
-                                      seed_offset=offset, endpoints=a.endpoints, max_per_endpoint=a.max_per_endpoint,
+                                      seed_offset=offset, max_closers_per_case=max_closers, endpoints=a.endpoints, max_per_endpoint=a.max_per_endpoint,
                                       started_utc=datetime.now(timezone.utc).isoformat(), admission=adm))
     slots, lock, stop, rows = closers.EndpointSlots(a.endpoints, a.max_per_endpoint), threading.Lock(), threading.Event(), []
     jobs = [(r, c) for r in runs for c in r['cases']]
@@ -132,7 +144,7 @@ def main(argv=None):
         try:
             rec = closers.run_case(cplan, source, out / 'runs' / run['run'], task, c['seed'], c['case_index'],
                                    lambda wanted: closers.case_leads(run['dir'], row, wanted, task['target']),
-                                   slots, a.endpoints, offset)
+                                   slots, a.endpoints, offset, max_closers=max_closers)
         except Exception as exc:
             with lock:
                 stop.set()
@@ -157,6 +169,7 @@ def main(argv=None):
         mine = [x for x in rows if x.get('run') == r['run'] and 'error' not in x]
         tokens = sum(x['tokens'] for x in mine)
         summary[r['run']] = dict(unanswered=len(r['cases']), cases=len(mine), closers=sum(len(x['closers']) for x in mine),
+                                 skipped_closers=sum(x['skipped_closers'] for x in mine),
                                  rescued=sum(x['rescue'] for x in mine), solved=sum(x['solved'] for x in mine),
                                  wrong=sum(x['wrong'] for x in mine), tokens=tokens, arm_tokens=r['arm_tokens'],
                                  token_share=round(tokens / r['arm_tokens'], 4) if r['arm_tokens'] else None)

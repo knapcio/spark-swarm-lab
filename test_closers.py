@@ -168,6 +168,24 @@ class RunCaseTests(unittest.TestCase):
         self.assertEqual(rec['tokens'], 50 + 2 * (10 + 3))
         self.assertEqual(rec['calls'], 3)
 
+    def test_ranking_and_cap(self):
+        rows = [self.row(0, tier2=['a', 'b', 'c']), self.row(1, ['x'], ['a']), self.row(2, ['x', 'y']), self.row(3),
+                self.row(4, ['x'], ['a']), self.row(5, ['x'], ['a', 'b']), self.row(6, tier2=['a', 'b', 'c'])]
+        chosen, skipped = closers.select_closers(rows, 4)
+        self.assertEqual([r['slot'] for r in chosen], [2, 5, 1, 4])
+        self.assertEqual(skipped, [0, 6])
+        self.assertEqual([r['slot'] for r in closers.select_closers(rows, 10)[0]], [2, 5, 1, 4, 0, 6])
+        self.assertEqual(closers.select_closers(rows, 10)[1], [])
+
+    def test_case_starts_only_top_n_and_records_skipped(self):
+        rows = [self.row(s, ['55 * 15 = 825'] * (s % 3), ['800 + 22 = 822']) for s in range(7)]
+        rec, launched, _ = self.run_case(rows, fast=set(range(100, 107)), accept=set())
+        # tier-1 counts by slot: 0,1,2,0,1,2,0 -> ranked 2,5,1,4 | 0,3,6
+        self.assertEqual(sorted(launched), [101, 102, 104, 105])
+        self.assertEqual([c['source_slot'] for c in rec['closers']], [2, 5, 1, 4])
+        self.assertEqual((rec['max_closers'], rec['skipped_closers'], rec['skipped_slots']), (4, 3, [0, 3, 6]))
+        self.assertEqual(rec['calls'], 5)
+
     def test_no_leads_no_closers(self):
         rec, launched, _ = self.run_case([self.row(0), self.row(1)], fast=set(), accept=set())
         self.assertEqual((launched, rec['closers'], rec['rescue'], rec['tokens']), ([], [], False, 50))
@@ -267,6 +285,23 @@ class PlanOnlyTests(unittest.TestCase):
         self.assertEqual(out[-1]['model_calls'], 0)
         self.assertEqual((total['cases'], total['failed_agents'], total['tier1_agents'], total['tier2_agents'], total['closers']),
                          (2, 5, 2, 2, 3))
+
+    def test_plan_only_cap_from_cli_and_plan(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            run = self.make_run(root)
+            (root / 'plan.json').write_text(json.dumps(dict(closers=dict(max_per_case=1))))
+            totals = {}
+            for name, extra in (('default', []), ('cli', ['--max-closers-per-case', '1']),
+                                ('plan', ['--plan', str(root / 'plan.json')]),
+                                ('cli_wins', ['--plan', str(root / 'plan.json'), '--max-closers-per-case', '3'])):
+                buf = io.StringIO()
+                with patch.object(closer_replay, 'HERE', root), contextlib.redirect_stdout(buf):
+                    closer_replay.main(['--runs', str(run), '--plan-only'] + extra)
+                last = json.loads(buf.getvalue().splitlines()[-1])
+                totals[name] = (last['max_closers_per_case'], last['total']['closers'], last['total']['skipped_closers'])
+        # case a has 2 agents with leads, case b has 1
+        self.assertEqual(totals, dict(default=(4, 3, 0), cli=(1, 2, 1), plan=(1, 2, 1), cli_wins=(3, 3, 0)))
 
     def test_cli_limits(self):
         with tempfile.TemporaryDirectory() as d:
