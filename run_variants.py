@@ -23,13 +23,19 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
                 failure-driven replacement, cancel on accept, on the plan's case_list (cases whose first wave had no
                 accepted plan). Hints per escalation slot: none / STRATEGIES[(slot-4)%4] (as roll12strategy) /
                 STRATEGIES[(0, 2)[(slot-4)%2]] / SPLIT_HINTS[(slot-4)%4] (partition of the last move).
+  esc_extra     idle-capacity add-on (round-3 idea 2) for cases whose first twelve agents failed: slots 12-19 all in
+                flight at once (8 per case, two per node), cap 20, hints STRATEGIES[(slot-4)%4] (continuing the default's
+                hint cycle), cancel on accept, on the plan's case_list. Per-node requests stay capped by Slots (<= 25).
   roll12burst   roll8cancel with a cap of 12 agents and a time trigger: if no plan is accepted BURST_SECONDS after the
                 case started, 8 agents are kept in flight instead of 4 (failures still replaced, first accept cancels)
 Every agent record carries timing (seconds from case start); decisions of the original policies are unchanged.
+A judge call that fails with a transport error (connection refused / disconnected, server stream error) is retried
+once after JUDGE_RETRY_SECONDS with the same seed (agent field judge_retry); only a failed retry counts as infra.
 The exact verifier never influences decisions; it only scores the selected plan.
 """
 import argparse
 import json
+import re
 import subprocess
 import sys
 import threading
@@ -57,18 +63,61 @@ SPLIT_HINTS = [
     'Strategy hint: assume the last move combines two values that are each built from different numbers. Split the numbers into two groups, list what each group can make, and look for a pair that gives the target in one operation.',
 ]
 ESC_HINTS = {'esc_none': lambda slot: '', 'esc_strategy': lambda slot: STRATEGIES[(slot - 4) % 4],
-             'esc_h02': lambda slot: STRATEGIES[(0, 2)[(slot - 4) % 2]], 'esc_split': lambda slot: SPLIT_HINTS[(slot - 4) % 4]}
+             'esc_h02': lambda slot: STRATEGIES[(0, 2)[(slot - 4) % 2]], 'esc_split': lambda slot: SPLIT_HINTS[(slot - 4) % 4],
+             'esc_extra': lambda slot: STRATEGIES[(slot - 4) % 4]}
+# escalation-only arms: (first slot, agents in flight, end slot exclusive); default slots 4-11, 4 in flight
+ESC_SHAPE = {'esc_extra': (12, 8, 20)}
+ESC_DEFAULT_SHAPE = (4, 4, 12)
+MAX_REQUESTS_PER_NODE = 25  # fleet rule: never more than 25 concurrent requests on one Spark
 # rolling policies: slots that may launch per case (cap - first slot); unstarted_agents counts the ones that never did
 ELIGIBLE_SLOTS = dict(roll8cancel=8, roll8repair=8, roll8strategy=8, roll3to8=8, roll3strategy=8, roll12strategy=12,
-                      roll12burst=12, **{p: 8 for p in ESC_HINTS})
+                      roll12burst=12, **{p: ESC_SHAPE.get(p, ESC_DEFAULT_SHAPE)[2] - ESC_SHAPE.get(p, ESC_DEFAULT_SHAPE)[0]
+                                         for p in ESC_HINTS})
 JUDGE_TAIL = 'Return only a JSON object {"valid": true} if every move is legal and the target appears, otherwise {"valid": false}.'
 REASON_TAIL = ('Return only a JSON object {"valid": true} if every move is legal and the target appears; otherwise '
                '{"valid": false, "reason": "<one sentence: the first illegal move, or why the target never appears>"}.')
+JUDGE_RETRY_SECONDS = 2
+TRANSPORT_ERRORS = {'ConnectionError', 'ConnectionRefusedError', 'ConnectionResetError', 'ConnectionAbortedError',
+                    'BrokenPipeError', 'RemoteDisconnected', 'IncompleteRead', 'URLError', 'TimeoutError', 'timeout'}
+
+
+def transport_error(error):
+    """True for a request error string (as ForcedClient records it: 'ExcType: message') that is a transport fault:
+    connection refused / reset / disconnected, server stream error, stream ended without finish, silent server, or an
+    HTTP 5xx from the adapter. Accounting faults (token id count mismatch) and budget denials are not transport."""
+    if not error:
+        return False
+    kind, _, message = str(error).partition(':')
+    kind = kind.strip()
+    return kind in TRANSPORT_ERRORS or (kind == 'HTTPError' and re.search(r'HTTP Error 5\d\d', message) is not None)
 
 
 def judge_with_reason(candidate, endpoint, events_path, seed):
-    """Same thinking judge as run_judge.judge, but asks for a one-sentence reason when rejecting."""
+    """Thinking judge with a one-sentence reason (judge_once). A transport failure of the call is retried once after
+    JUDGE_RETRY_SECONDS with the same seed (events in <stem>.retry.jsonl); a successful call returns exactly as before.
+    If the retry also fails, its infra result is returned as before (a raised transport exception propagates)."""
+    try:
+        first = judge_once(candidate, endpoint, events_path, seed)
+    except Exception as exc:  # e.g. connection refused on /tokenize
+        error = f'{type(exc).__name__}: {exc}'
+        if not transport_error(error):
+            raise
+        first = dict(verdict=None, reason='', infra=1, tokens=0, transport=error[:300])
+    first_error = first.pop('transport')
+    if not first_error:
+        return first
+    time.sleep(JUDGE_RETRY_SECONDS)
+    second = judge_once(candidate, endpoint, Path(events_path).with_suffix('.retry.jsonl'), seed)
+    second.pop('transport')
+    second.update(tokens=first['tokens'] + second['tokens'], retry=True, first_error=first_error)
+    return second
+
+
+def judge_once(candidate, endpoint, events_path, seed):
+    """Same thinking judge as run_judge.judge, but asks for a one-sentence reason when rejecting. Returns the verdict
+    record plus 'transport': the first transport error string of a failed call ('' if none)."""
     events = run_judge.Events(events_path, 'judge_reason')
+    errors = []
     try:
         client = run_judge.ChatJudge(endpoint, 'nemotron-lightning', run_judge.Budget(2, 8192), events, seed)
         prompt = run_judge.judge_prompt(candidate['numbers'], candidate['target'], candidate['plan'])
@@ -76,10 +125,12 @@ def judge_with_reason(candidate, endpoint, events_path, seed):
         prompt = prompt[:-len(JUDGE_TAIL)] + REASON_TAIL
         ids = client.chat_prompt_ids(prompt, thinking=True)
         first = client.complete(0, 'judge', ids, 6144)
+        errors.append(first['error'])
         answer = first['answer']
         if answer is None and first['finish_reason'] == 'length' and first['error'] is None:
             second = client.complete(0, 'judge_forced', ids + first['token_ids'] + client.force_ids(),
                                      8192 - client.budget.snapshot()['completion_tokens_charged'], thinking_closed=True)
+            errors.append(second['error'])
             answer = second['answer']
         verdict, reason = None, ''
         try:
@@ -91,6 +142,7 @@ def judge_with_reason(candidate, endpoint, events_path, seed):
         out = dict(verdict=verdict, reason=reason, infra=client.infra_failures,
                    tokens=client.budget.snapshot()['completion_tokens_charged'])
         events.emit('judge_end', **out)
+        out['transport'] = next((str(e)[:300] for e in errors if transport_error(e)), '') if client.infra_failures else ''
         return out
     finally:
         events.close()
@@ -133,12 +185,14 @@ def execute_cancellable(case, deadline_seconds, cancel):
 
 
 def run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, seed_offset, t0=None, race=None,
-              node=None):
+              node=None, endpoints=None):
     """One agent + its judge. race (cancel policies): dict(cancel=Event, accept=callable) shared by the case.
-    node: endpoint index override (escalation agents run on the node of the agent they replace)."""
+    node: endpoint index override (escalation agents run on the node of the agent they replace).
+    endpoints: endpoint list override (default the four tunnels; slots must cover the same endpoints)."""
     t0 = time.monotonic() if t0 is None else t0
     cancel = race['cancel'] if race else None
-    endpoint = ENDPOINTS[(case_index + slot) % 4 if node is None else node]
+    endpoints = endpoints or ENDPOINTS
+    endpoint = endpoints[(case_index + slot) % len(endpoints) if node is None else node]
     stem = f"{task['id']}-s{seed}-{policy}-a{slot}"
     events = out / 'agents' / (stem + '.jsonl')
     extra_file = None
@@ -157,8 +211,8 @@ def run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, sl
     with slots(endpoint):
         if cancel is not None and cancel.is_set():  # case already answered while this agent waited for a slot
             return dict(plan=None, verifier_solved=False, tokens=0, infra=0, slot=slot, extra=bool(extra), deadline=False,
-                        verdict=None, reason='', judge_tokens=0, judge_infra=0, started=False, cancelled=False,
-                        judge_skipped=False, **timing)
+                        verdict=None, reason='', judge_tokens=0, judge_infra=0, judge_retry=False, started=False,
+                        cancelled=False, judge_skipped=False, **timing)
         timing['started_s'] = round(time.monotonic() - t0, 3)
         if race:
             row = execute_cancellable(job, plan['agent_wall_deadline_seconds'], cancel)
@@ -171,7 +225,8 @@ def run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, sl
         info['plan'] = None  # a terminated agent has no answer; its partial work is counted server-side
     elif row.get('controller_error') or (row.get('returncode') not in (0, None) and not row['deadline']):
         info['infra'] += 1  # worker process failure: stop admissions, never a silent 'no plan'
-    info.update(slot=slot, extra=bool(extra), deadline=bool(row['deadline']), verdict=None, reason='', judge_tokens=0, judge_infra=0)
+    info.update(slot=slot, extra=bool(extra), deadline=bool(row['deadline']), verdict=None, reason='', judge_tokens=0, judge_infra=0,
+                judge_retry=False)
     if race:
         info.update(started=True, cancelled=cancelled, judge_skipped=False)
     if info['plan'] is not None:
@@ -181,7 +236,10 @@ def run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, sl
                 info['judge_skipped'] = True
             else:
                 j = judge_with_reason(cand, endpoint, out / 'judges' / (stem + '.jsonl'), 90000 + 1000 * seed + 10 * case_index + slot)
-                info.update(verdict=j['verdict'], reason=j['reason'], judge_tokens=j['tokens'], judge_infra=j['infra'])
+                info.update(verdict=j['verdict'], reason=j['reason'], judge_tokens=j['tokens'], judge_infra=j['infra'],
+                            judge_retry=bool(j.get('retry')))
+                if j.get('retry'):
+                    info['judge_first_error'] = j['first_error']
                 timing['judged_s'] = round(time.monotonic() - t0, 3)
                 if race and info['verdict'] is True:
                     race['accept'](slot)
@@ -224,8 +282,8 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
             info = agent(slot, node, extra) if feedback else agent(slot, node)
         except Exception as exc:  # never lose a slot: record it as an infra fault (resume reruns the case)
             info = dict(plan=None, verifier_solved=False, tokens=0, infra=1, slot=slot, extra=bool(extra), deadline=False,
-                        verdict=None, reason='', judge_tokens=0, judge_infra=0, started=True, cancelled=False,
-                        judge_skipped=False, agent_error=f'{type(exc).__name__}: {exc}')
+                        verdict=None, reason='', judge_tokens=0, judge_infra=0, judge_retry=False, started=True,
+                        cancelled=False, judge_skipped=False, agent_error=f'{type(exc).__name__}: {exc}')
         with lock:
             results.append(info)
             state['running'] -= 1
@@ -340,8 +398,9 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
                          race, case_index)
     elif policy in ESC_HINTS:
         hint = ESC_HINTS[policy]
+        first, width, cap = ESC_SHAPE.get(policy, ESC_DEFAULT_SHAPE)
         agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, hint(slot), slots,
-                                                      off, t0, race, node), race, case_index, cap=12, first=4)
+                                                      off, t0, race, node), race, case_index, width=width, cap=cap, first=first)
     elif policy == 'roll12burst':
         agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, '', slots,
                                                       off, t0, race, node), race, case_index, cap=12,
@@ -353,6 +412,7 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
         selection = dict(selected_slot=race['winner'], answer_seconds=race['answer_s'],
                      cancelled_agents=sum(a['cancelled'] for a in agents),
                      unstarted_agents=sum(not a['started'] for a in agents) + max(0, ELIGIBLE_SLOTS.get(policy, 4) - len(agents)),
+                     # escalated = started agents beyond the first wave (all agents of the esc_* add-ons, slots 4-11 or 12-19)
                      escalated_agents=sum(a['slot'] >= (3 if policy in ('roll3to8', 'roll3strategy') else 4) and a['started'] for a in agents),
                      burst=bool(race.get('burst_at')),
                      skipped_judges=sum(a['judge_skipped'] for a in agents))
@@ -365,6 +425,19 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
                 tokens=sum(a['tokens'] + a['judge_tokens'] for a in agents),
                 infra=sum(a['infra'] + a['judge_infra'] for a in agents), deadlines=sum(a['deadline'] for a in agents),
                 case_seconds=round(time.monotonic() - t0, 3), **selection)
+
+
+def plan_tasks(plan, root=HERE):
+    """The plan's tasks in run order (case index = seed position * len(tasks) + task position)."""
+    data = read(root / plan['dataset'])
+    require(data.get('protocol') == plan['dataset_protocol'], 'Wrong corpus')
+    tasks = [t for t in data['tasks'] if t['split'] == plan['split']]
+    if plan.get('task_ids'):  # optional subset (smoke plans)
+        tasks = [t for t in tasks if t['id'] in plan['task_ids']]
+    if plan.get('numbers_count'):  # optional: only tasks with this many numbers
+        tasks = [t for t in tasks if len(t['numbers']) == plan['numbers_count']]
+    require(len(tasks) == plan['tasks'], 'Wrong task count')
+    return tasks
 
 
 def main(argv=None):
@@ -381,14 +454,7 @@ def main(argv=None):
     require(plan['protocol'] == 'swarm-variants-screen-v1', 'Wrong protocol')
     source, out = a.source.resolve(), a.output.resolve()
     validate_source(source, plan['source_revision'])
-    data = read(HERE / plan['dataset'])
-    require(data.get('protocol') == plan['dataset_protocol'], 'Wrong corpus')
-    tasks = [t for t in data['tasks'] if t['split'] == plan['split']]
-    if plan.get('task_ids'):  # optional subset (smoke plans)
-        tasks = [t for t in tasks if t['id'] in plan['task_ids']]
-    if plan.get('numbers_count'):  # optional: only tasks with this many numbers
-        tasks = [t for t in tasks if len(t['numbers']) == plan['numbers_count']]
-    require(len(tasks) == plan['tasks'], 'Wrong task count')
+    tasks = plan_tasks(plan)
     policies = a.policy or plan['policies']
     require(set(policies) <= set(plan['policies']), 'Policy not in plan')
     jobs = [(t, s, si * len(tasks) + ti, pol) for si, s in enumerate(plan['seeds']) for ti, t in enumerate(tasks) for pol in policies]
@@ -407,6 +473,7 @@ def main(argv=None):
         finished = {(r['task_id'], r['seed'], r['policy']) for r in prev if 'error' not in r and not r['infra']}
         jobs = [j for j in jobs if (j[0]['id'], j[1], j[3]) not in finished]
         resumed = dict(resumed_from=str(a.resume_from.resolve()), skipped_finished=len(finished))
+    require(plan.get('concurrent_requests_per_endpoint', 0) <= MAX_REQUESTS_PER_NODE, 'Per-node request cap above 25')
     if not a.run:
         print(json.dumps(dict(mode='plan', policy_cases=len(jobs), model_calls=0)))
         return 0

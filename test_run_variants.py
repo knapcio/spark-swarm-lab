@@ -79,7 +79,7 @@ class CancelPolicyTests(unittest.TestCase):
         def judge(cand, endpoint, events_path, seed):
             slot = int(str(events_path).rsplit('-a', 1)[1].split('.')[0])
             return dict(verdict=slot in accept, reason='', infra=0, tokens=1)
-        plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], deep4cancel=1400, waves2cancel=1400, roll8cancel=1400, roll12burst=1400, roll8repair=1400, roll8strategy=1400, roll3to8=1400, roll3strategy=1400, roll12strategy=1400, esc_none=1400, esc_strategy=1400, esc_h02=1400, esc_split=1400), burst_seconds=0.3)
+        plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], deep4cancel=1400, waves2cancel=1400, roll8cancel=1400, roll12burst=1400, roll8repair=1400, roll8strategy=1400, roll3to8=1400, roll3strategy=1400, roll12strategy=1400, esc_none=1400, esc_strategy=1400, esc_h02=1400, esc_split=1400, esc_extra=1400), burst_seconds=0.3)
         with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute', execute), patch.object(v, 'plan_of', plan_of), \
                 patch.object(v, 'execute_cancellable', execute), patch.object(v, 'judge_with_reason', judge):
             out = Path(d)
@@ -217,6 +217,68 @@ class CancelPolicyTests(unittest.TestCase):
         self.assertTrue(set(started) <= set(range(4, 12)))
         self.assertLess(rec['case_seconds'], 1.5)
 
+    def test_esc_extra_runs_slots_12_to_19_with_continued_hints(self):
+        rec, started = self.run_policy('esc_extra', fast=set(range(20)), accept=set())
+        self.assertEqual(sorted(started), list(range(12, 20)))
+        self.assertEqual([a['slot'] for a in rec['agents']], list(range(12, 20)))
+        self.assertEqual([v.ESC_HINTS['esc_extra'](s) for s in range(12, 20)], [v.STRATEGIES[i % 4] for i in range(8)])
+        self.assertTrue(all(a['extra'] for a in rec['agents']))
+        self.assertEqual(rec['escalated_agents'], 8)
+        self.assertEqual(rec['unstarted_agents'], 0)
+        self.assertEqual(v.ELIGIBLE_SLOTS['esc_extra'], 8)
+        self.assertFalse(rec['answered'])
+
+    def test_esc_extra_cancels_on_accept_and_counts_unstarted(self):
+        rec, started = self.run_policy('esc_extra', fast={14}, accept={14})
+        self.assertEqual(rec['selected_slot'], 14)
+        self.assertTrue(rec['solved'])
+        self.assertLessEqual(set(started), set(range(12, 20)))
+        self.assertEqual(rec['cancelled_agents'], len(started) - 1)
+        self.assertEqual(rec['unstarted_agents'], 8 - len(started))
+        self.assertLess(rec['case_seconds'], 1.5)
+
+    def test_esc_extra_keeps_eight_in_flight_two_per_node(self):
+        import threading, time
+        lock, state, nodes = threading.Lock(), dict(now=0, peak=0), {}
+
+        def execute(job, deadline_seconds, cancel=None):
+            with lock:
+                state['now'] += 1
+                state['peak'] = max(state['peak'], state['now'])
+                nodes[job['endpoint']] = nodes.get(job['endpoint'], 0) + 1
+                seed = int(job['command'][job['command'].index('--seed') + 1])
+                state.setdefault('seeds', []).append(seed)
+            time.sleep(.2)
+            with lock:
+                state['now'] -= 1
+            return dict(deadline=False, cancelled=False, returncode=0)
+        plan = dict(PLAN, seed_offsets=dict(esc_extra=1400))
+        with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute_cancellable', execute), \
+                patch.object(v, 'plan_of', lambda p: dict(plan=None, verifier_solved=False, tokens=1, infra=0)):
+            out = Path(d)
+            (out / 'agents').mkdir(); (out / 'extra').mkdir(); (out / 'judges').mkdir()
+            rec = v.run_policy(plan, Path('/src'), out, TASK, 3, 1, 'esc_extra', v.Slots(20))
+        self.assertEqual(state['peak'], 8)
+        self.assertEqual(sorted(nodes.values()), [2, 2, 2, 2])
+        self.assertEqual(sorted(state['seeds']), [3000 + 1400 + s for s in range(12, 20)])
+        self.assertEqual(rec['escalated_agents'], 8)
+
+    def test_per_node_request_cap_is_enforced(self):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            tasks = [dict(id='t0', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7)]
+            (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=tasks)))
+            plan = dict(protocol='swarm-variants-screen-v1', source_revision='x', dataset=str(root / 'data.json'),
+                        dataset_protocol='p', split='evaluation', tasks=1, seeds=[1], policies=['esc_extra'],
+                        concurrent_policy_cases=1, concurrent_requests_per_endpoint=26)
+            (root / 'plan.json').write_text(json.dumps(plan))
+            with patch.object(v, 'validate_source', lambda *a: None), self.assertRaisesRegex(Exception, 'above 25'):
+                v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d])
+            (root / 'plan.json').write_text(json.dumps(dict(plan, concurrent_requests_per_endpoint=25)))
+            with patch.object(v, 'validate_source', lambda *a: None):
+                self.assertEqual(v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d]), 0)
+
     def test_rolling_agent_exception_is_an_infra_fault(self):
         # slot 4 raises at once; 5-7 run until their deadline loop ends; no replacement may start after the fault
         rec, started = self.run_policy('esc_none', fast=set(), accept=set(), boom={4})
@@ -325,6 +387,115 @@ class StrictHardCasesTests(unittest.TestCase):
             self.shc.select([rows, [self.row('a', 1)]], self.EXPECTED)
         with self.assertRaisesRegex(ValueError, 'unexpected'):
             self.shc.select([rows + [self.row('z', 1)]], self.EXPECTED)
+
+
+class JudgeRetryTests(unittest.TestCase):
+    """judge_with_reason with a fake ChatJudge client (no HTTP)."""
+    STREAM = "ConnectionError: server stream error: {'message': 'ServerDisconnectedError: Server disconnected'}"
+
+    def run_judge(self, behaviors):
+        import json, urllib.error
+        import run_judge
+        made = []
+
+        class Fake:
+            def __init__(self, endpoint, model, budget, events, seed):
+                self.budget, self.events, self.seed, self.infra_failures = budget, events, seed, 0
+                self.behavior = behaviors[len(made)]
+                made.append(self)
+
+            def chat_prompt_ids(self, prompt, thinking=True):
+                if self.behavior == 'refused':
+                    raise urllib.error.URLError(ConnectionRefusedError(61, 'Connection refused'))
+                if self.behavior == 'bad_request':
+                    raise urllib.error.HTTPError('u', 400, 'Bad Request', {}, None)
+                return [1, 2, 3]
+
+            def force_ids(self):
+                return [9]
+
+            def complete(self, agent_id, stage, ids, max_tokens, thinking_closed=False):
+                self.budget.reserve(max_tokens)
+                if self.behavior in ('stream', 'mismatch'):
+                    self.infra_failures += 1
+                    self.budget.settle(max_tokens, None if self.behavior == 'stream' else 100)
+                    error = Self.STREAM if self.behavior == 'stream' else 'token id count 99 != reported 100'
+                    return dict(error=error, answer=None, finish_reason=None, token_ids=[])
+                self.budget.settle(max_tokens, 100)
+                return dict(error=None, answer=json.dumps(dict(valid=self.behavior == 'ok_true', reason='r')),
+                            finish_reason='stop', token_ids=[5] * 100)
+        Self = self
+        sleeps = []
+        cand = dict(numbers=[1, 2, 3, 4], target=10, plan={'moves': [{'i': 0, 'j': 1, 'op': '+'}]})
+        with tempfile.TemporaryDirectory() as d, patch.object(run_judge, 'ChatJudge', Fake), \
+                patch.object(v.time, 'sleep', sleeps.append):
+            path = Path(d) / 't-s1-esc_extra-a12.jsonl'
+            try:
+                result = v.judge_with_reason(cand, 'http://e/v1', path, 4242)
+            except Exception as exc:
+                result = exc
+                if isinstance(exc, urllib.error.HTTPError):
+                    exc.close()
+            files = sorted(p.name for p in Path(d).iterdir())
+        return result, made, sleeps, files
+
+    def test_success_is_unchanged(self):
+        res, made, sleeps, files = self.run_judge(['ok_true'])
+        self.assertEqual(res, dict(verdict=True, reason='r', infra=0, tokens=100))
+        self.assertEqual((len(made), sleeps, files), (1, [], ['t-s1-esc_extra-a12.jsonl']))
+
+    def test_stream_error_retried_once_with_same_seed(self):
+        res, made, sleeps, files = self.run_judge(['stream', 'ok_false'])
+        self.assertEqual((res['verdict'], res['infra'], res['retry']), (False, 0, True))
+        self.assertIn('server stream error', res['first_error'])
+        self.assertEqual(res['tokens'], 6144 + 100)
+        self.assertEqual([m.seed for m in made], [4242, 4242])
+        self.assertEqual(sleeps, [v.JUDGE_RETRY_SECONDS])
+        self.assertEqual(files, ['t-s1-esc_extra-a12.jsonl', 't-s1-esc_extra-a12.retry.jsonl'])
+
+    def test_retry_failure_returns_infra(self):
+        res, made, sleeps, _ = self.run_judge(['stream', 'stream'])
+        self.assertEqual((res['verdict'], res['infra'], res['retry'], len(made)), (None, 1, True, 2))
+
+    def test_refused_connection_on_tokenize_is_retried(self):
+        res, made, sleeps, _ = self.run_judge(['refused', 'ok_true'])
+        self.assertEqual((res['verdict'], res['infra'], res['retry'], res['tokens']), (True, 0, True, 100))
+        self.assertIn('Connection refused', res['first_error'])
+
+    def test_refused_twice_raises_as_today(self):
+        res, made, _, _ = self.run_judge(['refused', 'refused'])
+        self.assertIsInstance(res, OSError)
+        self.assertEqual(len(made), 2)
+
+    def test_non_transport_faults_are_not_retried(self):
+        res, made, sleeps, _ = self.run_judge(['mismatch'])
+        self.assertEqual((res['infra'], len(made), sleeps), (1, 1, []))
+        self.assertNotIn('retry', res)
+        res, made, _, _ = self.run_judge(['bad_request'])
+        self.assertIsInstance(res, Exception)
+        self.assertEqual(len(made), 1)
+
+    def test_transport_classifier(self):
+        for e in (self.STREAM, 'ConnectionError: stream ended without finish_reason',
+                  'URLError: <urlopen error [Errno 61] Connection refused>', 'RemoteDisconnected: Remote end closed',
+                  'TimeoutError: timed out', 'HTTPError: HTTP Error 503: Service Unavailable'):
+            self.assertTrue(v.transport_error(e), e)
+        for e in (None, '', 'token id count 3 != reported 4', 'budget_exhausted', 'HTTPError: HTTP Error 400: Bad Request',
+                  'ValueError: bad json'):
+            self.assertFalse(v.transport_error(e), e)
+
+    def test_agent_records_judge_retry(self):
+        def judge(cand, endpoint, events_path, seed):
+            return dict(verdict=True, reason='', infra=0, tokens=7, retry=True, first_error=self.STREAM)
+        with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute', lambda job, deadline_seconds: dict(deadline=False)), \
+                patch.object(v, 'plan_of', lambda p: dict(plan={'moves': [1]}, verifier_solved=True, tokens=1, infra=0)), \
+                patch.object(v, 'judge_with_reason', judge):
+            out = Path(d)
+            (out / 'agents').mkdir(); (out / 'extra').mkdir(); (out / 'judges').mkdir()
+            rec = v.run_policy(PLAN, Path('/src'), out, TASK, 1, 0, 'deep4', v.Slots(8))
+        self.assertTrue(all(a['judge_retry'] for a in rec['agents']))
+        self.assertEqual(rec['agents'][0]['judge_first_error'], self.STREAM)
+        self.assertEqual(rec['infra'], 0)
 
 
 class ExecuteCancellableTests(unittest.TestCase):
