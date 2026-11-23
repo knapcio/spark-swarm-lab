@@ -184,6 +184,13 @@ Fable idea 1, plans 205783b frozen before seeds 13-15. Early stop in every arm. 
 flight) 71, 1 wrong, -52 % tokens, 1.01 vs 1.52 Wh per solved, R2 vs S +6/-0 (p = 0.031). Fewer racing agents means a
 fast, lucky public-test pass wins less often. **R2 is the coding default.**
 
+## 2026-11-23 (13): loop watchdog ([swarm-loop-hard15-v1](swarm-loop-hard15-v1/REPORT.md))
+
+Fable idea 3, plans 9ffceec before hard-v15 (6919fe4). D (roll12strategy) 85/96 vs L (+ zlib loop watchdog) 83/96, 0 wrong
+in both; 102 streams stopped, 0 of their forced answers accepted. Frozen rule: adopt (L/D tokens 0.918), but that ratio
+charges D a wasted infra attempt; without it 0.966. Offline replay on 708 looping streams from 13 earlier arms: 9 (1.3 %)
+escaped the loop and solved their case, at any loop length. **Watchdog not adopted** (quality first; ~3 % tokens).
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load

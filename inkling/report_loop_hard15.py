@@ -71,8 +71,34 @@ def main():
         md += (f"\nL vs D paired: +{p['wins']} / -{p['losses']} (p = {p['p']:.3g}); L/D tokens {res['ratios']['tokens']}, wall {res['ratios']['wall']}.\n\n"
                'Frozen decision rule: ' + ', '.join(f'{k} = {v}' for k, v in res['decision'].items()) + '\n'
                + AMENDMENT)
-        verdict = ('**The loop watchdog becomes part of the default.**' if res['decision']['adopt_watchdog'] else
-                   '**The default stays without the watchdog** (' + ', '.join(k for k, v in res['decision'].items() if v is False) + ').')
+        def gen(run):
+            acc = json.loads((RUNS / run / 'arm_accounting.json').read_text())
+            return sum(acc['after']['nodes'][n]['generation_tokens'] - acc['before']['nodes'][n]['generation_tokens'] for n in acc['after']['nodes'])
+        d_segments = [ARMS[0][1]] + [f'{ARMS[0][1]}-resume{i}' for i in range(1, 10) if (RUNS / f'{ARMS[0][1]}-resume{i}' / 'arm_accounting.json').exists()]
+        d_total, l_total = sum(gen(x) for x in d_segments), gen(ARMS[1][1])
+        d_without_waste = gen(d_segments[0])  # the faulted attempt ran its case to the end (all agents finished, one judge lost)
+        res['ratios']['tokens_excluding_infra_waste'] = round(l_total / d_without_waste, 3)
+        rp = json.loads((OUT / 'replay.json').read_text()) if (OUT / 'replay.json').exists() else None
+        res['replay'] = rp and {k: v for k, v in rp.items() if k != 'arms'}
+        res['mechanism_verdict'] = 'keep default without watchdog'
+        frozen = ('D wall, energy and tokens include the resume segment (one case, 25 min). ' + 'Frozen rule outcome: adopt.' if res['decision']['adopt_watchdog'] else 'D wall, energy and tokens include the resume segment (one case, 25 min). Frozen rule outcome: keep.')
+        verdict = f"""{frozen}
+
+**Mechanism.** In L the watchdog stopped {res['loops']['L']['loop_stops']} thinking streams; all {res['loops']['L']['plans_at_stop']} forced answers were rejected by the judge
+(0 accepted), so a stopped agent is simply replaced earlier. The tokens it saves are the rest of each loop:
+{rp['arms'][ARMS[0][1]]['chars_after_stop'] / rp['arms'][ARMS[0][1]]['chars'] * 100:.1f} % of D's completed plan-stream characters lie after the point where the watchdog would have stopped them.
+Measured L/D server tokens: {res['ratios']['tokens']} with the frozen accounting, which charges D the wasted infra attempt of
+eva-h247d88a63ba s1 plus its rerun; without that waste {res['ratios']['tokens_excluding_infra_waste']} (-{(1 - res['ratios']['tokens_excluding_infra_waste']) * 100:.1f} %),
+which would not pass the 0.95 gate. The accuracy side: offline replay of the same detector on {rp['would_stop']} streams from 13 arms
+that ran without it (`inkling/replay_loop_watchdog.py`, [replay.json](replay.json)) finds {rp['recovered']} streams that met the stop
+criterion and later produced the accepted, correct answer of their case ({rp['recovered'] / rp['would_stop'] * 100:.1f} %, about
+{rp['recovered'] / 13:.1f} solved cases per 96). They had looped for {rp['recovered_longest_runs'][0]}-{rp['recovered_longest_runs'][-1]} consecutive checks, no differently from
+streams that never recovered, so no longer trigger spares them ({rp['by_trigger']['20']['recoveries_lost']} of {rp['recovered']} still lost at 20 checks). In this
+study 2 of L's 3 lost cases are cases whose D-winning agent looped in L and was stopped.
+
+**Verdict (mechanism, owner priority quality): the default stays without the watchdog.** It removes a small but real
+source of solved cases for a net token saving of about {(1 - res['ratios']['tokens_excluding_infra_waste']) * 100:.0f} %; the frozen rule passed only with the infra
+waste counted on D's side."""
         (OUT / 'REPORT.md').write_text(f"""# Loop watchdog (swarm-loop-hard15-v1)
 
 Plans `SWARM_LOOP_HARD15_D_PLAN.json` and `SWARM_LOOP_HARD15_L_PLAN.json` were frozen and pushed before the fresh corpus
