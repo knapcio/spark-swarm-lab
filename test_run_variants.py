@@ -346,41 +346,75 @@ class CaseListTests(unittest.TestCase):
         with self.assertRaisesRegex(Exception, 'does not match'):
             self.plan_mode([['t0', 1], ['t9', 1]])
 
-    def plan_main(self, rows=None, resume_rows=None, first_offset=15400, run_offset=None, paired_extra=None, **changes):
-        """An esc plan on tasks t0, t1 (seed 1) paired with a recorded roll12strategy run 'runs/first'
-        (default: t0 abstained, t1 answered)."""
-        import json
+    def plan_main(self, rows=None, resume_rows=None, first_offset=15400, run_offset=None, paired_extra=None,
+                  base_policy='roll12strategy', first_seeds=(1,), admission_plan=None, run_plan_changes=None, **changes):
+        """An esc plan on tasks t0, t1 paired with a recorded base-policy run 'runs/first' of plan file first.json
+        (default: seed 1 only, t0 abstained, t1 answered; extra seeds answered)."""
+        import hashlib, json
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             tasks = [dict(id=f't{i}', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7) for i in range(2)]
             (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=tasks)))
-            common = dict(dataset=str(root / 'data.json'), dataset_protocol='p', split='evaluation', tasks=2, seeds=[1],
-                          agent_variant='xl_forced_original')
-            first = dict(common, study='first', policies=['roll12strategy'], seed_offsets=dict(roll12strategy=first_offset))
+            common = dict(dataset=str(root / 'data.json'), dataset_protocol='p', split='evaluation', tasks=2,
+                          seeds=list(first_seeds), agent_variant='xl_forced_original')
+            first = dict(common, study='first', policies=[base_policy], seed_offsets={base_policy: first_offset})
             (root / 'first.json').write_text(json.dumps(first))
+            (root / 'copy.json').write_text(json.dumps(first))
             run = root / 'runs' / 'first'
             run.mkdir(parents=True)
-            run_plan = dict(first, seed_offsets=dict(roll12strategy=run_offset or first_offset))
-            (run / 'metadata.json').write_text(json.dumps(dict(protocol=run_plan, resume=None)))
-            row = lambda t, **kw: dict(dict(task_id=t, seed=1, policy='roll12strategy', answered=False, infra=0), **kw)
-            rows = rows or [row('t0'), row('t1', answered=True)]
+            run_plan = dict(first, seed_offsets={base_policy: run_offset or first_offset}, **(run_plan_changes or {}))
+            meta = dict(protocol=run_plan, resume=None, policies=[base_policy],
+                        admission=dict(plan=admission_plan or str(root / 'first.json')))
+            (run / 'metadata.json').write_text(json.dumps(meta))
+            row = lambda t, seed=1, **kw: dict(dict(task_id=t, seed=seed, policy=base_policy, answered=False, infra=0), **kw)
+            rows = rows or [row('t0'), row('t1', answered=True)] + [row(t, s, answered=True) for s in first_seeds[1:]
+                                                                    for t in ('t0', 't1')]
             (run / 'cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
             if resume_rows:
                 seg = root / 'runs' / 'first-resume1'
                 seg.mkdir()
-                (seg / 'metadata.json').write_text(json.dumps(dict(protocol=run_plan, resume=dict(resumed_from=str(run)))))
+                (seg / 'metadata.json').write_text(json.dumps(dict(meta, resume=dict(resumed_from=str(run)))))
                 (seg / 'cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in resume_rows))
             (root / 'cases.json').write_text(json.dumps(dict(cases=changes.pop('cases', [['t0', 1]]))))
+            paired = dict(plan=str(root / 'first.json'), policy=base_policy, run=str(run),
+                          plan_sha256=hashlib.sha256((root / 'first.json').read_bytes()).hexdigest())
+            paired.update(paired_extra or {})
             plan = dict(common, protocol='swarm-variants-screen-v1', source_revision='x', policies=['esc_extra'],
                         seed_offsets=dict(esc_extra=15400), case_list=str(root / 'cases.json'), concurrent_policy_cases=1,
-                        concurrent_requests_per_endpoint=20,
-                        paired_with=dict(plan=str(root / 'first.json'), policy='roll12strategy', run=str(run),
-                                         **(paired_extra or {})))
+                        concurrent_requests_per_endpoint=20, paired_with=paired)
             plan.update(changes)
+            if plan.get('paired_with') == 'COPY':
+                plan['paired_with'] = dict(paired, plan=str(root / 'copy.json'))
             plan = {k: x for k, x in plan.items() if x is not None}
             (root / 'plan.json').write_text(json.dumps(plan))
             with patch.object(v, 'validate_source', lambda *a: None):
                 return v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d])
+
+    def test_esc_extra_pairs_only_with_the_default_policy(self):
+        with self.assertRaisesRegex(Exception, 'is not the default roll12strategy'):
+            self.plan_main(base_policy='roll8strategy')
+        # an explicit restatement in paired_with.default_policy allows another baseline whose run used it
+        self.assertEqual(self.plan_main(base_policy='roll8strategy', paired_extra=dict(default_policy='roll8strategy')), 0)
+
+    def test_esc_extra_requires_the_exact_paired_plan_file(self):
+        with self.assertRaisesRegex(Exception, 'plan_sha256 does not match'):
+            self.plan_main(paired_extra=dict(plan_sha256='0' * 64))
+        with self.assertRaisesRegex(Exception, 'plan_sha256 does not match'):
+            self.plan_main(paired_extra=dict(plan_sha256=None))
+        # the run was admitted with another plan file name (same content) -> refused
+        with self.assertRaisesRegex(Exception, 'was not run from the paired plan file'):
+            self.plan_main(admission_plan='/elsewhere/copy.json')
+        with self.assertRaisesRegex(Exception, 'was not run from the paired plan file'):
+            self.plan_main(paired_with='COPY')
+        with self.assertRaisesRegex(Exception, 'ran a different version of the paired plan'):
+            self.plan_main(run_plan_changes=dict(note='amended'))
+
+    def test_esc_extra_requires_identical_seed_and_task_order(self):
+        self.assertEqual(self.plan_main(first_seeds=(1, 2), seeds=[1, 2]), 0)
+        with self.assertRaisesRegex(Exception, 'seed order differs'):
+            self.plan_main(first_seeds=(1, 2), seeds=[2, 1])
+        with self.assertRaisesRegex(Exception, 'seed order differs'):
+            self.plan_main(first_seeds=(1, 2), seeds=[1])
 
     def test_paired_esc_plan_is_accepted(self):
         self.assertEqual(self.plan_main(), 0)
@@ -439,7 +473,7 @@ class CaseListTests(unittest.TestCase):
             self.plan_main(rows=[row('t0', infra=1), row('t1', answered=True)])
 
     def test_paired_run_must_come_from_the_paired_settings(self):
-        with self.assertRaisesRegex(Exception, 'paired run was not made'):
+        with self.assertRaisesRegex(Exception, 'ran a different version of the paired plan'):
             self.plan_main(run_offset=9999)
 
     def test_paired_with_extra_values_must_agree_with_its_plan(self):
@@ -502,7 +536,7 @@ class JudgeRetryTests(unittest.TestCase):
     """judge_with_reason with a fake ChatJudge client (no HTTP)."""
     STREAM = "ConnectionError: server stream error: {'message': 'ServerDisconnectedError: Server disconnected'}"
 
-    def run_judge(self, behaviors, precreate_retry=False):
+    def run_judge(self, behaviors, precreate_retry=False, failing_trace=None):
         import json, urllib.error
         import run_judge
         made, http_errors = [], []
@@ -548,8 +582,20 @@ class JudgeRetryTests(unittest.TestCase):
                             finish_reason='stop', token_ids=[5] * 100)
         sleeps = []
         cand = dict(numbers=[1, 2, 3, 4], target=10, plan={'moves': [{'i': 0, 'j': 1, 'op': '+'}]})
+        real_events = run_judge.Events
+
+        class FlakyEvents(real_events):  # OSError on write or close of the chosen trace
+            def emit(self, kind, **fields):
+                if failing_trace and failing_trace[1] == 'write' and str(self.path).endswith(failing_trace[0]):
+                    raise OSError(28, 'No space left on device')
+                return super().emit(kind, **fields)
+
+            def close(self):
+                super().close()
+                if failing_trace and failing_trace[1] == 'close' and str(self.path).endswith(failing_trace[0]):
+                    raise OSError(5, 'Input/output error')
         with tempfile.TemporaryDirectory() as d, patch.object(run_judge, 'ChatJudge', Fake), \
-                patch.object(v.time, 'sleep', sleeps.append):
+                patch.object(v.time, 'sleep', sleeps.append), patch.object(run_judge, 'Events', FlakyEvents):
             path = Path(d) / 't-s1-esc_extra-a12.jsonl'
             if precreate_retry:
                 path.with_suffix('.retry.jsonl').write_text('')
@@ -608,6 +654,22 @@ class JudgeRetryTests(unittest.TestCase):
         self.assertEqual(len(made), 2)
         self.assertEqual((res.record['tokens'], res.record['infra'], res.record['retry']), (6144, 1, True))
         self.assertEqual([a['raised'] for a in res.record['judge_attempts']], [True, True])
+
+    def test_retry_trace_write_or_close_failure_keeps_both_attempts(self):
+        for mode in ('write', 'close'):
+            res, made, sleeps, _ = self.run_judge(['stream', 'ok_true'], failing_trace=('.retry.jsonl', mode))
+            self.assertIsInstance(res, dict, mode)  # nothing escapes
+            self.assertEqual((res['verdict'], res['infra'], res['retry'], res['tokens']), (True, 1, True, 6144 + 100), mode)
+            self.assertIn('OSError', res['trace_error'], mode)
+            self.assertEqual([(a['tokens'], a['infra']) for a in res['judge_attempts']], [(6144, 1), (100, 1)], mode)
+            self.assertIn('trace_error', res['judge_attempts'][1], mode)
+            self.assertEqual(res['first_error'], self.STREAM, mode)
+
+    def test_first_trace_failure_is_infra_and_not_retried(self):
+        res, made, sleeps, _ = self.run_judge(['ok_true'], failing_trace=('a12.jsonl', 'close'))
+        self.assertEqual((res['verdict'], res['infra'], len(made), sleeps), (True, 1, 1, []))
+        self.assertIn('Input/output error', res['trace_error'])
+        self.assertEqual(len(res['judge_attempts']), 1)
 
     def test_malformed_tokenize_response_is_not_retried(self):
         res, made, sleeps, _ = self.run_judge(['malformed'])

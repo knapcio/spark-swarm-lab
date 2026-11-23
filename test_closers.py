@@ -5,6 +5,7 @@ import json
 import tempfile
 import threading
 import time
+import re
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -59,20 +60,58 @@ class StatementTests(unittest.TestCase):
             self.assertEqual(self.lines(text), [], text)
         # kept: separate preceding material, list numbering, unmatched outer parens, fractions written in full
         self.assertEqual(self.lines('1/2*4 = 2'), ['1 / 2 * 4 = 2'])
-        self.assertEqual(self.lines('(3+4) 5*2 = 10'), ['5 * 2 = 10'])
+        self.assertEqual(self.lines('(3+4) 5*2 = 10'), [])
         self.assertEqual(self.lines('is:25*4 = 100'), ['25 * 4 = 100'])
 
     def test_fraction_right_side_rejected_but_fraction_left_ok(self):
         self.assertEqual(self.lines('825/2 = 412 1/2'), [])
         self.assertEqual(self.lines('3/4*8 = 6'), ['3 / 4 * 8 = 6'])
 
-    def test_adjacent_numbers_cut_to_expression(self):
-        self.assertEqual(self.lines('numbers 6 25*4 = 100'), ['25 * 4 = 100'])
+    def test_adjacent_numbers_drop_the_statement_list_markers_do_not(self):
+        self.assertEqual(self.lines('numbers 6 25*4 = 100'), [])  # '6 25' may be one digit-grouped number
         self.assertEqual(self.lines('Step 2: 25*4 = 100'), ['25 * 4 = 100'])
         self.assertEqual(self.lines('3. 25*4 = 100'), ['25 * 4 = 100'])
+        self.assertEqual(self.lines('1) 10/5 = 2 (indices 5 and 1)'), ['10 / 5 = 2'])
+        self.assertEqual(self.lines('so 1, 250*4 = 1000'), [])
 
-    def test_thousands_separator(self):
-        self.assertEqual(closers.statements('822*75 = 61,650'), [('822 * 75 = 61650', 61650)])
+    def test_digit_groups_and_unicode_digits_drop_the_line(self):
+        for text in ('822*75 = 61,650', '1 250*4 = 5000', '1\u2009250*4 = 5000', '1\u00a0250*4 = 5000', '4*5 = 1 000',
+                     '2*2 = 4²', '4² = 16', 'x₂ = 3*4 = 12', '٣*4 = 12', '3*4 = ١٢', '½*8 = 4', '25  *  4 = 100',
+                     '25*4  = 100', '25*4 =  100', '25\t*4 = 100', '25*4 = 100km', '25*4 = 100é'):
+            self.assertEqual(self.lines(text), [], repr(text))
+        self.assertEqual(self.lines('25 * 4 = 100 and 25 *4 = 100.'), ['25 * 4 = 100', '25 * 4 = 100'])
+
+    def test_fuzz_operands_are_exact_digit_runs_of_the_line(self):
+        import random
+        rng = random.Random(20261123)
+        pieces = ['12', '7', '250', '1', '0', '99', '+', '-', '*', '/', ' x ', '×', '·', '÷', '−', '(', ')', ' ', '  ', '=',
+                  ' = ', '.', ',', '^', '**', '²', '₂', 'e', 'E', '%', '!', '\u2009', '\u00a0', '٣', '½', 'so ', 'Try ',
+                  ': ', '1) ', '\\times', 'abc', '?', '->', '<=', '==']
+        allowed_between = set(' ()+-*/=')
+        checked = 0
+        clean = ['12', '7', '250', '1', '99', '+', '-', '*', '/', ' x ', '×', '(', ')', ' ', '=', ' = ', 'so ', ': ', '1) ']
+        for i in range(20000):
+            # a clean statement-like core, optionally with noise pieces spliced in anywhere
+            core = [rng.choice(['12', '7', '250', '99']), rng.choice(['+', '-', '*', '/', ' x ', ' × ', '·']),
+                    rng.choice(['12', '7', '250', '99', '(1+7)']), rng.choice(['=', ' = ']), rng.choice(['19', '5', '1750'])]
+            for _ in range(rng.randint(0, 4)):
+                core.insert(rng.randint(0, len(core)), rng.choice(pieces if i % 2 else clean))
+            line = ''.join(core)
+            out = closers.statements(line)
+            norm = closers.normalize(line)
+            runs = [(m.group(), m.start(), m.end()) for m in re.finditer(r'[0-9]+', norm)]
+            for eq, value in out:
+                checked += 1
+                nums = re.findall(r'[0-9]+', eq)
+                self.assertEqual(int(nums[-1]), value)
+                ok = any([r[0] for r in runs[k:k + len(nums)]] == nums and
+                         all(set(norm[runs[i][2]:runs[i + 1][1]]) <= allowed_between for i in range(k, k + len(nums) - 1))
+                         for k in range(len(runs) - len(nums) + 1))
+                self.assertTrue(ok, (line, eq))
+                for n in nums:  # every operand is a maximal ASCII digit run of the ORIGINAL line
+                    self.assertRegex(line, r'(?<![0-9])' + n + r'(?![0-9])', (line, eq))
+                self.assertFalse(any(c in line for c in '^²₂٣½%!'), (line, eq))
+        self.assertGreater(checked, 200)  # the generator does produce statements
 
     def test_leads_tiers_dedup_and_limit(self):
         text = ('Hmm 55*15=825. Also 55 * 15 = 825 again. target? 800+22 = 822. 83*12=996 no. '
@@ -282,9 +321,21 @@ class AskWantedRetryTests(unittest.TestCase):
 
 
 class AskWantedFaultTests(unittest.TestCase):
-    def ask(self, behaviors):
+    def ask(self, behaviors, failing_trace=None):
         import run_judge
         attempts = []
+        real_events = run_judge.Events
+
+        class FlakyEvents(real_events):
+            def emit(self, kind, **fields):
+                if failing_trace and failing_trace[1] == 'write' and str(self.path).endswith(failing_trace[0]):
+                    raise OSError(28, 'No space left on device')
+                return super().emit(kind, **fields)
+
+            def close(self):
+                super().close()
+                if failing_trace and failing_trace[1] == 'close' and str(self.path).endswith(failing_trace[0]):
+                    raise OSError(5, 'Input/output error')
 
         class Client:
             def __init__(self, endpoint, model, budget, events, seed):
@@ -311,9 +362,18 @@ class AskWantedFaultTests(unittest.TestCase):
         class Forced:
             ForcedClient = Client
         with tempfile.TemporaryDirectory() as d, patch.object(run_judge, '_forced72', lambda: Forced), \
-                patch.object(v.time, 'sleep', lambda s: None):
+                patch.object(v.time, 'sleep', lambda s: None), patch.object(run_judge, 'Events', FlakyEvents):
             res = closers.ask_wanted('http://e/v1', Path(d) / 'w.jsonl', 77, [3], 822)
         return res, attempts
+
+    def test_retry_trace_failure_keeps_both_attempts(self):
+        for mode in ('write', 'close'):
+            res, attempts = self.ask(['stream', 'ok'], failing_trace=('.retry.jsonl', mode))
+            self.assertEqual(len(attempts), 2, mode)
+            self.assertEqual((res['infra'], res['retry'], res['tokens']), (1, True, closers.WANTED_MAX_TOKENS + 20), mode)
+            self.assertIn('OSError', res['trace_error'], mode)
+            self.assertEqual([a['tokens'] for a in res['attempts']], [closers.WANTED_MAX_TOKENS, 20], mode)
+            self.assertIn('Server disconnected', res['first_error'], mode)
 
     def test_retry_that_raises_keeps_first_charge_and_error(self):
         res, attempts = self.ask(['stream', 'timeout'])

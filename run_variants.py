@@ -69,7 +69,8 @@ ESC_HINTS = {'esc_none': lambda slot: '', 'esc_strategy': lambda slot: STRATEGIE
 # escalation-only arms: (first slot, agents in flight, end slot exclusive); default slots 4-11, 4 in flight
 ESC_SHAPE = {'esc_extra': (12, 8, 20)}
 ESC_DEFAULT_SHAPE = (4, 4, 12)
-PAIRED_ADDONS = {'esc_extra'}  # add-on arms on a recorded default arm's clean abstentions (check_pairing)
+PAIRED_ADDONS = {'esc_extra'}
+ADDON_DEFAULT_POLICY = 'roll12strategy'  # the arithmetic default an add-on pairs with unless paired_with restates another  # add-on arms on a recorded default arm's clean abstentions (check_pairing)
 MAX_REQUESTS_PER_NODE = 25  # fleet rule: never more than 25 concurrent requests on one Spark
 # rolling policies: slots that may launch per case (cap - first slot); unstarted_agents counts the ones that never did
 ELIGIBLE_SLOTS = dict(roll8cancel=8, roll8repair=8, roll8strategy=8, roll3to8=8, roll3strategy=8, roll12strategy=12,
@@ -124,11 +125,43 @@ def judge_with_reason(candidate, endpoint, events_path, seed):
     out = dict(verdict=last['verdict'], reason=last['reason'], infra=last['infra'], tokens=sum(a['tokens'] for a in attempts))
     if len(attempts) > 1:
         out.update(retry=True, first_error=attempts[0]['error'])
+    if any(a.get('trace_error') for a in attempts):
+        out['trace_error'] = next(a['trace_error'] for a in attempts if a.get('trace_error'))
     if len(attempts) > 1 or any(a['infra'] for a in attempts):
-        out['judge_attempts'] = [{k: a[k] for k in ('tokens', 'infra', 'error', 'raised', 'verdict', 'retryable')}
+        out['judge_attempts'] = [dict({k: a[k] for k in ('tokens', 'infra', 'error', 'raised', 'verdict', 'retryable')},
+                                      **({'trace_error': a['trace_error']} if a.get('trace_error') else {}))
                                  for a in attempts]
     if last['raised']:
         raise JudgeFault(last['error'], out)
+    return out
+
+
+class GuardedEvents:
+    """run_judge.Events whose writes and close never raise: the first OSError is kept as .error (trace_error), so a
+    failing trace never drops an attempt's accounting (which is also held in memory)."""
+    def __init__(self, path, method):
+        self.error = None
+        self.inner = run_judge.Events(path, method)  # opening may raise; callers record that as a failed attempt
+        self.path = self.inner.path
+
+    def emit(self, kind, **fields):
+        try:
+            return self.inner.emit(kind, **fields)
+        except (OSError, ValueError) as exc:  # ValueError: write to a closed file
+            self.error = self.error or f'{type(exc).__name__}: {exc}'[:300]
+            return None
+
+    def close(self):
+        try:
+            self.inner.close()
+        except (OSError, ValueError) as exc:
+            self.error = self.error or f'{type(exc).__name__}: {exc}'[:300]
+
+
+def with_trace_error(out, events):
+    """A trace that could not be written is an infra fault of its attempt (never retried); accounting is kept."""
+    if events.error:
+        out.update(trace_error=events.error, infra=out['infra'] + 1, retryable=False)
     return out
 
 
@@ -140,50 +173,50 @@ def raised_is_retryable(exc):
 
 def judge_once(candidate, endpoint, events_path, seed):
     """One attempt of the thinking judge (same prompt and budgets as before). Never raises: an exception (the trace
-    cannot be opened, /tokenize refused after the first completion, ...) is recorded with the tokens already charged.
-    Returns verdict, reason, infra, tokens, error (first transport-loss error, else first error), raised, retryable."""
+    cannot be opened or written, /tokenize refused after the first completion, ...) is recorded with the tokens already
+    charged. Returns verdict, reason, infra, tokens, error (first transport-loss error, else first error), raised,
+    retryable and, if the trace failed, trace_error."""
     try:
-        events = run_judge.Events(events_path, 'judge_reason')
+        events = GuardedEvents(events_path, 'judge_reason')
     except Exception as exc:  # nothing was sent; the attempt is an infra fault held in memory
         return dict(verdict=None, reason='', infra=1, tokens=0, error=f'{type(exc).__name__}: {exc}'[:300], raised=True,
                     retryable=False)
     errors, client = [], None
     try:
-        try:
-            client = run_judge.ChatJudge(endpoint, 'nemotron-lightning', run_judge.Budget(2, 8192), events, seed)
-            prompt = run_judge.judge_prompt(candidate['numbers'], candidate['target'], candidate['plan'])
-            require(prompt.endswith(JUDGE_TAIL), 'judge prompt changed')
-            prompt = prompt[:-len(JUDGE_TAIL)] + REASON_TAIL
-            ids = client.chat_prompt_ids(prompt, thinking=True)
-            first = client.complete(0, 'judge', ids, 6144)
-            errors.append(first['error'])
-            answer = first['answer']
-            if answer is None and first['finish_reason'] == 'length' and first['error'] is None:
-                second = client.complete(0, 'judge_forced', ids + first['token_ids'] + client.force_ids(),
-                                         8192 - client.budget.snapshot()['completion_tokens_charged'], thinking_closed=True)
-                errors.append(second['error'])
-                answer = second['answer']
-        except Exception as exc:
-            error = f'{type(exc).__name__}: {exc}'[:300]
-            out = dict(verdict=None, reason='', infra=(client.infra_failures if client else 0) + 1,
-                       tokens=client.budget.snapshot()['completion_tokens_charged'] if client else 0)
-            events.emit('judge_end', error=error, **out)
-            return dict(out, error=error, raised=True, retryable=raised_is_retryable(exc))
-        verdict, reason = None, ''
-        try:
-            value = json.loads((answer or '').strip().strip('`').removeprefix('json').strip())
-            if isinstance(value, dict) and isinstance(value.get('valid'), bool):
-                verdict, reason = value['valid'], str(value.get('reason', ''))[:300]
-        except ValueError:
-            pass
-        out = dict(verdict=verdict, reason=reason, infra=client.infra_failures,
-                   tokens=client.budget.snapshot()['completion_tokens_charged'])
-        events.emit('judge_end', **out)
-        errors = [str(e)[:300] for e in errors if e]
-        error = next((e for e in errors if transport_error(e)), errors[0] if errors else None)
-        return dict(out, error=error, raised=False, retryable=transport_error(error))
-    finally:
+        client = run_judge.ChatJudge(endpoint, 'nemotron-lightning', run_judge.Budget(2, 8192), events, seed)
+        prompt = run_judge.judge_prompt(candidate['numbers'], candidate['target'], candidate['plan'])
+        require(prompt.endswith(JUDGE_TAIL), 'judge prompt changed')
+        prompt = prompt[:-len(JUDGE_TAIL)] + REASON_TAIL
+        ids = client.chat_prompt_ids(prompt, thinking=True)
+        first = client.complete(0, 'judge', ids, 6144)
+        errors.append(first['error'])
+        answer = first['answer']
+        if answer is None and first['finish_reason'] == 'length' and first['error'] is None:
+            second = client.complete(0, 'judge_forced', ids + first['token_ids'] + client.force_ids(),
+                                     8192 - client.budget.snapshot()['completion_tokens_charged'], thinking_closed=True)
+            errors.append(second['error'])
+            answer = second['answer']
+    except Exception as exc:
+        error = f'{type(exc).__name__}: {exc}'[:300]
+        out = dict(verdict=None, reason='', infra=(client.infra_failures if client else 0) + 1,
+                   tokens=client.budget.snapshot()['completion_tokens_charged'] if client else 0)
+        events.emit('judge_end', error=error, **out)
         events.close()
+        return with_trace_error(dict(out, error=error, raised=True, retryable=raised_is_retryable(exc)), events)
+    verdict, reason = None, ''
+    try:
+        value = json.loads((answer or '').strip().strip('`').removeprefix('json').strip())
+        if isinstance(value, dict) and isinstance(value.get('valid'), bool):
+            verdict, reason = value['valid'], str(value.get('reason', ''))[:300]
+    except ValueError:
+        pass
+    out = dict(verdict=verdict, reason=reason, infra=client.infra_failures,
+               tokens=client.budget.snapshot()['completion_tokens_charged'])
+    events.emit('judge_end', **out)
+    events.close()
+    errors = [str(e)[:300] for e in errors if e]
+    error = next((e for e in errors if transport_error(e)), errors[0] if errors else None)
+    return with_trace_error(dict(out, error=error, raised=False, retryable=transport_error(error)), events)
 
 
 def judge_fields(j):
@@ -194,6 +227,8 @@ def judge_fields(j):
         f['judge_first_error'] = j['first_error']
     if 'judge_attempts' in j:
         f['judge_attempts'] = j['judge_attempts']
+    if j.get('trace_error'):
+        f['judge_trace_error'] = j['trace_error']
     return f
 
 
@@ -600,16 +635,44 @@ def check_pairing(plan, policies, root=HERE):
         for pol in policies:
             require(plan['seed_offsets'][pol] == expected['seed_offset'], f'seed offset of {pol} differs from paired_with')
     if addons:
-        arm = arm_latest(root / paired['run'], root, policy=paired['policy'])
-        require(arm['plan'].get('agent_variant') == expected['agent_variant']
-                and arm['plan'].get('seed_offsets', {}).get(paired['policy']) == expected['seed_offset'],
-                'paired run was not made with the paired plan settings')
-        require(not arm['unresolved'], f"paired run has unresolved infra cases: {arm['unresolved'][:3]}")
-        abstained = {k for k in arm['clean'] if not arm['latest'][k][1]['answered']}
-        listed = [(c[0], c[1]) for c in read(root / plan['case_list'])['cases']]
-        require(len(set(listed)) == len(listed) and set(listed) == abstained,
-                f'case_list is not exactly the clean abstentions of the paired run ({len(set(listed))} listed, '
-                f'{len(abstained)} abstained)')
+        check_addon_run(plan, paired, expected, root)
+
+
+def _resolve(path, root):
+    path = Path(path)
+    return (path if path.is_absolute() else root / path).resolve()
+
+
+def check_addon_run(plan, paired, expected, root=HERE):
+    """esc_extra pairing: the paired policy is the default (ADDON_DEFAULT_POLICY) unless paired_with.default_policy
+    restates it explicitly; paired_with.plan_sha256 pins the paired plan file; the run (all its segments) ran exactly
+    that plan file (admission path, plan content) with only that policy; the add-on uses the same dataset, task order
+    and seed order (identical case indices); the case_list is exactly the run's clean abstentions."""
+    default = paired.get('default_policy', ADDON_DEFAULT_POLICY)
+    require(paired['policy'] == default, f"paired policy {paired['policy']} is not the default {default}")
+    plan_file = _resolve(paired['plan'], root)
+    require(paired.get('plan_sha256') == sha(plan_file), 'paired_with.plan_sha256 does not match the paired plan file')
+    other = read(plan_file)
+    arm = arm_latest(root / paired['run'], root, policy=paired['policy'])
+    for seg in arm['segments']:
+        meta = read(seg / 'metadata.json')
+        ran = (meta.get('admission') or {}).get('plan')
+        require(ran is not None and _resolve(ran, root) == plan_file, f'{seg.name} was not run from the paired plan file')
+        require(meta['protocol'] == other, f'{seg.name} ran a different version of the paired plan')
+        require(meta.get('policies') == [paired['policy']], f'{seg.name} did not run only the paired policy')
+    require(arm['plan'].get('agent_variant') == expected['agent_variant']
+            and arm['plan'].get('seed_offsets', {}).get(paired['policy']) == expected['seed_offset'],
+            'paired run was not made with the paired plan settings')
+    require(plan['dataset'] == other['dataset'] and plan['seeds'] == other['seeds'],
+            'add-on dataset or seed order differs from the paired plan (case indices would differ)')
+    require([t['id'] for t in plan_tasks(plan, root)] == [t['id'] for t in plan_tasks(other, root)],
+            'add-on task order differs from the paired plan (case indices would differ)')
+    require(not arm['unresolved'], f"paired run has unresolved infra cases: {arm['unresolved'][:3]}")
+    abstained = {k for k in arm['clean'] if not arm['latest'][k][1]['answered']}
+    listed = [(c[0], c[1]) for c in read(root / plan['case_list'])['cases']]
+    require(len(set(listed)) == len(listed) and set(listed) == abstained,
+            f'case_list is not exactly the clean abstentions of the paired run ({len(set(listed))} listed, '
+            f'{len(abstained)} abstained)')
 
 
 def main(argv=None):

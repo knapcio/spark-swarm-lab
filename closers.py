@@ -15,6 +15,7 @@ import json
 import re
 import threading
 import time
+import unicodedata
 from pathlib import Path
 
 import run_judge
@@ -33,18 +34,22 @@ CLOSER_TAIL = ('Check whether one of them can be completed to the target with th
 WANTED_SYSTEM = 'Do the requested arithmetic exactly. Write only the requested lines.'
 
 # ---------------------------------------------------------------- statement extraction (string operations only)
-_OPS = '+-*/'
+# Strict grammar: an expression is ASCII digits, + - * / (after mapping x × · ÷ − and \times/\cdot/\div), parentheses and
+# at most single spaces between tokens, then '=' and one ASCII integer. Every character of that span is consumed by the
+# grammar; anything else that touches it (a sign, decimal point, digit group, power, unicode digit, ...) drops the
+# statement. Lines with powers, exponents, %, !, roots, digit groups or non-ASCII digits are never read.
 _SYMBOLS = str.maketrans({'×': '*', '·': '*', '∗': '*', '⋅': '*', '÷': '/', '−': '-', '–': '-', '—': '-'})
 _LATEX = (('\\times', '*'), ('\\cdot', '*'), ('\\div', '/'))
-_LETTER_X = re.compile(r'(?<=\d)[ \t]*[xX][ \t]*(?=\d)')  # 55 x 15 -> 55*15 (only between two digits)
-# value: an integer (optionally with thousands commas) that is the whole right-hand side: not a decimal, not a
-# fraction (412.5, 825/2, 412 1/2), not the start of a longer expression, not part of a comparison operator
-_RHS = re.compile(r'(?<![<>!=])=(?!=)[ \t]*(\d{1,3}(?:,\d{3})+|\d+)'
-                  r'(?!\d|[.,]\d|[eE][+-]?\d|[ \t]*[-+*/^%!][ \t]*|[ \t]+\d+[ \t]*/[ \t]*\d)')
-# a line holding a power, exponent or scientific number is never read: its equations may not mean what they show
-_UNPARSED_LINE = re.compile(r'\^|\*\*|\d[eE][+-]?\d|\\(?:frac|sqrt|pow)|√|%|!(?!=)')
-_LHS = re.compile(r'[0-9()+\-*/ \t]*$')
-_TOKEN = re.compile(r'\d+|[()+\-*/]')
+_LETTER_X = re.compile(r'(?<=[0-9]) ?[xX] ?(?=[0-9])', re.ASCII)  # 55 x 15 -> 55*15 (only between two digits)
+# value: one ASCII integer that is the whole right-hand side: not a decimal, fraction, digit group, exponent, power,
+# percent or factorial, not glued to a letter or non-ASCII character, not the start of a longer expression
+_RHS = re.compile(r'(?<![<>!=])=(?!=) ?([0-9]+)'
+                  r'(?![0-9A-Za-z_]|[^\x00-\x7f]|[.,][0-9]|[ \t]*[-+*/][ \t]*[0-9(]|[ \t]*[\^%!]|[ \t]+[0-9])', re.ASCII)
+_UNPARSED_LINE = re.compile(r'\^|\*\*|[0-9][eE][+-]?[0-9]|\\(?:frac|sqrt|pow)|√|%|!(?!=)'
+                            r'|[0-9][     -  ][0-9]')
+_LHS = re.compile(r'[0-9()+\-*/ \t]*$', re.ASCII)
+_TOKEN = re.compile(r'[0-9]+|[()+\-*/]', re.ASCII)
+_LIST_MARKER = re.compile(r'[ \t]*[0-9]{1,2}[).][ \t]+', re.ASCII)  # '1) ' / '3. ' at the start of a line
 
 
 def normalize(text):
@@ -54,45 +59,52 @@ def normalize(text):
     return _LETTER_X.sub('*', text.translate(_SYMBOLS))
 
 
+def _unparsed_line(line):
+    if _UNPARSED_LINE.search(line):
+        return True
+    return any(not c.isascii() and (c.isdigit() or c.isnumeric() or unicodedata.category(c) in ('Nd', 'Nl', 'No'))
+               for c in line)
+
+
 def _kind(tok):
     return 'num' if tok.isdigit() else tok if tok in '()' else 'op'
 
 
 _BAD_PAIRS = {('num', 'num'), ('num', '('), ('op', 'op'), ('op', ')'), ('(', 'op'), ('(', ')'), (')', 'num'), (')', '(')}
-# a cut is allowed only where one complete operand ends and a separate expression starts ('6 25*4', '(3+4) 5*2')
-_SAFE_CUTS = {('num', 'num'), (')', 'num')}
-# characters that may touch the start of an expression without being part of it ('$55*15', 'is:25*4', '[3+4')
-_SAFE_PREV = set(' \t=:;"\'[{`$>')  # characters that may touch the expression's first token
-# the nearest non-space character before a space-separated expression: a word, sentence or list punctuation, an arrow
+_SAFE_PREV = set(' \t=:;"\'[{`$>')  # characters that may touch the expression's first character
+# the nearest non-space character before a space-separated expression: a word, punctuation, an arrow
 _SAFE_SPACED = set('=:;"\'[{`$>.,?→⇒')
 
 
 def _expression(left):
-    """The arithmetic expression that ends just left of '=' (tokens only, never evaluated), or None. The expression is
-    never shortened in a way that could change its meaning: a sign, decimal point, digit group, power or any other
-    prefix glued to it (-3+5, 2.5*4, 1,250*4, 2^3*4, 3*-2, 2(3+4), x-3) drops the statement instead of being stripped.
-    Only a separate preceding expression ('6 25*4') or unmatched outer '(' are left out."""
+    """The expression that ends just left of '=' (tokens only, never evaluated), or None. The whole span from its
+    first character to '=' must be consumed by the grammar; the expression is never shortened."""
     m = _LHS.search(left)
-    seg = m.group() if m else ''
-    if '**' in seg:
-        return None  # power, not one of the four operations
-    tokens = _TOKEN.findall(seg)
-    if not tokens:
+    seg = m.group()
+    span = seg.lstrip(' \t')
+    start = len(left) - len(span)  # first character of the expression in `left`
+    core = span.rstrip(' \t')
+    if span[len(core):] not in ('', ' ') or '\t' in core or '  ' in core:
+        return None  # at most single spaces
+    tokens = _TOKEN.findall(core)
+    if not tokens or ''.join(tokens) != core.replace(' ', ''):
         return None
-    start = 0
-    for i in range(1, len(tokens)):  # the last adjacency that cannot occur inside one expression
+    if any(len(t) > 1 and t[0] == '0' for t in tokens):
+        return None  # leading zero: not a plain integer
+    for i in range(1, len(tokens)):  # no cuts: two numbers side by side may be one digit-grouped number
         if (_kind(tokens[i - 1]), _kind(tokens[i])) in _BAD_PAIRS:
-            start = i
-    if start:
-        if (_kind(tokens[start - 1]), _kind(tokens[start])) not in _SAFE_CUTS:
             return None
-    elif m.start() > 0:
-        before = left[:m.start()].rstrip(' \t')
-        if not seg[0].isspace() and left[m.start() - 1] not in _SAFE_PREV:
-            return None  # glued to a decimal point, digit group, letter, '^', ... : the true left operand is unknown
-        if before and not (before[-1].isalpha() or before[-1] in _SAFE_SPACED):
-            return None  # preceded (across spaces) by an operator or symbol this scanner does not parse
-    tokens = tokens[start:]
+    before = left[:start]
+    if before:
+        if start == m.start():  # glued
+            if left[start - 1] not in _SAFE_PREV:
+                return None
+        else:
+            prev = before.rstrip(' \t')
+            if prev and not (prev[-1].isalpha() or prev[-1] in _SAFE_SPACED):
+                return None
+            if prev[-1:] in ('.', ',') and prev[-2:-1].isdigit():
+                return None  # '1, 250*4' / '2. 5*4': possibly one number
     if _kind(tokens[0]) not in ('num', '('):
         return None  # a leading sign or operator belongs to the statement; never strip it
     while tokens[0] == '(' and tokens.count('(') > tokens.count(')'):  # opening paren of an outer group
@@ -118,14 +130,22 @@ def statements(text):
     out = []
     for m in _RHS.finditer(text):
         line_start, line_end = text.rfind('\n', 0, m.start()) + 1, text.find('\n', m.end())
-        if _UNPARSED_LINE.search(text[line_start:None if line_end < 0 else line_end]):
+        if _unparsed_line(text[line_start:None if line_end < 0 else line_end]):
             continue
-        expr = _expression(text[line_start:m.start()].rsplit('=', 1)[-1])
+        left = text[line_start:m.start()]
+        if '=' in left:
+            left = left.rsplit('=', 1)[-1]
+        else:
+            marker = _LIST_MARKER.match(left)
+            if marker:
+                left = left[marker.end():]
+        expr = _expression(left)
         if expr is None:
             continue
-        value = int(m.group(1).replace(',', ''))
-        if value > 0:
-            out.append((f'{expr} = {value}', value))
+        digits = m.group(1)
+        if digits[0] == '0':
+            continue  # zero or a leading zero: not a positive plain integer
+        out.append((f'{expr} = {digits}', int(digits)))
     return out
 
 
@@ -202,35 +222,36 @@ def ask_wanted(endpoint, events_path, seed, numbers, target):
     (attempts; tokens is their sum); a failed last attempt is returned as infra."""
     def once(path):
         try:
-            events = run_judge.Events(path, 'closer_wanted')
+            events = run_variants.GuardedEvents(path, 'closer_wanted')
         except Exception as exc:
             return dict(lines=[], values=[], infra=1, error=f'{type(exc).__name__}: {exc}'[:300], tokens=0, raised=True,
                         retryable=False)
         client = None
         try:
-            try:
-                forced72 = run_judge._forced72()
-                client = forced72.ForcedClient(endpoint, 'nemotron-lightning', run_judge.Budget(1, WANTED_MAX_TOKENS),
-                                               events, seed)
-                messages = [{'role': 'system', 'content': WANTED_SYSTEM},
-                            {'role': 'user', 'content': wanted_prompt(numbers, target)}]
-                with client.post('/tokenize', dict(model=client.model, messages=messages, add_generation_prompt=True,
-                                                   chat_template_kwargs={'enable_thinking': False}), 60) as response:
-                    ids = json.load(response)['tokens']
-                first = client.complete(0, 'wanted', ids, WANTED_MAX_TOKENS, thinking_closed=True)
-                lines, values = parse_wanted(first['text'], numbers, target)
-            except Exception as exc:
-                out = dict(lines=[], values=[], infra=(client.infra_failures if client else 0) + 1,
-                           error=f'{type(exc).__name__}: {exc}'[:300],
-                           tokens=client.budget.snapshot()['completion_tokens_charged'] if client else 0)
-                events.emit('wanted_end', **out)
-                return dict(out, raised=True, retryable=run_variants.raised_is_retryable(exc))
-            out = dict(lines=lines, values=values, infra=client.infra_failures, error=first['error'],
-                       tokens=client.budget.snapshot()['completion_tokens_charged'])
+            forced72 = run_judge._forced72()
+            client = forced72.ForcedClient(endpoint, 'nemotron-lightning', run_judge.Budget(1, WANTED_MAX_TOKENS),
+                                           events, seed)
+            messages = [{'role': 'system', 'content': WANTED_SYSTEM},
+                        {'role': 'user', 'content': wanted_prompt(numbers, target)}]
+            with client.post('/tokenize', dict(model=client.model, messages=messages, add_generation_prompt=True,
+                                               chat_template_kwargs={'enable_thinking': False}), 60) as response:
+                ids = json.load(response)['tokens']
+            first = client.complete(0, 'wanted', ids, WANTED_MAX_TOKENS, thinking_closed=True)
+            lines, values = parse_wanted(first['text'], numbers, target)
+        except Exception as exc:
+            out = dict(lines=[], values=[], infra=(client.infra_failures if client else 0) + 1,
+                       error=f'{type(exc).__name__}: {exc}'[:300],
+                       tokens=client.budget.snapshot()['completion_tokens_charged'] if client else 0)
             events.emit('wanted_end', **out)
-            return dict(out, raised=False, retryable=run_variants.transport_error(first['error']))
-        finally:
             events.close()
+            return run_variants.with_trace_error(dict(out, raised=True, retryable=run_variants.raised_is_retryable(exc)),
+                                                 events)
+        out = dict(lines=lines, values=values, infra=client.infra_failures, error=first['error'],
+                   tokens=client.budget.snapshot()['completion_tokens_charged'])
+        events.emit('wanted_end', **out)
+        events.close()
+        return run_variants.with_trace_error(dict(out, raised=False, retryable=run_variants.transport_error(first['error'])),
+                                             events)
 
     attempts = [once(events_path)]
     if attempts[0]['infra'] and attempts[0]['retryable']:
@@ -239,9 +260,12 @@ def ask_wanted(endpoint, events_path, seed, numbers, target):
     last = attempts[-1]
     out = dict(lines=last['lines'], values=last['values'], infra=last['infra'], error=last['error'],
                tokens=sum(a['tokens'] for a in attempts), retry=len(attempts) > 1,
-               attempts=[{k: a[k] for k in ('tokens', 'infra', 'error', 'raised', 'retryable')} for a in attempts])
+               attempts=[{k: a[k] for k in ('tokens', 'infra', 'error', 'raised', 'retryable', 'trace_error') if k in a}
+                         for a in attempts])
     if len(attempts) > 1:
         out['first_error'] = attempts[0]['error']
+    if any(a.get('trace_error') for a in attempts):
+        out['trace_error'] = next(a['trace_error'] for a in attempts if a.get('trace_error'))
     return out
 
 
