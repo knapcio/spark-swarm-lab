@@ -196,9 +196,12 @@ class RetryTests(unittest.TestCase):
         c, result = self.run_case([disconnect_after('a', [4] * 30), no_usage])
         self.assertTrue(result['solved'])
         end, = self.rows(c, 'request_end')
-        self.assertEqual((end['usage']['completion_tokens'], end['usage']['estimated']), (30, True))
+        self.assertEqual((end['usage']['completion_tokens'], end['usage']['estimated']), (39, True))
+        self.assertEqual(end['usage']['completion_tokens_source'], 'client_observed_ids')
         self.assertEqual(end['attempt_completion_tokens'], [30, 9])
-        self.assertEqual(self.tally(c), 30)
+        self.assertEqual(self.tally(c), 39)  # 30 lost + 9 delivered
+        missing, = self.rows(c, 'usage_missing')
+        self.assertEqual((missing['missing'], missing['observed_completion_tokens']), (['completion_tokens', 'prompt_tokens'], 39))
         self.assertEqual(end['completion_tokens_charged'], f.THINK_CAP + 30)  # unreported delivery: full reservation
         self.assertEqual(c.budget.snapshot()['completion_tokens_charged'], f.THINK_CAP)
 
@@ -217,6 +220,36 @@ class RetryTests(unittest.TestCase):
         self.assertNotIn('attempts', end)
         self.assertNotIn('completion_tokens', end['usage'])  # exactly as without a retry
         self.assertEqual(end['completion_tokens_charged'], f.THINK_CAP)
+
+    def test_trace_write_overrunning_the_wall_limit_aborts_the_dispatch(self):
+        clock = [0.0]
+        fake_time = SimpleNamespace(monotonic=lambda: clock[0], sleep=lambda d: clock.__setitem__(0, clock[0] + d))
+        c = FakeForced([disconnect_after('a', [4] * 3), sse('n</think>' + GOOD, [5], 'stop')])
+        c.retry_delay, c.wall_limit = 1, 5
+        e = engine(c)
+        c.events = e.events
+        emit = c.events.emit
+
+        def slow_emit(kind, **fields):  # the request_retry trace write takes past the wall limit
+            emit(kind, **fields)
+            if kind == 'request_retry':
+                clock[0] += 10
+        c.events.emit = slow_emit
+        with mock.patch.object(f, 'time', fake_time):
+            result = f.run_forced(e, STATE, 'p', 'forced_explicit')
+        self.assertFalse(result['solved'])
+        self.assertEqual((len(c.bodies), c.infra_failures), (1, 1))
+        self.assertEqual(len(self.rows(c, 'request_retry_aborted')), 1)
+        end, = self.rows(c, 'request_end')
+        self.assertNotIn('attempts', end)
+        self.assertEqual(end['completion_tokens_charged'], f.THINK_CAP)
+
+    def test_shim_payload_error_is_retried(self):
+        payload = io.BytesIO(b'data: ' + json.dumps({'error': {'message': 'ClientPayloadError: Response payload is not '
+                                                                          'completed'}}).encode() + b'\n\n')
+        c, result = self.run_case([payload, sse('n</think>' + GOOD, [5], 'stop')])
+        self.assertTrue(result['solved'])
+        self.assertIn('ClientPayloadError', self.rows(c, 'request_retry')[0]['error'])
 
     def test_frames_cut_at_eof_retry_complete_bad_frames_do_not(self):
         head = b'data: ' + json.dumps(dict(choices=[dict(text='x', token_ids=[1], finish_reason=None)])).encode() + b'\n\n'
@@ -239,7 +272,7 @@ class RetryTests(unittest.TestCase):
         self.assertTrue(end['error'].startswith('ConnectionError: server stream error'))
         self.assertFalse(end['response_received'])
         self.assertEqual((end['attempts'], end['completion_tokens_charged']), (2, f.THINK_CAP + 3))
-        self.assertEqual(end['usage']['completion_tokens'], 3)  # the lost attempt reaches the controller tally
+        self.assertEqual(end['usage']['completion_tokens'], 3 + 5)  # observed ids of both attempts reach the tally
         self.assertEqual(c.budget.snapshot()['completion_tokens_charged'], f.THINK_CAP)
 
     def test_socket_loss_and_eof_are_retried(self):
@@ -268,6 +301,7 @@ class RetryTests(unittest.TestCase):
 
     def test_shim_disconnect_names(self):
         for name in ('ServerDisconnectedError: Server disconnected', 'ClientConnectionError: Connection closed',
+                     'ClientPayloadError: Response payload is not completed',
                      'ClientOSError: [Errno 104] Connection reset by peer', 'ConnectionResetError: reset'):
             self.assertTrue(f.shim_disconnect({'message': name}), name)
         for name in ('ServerTimeoutError: Timeout on reading data from socket', 'ConnectionError: upstream HTTP 503: x',

@@ -57,7 +57,7 @@ RETRY_DELAY = 2.0  # one re-dispatch of the same body after an upstream disconne
 # completions()). Only these names mean the upstream connection was lost. Not retried: ServerTimeoutError and other
 # timeouts, plain 'ConnectionError: upstream HTTP <status>' (a server answer with a body) and any SGLang-reported error.
 SHIM_DISCONNECTS = ('ServerDisconnectedError', 'ClientConnectionError', 'ServerConnectionError', 'ClientOSError',
-                    'ClientConnectorError', 'ClientConnectionResetError', 'ConnectionResetError',
+                    'ClientConnectorError', 'ClientConnectionResetError', 'ClientPayloadError', 'ConnectionResetError',
                     'ConnectionRefusedError', 'ConnectionAbortedError', 'BrokenPipeError')
 SOCKET_LOSS = (ConnectionResetError, ConnectionRefusedError, ConnectionAbortedError, BrokenPipeError,
                http.client.IncompleteRead)  # RemoteDisconnected is a ConnectionResetError
@@ -179,16 +179,20 @@ class ForcedClient:
                 elapsed = time.monotonic() - start if not attempts and transport_lost(exc) else None
                 if elapsed is not None and elapsed + self.retry_delay <= self.wall_limit:
                     time.sleep(self.retry_delay)
-                    if time.monotonic() - start <= self.wall_limit:  # never dispatch past the wall limit
+                    if time.monotonic() - start <= self.wall_limit:
                         # Upstream lost: send the same body (same seed) once more; the lost attempt is charged below.
-                        attempts.append(len(token_ids))
                         self.events.emit('request_retry', request_id=request_id, agent_id=agent_id, stage=stage,
                                          attempt=2, error=f'{type(exc).__name__}: {str(exc)[:300]}',
                                          lost_completion_tokens=len(token_ids),
                                          lost_completion_tokens_is_lower_bound=True, lost_text_chars=len(text),
                                          elapsed_ms=round(elapsed * 1000, 2), retry_delay_s=self.retry_delay,
                                          request_body_sha256=wire_sha, **context)
-                        continue
+                        if time.monotonic() - start <= self.wall_limit:  # final check AFTER the trace write
+                            attempts.append(len(token_ids))
+                            continue
+                        self.events.emit('request_retry_aborted', request_id=request_id, agent_id=agent_id,
+                                         stage=stage, reason=f'wall limit {self.wall_limit}s reached before dispatch',
+                                         **context)
                 error = f'{type(exc).__name__}: {str(exc)[:300]}'
                 self.infra_failures += 1
             break
@@ -202,13 +206,21 @@ class ForcedClient:
         retry_fields = {}
         if attempts:
             # Accounting charges the lost attempt once (its streamed ids, a lower bound on the server's work):
-            # completion_tokens_charged and usage.completion_tokens, the field the controller tallies (plan_of).
+            # completion_tokens_charged and usage.completion_tokens, the field the controller tallies (plan_of,
+            # run_benchmark.metrics). Without server usage the delivered attempt counts by its observed ids.
             extra = sum(attempts)
             charged += extra
-            usage['completion_tokens'] = (reported or 0) + extra
+            usage['completion_tokens'] = (len(token_ids) if reported is None else reported) + extra
             if 'total_tokens' in usage:
                 usage['total_tokens'] += extra
             usage['lost_attempt_completion_tokens'] = extra
+            if reported is None:
+                # The server reported no usage, exactly the case an unretried request leaves without
+                # usage.completion_tokens; record it explicitly since the key now holds observed ids.
+                usage['completion_tokens_source'] = 'client_observed_ids'
+                self.events.emit('usage_missing', request_id=request_id, agent_id=agent_id, stage=stage,
+                                 missing=['completion_tokens'] + (['prompt_tokens'] if 'prompt_tokens' not in usage else []),
+                                 observed_completion_tokens=usage['completion_tokens'], **context)
             retry_fields = dict(attempts=len(attempts) + 1,
                                 attempt_completion_tokens=attempts + [len(token_ids) if reported is None else reported],
                                 lost_completion_tokens_lower_bound=extra)
