@@ -370,6 +370,30 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(s['arms']['D']['status'], 'incomplete')
         self.assertIsNone(s['arms']['D']['server_tokens'])
 
+    def test_zero_generation_with_activity_in_a_caseless_segment(self):
+        # L-flip: a case-less L resume segment whose node 02 lost its generation counter (written as 0 by arms.py) while
+        # decode and request deltas show work; summing it would undercount L's tokens and could flip the L decision
+        def flip(root):
+            seg = root / 'runs' / f'{STUDY}-l-roll12strategy-resume1'
+            seg.mkdir()
+            per_node = {'01': dict(generation_tokens=100, decode_tokens=100, requests=3),
+                        '02': dict(generation_tokens=0, decode_tokens=5000, requests=12)}
+            (seg / 'arm_accounting.json').write_text(json.dumps(acct(
+                100, server=dict(total=dict(generation_tokens=100), per_node=per_node))))
+        s = self.study_status(flip)
+        self.assertEqual(s['arms']['L']['status'], 'incomplete')
+        self.assertIn("node(s) ['02'] report generation_tokens 0", ' '.join(s['arms']['L']['reasons']))
+        self.assertIsNone(s['arms']['L']['server_tokens'])
+        self.assertTrue(s['decisions']['L'].startswith('incomplete'))
+
+    def test_inconsistent_node_rule(self):
+        self.assertTrue(rep.inconsistent_node(dict(generation_tokens=0, decode_tokens=5, requests=1)))
+        self.assertTrue(rep.inconsistent_node(dict(generation_tokens=7, decode_tokens=0, requests=0)))
+        self.assertTrue(rep.inconsistent_node(dict(generation_tokens=0, decode_tokens=0, requests=2)))
+        self.assertFalse(rep.inconsistent_node(dict(generation_tokens=0, decode_tokens=0, requests=0)))
+        self.assertFalse(rep.inconsistent_node(dict(generation_tokens=7, decode_tokens=7, requests=1)))
+        self.assertFalse(rep.inconsistent_node(dict(generation_tokens=7)))
+
     def test_unresolved_infra_blocks_the_arm(self):
         def unresolved(root):
             f = root / 'runs' / f'{STUDY}-l-roll12strategy' / 'cases.jsonl'

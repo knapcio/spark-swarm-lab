@@ -92,13 +92,24 @@ def case_count(d):
     return sum(1 for line in f.read_text().splitlines() if line.strip()) if f.exists() else 0
 
 
+ACTIVITY = ('generation_tokens', 'decode_tokens', 'requests')
+
+
+def inconsistent_node(delta):
+    """A node delta where one activity counter is 0 while another is > 0 (missing keys are not compared)."""
+    values = [delta[k] for k in ACTIVITY if isinstance(delta.get(k), (int, float))]
+    return any(v == 0 for v in values) and any(v > 0 for v in values)
+
+
 def accounting(dirs, wrapper=False):
     """Server generation tokens, wall and Wh summed over the arm_accounting.json of every directory, with validity:
     every directory has a record, its token counter is present and finite, no per-node delta is negative, the fleet
     was idle after the window and there is no accounting error; wrapper (account_cmd) records also need runner exit 0
     and no energy error. arms.py records (not wrapper) also need per-node deltas, and a segment that ran cases must
     show generation on every node: arms.py writes a counter it could not read as 0, so a 0 delta there is treated as
-    a missing counter. Invalid -> server_tokens None and the problems listed (never zero-filled)."""
+    a missing counter. In every segment (with or without cases) a node whose generation_tokens, decode_tokens and
+    requests deltas disagree on being zero (one 0, another > 0) is invalid too. Invalid -> server_tokens None and the
+    problems listed (never zero-filled)."""
     problems, tokens, wall, whs = [], 0, 0.0, []
     for d in dirs:
         f = Path(d) / 'arm_accounting.json'
@@ -114,6 +125,10 @@ def accounting(dirs, wrapper=False):
             tokens += total
         if any(not isinstance(x, (int, float)) or not math.isfinite(x) or x < 0 for n in per_node.values() for x in n.values()):
             problems.append(f'{Path(d).name}: negative or non-finite per-node delta')
+        mixed = sorted(n for n, x in per_node.items() if inconsistent_node(x or {}))
+        if mixed:
+            problems.append(f'{Path(d).name}: node(s) {mixed} report generation_tokens 0 with decode/request activity '
+                            '(or the reverse): a counter was not read')
         if not wrapper:
             if not per_node:
                 problems.append(f'{Path(d).name}: no per-node deltas')
