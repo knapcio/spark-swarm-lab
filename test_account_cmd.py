@@ -87,7 +87,7 @@ class AccountCmdTests(unittest.TestCase):
             self.assertIn(key, rec)
         self.assertEqual((rec['study'], rec['arm'], rec['idle_after'], rec['runner_exit']), ('swarm-x-v1', 'screen-v1', True, 0))
         self.assertEqual(rec['server']['total']['generation_tokens'], 2000.0)
-        self.assertEqual(rec['cache_flush']['01'], dict(exit=0, http_status='200', body=SGLANG_FLUSHED[:200]))
+        self.assertEqual(rec['cache_flush']['01'], dict(exit=0, http_status='200', body=SGLANG_FLUSHED))
         self.assertTrue(rec['admission'].endswith('SWARM_X_V1_SCREEN_V1_ADMISSION.JSON'))
         self.assertEqual(rec['command'][2:], [rec['admission'], rec['output']])
         self.assertIn('hello', log)
@@ -106,6 +106,11 @@ class AccountCmdTests(unittest.TestCase):
                  lambda n, r: subprocess.CompletedProcess([], 0, 'Cache flushed failed\n200', ''),
                  lambda n, r: subprocess.CompletedProcess([], 0, 'Cache flushed\n200', ''),
                  lambda n, r: subprocess.CompletedProcess([], 0, 'Cache flushed. Internal Error on rank 1\n200', ''),
+                 lambda n, r: subprocess.CompletedProcess([], 0, 'Cache flushed.\nOperation was skipped.\n200', ''),
+                 lambda n, r: subprocess.CompletedProcess([], 0, SGLANG_FLUSHED + ' Operation was skipped.\n200', ''),
+                 lambda n, r: subprocess.CompletedProcess([], 0, ' ' + SGLANG_FLUSHED + '\n200', ''),
+                 lambda n, r: subprocess.CompletedProcess([], 0, SGLANG_FLUSHED.replace('will not', 'will') + '\n200', ''),
+                 lambda n, r: subprocess.CompletedProcess([], 0, 'Cache flushed.\n200', ''),
                  lambda n, r: flush_ok(n, r) if n != '03' else (_ for _ in ()).throw(subprocess.TimeoutExpired('ssh', 60)))
         for flush in cases:
             code, rec, log, _ = self.run_main(OK, lambda n, i: metrics(), flush=flush)
@@ -198,6 +203,17 @@ class AccountCmdTests(unittest.TestCase):
                                           lambda n, i: metrics())
         self.assertEqual(code, 0)
         self.assertIn('$(echo hi); {x}', log)
+
+    def test_flush_body_matches_the_recorded_receipts_exactly(self):
+        runs = next((d for d in (Path(__file__).resolve().parent / 'runs', Path(__file__).resolve().parents[2] / 'runs')
+                     if (d / 'swarm-loop-hard15-v1-l-roll12strategy' / 'arm_accounting.json').exists()), None)
+        if runs is not None:
+            recorded = json.loads((runs / 'swarm-loop-hard15-v1-l-roll12strategy' / 'arm_accounting.json').read_text())
+            self.assertEqual(set(recorded['cache_flush'].values()), {ac.FLUSH_OK})
+        for stdout in (SGLANG_FLUSHED + '\n200', SGLANG_FLUSHED + '\n\n204', SGLANG_FLUSHED + '  \n200'):
+            code, _, _, _ = self.run_main(OK, lambda n, i: metrics(),
+                                          flush=lambda n, r, o=stdout: subprocess.CompletedProcess([], 0, o, ''))
+            self.assertEqual(code, 0, repr(stdout))
 
     def test_shells_and_inline_code_are_refused(self):
         for cmd, msg in ((['sh', '-c', '{output}'], 'shell'), (['/bin/bash', 'x.sh'], 'shell'), (['zsh'], 'shell'),

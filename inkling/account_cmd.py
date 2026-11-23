@@ -3,7 +3,7 @@
 with stricter checks (arms.py itself stays unchanged: finished studies pin its hash).
 
 Sequence: fresh admission (inkling/admit.py, idle fleet) -> prefix-cache flush on each node (own ssh call: ssh exit
-status 0, HTTP 2xx from `curl -f`, body 'Cache flushed') -> server counters on all four nodes on an idle fleet ->
+status 0, HTTP 2xx from `curl -f`, body exactly SGLang's recorded success text) -> server counters on all four nodes on an idle fleet ->
 CMD (exec list, no shell; cwd = repo root; stdout+stderr to OUTPUT.log) -> wait until every node is idle (an idle
 sample counts only if it was taken before the drain deadline) -> counters again -> GPU energy for the window
 (inkling/energy.py). Writes OUTPUT/arm_accounting.json in the arms.py schema (protocol 'swarm-arm-accounting-v1')
@@ -45,7 +45,10 @@ sys.path.insert(0, str(HERE))
 import arms  # noqa: E402
 import energy  # noqa: E402
 
-FLUSH_OK = 'Cache flushed.'  # SGLang's success body starts with exactly this (see runs/*/arm_accounting.json)
+# SGLang's /flush_cache success body, exactly as recorded by every finished arm (runs/*/arm_accounting.json,
+# cache_flush); any other body (e.g. 'Cache flushed.' + 'Operation was skipped.') is a failed flush
+FLUSH_OK = ('Cache flushed.\nPlease check backend logs for more details. (When there are running or waiting requests, '
+            'the operation will not be performed.)')
 SHELLS = {'sh', 'bash', 'zsh', 'dash', 'ksh', 'fish', 'csh', 'tcsh', 'ash', 'busybox'}
 INLINE = {'python': ('-c', '-'), 'perl': ('-e', '-E'), 'ruby': ('-e',), 'node': ('-e', '--eval', '-p', '--print')}
 DRAIN_SECONDS = 120
@@ -132,10 +135,8 @@ def flush_checked():
             bad[n] = f'{type(exc).__name__}: {exc}'
             continue
         body, _, status = res.stdout.rstrip('\n').rpartition('\n')
-        out[n] = dict(exit=res.returncode, http_status=status.strip(), body=body.strip()[:200])
-        text = body.strip()
-        if (res.returncode != 0 or not re.fullmatch(r'2\d\d', status.strip()) or not text.startswith(FLUSH_OK)
-                or re.search(r'fail|error', text, re.IGNORECASE)):
+        out[n] = dict(exit=res.returncode, http_status=status.strip(), body=body.rstrip()[:1000])
+        if res.returncode != 0 or not re.fullmatch(r'2\d\d', status.strip()) or body.rstrip() != FLUSH_OK:
             bad[n] = dict(out[n], stderr=res.stderr.strip()[:200])
     if bad:
         raise AccountingError(f'prefix-cache flush failed: {bad}')
