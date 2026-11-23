@@ -28,7 +28,6 @@ usage: closer_replay.py --runs runs/A runs/B ... --plan-only [--max-closers-per-
 """
 import argparse
 import json
-import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -43,61 +42,19 @@ HERE = Path(__file__).resolve().parent
 MAX_PER_ENDPOINT = 20
 
 
-_RESUME = re.compile(r'^(.*)-resume(\d+)$')
-
-
-def arm_base(run_dir):
-    """The arm directory of a run or resume-segment directory."""
-    run_dir = Path(run_dir)
-    m = _RESUME.match(run_dir.name)
-    return run_dir.parent / m.group(1) if m else run_dir
-
-
-def arm_segments(base):
-    """The arm directory and its resume segments, in order."""
-    found = [(int(m.group(2)), d) for d in base.parent.glob(base.name + '-resume*')
-             if (m := _RESUME.match(d.name)) and m.group(1) == base.name and (d / 'cases.jsonl').exists()]
-    return [base] + [d for _, d in sorted(found)]
+arm_base = run_variants.arm_base
 
 
 def load_run(run_dir):
-    """Clean unanswered cases of one recorded arm (all its segments) with their task, case index (run order) and the
-    segment whose agent traces belong to the counted row."""
-    base = arm_base(run_dir)
-    segs = arm_segments(base)
-    plan = read(base / 'metadata.json')['protocol']
-    for seg in segs[1:]:
-        meta = read(seg / 'metadata.json')
-        require(meta['protocol'] == plan and meta.get('resume'), f'{seg.name} is not a resume segment of {base.name}')
-    tasks = run_variants.plan_tasks(plan, HERE)
-    index = {(t['id'], s): si * len(tasks) + ti for si, s in enumerate(plan['seeds']) for ti, t in enumerate(tasks)}
-    expected = set(index)
-    if plan.get('case_list'):
-        expected = {(c[0], c[1]) for c in read(HERE / plan['case_list'])['cases']}
-    by_id = {t['id']: t for t in tasks}
-    latest, superseded = {}, []
-    for seg in segs:
-        seen = set()
-        for line in (seg / 'cases.jsonl').read_text().splitlines():
-            if not line.strip():
-                continue
-            row = json.loads(line)
-            key = (row['task_id'], row['seed'])
-            require(key in index, f'unknown case {key} in {seg.name}')
-            require(key not in seen, f'duplicate case {key} in {seg.name}')
-            seen.add(key)
-            if key in latest:
-                prev_seg, prev = latest[key]
-                require('error' in prev or prev.get('infra'), f'{seg.name} reruns the clean case {key}')
-                superseded.append(dict(task_id=key[0], seed=key[1], segment=prev_seg.name))
-            latest[key] = (seg, row)
-    require(set(latest) == expected, f'{base.name}: segments do not cover the plan cases exactly')
-    clean = {k: v for k, v in latest.items() if 'error' not in v[1] and not v[1].get('infra')}
-    cases = [dict(row=row, seg=seg, task=by_id[k[0]], seed=k[1], case_index=index[k])
-             for k, (seg, row) in sorted(latest.items(), key=lambda kv: index[kv[0]])
-             if k in clean and not row['answered']]
-    return dict(run=base.name, dir=base, segments=[d.name for d in segs], cases=cases, arm_cases=len(latest),
-                superseded=superseded, unresolved=[dict(task_id=k[0], seed=k[1]) for k in latest if k not in clean])
+    """Clean unanswered cases of one recorded arm (all its segments, run_variants.arm_latest) with their task, case
+    index (run order) and the segment whose agent traces belong to the counted row."""
+    arm = run_variants.arm_latest(run_dir, HERE)
+    by_id = {t['id']: t for t in arm['tasks']}
+    cases = [dict(row=row, seg=seg, task=by_id[k[0]], seed=k[1], case_index=arm['index'][k])
+             for k, (seg, row) in sorted(arm['latest'].items(), key=lambda kv: arm['index'][kv[0]])
+             if k in arm['clean'] and not row['answered']]
+    return dict(run=arm['base'].name, dir=arm['base'], segments=[d.name for d in arm['segments']], cases=cases,
+                arm_cases=len(arm['latest']), superseded=arm['superseded'], unresolved=arm['unresolved'])
 
 
 def load_cohort(run_dirs, case_list=None):

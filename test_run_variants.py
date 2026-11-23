@@ -271,7 +271,7 @@ class CancelPolicyTests(unittest.TestCase):
             (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=tasks)))
             (root / 'cases.json').write_text(json.dumps(dict(cases=[['t0', 1]])))
             plan = dict(protocol='swarm-variants-screen-v1', source_revision='x', dataset=str(root / 'data.json'),
-                        dataset_protocol='p', split='evaluation', tasks=1, seeds=[1], policies=['esc_extra'],
+                        dataset_protocol='p', split='evaluation', tasks=1, seeds=[1], policies=['roll12strategy'],
                         case_list=str(root / 'cases.json'), concurrent_policy_cases=1, concurrent_requests_per_endpoint=26)
             (root / 'plan.json').write_text(json.dumps(plan))
             with patch.object(v, 'validate_source', lambda *a: None), self.assertRaisesRegex(Exception, 'above 25'):
@@ -330,7 +330,7 @@ class CaseListTests(unittest.TestCase):
             (root / 'cases.json').write_text(json.dumps(dict(cases=cases)))
             (root / 'plan.json').write_text(json.dumps(dict(
                 protocol='swarm-variants-screen-v1', source_revision='x', dataset=str(root / 'data.json'),
-                dataset_protocol='p', split='evaluation', tasks=3, numbers_count=6, seeds=[1, 2], policies=['esc_none'],
+                dataset_protocol='p', split='evaluation', tasks=3, numbers_count=6, seeds=[1, 2], policies=['roll12strategy'],
                 case_list=str(root / 'cases.json'), concurrent_policy_cases=1)))
             with patch.object(v, 'validate_source', lambda *a: None):
                 return v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d])
@@ -342,48 +342,97 @@ class CaseListTests(unittest.TestCase):
         with self.assertRaisesRegex(Exception, 'duplicate'):
             self.plan_mode([['t0', 1], ['t2', 2], ['t0', 1]])
 
-    def plan_main(self, **changes):
+    def test_case_list_rejects_unknown(self):
+        with self.assertRaisesRegex(Exception, 'does not match'):
+            self.plan_mode([['t0', 1], ['t9', 1]])
+
+    def plan_main(self, rows=None, resume_rows=None, first_offset=15400, run_offset=None, paired_extra=None, **changes):
+        """An esc plan on tasks t0, t1 (seed 1) paired with a recorded roll12strategy run 'runs/first'
+        (default: t0 abstained, t1 answered)."""
         import json
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            tasks = [dict(id='t0', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7)]
+            tasks = [dict(id=f't{i}', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7) for i in range(2)]
             (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=tasks)))
-            (root / 'cases.json').write_text(json.dumps(dict(cases=[['t0', 1]])))
-            (root / 'first.json').write_text(json.dumps(dict(agent_variant='xl_forced_original',
-                                                             seed_offsets=dict(roll12strategy=15400))))
-            plan = dict(protocol='swarm-variants-screen-v1', source_revision='x', dataset=str(root / 'data.json'),
-                        dataset_protocol='p', split='evaluation', tasks=1, seeds=[1], policies=['esc_extra'],
-                        agent_variant='xl_forced_original', seed_offsets=dict(esc_extra=15400),
-                        case_list=str(root / 'cases.json'), concurrent_policy_cases=1, concurrent_requests_per_endpoint=20)
+            common = dict(dataset=str(root / 'data.json'), dataset_protocol='p', split='evaluation', tasks=2, seeds=[1],
+                          agent_variant='xl_forced_original')
+            first = dict(common, study='first', policies=['roll12strategy'], seed_offsets=dict(roll12strategy=first_offset))
+            (root / 'first.json').write_text(json.dumps(first))
+            run = root / 'runs' / 'first'
+            run.mkdir(parents=True)
+            run_plan = dict(first, seed_offsets=dict(roll12strategy=run_offset or first_offset))
+            (run / 'metadata.json').write_text(json.dumps(dict(protocol=run_plan, resume=None)))
+            row = lambda t, **kw: dict(dict(task_id=t, seed=1, policy='roll12strategy', answered=False, infra=0), **kw)
+            rows = rows or [row('t0'), row('t1', answered=True)]
+            (run / 'cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
+            if resume_rows:
+                seg = root / 'runs' / 'first-resume1'
+                seg.mkdir()
+                (seg / 'metadata.json').write_text(json.dumps(dict(protocol=run_plan, resume=dict(resumed_from=str(run)))))
+                (seg / 'cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in resume_rows))
+            (root / 'cases.json').write_text(json.dumps(dict(cases=changes.pop('cases', [['t0', 1]]))))
+            plan = dict(common, protocol='swarm-variants-screen-v1', source_revision='x', policies=['esc_extra'],
+                        seed_offsets=dict(esc_extra=15400), case_list=str(root / 'cases.json'), concurrent_policy_cases=1,
+                        concurrent_requests_per_endpoint=20,
+                        paired_with=dict(plan=str(root / 'first.json'), policy='roll12strategy', run=str(run),
+                                         **(paired_extra or {})))
             plan.update(changes)
-            if isinstance(plan.get('paired_with'), dict) and plan['paired_with'].get('plan') == 'FIRST':
-                plan['paired_with'] = dict(plan['paired_with'], plan=str(root / 'first.json'))
             plan = {k: x for k, x in plan.items() if x is not None}
             (root / 'plan.json').write_text(json.dumps(plan))
             with patch.object(v, 'validate_source', lambda *a: None):
                 return v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d])
 
-    def test_escalation_arms_require_a_case_list(self):
+    def test_paired_esc_plan_is_accepted(self):
+        self.assertEqual(self.plan_main(), 0)
+        self.assertEqual(self.plan_main(policies=['esc_none'], seed_offsets=dict(esc_none=15400)), 0)
+
+    def test_escalation_arms_require_case_list_and_full_pairing(self):
         for pol in ('esc_extra', 'esc_none'):
             with self.assertRaisesRegex(Exception, 'require a case_list'):
                 self.plan_main(case_list=None, policies=[pol], seed_offsets={pol: 15400})
-        self.assertEqual(self.plan_main(), 0)
+            with self.assertRaisesRegex(Exception, r'require paired_with = \{plan, policy, run\}'):
+                self.plan_main(paired_with=None, policies=[pol], seed_offsets={pol: 15400})
+        for partial in (dict(agent_variant='xl_forced_original', seed_offset=15400), dict(plan='x', policy='y')):
+            with self.assertRaisesRegex(Exception, 'require paired_with'):
+                self.plan_main(paired_with=partial)
 
-    def test_paired_with_values_and_plan(self):
-        self.assertEqual(self.plan_main(paired_with=dict(agent_variant='xl_forced_original', seed_offset=15400)), 0)
-        self.assertEqual(self.plan_main(paired_with=dict(plan='FIRST', policy='roll12strategy')), 0)
-        with self.assertRaisesRegex(Exception, 'seed offset of esc_extra differs'):
-            self.plan_main(paired_with=dict(seed_offset=15500))
+    def test_variant_and_offset_must_match_the_paired_plan(self):
         with self.assertRaisesRegex(Exception, 'agent_variant differs'):
-            self.plan_main(paired_with=dict(plan='FIRST', policy='roll12strategy'), agent_variant='long_forced_original')
+            self.plan_main(agent_variant='long_forced_original')
         with self.assertRaisesRegex(Exception, 'seed offset of esc_extra differs'):
-            self.plan_main(paired_with=dict(plan='FIRST', policy='roll12strategy'), seed_offsets=dict(esc_extra=1400))
-        with self.assertRaisesRegex(Exception, 'disagrees with its plan'):
-            self.plan_main(paired_with=dict(plan='FIRST', policy='roll12strategy', seed_offset=1))
+            self.plan_main(seed_offsets=dict(esc_extra=1400))
 
-    def test_case_list_rejects_unknown(self):
-        with self.assertRaisesRegex(Exception, 'does not match'):
-            self.plan_mode([['t0', 1], ['t9', 1]])
+    def test_case_list_must_be_exactly_the_clean_abstentions(self):
+        for cases in ([['t0', 1], ['t1', 1]], [['t1', 1]]):
+            with self.assertRaisesRegex(Exception, 'not exactly the clean abstentions'):
+                self.plan_main(cases=cases)
+
+    def test_paired_run_follows_the_resume_rule(self):
+        row = lambda t, **kw: dict(dict(task_id=t, seed=1, policy='roll12strategy', answered=False, infra=0), **kw)
+        # t0 faulted in the arm, rerun clean (abstained) in -resume1: accepted
+        self.assertEqual(self.plan_main(rows=[row('t0', infra=1), row('t1', answered=True)], resume_rows=[row('t0')]), 0)
+        # t0 rerun and answered in -resume1: the list ['t0'] is no longer the abstentions
+        with self.assertRaisesRegex(Exception, 'not exactly'):
+            self.plan_main(rows=[row('t0', infra=1), row('t1', answered=True)], resume_rows=[row('t0', answered=True)])
+        # t0 still faulted: refuse
+        with self.assertRaisesRegex(Exception, 'unresolved infra'):
+            self.plan_main(rows=[row('t0', infra=1), row('t1', answered=True)])
+
+    def test_paired_run_must_come_from_the_paired_settings(self):
+        with self.assertRaisesRegex(Exception, 'paired run was not made'):
+            self.plan_main(run_offset=9999)
+
+    def test_paired_with_extra_values_must_agree_with_its_plan(self):
+        with self.assertRaisesRegex(Exception, 'disagrees with its plan'):
+            self.plan_main(paired_extra=dict(seed_offset=1))
+        self.assertEqual(self.plan_main(paired_extra=dict(seed_offset=15400, agent_variant='xl_forced_original')), 0)
+
+    def test_non_escalation_paired_with_values(self):
+        self.assertEqual(self.plan_main(policies=['roll12strategy'], seed_offsets=dict(roll12strategy=15400), case_list=None,
+                                        paired_with=dict(agent_variant='xl_forced_original', seed_offset=15400)), 0)
+        with self.assertRaisesRegex(Exception, 'seed offset of roll12strategy differs'):
+            self.plan_main(policies=['roll12strategy'], seed_offsets=dict(roll12strategy=1), case_list=None,
+                           paired_with=dict(seed_offset=15400))
 
 
 class StrictHardCasesTests(unittest.TestCase):
@@ -433,7 +482,7 @@ class JudgeRetryTests(unittest.TestCase):
     """judge_with_reason with a fake ChatJudge client (no HTTP)."""
     STREAM = "ConnectionError: server stream error: {'message': 'ServerDisconnectedError: Server disconnected'}"
 
-    def run_judge(self, behaviors):
+    def run_judge(self, behaviors, precreate_retry=False):
         import json, urllib.error
         import run_judge
         made, http_errors = [], []
@@ -446,6 +495,8 @@ class JudgeRetryTests(unittest.TestCase):
                 made.append(self)
 
             def chat_prompt_ids(self, prompt, thinking=True):
+                if self.behavior == 'malformed':
+                    raise json.JSONDecodeError('Expecting value', '<html>', 0)
                 if self.behavior == 'refused':
                     raise urllib.error.URLError(ConnectionRefusedError(61, 'Connection refused'))
                 if self.behavior == 'bad_request':
@@ -480,6 +531,8 @@ class JudgeRetryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d, patch.object(run_judge, 'ChatJudge', Fake), \
                 patch.object(v.time, 'sleep', sleeps.append):
             path = Path(d) / 't-s1-esc_extra-a12.jsonl'
+            if precreate_retry:
+                path.with_suffix('.retry.jsonl').write_text('')
             try:
                 result = v.judge_with_reason(cand, 'http://e/v1', path, 4242)
             except Exception as exc:
@@ -536,6 +589,61 @@ class JudgeRetryTests(unittest.TestCase):
         self.assertEqual((res.record['tokens'], res.record['infra'], res.record['retry']), (6144, 1, True))
         self.assertEqual([a['raised'] for a in res.record['judge_attempts']], [True, True])
 
+    def test_malformed_tokenize_response_is_not_retried(self):
+        res, made, sleeps, _ = self.run_judge(['malformed'])
+        self.assertIsInstance(res, v.JudgeFault)
+        self.assertEqual((len(made), sleeps), (1, []))
+        self.assertFalse(res.record['judge_attempts'][0]['retryable'])
+        self.assertIn('JSONDecodeError', str(res))
+
+    def test_retry_trace_open_failure_keeps_first_attempt(self):
+        res, made, sleeps, _ = self.run_judge(['stream'], precreate_retry=True)
+        self.assertIsInstance(res, v.JudgeFault)
+        self.assertEqual(len(made), 1)  # the retry never reached the server
+        rec = res.record
+        self.assertEqual((rec['tokens'], rec['infra'], rec['retry'], rec['first_error']), (6144, 1, True, self.STREAM))
+        self.assertEqual([a['tokens'] for a in rec['judge_attempts']], [6144, 0])
+        self.assertIn('FileExistsError', rec['judge_attempts'][1]['error'])
+
+    def test_judge_fault_in_every_non_rolling_policy_is_a_fault_record(self):
+        record = dict(verdict=None, reason='', infra=1, tokens=6144, retry=True, first_error=self.STREAM,
+                      judge_attempts=[dict(tokens=6144, infra=1, error=self.STREAM, raised=False, verdict=None, retryable=True),
+                                      dict(tokens=0, infra=1, error='URLError: refused', raised=True, verdict=None,
+                                           retryable=True)])
+
+        def judge(cand, endpoint, events_path, seed):
+            if str(events_path).endswith('-a1.jsonl'):
+                raise v.JudgeFault('URLError: refused', record)
+            return dict(verdict=False, reason='', infra=0, tokens=3)
+        for policy, calls in (('deep4cancel', 4), ('waves2cancel', 4), ('deep4', 4), ('strategy4', 4), ('board2x2', 4),
+                              ('repair4', 4)):
+            rec = self.judged_agent(judge, policy)
+            self.assertEqual(rec['calls'], calls, policy)
+            a1 = next(a for a in rec['agents'] if a['slot'] == 1)
+            self.assertIn('JudgeFault', a1['agent_error'], policy)
+            self.assertEqual((a1['tokens'], a1['judge_tokens'], len(a1['judge_attempts'])), (11, 6144, 2), policy)
+            self.assertGreaterEqual(rec['infra'], 2, policy)
+            self.assertEqual(rec['tokens'], 4 * 11 + 3 * 3 + 6144, policy)
+            self.assertFalse(rec['answered'], policy)
+
+    def test_worker_exception_in_non_rolling_policy_is_a_fault_record(self):
+        def boom(job, *args, **kwargs):
+            if job['events'].endswith('-a2.jsonl'):
+                raise OSError('fork failed')
+            return dict(deadline=False, cancelled=False, returncode=0)
+        for policy in ('deep4cancel', 'deep4'):
+            with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute', boom), patch.object(v, 'execute_cancellable', boom), \
+                    patch.object(v, 'plan_of', lambda p: dict(plan={'moves': [1]}, verifier_solved=False, tokens=11, infra=0)), \
+                    patch.object(v, 'judge_with_reason', lambda *a: dict(verdict=False, reason='', infra=0, tokens=3)):
+                out = Path(d)
+                (out / 'agents').mkdir(); (out / 'extra').mkdir(); (out / 'judges').mkdir()
+                plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], deep4cancel=1400))
+                rec = v.run_policy(plan, Path('/src'), out, TASK, 1, 0, policy, v.Slots(8))
+            a2 = next(a for a in rec['agents'] if a['slot'] == 2)
+            self.assertIn('OSError', a2['agent_error'], policy)
+            self.assertEqual(rec['infra'], 1, policy)
+            self.assertEqual(rec['calls'], 4, policy)
+
     def test_local_limits_and_other_faults_are_not_retried(self):
         for first in ('wall', 'idle', 'mismatch', 'context'):
             res, made, sleeps, _ = self.run_judge([first])
@@ -565,7 +673,7 @@ class JudgeRetryTests(unittest.TestCase):
                 patch.object(v, 'judge_with_reason', judge):
             out = Path(d)
             (out / 'agents').mkdir(); (out / 'extra').mkdir(); (out / 'judges').mkdir()
-            plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], esc_extra=1400))
+            plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], esc_extra=1400, deep4cancel=1400, waves2cancel=1400))
             return v.run_policy(plan, Path('/src'), out, TASK, 1, 0, policy, v.Slots(8))
 
     def test_agent_records_judge_retry(self):

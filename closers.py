@@ -39,7 +39,10 @@ _LATEX = (('\\times', '*'), ('\\cdot', '*'), ('\\div', '/'))
 _LETTER_X = re.compile(r'(?<=\d)[ \t]*[xX][ \t]*(?=\d)')  # 55 x 15 -> 55*15 (only between two digits)
 # value: an integer (optionally with thousands commas) that is the whole right-hand side: not a decimal, not a
 # fraction (412.5, 825/2, 412 1/2), not the start of a longer expression, not part of a comparison operator
-_RHS = re.compile(r'(?<![<>!=])=(?!=)[ \t]*(\d{1,3}(?:,\d{3})+|\d+)(?!\d|[.,]\d|[ \t]*[-+*/][ \t]*[\d(]|[ \t]+\d+[ \t]*/[ \t]*\d)')
+_RHS = re.compile(r'(?<![<>!=])=(?!=)[ \t]*(\d{1,3}(?:,\d{3})+|\d+)'
+                  r'(?!\d|[.,]\d|[eE][+-]?\d|[ \t]*[-+*/^%!][ \t]*|[ \t]+\d+[ \t]*/[ \t]*\d)')
+# a line holding a power, exponent or scientific number is never read: its equations may not mean what they show
+_UNPARSED_LINE = re.compile(r'\^|\*\*|\d[eE][+-]?\d|\\(?:frac|sqrt|pow)|√|%|!(?!=)')
 _LHS = re.compile(r'[0-9()+\-*/ \t]*$')
 _TOKEN = re.compile(r'\d+|[()+\-*/]')
 
@@ -59,7 +62,9 @@ _BAD_PAIRS = {('num', 'num'), ('num', '('), ('op', 'op'), ('op', ')'), ('(', 'op
 # a cut is allowed only where one complete operand ends and a separate expression starts ('6 25*4', '(3+4) 5*2')
 _SAFE_CUTS = {('num', 'num'), (')', 'num')}
 # characters that may touch the start of an expression without being part of it ('$55*15', 'is:25*4', '[3+4')
-_SAFE_PREV = set(' \t=:;"\'[{`$<>|')
+_SAFE_PREV = set(' \t=:;"\'[{`$>')  # characters that may touch the expression's first token
+# the nearest non-space character before a space-separated expression: a word, sentence or list punctuation, an arrow
+_SAFE_SPACED = set('=:;"\'[{`$>.,?→⇒')
 
 
 def _expression(left):
@@ -81,8 +86,12 @@ def _expression(left):
     if start:
         if (_kind(tokens[start - 1]), _kind(tokens[start])) not in _SAFE_CUTS:
             return None
-    elif m.start() > 0 and not seg[0].isspace() and left[m.start() - 1] not in _SAFE_PREV:
-        return None  # glued to a decimal point, digit group, letter, '^', ... : the true left operand is unknown
+    elif m.start() > 0:
+        before = left[:m.start()].rstrip(' \t')
+        if not seg[0].isspace() and left[m.start() - 1] not in _SAFE_PREV:
+            return None  # glued to a decimal point, digit group, letter, '^', ... : the true left operand is unknown
+        if before and not (before[-1].isalpha() or before[-1] in _SAFE_SPACED):
+            return None  # preceded (across spaces) by an operator or symbol this scanner does not parse
     tokens = tokens[start:]
     if _kind(tokens[0]) not in ('num', '('):
         return None  # a leading sign or operator belongs to the statement; never strip it
@@ -108,7 +117,10 @@ def statements(text):
     text = normalize(text)
     out = []
     for m in _RHS.finditer(text):
-        expr = _expression(text[:m.start()].rsplit('\n', 1)[-1].rsplit('=', 1)[-1])
+        line_start, line_end = text.rfind('\n', 0, m.start()) + 1, text.find('\n', m.end())
+        if _UNPARSED_LINE.search(text[line_start:None if line_end < 0 else line_end]):
+            continue
+        expr = _expression(text[line_start:m.start()].rsplit('=', 1)[-1])
         if expr is None:
             continue
         value = int(m.group(1).replace(',', ''))
@@ -185,43 +197,52 @@ def reference_wanted_values(numbers, target):
 
 
 def ask_wanted(endpoint, events_path, seed, numbers, target):
-    """One short call, thinking off (same pattern as run_judge fast mode). A transport failure is retried once after
-    run_variants.JUDGE_RETRY_SECONDS with the same seed; a second failure is returned as infra."""
+    """One short call, thinking off (same pattern as run_judge fast mode). A transport loss is retried once after
+    run_variants.JUDGE_RETRY_SECONDS with the same seed. Never raises: every attempt's charge and error are kept
+    (attempts; tokens is their sum); a failed last attempt is returned as infra."""
     def once(path):
-        events = run_judge.Events(path, 'closer_wanted')
         try:
-            forced72 = run_judge._forced72()
-            client = forced72.ForcedClient(endpoint, 'nemotron-lightning', run_judge.Budget(1, WANTED_MAX_TOKENS),
-                                           events, seed)
-            messages = [{'role': 'system', 'content': WANTED_SYSTEM},
-                        {'role': 'user', 'content': wanted_prompt(numbers, target)}]
-            with client.post('/tokenize', dict(model=client.model, messages=messages, add_generation_prompt=True,
-                                               chat_template_kwargs={'enable_thinking': False}), 60) as response:
-                ids = json.load(response)['tokens']
-            first = client.complete(0, 'wanted', ids, WANTED_MAX_TOKENS, thinking_closed=True)
-            lines, values = parse_wanted(first['text'], numbers, target)
+            events = run_judge.Events(path, 'closer_wanted')
+        except Exception as exc:
+            return dict(lines=[], values=[], infra=1, error=f'{type(exc).__name__}: {exc}'[:300], tokens=0, raised=True,
+                        retryable=False)
+        client = None
+        try:
+            try:
+                forced72 = run_judge._forced72()
+                client = forced72.ForcedClient(endpoint, 'nemotron-lightning', run_judge.Budget(1, WANTED_MAX_TOKENS),
+                                               events, seed)
+                messages = [{'role': 'system', 'content': WANTED_SYSTEM},
+                            {'role': 'user', 'content': wanted_prompt(numbers, target)}]
+                with client.post('/tokenize', dict(model=client.model, messages=messages, add_generation_prompt=True,
+                                                   chat_template_kwargs={'enable_thinking': False}), 60) as response:
+                    ids = json.load(response)['tokens']
+                first = client.complete(0, 'wanted', ids, WANTED_MAX_TOKENS, thinking_closed=True)
+                lines, values = parse_wanted(first['text'], numbers, target)
+            except Exception as exc:
+                out = dict(lines=[], values=[], infra=(client.infra_failures if client else 0) + 1,
+                           error=f'{type(exc).__name__}: {exc}'[:300],
+                           tokens=client.budget.snapshot()['completion_tokens_charged'] if client else 0)
+                events.emit('wanted_end', **out)
+                return dict(out, raised=True, retryable=run_variants.raised_is_retryable(exc))
             out = dict(lines=lines, values=values, infra=client.infra_failures, error=first['error'],
                        tokens=client.budget.snapshot()['completion_tokens_charged'])
             events.emit('wanted_end', **out)
-            return out
+            return dict(out, raised=False, retryable=run_variants.transport_error(first['error']))
         finally:
             events.close()
 
-    def guarded(path):
-        try:
-            return once(path)
-        except Exception as exc:
-            error = f'{type(exc).__name__}: {exc}'[:300]
-            if not run_variants.transport_error(error):
-                raise
-            return dict(lines=[], values=[], infra=1, error=error, tokens=0)
-
-    first = guarded(events_path)
-    if not (first['infra'] and run_variants.transport_error(first['error'])):
-        return dict(first, retry=False)
-    time.sleep(run_variants.JUDGE_RETRY_SECONDS)
-    second = guarded(Path(events_path).with_suffix('.retry.jsonl'))
-    return dict(second, tokens=first['tokens'] + second['tokens'], retry=True, first_error=first['error'])
+    attempts = [once(events_path)]
+    if attempts[0]['infra'] and attempts[0]['retryable']:
+        time.sleep(run_variants.JUDGE_RETRY_SECONDS)
+        attempts.append(once(Path(events_path).with_suffix('.retry.jsonl')))
+    last = attempts[-1]
+    out = dict(lines=last['lines'], values=last['values'], infra=last['infra'], error=last['error'],
+               tokens=sum(a['tokens'] for a in attempts), retry=len(attempts) > 1,
+               attempts=[{k: a[k] for k in ('tokens', 'infra', 'error', 'raised', 'retryable')} for a in attempts])
+    if len(attempts) > 1:
+        out['first_error'] = attempts[0]['error']
+    return out
 
 
 # ---------------------------------------------------------------- recorded runs

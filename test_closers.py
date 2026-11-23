@@ -43,6 +43,15 @@ class StatementTests(unittest.TestCase):
                      'so 2**3 = 8', '1650/4 = 412,5', '100/8 = 25/2', 'a != 3*5', 'n == 3*5', '3*5 = -15'):
             self.assertEqual(self.lines(text), [], text)
 
+    def test_powers_exponents_and_unparsed_symbols_reject_the_line(self):
+        for text in ('2 ^ 3*4 = 32', '2^3*4 = 32', '3**2 = 9', '3 ** 2 + 1 = 10', '7e2*3 = 2100', '10*70 = 7e2',
+                     '1E3/10 = 100', '7e2', '25 * 4 = 100 ^ 2', '50% of 4*5 = 20', '5! * 2 = 240', '\\sqrt{16}*2 = 8',
+                     '√16*2 = 8', '4*5 = 20; 2^2 = 4', '3 & 4*5 = 20', '~ 4*5 = 20'):
+            self.assertEqual(self.lines(text), [], text)
+        self.assertEqual(self.lines('10*70 = 700'), ['10 * 70 = 700'])
+        self.assertEqual(self.lines('target? 800+22 = 822'), ['800 + 22 = 822'])
+        self.assertEqual(self.lines('a != b but 4*5 = 20'), ['4 * 5 = 20'])
+
     def test_meaning_is_never_changed_by_stripping(self):
         for text in ('2.5*4 = 10', '0.5*8 = 4', 'a = 2.5*4 = 10', '-3+5 = 2', 'so -3+5 = 2', 'x-3+5 = 2', '3*-2*4 = 24',
                      '(-3+5)*2 = 4', '2^3*4 = 32', '1,250*4 = 5000', '√16*2 = 8', '2(3+4) = 14', '2*((25*4-2)*8 = 784',
@@ -270,6 +279,55 @@ class AskWantedRetryTests(unittest.TestCase):
         self.assertEqual(attempts, [77, 77])
         self.assertEqual((res['values'], res['infra'], res['retry'], res['tokens']), ([825, 819], 0, True, 20))
         self.assertEqual(files, ['w.jsonl', 'w.retry.jsonl'])
+
+
+class AskWantedFaultTests(unittest.TestCase):
+    def ask(self, behaviors):
+        import run_judge
+        attempts = []
+
+        class Client:
+            def __init__(self, endpoint, model, budget, events, seed):
+                self.budget, self.seed, self.model, self.infra_failures = budget, seed, model, 0
+                self.behavior = behaviors[len(attempts)]
+                attempts.append(seed)
+
+            def post(self, path, body, timeout):
+                if self.behavior == 'timeout':
+                    raise TimeoutError('timed out')
+                if self.behavior == 'malformed':
+                    return contextlib.nullcontext(io.StringIO('<html>'))
+                return contextlib.nullcontext(io.StringIO(json.dumps(dict(tokens=[1, 2]))))
+
+            def complete(self, agent_id, stage, ids, max_tokens, thinking_closed=False):
+                self.budget.reserve(max_tokens)
+                if self.behavior == 'stream':
+                    self.infra_failures += 1
+                    self.budget.settle(max_tokens, None)
+                    return dict(text='', error="ConnectionError: server stream error: {'message': 'Server disconnected'}")
+                self.budget.settle(max_tokens, 20)
+                return dict(text='822+3 = 825', error=None)
+
+        class Forced:
+            ForcedClient = Client
+        with tempfile.TemporaryDirectory() as d, patch.object(run_judge, '_forced72', lambda: Forced), \
+                patch.object(v.time, 'sleep', lambda s: None):
+            res = closers.ask_wanted('http://e/v1', Path(d) / 'w.jsonl', 77, [3], 822)
+        return res, attempts
+
+    def test_retry_that_raises_keeps_first_charge_and_error(self):
+        res, attempts = self.ask(['stream', 'timeout'])
+        self.assertEqual(len(attempts), 2)
+        self.assertEqual((res['infra'], res['retry'], res['tokens']), (1, True, closers.WANTED_MAX_TOKENS))
+        self.assertIn('Server disconnected', res['first_error'])
+        self.assertEqual([a['tokens'] for a in res['attempts']], [closers.WANTED_MAX_TOKENS, 0])
+        self.assertIn('TimeoutError', res['attempts'][1]['error'])
+
+    def test_malformed_tokenize_and_timeouts_are_not_retried(self):
+        for first in ('malformed', 'timeout'):
+            res, attempts = self.ask([first, 'ok'])
+            self.assertEqual((len(attempts), res['infra'], res['retry']), (1, 1, False), first)
+            self.assertFalse(res['attempts'][0]['retryable'], first)
 
 
 class PlanOnlyTests(unittest.TestCase):

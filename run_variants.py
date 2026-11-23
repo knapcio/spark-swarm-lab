@@ -36,6 +36,7 @@ The exact verifier never influences decisions; it only scores the selected plan.
 """
 import argparse
 import json
+import re
 import subprocess
 import sys
 import threading
@@ -115,7 +116,7 @@ def judge_with_reason(candidate, endpoint, events_path, seed):
     before (verdict, reason, infra, tokens). After a retry or any fault the record also holds judge_attempts (tokens,
     infra, error per attempt; tokens is their sum); if the last attempt raised, JudgeFault carries that record."""
     attempts = [judge_once(candidate, endpoint, events_path, seed)]
-    if attempts[0]['infra'] and transport_error(attempts[0]['error']):
+    if attempts[0]['infra'] and attempts[0]['retryable']:
         time.sleep(JUDGE_RETRY_SECONDS)
         attempts.append(judge_once(candidate, endpoint, Path(events_path).with_suffix('.retry.jsonl'), seed))
     last = attempts[-1]
@@ -123,17 +124,28 @@ def judge_with_reason(candidate, endpoint, events_path, seed):
     if len(attempts) > 1:
         out.update(retry=True, first_error=attempts[0]['error'])
     if len(attempts) > 1 or any(a['infra'] for a in attempts):
-        out['judge_attempts'] = [{k: a[k] for k in ('tokens', 'infra', 'error', 'raised', 'verdict')} for a in attempts]
+        out['judge_attempts'] = [{k: a[k] for k in ('tokens', 'infra', 'error', 'raised', 'verdict', 'retryable')}
+                                 for a in attempts]
     if last['raised']:
         raise JudgeFault(last['error'], out)
     return out
 
 
+def raised_is_retryable(exc):
+    """A raised exception is transport loss only if it is a lost connection; a malformed response body (e.g.
+    JSONDecodeError from /tokenize) is a server error and never retried."""
+    return not isinstance(exc, ValueError) and transport_error(f'{type(exc).__name__}: {exc}')
+
+
 def judge_once(candidate, endpoint, events_path, seed):
-    """One attempt of the thinking judge (same prompt and budgets as before). Never raises after the events file is
-    open: an exception (e.g. /tokenize refused after the first completion) is recorded with the tokens already charged.
-    Returns verdict, reason, infra, tokens, error (first transport-loss error, else first error) and raised."""
-    events = run_judge.Events(events_path, 'judge_reason')
+    """One attempt of the thinking judge (same prompt and budgets as before). Never raises: an exception (the trace
+    cannot be opened, /tokenize refused after the first completion, ...) is recorded with the tokens already charged.
+    Returns verdict, reason, infra, tokens, error (first transport-loss error, else first error), raised, retryable."""
+    try:
+        events = run_judge.Events(events_path, 'judge_reason')
+    except Exception as exc:  # nothing was sent; the attempt is an infra fault held in memory
+        return dict(verdict=None, reason='', infra=1, tokens=0, error=f'{type(exc).__name__}: {exc}'[:300], raised=True,
+                    retryable=False)
     errors, client = [], None
     try:
         try:
@@ -155,7 +167,7 @@ def judge_once(candidate, endpoint, events_path, seed):
             out = dict(verdict=None, reason='', infra=(client.infra_failures if client else 0) + 1,
                        tokens=client.budget.snapshot()['completion_tokens_charged'] if client else 0)
             events.emit('judge_end', error=error, **out)
-            return dict(out, error=error, raised=True)
+            return dict(out, error=error, raised=True, retryable=raised_is_retryable(exc))
         verdict, reason = None, ''
         try:
             value = json.loads((answer or '').strip().strip('`').removeprefix('json').strip())
@@ -168,7 +180,7 @@ def judge_once(candidate, endpoint, events_path, seed):
         events.emit('judge_end', **out)
         errors = [str(e)[:300] for e in errors if e]
         error = next((e for e in errors if transport_error(e)), errors[0] if errors else None)
-        return dict(out, error=error, raised=False)
+        return dict(out, error=error, raised=False, retryable=transport_error(error))
     finally:
         events.close()
 
@@ -298,6 +310,15 @@ def run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, sl
     return info
 
 
+def run_agent_safe(plan, source, out, task, seed, case_index, policy, slot, extra, *args, **kwargs):
+    """run_agent for every policy path: a controller exception (worker launch, JudgeFault, ...) becomes the agent's
+    fault record (fault_record: infra, agent_error, every charge and judge attempt kept), never a lost or None agent."""
+    try:
+        return run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, *args, **kwargs)
+    except Exception as exc:
+        return fault_record(slot, extra, exc)
+
+
 def parallel(fns):
     results = [None] * len(fns)
     threads = [threading.Thread(target=lambda i=i, f=f: results.__setitem__(i, f())) for i, f in enumerate(fns)]
@@ -391,7 +412,7 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     off = plan['seed_offsets'][policy]
     t0 = time.monotonic()
     race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll3to8', 'roll3strategy', 'roll8repair', 'roll8strategy', 'roll12strategy', 'roll12burst') or policy in ESC_HINTS else None
-    agent = lambda slot, extra='': run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off, t0, race)
+    agent = lambda slot, extra='': run_agent_safe(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off, t0, race)
     if policy == 'deep4':
         agents = parallel([lambda s=s: agent(s) for s in range(4)])
     elif policy == 'strategy4':
@@ -418,7 +439,7 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
         if race['winner'] is None:
             agents += parallel([lambda s=s: agent(s) for s in (2, 3)])
     elif policy == 'roll8cancel':
-        agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, '', slots,
+        agents = rolling(lambda slot, node: run_agent_safe(plan, source, out, task, seed, case_index, policy, slot, '', slots,
                                                       off, t0, race, node), race, case_index)
     elif policy == 'roll8repair':
         def board(done):
@@ -427,31 +448,31 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
                 return ''
             return ('Earlier attempts on this exact task failed:\n' + '\n'.join(critique(a) for a in rejected) +
                     '\nAvoid these mistakes and give a corrected complete plan.')
-        agents = rolling(lambda slot, node, extra='': run_agent(plan, source, out, task, seed, case_index, policy, slot,
+        agents = rolling(lambda slot, node, extra='': run_agent_safe(plan, source, out, task, seed, case_index, policy, slot,
                                                                 extra or '', slots, off, t0, race, node),
                          race, case_index, feedback=board)
     elif policy == 'roll3to8':
-        agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, '', slots,
+        agents = rolling(lambda slot, node: run_agent_safe(plan, source, out, task, seed, case_index, policy, slot, '', slots,
                                                       off, t0, race, node), race, case_index, width=3)
     elif policy == 'roll3strategy':
-        agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot,
+        agents = rolling(lambda slot, node: run_agent_safe(plan, source, out, task, seed, case_index, policy, slot,
                                                       STRATEGIES[(slot - 3) % 4] if slot >= 3 else '', slots, off, t0, race, node),
                          race, case_index, width=3)
     elif policy == 'roll12strategy':
-        agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot,
+        agents = rolling(lambda slot, node: run_agent_safe(plan, source, out, task, seed, case_index, policy, slot,
                                                       STRATEGIES[(slot - 4) % 4] if slot >= 4 else '', slots, off, t0, race, node),
                          race, case_index, cap=12)
     elif policy == 'roll8strategy':
-        agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot,
+        agents = rolling(lambda slot, node: run_agent_safe(plan, source, out, task, seed, case_index, policy, slot,
                                                       STRATEGIES[(slot - 4) % 4] if slot >= 4 else '', slots, off, t0, race, node),
                          race, case_index)
     elif policy in ESC_HINTS:
         hint = ESC_HINTS[policy]
         first, width, cap = ESC_SHAPE.get(policy, ESC_DEFAULT_SHAPE)
-        agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, hint(slot), slots,
+        agents = rolling(lambda slot, node: run_agent_safe(plan, source, out, task, seed, case_index, policy, slot, hint(slot), slots,
                                                       off, t0, race, node), race, case_index, width=width, cap=cap, first=first)
     elif policy == 'roll12burst':
-        agents = rolling(lambda slot, node: run_agent(plan, source, out, task, seed, case_index, policy, slot, '', slots,
+        agents = rolling(lambda slot, node: run_agent_safe(plan, source, out, task, seed, case_index, policy, slot, '', slots,
                                                       off, t0, race, node), race, case_index, cap=12,
                          burst_seconds=plan.get('burst_seconds', 900))
     else:
@@ -489,13 +510,74 @@ def plan_tasks(plan, root=HERE):
     return tasks
 
 
+_RESUME = re.compile(r'^(.*)-resume(\d+)$')
+
+
+def arm_base(run_dir):
+    """The arm directory of a run or resume-segment directory."""
+    run_dir = Path(run_dir)
+    m = _RESUME.match(run_dir.name)
+    return run_dir.parent / m.group(1) if m else run_dir
+
+
+def arm_segments(base):
+    """The arm directory and its resume segments, in order."""
+    found = [(int(m.group(2)), d) for d in base.parent.glob(base.name + '-resume*')
+             if (m := _RESUME.match(d.name)) and m.group(1) == base.name and (d / 'cases.jsonl').exists()]
+    return [base] + [d for _, d in sorted(found)]
+
+
+def arm_latest(run_dir, root=HERE, policy=None):
+    """Frozen resume rule over an arm's segments: per (task, seed) the latest row counts; a later segment may only
+    rerun an infra/error row; the segments must cover the plan's cases exactly. Returns base, segments, plan, tasks,
+    index (case index), latest {key: (segment, row)}, clean keys, superseded and unresolved lists."""
+    base = arm_base(run_dir)
+    segs = arm_segments(base)
+    plan = read(base / 'metadata.json')['protocol']
+    for seg in segs[1:]:
+        meta = read(seg / 'metadata.json')
+        require(meta['protocol'] == plan and meta.get('resume'), f'{seg.name} is not a resume segment of {base.name}')
+    tasks = plan_tasks(plan, root)
+    index = {(t['id'], s): si * len(tasks) + ti for si, s in enumerate(plan['seeds']) for ti, t in enumerate(tasks)}
+    expected = set(index)
+    if plan.get('case_list'):
+        expected = {(c[0], c[1]) for c in read(root / plan['case_list'])['cases']}
+    latest, superseded = {}, []
+    for seg in segs:
+        seen = set()
+        for line in (seg / 'cases.jsonl').read_text().splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if policy is not None and row.get('policy') != policy:
+                continue
+            key = (row['task_id'], row['seed'])
+            require(key in index, f'unknown case {key} in {seg.name}')
+            require(key not in seen, f'duplicate case {key} in {seg.name}')
+            seen.add(key)
+            if key in latest:
+                prev_seg, prev = latest[key]
+                require('error' in prev or prev.get('infra'), f'{seg.name} reruns the clean case {key}')
+                superseded.append(dict(task_id=key[0], seed=key[1], segment=prev_seg.name))
+            latest[key] = (seg, row)
+    require(set(latest) == expected, f'{base.name}: segments do not cover the plan cases exactly')
+    clean = {k for k, (_, row) in latest.items() if 'error' not in row and not row.get('infra')}
+    return dict(base=base, segments=segs, plan=plan, tasks=tasks, index=index, latest=latest, clean=clean,
+                superseded=superseded, unresolved=[dict(task_id=k[0], seed=k[1]) for k in latest if k not in clean])
+
+
 def check_pairing(plan, policies, root=HERE):
-    """Escalation-only arms (esc_*, esc_extra) are add-ons to a first wave: they must run on a case_list, and if the
-    plan names what it is paired with ('paired_with': {agent_variant, seed_offset} and/or {plan: PATH, policy: NAME}),
-    the plan's agent_variant and every run policy's seed offset must equal the paired values."""
+    """Escalation-only arms (esc_*, esc_extra) are add-ons to a recorded first wave. They require
+    'paired_with': {plan, policy, run}: the plan's agent_variant and each arm's seed offset must equal that plan's
+    agent_variant and seed_offsets[policy], and the case_list must be exactly the clean abstentions (answered False,
+    latest clean row per case under the frozen resume rule) of that policy in that run (no unresolved infra cases).
+    Other policies: a present paired_with ({agent_variant, seed_offset} and/or {plan, policy}) must match too."""
     esc = [pol for pol in policies if pol in ESC_HINTS]
-    require(not esc or plan.get('case_list'), f'escalation-only policies {esc} require a case_list')
     paired = plan.get('paired_with')
+    if esc:
+        require(plan.get('case_list'), f'escalation-only policies {esc} require a case_list')
+        require(isinstance(paired, dict) and all(paired.get(k) for k in ('plan', 'policy', 'run')),
+                f'escalation-only policies {esc} require paired_with = {{plan, policy, run}}')
     if not paired:
         return
     expected = {}
@@ -512,6 +594,17 @@ def check_pairing(plan, policies, root=HERE):
     if 'seed_offset' in expected:
         for pol in policies:
             require(plan['seed_offsets'][pol] == expected['seed_offset'], f'seed offset of {pol} differs from paired_with')
+    if esc:
+        arm = arm_latest(root / paired['run'], root, policy=paired['policy'])
+        require(arm['plan'].get('agent_variant') == expected['agent_variant']
+                and arm['plan'].get('seed_offsets', {}).get(paired['policy']) == expected['seed_offset'],
+                'paired run was not made with the paired plan settings')
+        require(not arm['unresolved'], f"paired run has unresolved infra cases: {arm['unresolved'][:3]}")
+        abstained = {k for k in arm['clean'] if not arm['latest'][k][1]['answered']}
+        listed = [(c[0], c[1]) for c in read(root / plan['case_list'])['cases']]
+        require(len(set(listed)) == len(listed) and set(listed) == abstained,
+                f'case_list is not exactly the clean abstentions of the paired run ({len(set(listed))} listed, '
+                f'{len(abstained)} abstained)')
 
 
 def main(argv=None):
