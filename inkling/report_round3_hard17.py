@@ -431,7 +431,7 @@ def fmt(v):
 
 
 def markdown(s):
-    out = [f'# {STUDY}', '', '## D vs L', '',
+    out = [f'# {STUDY}', '', SCOPE, '## D vs L', '',
            '| arm | status | cases | solved | wrong | abstain | server tokens/case | tokens/solved | wall s | Wh |',
            '|---|---|---|---|---|---|---|---|---|---|']
     for k in 'DL':
@@ -475,6 +475,16 @@ def markdown(s):
         out.append(f'- {k}: {v}')
     out += ['', '## Accounting disclosure', '', s['disclosure'], '']
     return '\n'.join(out)
+
+
+SCOPE = ("**Scope (owner rule, 2026-11-24 07:05 Warsaw).** The swarm must be a generic solution for any problem; prompt "
+         "tuning toward the benchmark tasks is out of scope. Arm L (the sentence 'Unused numbers are allowed; stop as soon as "
+         "the target appears.') passed its frozen rule but is a task-specific prompt change and is NOT adopted. The recall pass "
+         "(R) lists target +/- x and the closers (C) use an arithmetic wanted list and task wording, so both are task-specific "
+         "as implemented: R failed its screen anyway (0/30), C was not run on hard-v17 and its dev screen is a measurement only. "
+         "Add-on X (more agents, no prompt change) is a generic mechanism and stands (cap 20 in its stage-A form; the live "
+         "load-gated version is the next study). Arm D uses the default roll12strategy, whose escalation strategy hints are "
+         "also task-specific; a generic default without hints is proposed separately.\n\n")
 
 
 def main(argv=None):

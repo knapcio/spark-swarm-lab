@@ -1,0 +1,136 @@
+{
+ "study": "swarm-round3-hard17-v1",
+ "arms": {
+  "D": {
+   "status": "complete",
+   "reasons": [],
+   "segments": [
+    "swarm-round3-hard17-v1-d-roll12strategy"
+   ],
+   "cases": 96,
+   "solved": 87,
+   "wrong": 0,
+   "abstain": 9,
+   "unresolved": 0,
+   "server_tokens": 7143291.0,
+   "server_tokens_per_case": 74409.28125,
+   "server_tokens_per_solved": 82106.79310344828,
+   "wall_seconds": 5776.3,
+   "wh": 183.44
+  },
+  "L": {
+   "status": "complete",
+   "reasons": [],
+   "segments": [
+    "swarm-round3-hard17-v1-l-roll12strategy"
+   ],
+   "cases": 96,
+   "solved": 88,
+   "wrong": 0,
+   "abstain": 8,
+   "unresolved": 0,
+   "server_tokens": 7070461.0,
+   "server_tokens_per_case": 73650.63541666667,
+   "server_tokens_per_solved": 80346.14772727272,
+   "wall_seconds": 5778.8,
+   "wh": 182.86
+  }
+ },
+ "paired_L_vs_D": {
+  "cases": 96,
+  "l_only": 4,
+  "d_only": 3,
+  "sign_test_p": 1.0
+ },
+ "mechanism": {
+  "D": {
+   "leftover_winners": 8,
+   "measured": 5,
+   "target_statement_not_found": 3,
+   "median": 11606.036732378387,
+   "p90": 26449.0845407776
+  },
+  "L": {
+   "leftover_winners": 10,
+   "measured": 8,
+   "target_statement_not_found": 2,
+   "median": 3430.61305770085,
+   "p90": 18573.260034474268
+  }
+ },
+ "screens": {
+  "closer": "not run",
+  "recall": "not run"
+ },
+ "addons": {
+  "X": {
+   "status": "complete",
+   "reasons": [],
+   "cases": 9,
+   "d_abstentions": 9,
+   "outside_d_abstentions": 0,
+   "rescued": 2,
+   "wrong": 0,
+   "unresolved": 0,
+   "server_tokens": 1978572.0,
+   "share_of_d_tokens": 0.27698325603702834,
+   "wall_seconds": 1624.7,
+   "wh": 51.12,
+   "rescued_cases": [
+    [
+     "eva-ha1ef17ff591",
+     2
+    ],
+    [
+     "eva-hb3dd2e2574e",
+     2
+    ]
+   ],
+   "wrong_cases": [],
+   "rescue_slots": [
+    14,
+    19
+   ]
+  },
+  "C": {
+   "status": "not run",
+   "dir": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/swarm-round3-hard17-v1-c"
+  },
+  "R": {
+   "status": "not run",
+   "dir": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/swarm-round3-hard17-v1-r.cases.jsonl"
+  }
+ },
+ "overlap": {
+  "rescued": {
+   "X": 2
+  },
+  "pairwise": {},
+  "all": 2,
+  "union": 2
+ },
+ "decisions": {
+  "L": {
+   "zero_wrong": true,
+   "solved_within_noise": true,
+   "cheaper_per_solved": true,
+   "adopt_sentence": true,
+   "rejected_pending_review": false
+  },
+  "X": {
+   "rescued_at_least_2": true,
+   "zero_wrong": true,
+   "outcome": "cap 20"
+  },
+  "C": "incomplete - C: not run",
+  "R": "incomplete - R: not run"
+ },
+ "plans": {
+  "D": null,
+  "L": "L replaces the default prompt if 0 wrong in L, L solved >= D solved - 2 (noise band), and L server tokens per solved case < D (mechanism: shorter post-discovery thinking). If L solved <= D - 3 the sentence is rejected pending review.",
+  "X": "Cap 20 becomes the accuracy default (to be made load-gated in a stage-B study) if X rescues >= 2 of D's abstentions and 0 wrong; cap 16 instead if all rescues come from slots 12-15. Tokens and energy are reported (owner priority: quality).",
+  "C": "Closers become part of the default if 0 wrong, >= 2 of D's abstentions rescued, and closer server tokens <= 10 % of D's server tokens.",
+  "R": "The recall pass becomes part of the default worker if 0 wrong, >= 2 of D's abstentions rescued, and recall server tokens <= 10 % of D's server tokens; if both C and R pass, the one with more rescues (ties: fewer tokens) is adopted first and the other is re-tested on top."
+ },
+ "disclosure": "Weaknesses that remain in arms.py-driven arms (arms.py is pinned; disclose in reports): flush_caches ignores the ssh exit status and the HTTP status (only the response text is recorded), delta() accepts negative deltas after a counter reset, parse() counts a missing counter as 0 and accepts non-finite values, wait_idle() returns a busy snapshot after its limit without failing, and an energy failure does not change the exit code."
+}

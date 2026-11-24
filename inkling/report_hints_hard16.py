@@ -76,6 +76,12 @@ Accepted agents by hint position ((slot - 4) mod 4): {res['accepted_by_hint']}.
 
 {verdict}
 
+**Scope (owner rule, 2026-11-24 07:05 Warsaw).** The swarm must be a generic solution for any problem; prompt tuning
+toward the benchmark tasks is out of scope. All four hint sets compared here (current strategy hints, hints 0 + 2, last-move
+partition hints) are arithmetic-specific. The P result stands as a measurement, but it is NOT adopted and its full-swarm
+confirmation (roll12split, hard-v18) was cancelled before any plan or corpus existed. The study also shows the current
+strategy hints buy nothing (no hints 19 vs strategy hints 14 rescues), which supports a generic default without hints.
+
 **Mechanism.** The P hints each fix one assumption about the final move and turn the six-number task into a smaller
 sub-target the agent computes itself: (0) the last move subtracts a given x, so build target + x; (1) it adds x, so build
 target - x; (2) it multiplies or divides by x; (3) it combines two values built from disjoint groups. Accepted P agents by
@@ -85,8 +91,8 @@ are generic strategies ("work backward", "product near the target", ...) and res
 vs N 19, not significant). P also used 23 % fewer tokens per case and 22 % less wall, because rescued cases stop early.
 The hints are derived from a failure analysis of older corpora of the same generator; hard-v16 was generated after the
 plans were frozen, so this is a fresh-corpus result, but conditional on first-wave failure (rescues, not a solved rate).
-Per the frozen rule, P becomes the default escalation hint set after a full-swarm confirmation on a fresh corpus
-(roll12strategy with P hints vs roll12strategy), which is queued next.
+Under the frozen rule P would have become the default after a full-swarm confirmation; the owner rule above takes
+precedence, so it is not adopted.
 
 Files: `run_variants.py` (`esc_*`, `SPLIT_HINTS`), `inkling/strict_hard_cases.py`, `inkling/report_hints_hard16.py`, numbers in [report.json](report.json).
 """)

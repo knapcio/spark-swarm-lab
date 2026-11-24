@@ -204,7 +204,25 @@ re-screen (worked examples, one group per builder, calibrated budgets, direct an
 Fable ideas 4 + 5. One default first wave on 192 six-number cases of fresh hard-v16 (144 solved, 0 wrong), then four
 escalation-only arms on the 48 strict-hard cases, same seeds, only the hint text differs. Rescued: no hints 19, current
 hints 14, hints 0+2 16, **last-move partition hints 31** (+18/-1 vs current, p = 7.6e-5), 0 wrong in every arm, P with
-23 % fewer tokens per case. The current hints show no benefit; P is adopted pending a full-swarm fresh-corpus confirmation.
+23 % fewer tokens per case. The current hints show no benefit. **Owner rule (2026-11-24): generic swarm only, so P is not
+adopted and its confirmation was cancelled** (all hints here are arithmetic-specific).
+
+## 2026-11-24 (16): round 3 on hard-v17 ([swarm-round3-hard17-v1](swarm-round3-hard17-v1/REPORT.md))
+
+Worker with one retry on upstream transport loss and judge retry in every arm. D (default) 87/96, L (prompt sentence
+"unused numbers are allowed; stop as soon as the target appears") 88/96, 0 wrong both; L passed its frozen rule but is a
+task-specific prompt change: **not adopted (owner rule)**. Add-on X, slots 12-19 on D's 9 abstentions: 2 rescued, 0 wrong,
++28 % of D's tokens: **more agents is a generic mechanism; cap 20 passes, live load-gated version next**. Recall pass:
+dev screen 0/30 (262 plans, none correct), task-specific anyway. Closers: task-specific as implemented (arithmetic wanted
+list), not run on hard-v17.
+
+## Proposal: a generic default without hints
+
+The owner rule also covers the escalation strategy hints in today's default `roll12strategy`. Existing data says they
+buy nothing: hard-v10 (cap 8) hints vs none +5/-2 (p = 0.45); hard-v16 strict-hard cases no hints 19 vs strategy hints 14
+rescues (+10/-5 for no hints, p = 0.30) at equal tokens; Fable's pooled replay unhinted 19/53 vs hinted 11/55 rescues.
+Proposed default: `roll12cancel` (cap 12, failure-driven replacement, cancel on accept, no hints). Confirmation planned on
+a fresh corpus together with the live idle-capacity escalation: roll12strategy vs roll12cancel vs roll12idle.
 
 ## Incidents
 
