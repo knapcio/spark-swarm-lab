@@ -33,7 +33,7 @@
   "roll12strategy": 17400,
   "esc_extra": 17400
  },
- "source_revision": "5533073",
+ "source_revision": "553307333e81db4961b75687a6ed815f9e410a0d",
  "source_path": ".runtime/xl-night-source",
  "code_sha256": {
   "run_variants.py": "4195de5b534986e5b211be2758aac96af72bdf52a848150d8049bca4449fdc8b",
@@ -62,9 +62,16 @@
   "plan": "SWARM_ROUND3_HARD17_D_PLAN.json",
   "policy": "roll12strategy",
   "run": "runs/swarm-round3-hard17-v1-d-roll12strategy",
-  "plan_sha256": "2b9a2c8cd7c5766c8dca3dac6c8a308117015d98bbc4a1d7275c3ed699c90867"
+  "plan_sha256": "b8f1a1c477a14474c95d864d5648da9cac20be59aab3baed70457742ebb76870"
  },
  "question": "X (idea 2 stage A): slots 12-19 (current hint cycle, 8 in flight) on D's clean abstentions: does going past 12 agents rescue cases?",
  "decision_rule": "Cap 20 becomes the accuracy default (to be made load-gated in a stage-B study) if X rescues >= 2 of D's abstentions and 0 wrong; cap 16 instead if all rescues come from slots 12-15. Tokens and energy are reported (owner priority: quality).",
- "report": "inkling/report_round3_hard17.py -> results/swarm-round3-hard17-v1/REPORT.md + report.json (written before any hard-v17 data)"
+ "report": "inkling/report_round3_hard17.py -> results/swarm-round3-hard17-v1/REPORT.md + report.json (written before any hard-v17 data)",
+ "amendments": [
+  {
+   "date": "2026-11-24",
+   "before_any_hard_v17_model_call": true,
+   "text": "source_revision was frozen as the short hash 5533073; the runner compares the full `git rev-parse HEAD`, so every admission failed at 00:22Z (no model call on hard-v17, D not started). Corrected to the same commit's full sha 553307333e81db4961b75687a6ed815f9e410a0d. If the paired plan sha changes because of this amendment, X's paired_with.plan_sha256 is updated to the amended D plan."
+  }
+ ]
 }

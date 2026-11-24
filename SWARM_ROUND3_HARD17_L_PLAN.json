@@ -33,7 +33,7 @@
   "roll12strategy": 17400,
   "esc_extra": 17400
  },
- "source_revision": "5533073",
+ "source_revision": "553307333e81db4961b75687a6ed815f9e410a0d",
  "source_path": ".runtime/xl-night-source",
  "code_sha256": {
   "run_variants.py": "4195de5b534986e5b211be2758aac96af72bdf52a848150d8049bca4449fdc8b",
@@ -72,5 +72,12 @@
   "mechanism": "Winners whose accepted plan leaves a number unused: tokens generated after the first thinking line that computes the target as the result of an equation (the first mere mention is the task restatement), tokens before that point estimated in proportion to characters (median, p90), L vs D."
  },
  "decision_rule": "L replaces the default prompt if 0 wrong in L, L solved >= D solved - 2 (noise band), and L server tokens per solved case < D (mechanism: shorter post-discovery thinking). If L solved <= D - 3 the sentence is rejected pending review.",
- "report": "inkling/report_round3_hard17.py -> results/swarm-round3-hard17-v1/REPORT.md + report.json (written before any hard-v17 data)"
+ "report": "inkling/report_round3_hard17.py -> results/swarm-round3-hard17-v1/REPORT.md + report.json (written before any hard-v17 data)",
+ "amendments": [
+  {
+   "date": "2026-11-24",
+   "before_any_hard_v17_model_call": true,
+   "text": "source_revision was frozen as the short hash 5533073; the runner compares the full `git rev-parse HEAD`, so every admission failed at 00:22Z (no model call on hard-v17, D not started). Corrected to the same commit's full sha 553307333e81db4961b75687a6ed815f9e410a0d. If the paired plan sha changes because of this amendment, X's paired_with.plan_sha256 is updated to the amended D plan."
+  }
+ ]
 }
