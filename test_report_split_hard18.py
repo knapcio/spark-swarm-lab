@@ -27,8 +27,10 @@ def row(task, policy, slot=None, solved=True, wrong=False, infra=0, esc=0, agent
 
 
 def acct(tokens, wh=1.0, **changes):
+    snaps = {k: dict(nodes={n: dict(generation_tokens=float(i)) for n in ('01', '02', '03', '04')})
+             for i, k in enumerate(('before', 'after'))}
     per_node = {n: dict(generation_tokens=tokens / 4, decode_tokens=tokens / 4, requests=3) for n in ('01', '02', '03', '04')}
-    rec = dict(protocol='swarm-arm-accounting-v1', runner_wall_seconds=100, runner_exit=0, idle_after=True,
+    rec = dict(protocol='swarm-arm-accounting-v1', **snaps, runner_wall_seconds=100, runner_exit=0, idle_after=True,
                server=dict(total=dict(generation_tokens=tokens), per_node=per_node), energy=dict(total_wh=wh))
     rec.update(changes)
     return rec
@@ -48,7 +50,7 @@ def study(root, split_rows=None, with_split=True, with_resume=True):
                 policies=list(rep.ARMS), agent_variant='xl_forced_original',
                 seed_offsets=dict(roll12strategy=18400, roll12split=18400),
                 decision_rule='roll12split becomes the arithmetic default if ...')
-    (root / rep.PLAN).write_text(json.dumps(plan))
+    (root / rep.PLAN).write_text(json.dumps(plan) + '\n')
     runs = root / 'runs'
     write_run(runs / f'{STUDY}-roll12strategy', plan, 'roll12strategy',
               [row('t0', 'roll12strategy', 0), row('t1', 'roll12strategy', 5, esc=2), row('t2', 'roll12strategy', esc=8)],
@@ -93,15 +95,15 @@ class SplitReportTests(unittest.TestCase):
         self.assertTrue(s['frozen_rule'].startswith('roll12split becomes'))
         self.assertIn('flush_caches ignores the ssh exit status', s['disclosure'])
         self.assertIn('| roll12split | complete | 3 |', md)
-        self.assertIn('Accounting disclosure', md)
+        self.assertIn('## Disclosures', md)
 
     def test_rule_on_unrounded_values_and_failures(self):
         s = dict(arms=dict(roll12strategy=dict(status='complete', solved=30, escalation_answered=5),
-                           roll12split=dict(status='complete', solved=30, wrong=0, escalation_answered=5)))
+                           roll12split=dict(status='complete', solved=30, wrong=0, wrong_all_attempts=0, escalation_answered=5)))
         self.assertTrue(rep.decision(s)['adopt_roll12split'])
-        s['arms']['roll12split'].update(wrong=1)
+        s['arms']['roll12split'].update(wrong_all_attempts=1)
         self.assertFalse(rep.decision(s)['adopt_roll12split'])
-        s['arms']['roll12split'].update(wrong=0, solved=29)
+        s['arms']['roll12split'].update(wrong_all_attempts=0, solved=29)
         self.assertFalse(rep.decision(s)['solved_at_least_default'])
         s['arms']['roll12split'].update(solved=30, escalation_answered=4)
         self.assertFalse(rep.decision(s)['escalation_answers_at_least_default'])
@@ -114,6 +116,44 @@ class SplitReportTests(unittest.TestCase):
             s = self.build(root)
         self.assertEqual(s['arms']['roll12split']['wrong'], 1)
         self.assertFalse(s['decision']['adopt_roll12split'])
+
+    def test_superseded_wrong_attempt_blocks_adoption(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            # t2 first attempt: answered WRONG in an infra-faulted run; the resume answers it correctly
+            study(root, split_rows=[row('t0', 'roll12split', 1), row('t1', 'roll12split', 4, esc=1),
+                                    row('t2', 'roll12split', 0, solved=False, wrong=True, infra=1)])
+            s = self.build(root)
+            with contextlib.redirect_stdout(io.StringIO()):
+                rep.main(['--root', d])
+            md = (root / 'results' / STUDY / 'REPORT.md').read_text()
+        B = s['arms']['roll12split']
+        self.assertEqual((B['status'], B['wrong'], B['wrong_all_attempts']), ('complete', 0, 1))
+        self.assertFalse(s['decision']['zero_wrong'])
+        self.assertFalse(s['decision']['adopt_roll12split'])
+        self.assertEqual([(w['dir'], w['server_tokens'], w['superseded_cases']) for w in B['wasted_work']],
+                         [(f'{STUDY}-roll12split', 1000, [['t2', 1]])])
+        self.assertIn('wasted segment', md)
+        self.assertIn('escalation agent runs on the node of the agent whose end freed its slot', md)
+
+    def test_both_arms_must_embed_the_frozen_plan(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            study(root)
+            meta = root / 'runs' / f'{STUDY}-roll12strategy' / 'metadata.json'
+            m = json.loads(meta.read_text())
+            m['protocol']['seed_offsets']['roll12strategy'] = 1
+            meta.write_text(json.dumps(m))
+            s = self.build(root)
+        self.assertEqual(s['arms']['roll12strategy']['status'], 'incomplete')
+        self.assertIn('embedded plan differs', ' '.join(s['arms']['roll12strategy']['reasons']))
+        self.assertEqual(s['arms']['roll12split']['status'], 'complete')
+        self.assertTrue(s['decision'].startswith('incomplete'))
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            study(root)
+            (root / rep.PLAN).unlink()
+            self.assertTrue(self.build(root)['decision'].startswith('incomplete'))
 
     def test_missing_unresolved_and_invalid_accounting(self):
         with tempfile.TemporaryDirectory() as d:

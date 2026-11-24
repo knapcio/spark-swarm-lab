@@ -10,6 +10,11 @@ of every segment directory present, validated as in report_round3_hard17 (counte
 zero-with-activity per-node delta, idle after the window, no accounting error): invalid -> 'incomplete', never
 zero-filled. Decisions use unrounded values.
 
+Validity also needs every segment's embedded plan equal to the frozen plan file SWARM_SPLIT_HARD18_PLAN.json (its
+sha256 is reported). A wrong answer in ANY attempt, including an infra-faulted attempt superseded by a resume, counts
+against the zero-wrong criterion; such attempts are listed. Wasted work: each segment's own totals with the cases a
+later segment superseded.
+
 Mechanism: cases answered by an escalation agent (selected_slot >= 4) per arm, and judge-accepted escalation agents per
 hint position (slot - 4) % 4 (with how many of them the exact verifier scores correct; scoring only).
 
@@ -29,6 +34,12 @@ STUDY = 'swarm-split-hard18-v1'
 PLAN = 'SWARM_SPLIT_HARD18_PLAN.json'
 ARMS = ('roll12strategy', 'roll12split')
 FIRST_ESCALATION_SLOT = 4
+DESIGN_DISCLOSURE = ('Design notes: (1) an escalation agent runs on the node of the agent whose end freed its slot (as in '
+                     'the default policy), so the same slot can run on different nodes in the two arms; (2) the sampling '
+                     'seed of each request hashes the agent seed, stage and prompt token ids, so the two arms sample '
+                     'differently for escalation agents (their prompts differ by the hint) even with equal agent seeds; '
+                     '(3) the code_sha256 pins in the plan are records checked by review, not enforced by the runner '
+                     '(it enforces only the worker source revision); arms.py must be given --source .runtime/xl-night-source.')
 
 
 def summarize(a):
@@ -46,6 +57,8 @@ def summarize(a):
                 pos['accepted'] += 1
                 pos['correct'] += bool(agent.get('verifier_solved'))
     return dict(status=a['status'], reasons=a['reasons'], segments=a['segments'], cases=n, solved=solved, wrong=wrong,
+                wrong_all_attempts=a['wrong_all_attempts'], wrong_attempts=a['wrong_attempts'], wasted_work=a['wasted_work'],
+                segment_accounting=a['segment_accounting'], plan_sha256=a['plan_sha256'],
                 abstain=sum(not r['answered'] for r in rows), unresolved=len(a['unresolved']), server_tokens=tok,
                 server_tokens_per_case=tok / n if tok is not None and n else None, wall_seconds=a['wall_seconds'], wh=wh,
                 wh_per_solved=wh / solved if wh is not None and solved else None,
@@ -61,14 +74,14 @@ def decision(s):
            for k, a in s['arms'].items() if a.get('status') != 'complete']
     if why:
         return f"incomplete - {' | '.join(why)}"
-    rule = dict(zero_wrong=B['wrong'] == 0, solved_at_least_default=B['solved'] >= A['solved'],
+    rule = dict(zero_wrong=B['wrong_all_attempts'] == 0, solved_at_least_default=B['solved'] >= A['solved'],
                 escalation_answers_at_least_default=B['escalation_answered'] >= A['escalation_answered'])
     rule['adopt_roll12split'] = all(rule.values())
     return rule
 
 
 def build(root, dirs):
-    arms = {k: r3.load_arm(dirs[k], root, k) for k in ARMS}
+    arms = {k: r3.load_arm(dirs[k], root, k, PLAN) for k in ARMS}
     s = dict(study=STUDY, arms={k: summarize(a) for k, a in arms.items()})
     A, B = (arms[k] for k in ARMS)
     if 'rows' in A and 'rows' in B:
@@ -112,7 +125,18 @@ def markdown(s):
         out.append(f"| {k} | {a['escalated_cases']} | {a['escalation_answered']} | {a['escalation_solved']} | "
                    f"{a['escalation_wrong']} | {cells} |")
     out += ['', '## Decision (frozen rule, unrounded values)', '', f"Rule: {s['frozen_rule']}", '',
-            f"Evaluation: {json.dumps(s['decision'])}", '', '## Accounting disclosure', '', s['disclosure'], '']
+            f"Evaluation: {json.dumps(s['decision'])}", '']
+    out += ['## Wrong answers over all attempts and wasted work', '']
+    for k in ARMS:
+        a = s['arms'][k]
+        if 'wrong_attempts' not in a:
+            continue
+        out.append(f"- {k}: {a['wrong_all_attempts']} wrong attempt(s)" +
+                   (f": {json.dumps(a['wrong_attempts'])}" if a['wrong_attempts'] else ''))
+        for w in a['wasted_work']:
+            out.append(f"  - wasted segment {w['dir']}: server tokens {fmt(w.get('server_tokens'))}, wall "
+                       f"{fmt(w.get('wall_seconds'))} s, {fmt(w.get('wh'))} Wh; superseded cases {w['superseded_cases']}")
+    out += ['', '## Disclosures', '', s['disclosure'], '', DESIGN_DISCLOSURE, '']
     return '\n'.join(out)
 
 

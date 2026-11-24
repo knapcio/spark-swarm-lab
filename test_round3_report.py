@@ -36,7 +36,9 @@ def write_run(path, plan, rows, tokens, resume_of=None, wh=1.0):
 
 
 def acct(tokens, wh=1.0, wrapper=False, **changes):
-    rec = dict(protocol='swarm-arm-accounting-v1', runner_wall_seconds=10, runner_exit=0, idle_after=True,
+    snaps = {k: dict(nodes={n: dict(generation_tokens=float(i)) for n in ('01', '02', '03', '04')})
+             for i, k in enumerate(('before', 'after'))}
+    rec = dict(protocol='swarm-arm-accounting-v1', **snaps, runner_wall_seconds=10, runner_exit=0, idle_after=True,
                server=dict(total=dict(generation_tokens=tokens), per_node={'01': dict(generation_tokens=tokens)}),
                energy=dict(total_wh=wh))
     if wrapper:
@@ -58,6 +60,7 @@ class Study:
         base = dict(dataset=str(root / 'data.json'), dataset_protocol='p', split='evaluation', tasks=4, seeds=[1],
                     agent_variant='xl_forced_original', seed_offsets=dict(roll12strategy=17400, esc_extra=17400))
         self.d_plan = dict(base, study=f'{STUDY}-d', policies=['roll12strategy'])
+        (root / 'SWARM_ROUND3_HARD17_D_PLAN.json').write_text(json.dumps(self.d_plan))
         runs = root / 'runs'
         d = runs / f'{STUDY}-d-roll12strategy'
         win = agent(0, True, {'moves': [{}] * 4}, True)  # 4 moves on 6 numbers: one number left over
@@ -68,6 +71,7 @@ class Study:
         write_run(runs / f'{STUDY}-d-roll12strategy-resume1', self.d_plan, [row('t2', 'roll12strategy')], 200,
                   resume_of=d)
         l_plan = dict(self.d_plan, study=f'{STUDY}-l', agent_variant='xl_forced_leftover')
+        (root / 'SWARM_ROUND3_HARD17_L_PLAN.json').write_text(json.dumps(l_plan))
         lwin = agent(0, True, {'moves': [{}] * 5}, True)  # uses every number: not a leftover winner
         write_run(runs / f'{STUDY}-l-roll12strategy', l_plan,
                   [row('t0', 'roll12strategy', True, True, slot=0, agents=[lwin]),
@@ -79,6 +83,7 @@ class Study:
         with contextlib.redirect_stdout(io.StringIO()):
             gate.main(['abstentions', '--run', str(d), '--output', str(self.abst), '--root', str(root)])
         x_plan = dict(base, study=f'{STUDY}-x', policies=['esc_extra'], case_list=str(self.abst))
+        (root / 'SWARM_ROUND3_HARD17_X_PLAN.json').write_text(json.dumps(x_plan))
         write_run(runs / f'{STUDY}-x-esc_extra', x_plan,
                   [row('t1', 'esc_extra', True, True, slot=13), row('t2', 'esc_extra')], 300)
         c = runs / f'{STUDY}-c'
@@ -230,7 +235,7 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(s['screens'], dict(closer='not run', recall='not run'))
         self.assertTrue(s['decisions']['L'].startswith('incomplete'))
         self.assertTrue(all(s['decisions'][k].startswith('incomplete') for k in 'XCR'))
-        self.assertEqual(s['plans']['D'], 'plan not written')
+        self.assertEqual(s['plans']['C'], 'plan not written')
 
     @staticmethod
     def complete(**kw):
@@ -238,8 +243,8 @@ class ReportTests(unittest.TestCase):
 
     def synthetic(self):
         return dict(arms=dict(D=self.complete(solved=10, server_tokens_per_solved=5.0),
-                              L=self.complete(solved=7, wrong=0, server_tokens_per_solved=4.0)),
-                    addons=dict(X=self.complete(rescued=2, wrong=0, rescue_slots=[12, 15]),
+                              L=self.complete(solved=7, wrong=0, wrong_all_attempts=0, server_tokens_per_solved=4.0)),
+                    addons=dict(X=self.complete(rescued=2, wrong=0, wrong_all_attempts=0, rescue_slots=[12, 15]),
                                 C=self.complete(rescued=3, wrong=0, share_of_d_tokens=0.05, server_tokens=10),
                                 R=self.complete(rescued=3, wrong=0, share_of_d_tokens=0.04, server_tokens=8)))
 
@@ -393,6 +398,49 @@ class ReportTests(unittest.TestCase):
         self.assertFalse(rep.inconsistent_node(dict(generation_tokens=0, decode_tokens=0, requests=0)))
         self.assertFalse(rep.inconsistent_node(dict(generation_tokens=7, decode_tokens=7, requests=1)))
         self.assertFalse(rep.inconsistent_node(dict(generation_tokens=7)))
+
+    def test_superseded_wrong_attempt_counts_and_wasted_work(self):
+        def wrong_then_resumed(root):
+            # L: t2 first attempt answered WRONG in an infra-faulted run; the resume answers it correctly
+            base = root / 'runs' / f'{STUDY}-l-roll12strategy'
+            rows = [json.loads(line) for line in (base / 'cases.jsonl').read_text().splitlines()]
+            rows[2].update(answered=True, wrong=True, infra=1, selected_slot=0)
+            (base / 'cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
+            plan = json.loads((root / 'SWARM_ROUND3_HARD17_L_PLAN.json').read_text())
+            write_run(root / 'runs' / f'{STUDY}-l-roll12strategy-resume1', plan,
+                      [row('t2', 'roll12strategy', True, True, slot=0)], 50, resume_of=base)
+        s = self.study_status(wrong_then_resumed)
+        L = s['arms']['L']
+        self.assertEqual((L['status'], L['wrong'], L['wrong_all_attempts']), ('complete', 0, 1))
+        self.assertEqual(L['wrong_attempts'], [dict(task_id='t2', seed=1, segment=f'{STUDY}-l-roll12strategy',
+                                                    superseded=True, infra=True)])
+        self.assertFalse(s['decisions']['L']['zero_wrong'])
+        self.assertFalse(s['decisions']['L']['adopt_sentence'])
+        self.assertEqual([(w['dir'], w['server_tokens'], w['superseded_cases']) for w in L['wasted_work']],
+                         [(f'{STUDY}-l-roll12strategy', 900, [['t2', 1]])])
+
+    def test_plan_equality_idle_and_snapshots_required(self):
+        def other_plan(root):
+            f = root / 'SWARM_ROUND3_HARD17_L_PLAN.json'
+            f.write_text(json.dumps(dict(json.loads(f.read_text()), note='amended')))
+        s = self.study_status(other_plan)
+        self.assertEqual(s['arms']['L']['status'], 'incomplete')
+        self.assertIn('embedded plan differs', ' '.join(s['arms']['L']['reasons']))
+
+        def no_idle_flag(root):
+            f = root / 'runs' / f'{STUDY}-l-roll12strategy' / 'arm_accounting.json'
+            rec = json.loads(f.read_text())
+            del rec['idle_after']
+            f.write_text(json.dumps(rec))
+        self.assertIn('idle_after is not true', ' '.join(self.study_status(no_idle_flag)['arms']['L']['reasons']))
+
+        def missing_snapshot_node(root):
+            f = root / 'runs' / f'{STUDY}-l-roll12strategy' / 'arm_accounting.json'
+            rec = json.loads(f.read_text())
+            del rec['after']['nodes']['03']['generation_tokens']
+            f.write_text(json.dumps(rec))
+        self.assertIn("after snapshot lacks generation_tokens for node(s) ['03']",
+                      ' '.join(self.study_status(missing_snapshot_node)['arms']['L']['reasons']))
 
     def test_unresolved_infra_blocks_the_arm(self):
         def unresolved(root):
