@@ -237,6 +237,19 @@ unhinted agents per failed case while a node holds < 12 requests) 86/96, 1 case 
 Fresh seeds 16-18: R2 71 vs S 68 of 72 (+4/-1), wrong 1 vs 3, -48 % tokens. Pooled over both studies R2 142 vs S 133 of
 144, wrong 2 vs 8. **R2 stays the coding default.** Next running: coding-roll3-v1, R2 vs R1 (one agent in flight).
 
+## 2026-11-24 (19): coding R1 ([coding-roll3-v1](coding-roll3-v1/REPORT.md))
+
+Seeds 19-21: R1 (one agent in flight) 66 vs R2 67 of 72, wrong 6 vs 4, -33 % tokens, +30 % wall: **R2 stays**.
+
+## 2026-11-24 (20): generic artifact relay, dev screen ([relay-screen-hard18-v1](relay-screen-hard18-v1/REPORT.md))
+
+Astra's fair generic closer test. On 14 deduplicated generic abstentions of hard-v18 (7 puzzles), up to 4 uniformly sampled
+failed-agent artifacts (last 12,000 characters) went to new workers with one fixed sentence ("Another solver worked on this
+exact task ... use whatever is correct in it, finish the task"), against the same number of fresh equal-budget workers:
+**RELAY 4 vs REPLACE 0 rescues**, 0 wrong in both, generation tokens -8 % but total compute +17 % (the artifacts are prompt
+input). Gate passed; a replication on 29 unhinted esc_none abstentions of hard-v16 is running, then an in-swarm study
+(roll12relay: escalation agents receive one failed artifact) on a fresh corpus.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
