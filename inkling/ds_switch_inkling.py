@@ -12,7 +12,11 @@ and started (never removed/recreated); native DeepSeek starts with the exact sav
 (sha 4ac01755...) sent as a remote `bash -c` argument with local stdin=DEVNULL; native stop uses
 service.sh stop. Never fleet.sh restore / window.sh prod. Each step re-checks state first.
 
-Usage: inkling/ds_switch_inkling.py precheck | to-deepseek | to-inkling     (prints a JSON receipt per step)
+stop-deepseek = exactly the first half of to-inkling (guards, native `service.sh stop` over the same ssh, wait until no
+GPU apps on all four nodes) WITHOUT starting swarm-inkling / swarm-inkling-shim; its final receipt lists every node's
+GPU apps (empty) and container states (stopped) and guards_ok.
+
+Usage: inkling/ds_switch_inkling.py precheck | to-deepseek | to-inkling | stop-deepseek   (a JSON receipt per step)
 """
 import hashlib
 import json
@@ -26,7 +30,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
 NODES = ['Spark_01', 'Spark_02', 'Spark_03', 'Spark_04']
-CONTAINERS = json.loads((HERE / '.runtime/INKLING_CONTAINERS.json').read_text())  # recorded before the first switch
+_CONTAINERS = HERE / '.runtime/INKLING_CONTAINERS.json'  # recorded before the first switch
+CONTAINERS = json.loads(_CONTAINERS.read_text()) if _CONTAINERS.exists() else None  # None only outside the fleet tree
 START_SCRIPT = HERE / '.runtime/start-native-reference-exact-v1.sh'
 START_SHA = '4ac017501254e826406ea97232ff5d5b99591159102f985a481bd48fd3048f36'
 SERVICE = '/home/knapcio/dsgb10/pico-dgx-ds4/ds41f-4xgx10-switchless/engine/server/service.sh'
@@ -151,5 +156,31 @@ def to_inkling():
     fail('to-inkling', 'Inkling not healthy within 15 minutes')
 
 
+def stop_deepseek():
+    """The first half of to_inkling, unchanged (guards, native stop, wait for free GPUs), then a receipt instead of
+    starting Inkling: every node's GPU apps (must be empty), its swarm containers (recorded ids, not running) and
+    guards_ok. The fleet is left with nothing serving."""
+    if not guards_ok():
+        fail('stop-deepseek', 'head guards changed')
+    out = ssh('Spark_01', f'env FLEET=/home/knapcio/dsgb10/fleet.conf {SERVICE} stop', timeout=300)
+    record('native-stop', rc=out.returncode, stdout_tail=out.stdout[-300:], stderr_tail=out.stderr[-300:])
+    for _ in range(30):
+        if not any(gpu_apps(n) for n in NODES):
+            break
+        time.sleep(10)
+    else:
+        fail('stop-deepseek', 'GPU still busy after native stop', apps={n: gpu_apps(n) for n in NODES})
+    nodes = {n: dict(gpu=gpu_apps(n), container=container(n)) for n in NODES}
+    guards = guards_ok()
+    ok = (guards and all(not v['gpu'] for v in nodes.values())
+          and all(not v['container']['running'] and v['container']['id'].startswith(CONTAINERS[n][0])
+                  and v['container']['shim_id'].startswith(CONTAINERS[n][1]) for n, v in nodes.items()))
+    receipt = record('deepseek-stopped', ok=ok, guards_ok=guards, nodes=nodes)
+    if not ok:
+        raise SystemExit('stop-deepseek: GPU apps, swarm containers or guards not as expected')
+    return receipt
+
+
 if __name__ == '__main__':
-    {'precheck': precheck, 'to-deepseek': to_deepseek, 'to-inkling': to_inkling}[sys.argv[1]]()
+    {'precheck': precheck, 'to-deepseek': to_deepseek, 'to-inkling': to_inkling,
+     'stop-deepseek': stop_deepseek}[sys.argv[1]]()
