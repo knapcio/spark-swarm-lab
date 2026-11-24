@@ -224,6 +224,19 @@ rescues (+10/-5 for no hints, p = 0.30) at equal tokens; Fable's pooled replay u
 Proposed default: `roll12cancel` (cap 12, failure-driven replacement, cancel on accept, no hints). Confirmation planned on
 a fresh corpus together with the live idle-capacity escalation: roll12strategy vs roll12cancel vs roll12idle.
 
+## 2026-11-24 (17): generic default and idle-capacity escalation ([swarm-generic-hard18-v1](swarm-generic-hard18-v1/REPORT.md))
+
+Owner rule: generic swarm only. Fresh hard-v18, plan 98a267a frozen first, each arm alone, 0 wrong in every arm.
+S roll12strategy (old default, task-specific hints) 83/96; **G roll12cancel (same policy, no hints) 85/96** (+4/-2), fewer
+tokens and Wh per solved: **G is the new arithmetic default** (frozen rule passed). GI roll12idle (G plus up to 8 extra
+unhinted agents per failed case while a node holds < 12 requests) 86/96, 1 case answered by slots 12-19, but arm wall
+1.24 x G (gate 1.10) and +25 % tokens: not adopted.
+
+## 2026-11-24 (18): coding R2 replicated ([coding-roll2-v1](coding-roll2-v1/REPORT.md))
+
+Fresh seeds 16-18: R2 71 vs S 68 of 72 (+4/-1), wrong 1 vs 3, -48 % tokens. Pooled over both studies R2 142 vs S 133 of
+144, wrong 2 vs 8. **R2 stays the coding default.** Next running: coding-roll3-v1, R2 vs R1 (one agent in flight).
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
