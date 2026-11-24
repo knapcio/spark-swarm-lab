@@ -76,6 +76,18 @@ Accepted agents by hint position ((slot - 4) mod 4): {res['accepted_by_hint']}.
 
 {verdict}
 
+**Mechanism.** The P hints each fix one assumption about the final move and turn the six-number task into a smaller
+sub-target the agent computes itself: (0) the last move subtracts a given x, so build target + x; (1) it adds x, so build
+target - x; (2) it multiplies or divides by x; (3) it combines two values built from disjoint groups. Accepted P agents by
+hint: 0: {res['accepted_by_hint'].get('P', {}).get('0', 0)}, 1: {res['accepted_by_hint'].get('P', {}).get('1', 0)}, 2: {res['accepted_by_hint'].get('P', {}).get('2', 0)}, 3: {res['accepted_by_hint'].get('P', {}).get('3', 0)}; the additive and subtractive last moves carry most rescues, consistent with
+Fable's finding that the last move uses a single given number in 90 % of solutions (subtraction 65 %). The current hints
+are generic strategies ("work backward", "product near the target", ...) and rescued fewer cases than no hint at all (S 14
+vs N 19, not significant). P also used 23 % fewer tokens per case and 22 % less wall, because rescued cases stop early.
+The hints are derived from a failure analysis of older corpora of the same generator; hard-v16 was generated after the
+plans were frozen, so this is a fresh-corpus result, but conditional on first-wave failure (rescues, not a solved rate).
+Per the frozen rule, P becomes the default escalation hint set after a full-swarm confirmation on a fresh corpus
+(roll12strategy with P hints vs roll12strategy), which is queued next.
+
 Files: `run_variants.py` (`esc_*`, `SPLIT_HINTS`), `inkling/strict_hard_cases.py`, `inkling/report_hints_hard16.py`, numbers in [report.json](report.json).
 """)
     print(md)

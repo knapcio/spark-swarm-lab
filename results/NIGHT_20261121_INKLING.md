@@ -199,6 +199,13 @@ rows were false. Astra review: the screen was unfair to the idea (all 360 builde
 answered only after forced closure; ~147 rows per group). **This prototype is rejected; the idea stays open** for a fair
 re-screen (worked examples, one group per builder, calibrated budgets, direct answer vs thinking).
 
+## 2026-11-23/24 (15): escalation hints on a shared first wave ([swarm-hints-hard16-v1](swarm-hints-hard16-v1/REPORT.md))
+
+Fable ideas 4 + 5. One default first wave on 192 six-number cases of fresh hard-v16 (144 solved, 0 wrong), then four
+escalation-only arms on the 48 strict-hard cases, same seeds, only the hint text differs. Rescued: no hints 19, current
+hints 14, hints 0+2 16, **last-move partition hints 31** (+18/-1 vs current, p = 7.6e-5), 0 wrong in every arm, P with
+23 % fewer tokens per case. The current hints show no benefit; P is adopted pending a full-swarm fresh-corpus confirmation.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
