@@ -35,7 +35,9 @@ usage: report_round3_hard17.py [--root DIR] [--out DIR] [--d DIR] [--l DIR] [--x
                                [--r-accounting DIR] [--closer-screen PATH] [--recall-screen PATH]
 """
 import argparse
+import hashlib
 import json
+from datetime import datetime, timedelta
 import math
 import re
 import sys
@@ -51,6 +53,7 @@ import round3_gate  # noqa: E402
 import run_variants  # noqa: E402
 
 STUDY = 'swarm-round3-hard17-v1'
+NODES = ('01', '02', '03', '04')
 DEFAULTS = dict(d=f'runs/{STUDY}-d-roll12strategy', l=f'runs/{STUDY}-l-roll12strategy', x=f'runs/{STUDY}-x-esc_extra',
                 c=f'runs/{STUDY}-c', r_cases=f'runs/{STUDY}-r.cases.jsonl', r_accounting=f'runs/{STUDY}-r',
                 closer_screen='.runtime/closer_screen', recall_screen='.runtime/recall_screen')
@@ -109,14 +112,36 @@ def accounting(dirs, wrapper=False):
     show generation on every node: arms.py writes a counter it could not read as 0, so a 0 delta there is treated as
     a missing counter. In every segment (with or without cases) a node whose generation_tokens, decode_tokens and
     requests deltas disagree on being zero (one 0, another > 0) is invalid too. Invalid -> server_tokens None and the
-    problems listed (never zero-filled)."""
-    problems, tokens, wall, whs = [], 0, 0.0, []
+    problems listed (never zero-filled). Every record also needs idle_after == true and a generation_tokens counter
+    for every node in both its before and after snapshots. 'segments' lists each directory's own totals (wasted work
+    of faulted segments is reported from it)."""
+    problems, tokens, wall, whs, segments, window_us = [], 0, 0.0, [], [], 0
     for d in dirs:
         f = Path(d) / 'arm_accounting.json'
         if not f.exists():
             problems.append(f'{Path(d).name}: no arm_accounting.json')
+            segments.append(dict(dir=Path(d).name, accounting=False))
             continue
         a = json.loads(f.read_text())
+        energy0 = a.get('energy') if isinstance(a.get('energy'), dict) else {}
+        segments.append(dict(dir=Path(d).name, accounting=True,
+                             server_tokens=((a.get('server') or {}).get('total') or {}).get('generation_tokens'),
+                             wall_seconds=a.get('runner_wall_seconds'), wh=energy0.get('total_wh'),
+                             runner_exit=a.get('runner_exit'), cases=case_count(d)))
+        try:  # the arm window from the unrounded UTC timestamps (runner_wall_seconds is rounded to tenths)
+            span = datetime.fromisoformat(a['after']['utc']) - datetime.fromisoformat(a['before']['utc'])
+            micro = span // timedelta(microseconds=1)  # exact integer microseconds (no float sums)
+            if micro < 0:
+                raise ValueError(micro)
+            window_us += micro
+            segments[-1]['window_us'] = micro
+        except (KeyError, TypeError, ValueError, AttributeError):
+            problems.append(f'{Path(d).name}: before/after UTC timestamps missing or invalid')
+        for snap in ('before', 'after'):
+            nodes = (a.get(snap) or {}).get('nodes') or {}
+            missing = sorted(n for n in NODES if not isinstance((nodes.get(n) or {}).get('generation_tokens'), (int, float)))
+            if missing:
+                problems.append(f'{Path(d).name}: {snap} snapshot lacks generation_tokens for node(s) {missing}')
         total = ((a.get('server') or {}).get('total') or {}).get('generation_tokens')
         per_node = ((a.get('server') or {}).get('per_node') or {})
         if not isinstance(total, (int, float)) or not math.isfinite(total) or total < 0:
@@ -136,8 +161,8 @@ def accounting(dirs, wrapper=False):
                 zero = sorted(k for k, n in per_node.items() if (n or {}).get('generation_tokens') == 0)
                 problems.append(f'{Path(d).name}: generation_tokens delta 0 on node(s) {zero} although the segment ran '
                                 'cases (an unread counter is written as 0 by arms.py)')
-        if a.get('idle_after') is False:
-            problems.append(f'{Path(d).name}: fleet not idle after the window')
+        if a.get('idle_after') is not True:
+            problems.append(f'{Path(d).name}: idle_after is not true (fleet not idle after the window, or not recorded)')
         if a.get('accounting_error'):
             problems.append(f"{Path(d).name}: {a['accounting_error'][:120]}")
         if wrapper and (a.get('runner_exit') != 0 or a.get('energy_error') or 'command' not in a):
@@ -147,11 +172,28 @@ def accounting(dirs, wrapper=False):
         energy = a.get('energy') if isinstance(a.get('energy'), dict) else {}
         whs.append(energy.get('total_wh') if not energy.get('error') else None)
     return dict(server_tokens=None if problems or not dirs else tokens, wall_seconds=wall,
+                window_us=None if problems or not dirs else window_us,
+                window_seconds=None if problems or not dirs else window_us / 1e6,
                 wh=sum(whs) if whs and None not in whs else None, accounting_valid=not problems and bool(dirs),
-                accounting_problems=problems)
+                accounting_problems=problems, segment_accounting=segments)
 
 
-def load_arm(path, root, policy):
+def all_attempts(segments, policy):
+    """Every recorded case row of the arm (all segments, superseded attempts included), as (segment, row)."""
+    out = []
+    for seg in segments:
+        f = Path(seg) / 'cases.jsonl'
+        if f.exists():
+            out += [(Path(seg), r) for r in round3_gate.read_rows(f) if policy is None or r.get('policy') == policy]
+    return out
+
+
+def load_arm(path, root, policy, plan_file=None):
+    """An arm under the frozen resume rule with validity (complete only without unresolved infra, with valid
+    accounting for every segment directory and, if plan_file is given, every segment's embedded plan equal to that
+    file's content). Wrong answers are counted over ALL attempts: a wrong answer in an infra-faulted attempt that a
+    resume superseded still counts (wrong_all_attempts) and is listed. Wasted work: the totals of each segment and the
+    cases in it that a later segment superseded."""
     path = Path(path) if Path(path).is_absolute() else root / path
     if not (path / 'cases.jsonl').exists():
         return dict(status='not run', dir=str(path))
@@ -160,11 +202,44 @@ def load_arm(path, root, policy):
     except Exception as exc:  # mid-run: segments do not cover the plan's cases yet
         return dict(status='incomplete', dir=str(path), reasons=[str(exc)[:300]])
     rows = {k: row for k, (_, row) in arm['latest'].items() if k in arm['clean']}
-    acct = accounting(segment_dirs(arm['base']))
+    dirs = segment_dirs(arm['base'])
+    acct = accounting(dirs)
     reasons = ([f"{len(arm['unresolved'])} unresolved infra case(s)"] if arm['unresolved'] else []) + acct['accounting_problems']
+    plan_sha = None
+    for seg in dirs:  # every segment directory, with or without case rows, must record the plan it ran
+        meta = Path(seg) / 'metadata.json'
+        if not meta.exists() or not isinstance(json.loads(meta.read_text()).get('protocol'), dict):
+            reasons.append(f'{Path(seg).name}: no metadata.json with the embedded plan')
+    if plan_file is not None:
+        plan_file = Path(plan_file) if Path(plan_file).is_absolute() else root / plan_file
+        if not plan_file.exists():
+            reasons.append(f'frozen plan file {plan_file.name} not found')
+        else:
+            plan_sha = hashlib.sha256(plan_file.read_bytes()).hexdigest()
+            frozen = json.loads(plan_file.read_text())
+            for seg in dirs:
+                meta = Path(seg) / 'metadata.json'
+                if meta.exists() and json.loads(meta.read_text()).get('protocol') != frozen:
+                    reasons.append(f'{Path(seg).name}: embedded plan differs from {plan_file.name} (sha256 {plan_sha[:12]})')
+    final = {(k, seg.name) for k, (seg, _) in arm['latest'].items()}
+    wrong_attempts, superseded_by_segment = [], {}
+    for seg, r in all_attempts(dirs, policy):
+        key = (r['task_id'], r['seed'])
+        current = (key, seg.name) in final
+        if r.get('wrong'):
+            wrong_attempts.append(dict(task_id=key[0], seed=key[1], segment=seg.name, superseded=not current,
+                                       infra=bool(r.get('infra')) or 'error' in r))
+        if not current:
+            superseded_by_segment.setdefault(seg.name, []).append([key[0], key[1]])
+    # wasted work: segments with superseded cases, and segments without any case row (e.g. a failed start)
+    wasted = [dict(seg, superseded_cases=superseded_by_segment.get(seg['dir'], []),
+                   no_case_rows=not case_count(Path(path).parent / seg['dir']))
+              for seg in acct['segment_accounting']
+              if seg['dir'] in superseded_by_segment or not case_count(Path(path).parent / seg['dir'])]
     return dict(status='incomplete' if reasons else 'complete', reasons=reasons, dir=str(path), arm=arm, rows=rows,
-                segments=[s.name for s in segment_dirs(arm['base'])], superseded=arm['superseded'], unresolved=arm['unresolved'],
-                tasks={t['id']: t for t in arm['tasks']}, **acct)
+                segments=[s.name for s in dirs], superseded=arm['superseded'], unresolved=arm['unresolved'],
+                tasks={t['id']: t for t in arm['tasks']}, wrong_attempts=wrong_attempts,
+                wrong_all_attempts=len(wrong_attempts), wasted_work=wasted, plan_sha256=plan_sha, **acct)
 
 
 def arm_summary(a):
@@ -174,6 +249,8 @@ def arm_summary(a):
     n, solved, wrong = len(rows), sum(bool(r['solved']) for r in rows), sum(bool(r['wrong']) for r in rows)
     tok = a['server_tokens']
     return dict(status=a['status'], reasons=a['reasons'], segments=a['segments'], cases=n, solved=solved, wrong=wrong,
+                wrong_all_attempts=a['wrong_all_attempts'], wrong_attempts=a['wrong_attempts'], wasted_work=a['wasted_work'],
+                segment_accounting=a['segment_accounting'],
                 abstain=sum(not r['answered'] for r in rows), unresolved=len(a['unresolved']), server_tokens=tok,
                 server_tokens_per_case=tok / n if tok is not None and n else None,
                 server_tokens_per_solved=tok / solved if tok is not None and solved else None,
@@ -283,12 +360,13 @@ def mechanism(a, policy):
 def addon_rescues(kind, root, paths, screens):
     """{(task, seed): dict(rescued, wrong, slot)} of an add-on, plus status (complete only when decidable)."""
     if kind == 'X':
-        a = load_arm(paths['x'], root, 'esc_extra')
+        a = load_arm(paths['x'], root, 'esc_extra', PLANS['X'])
         if 'rows' not in a:
             return a
         cases = {k: dict(rescued=bool(r['solved']), wrong=bool(r['wrong']), slot=r.get('selected_slot'))
                  for k, r in a['rows'].items()}
         return dict(status=a['status'], reasons=a['reasons'], cases=cases, unresolved=len(a['unresolved']),
+                    wrong_all_attempts=a['wrong_all_attempts'],
                     **{k: a[k] for k in ('server_tokens', 'wall_seconds', 'wh')})
     if kind == 'C':
         d = root / paths['c']
@@ -335,6 +413,7 @@ def addon_summary(name, x, d_abst, d_tokens, d_complete=True):
                unresolved=x['unresolved'], server_tokens=tok, share_of_d_tokens=share, wall_seconds=x.get('wall_seconds'),
                wh=x.get('wh'), rescued_cases=[list(k) for k in rescued], wrong_cases=[list(k) for k in wrong])
     if name == 'X':
+        out['wrong_all_attempts'] = x.get('wrong_all_attempts', 0)
         out['rescue_slots'] = sorted(x['cases'][k]['slot'] for k in rescued)
     return out
 
@@ -353,16 +432,17 @@ def decisions(s):
     if out['L'] is None:
         cheaper = (L['server_tokens_per_solved'] is not None and D['server_tokens_per_solved'] is not None
                    and L['server_tokens_per_solved'] < D['server_tokens_per_solved'])
-        rule = dict(zero_wrong=L['wrong'] == 0, solved_within_noise=L['solved'] >= D['solved'] - NOISE,
+        rule = dict(zero_wrong=L['wrong_all_attempts'] == 0, solved_within_noise=L['solved'] >= D['solved'] - NOISE,
                     cheaper_per_solved=cheaper)
         rule['adopt_sentence'] = all(rule.values())
         rule['rejected_pending_review'] = L['solved'] <= D['solved'] - NOISE - 1
         out['L'] = rule
     out['X'] = blocked('X', ('D', D), ('X', X))
     if out['X'] is None:
-        ok = X['rescued'] >= ADDON_RESCUES and X['wrong'] == 0
+        ok = X['rescued'] >= ADDON_RESCUES and X['wrong'] == 0 and X.get('wrong_all_attempts', 0) == 0
         cap = ('cap 16' if all(slot is not None and slot <= 15 for slot in X['rescue_slots']) else 'cap 20') if ok else 'no change'
-        out['X'] = dict(rescued_at_least_2=X['rescued'] >= ADDON_RESCUES, zero_wrong=X['wrong'] == 0, outcome=cap)
+        out['X'] = dict(rescued_at_least_2=X['rescued'] >= ADDON_RESCUES,
+                        zero_wrong=X['wrong'] == 0 and X.get('wrong_all_attempts', 0) == 0, outcome=cap)
     for name, a in (('C', C), ('R', R)):
         out[name] = blocked(name, ('D', D), (name, a))
         if out[name] is None:
@@ -391,8 +471,8 @@ def disclosure():
 
 
 def build(root, paths):
-    D = load_arm(paths['d'], root, 'roll12strategy')
-    L = load_arm(paths['l'], root, 'roll12strategy')
+    D = load_arm(paths['d'], root, 'roll12strategy', PLANS['D'])
+    L = load_arm(paths['l'], root, 'roll12strategy', PLANS['L'])
     s = dict(study=STUDY, arms=dict(D=arm_summary(D), L=arm_summary(L)))
     if 'rows' in D and 'rows' in L:
         common = sorted(set(D['rows']) & set(L['rows']))
