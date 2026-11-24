@@ -34,7 +34,7 @@ from run_agents72 import operational_fault  # noqa: E402
 
 STUDY = 'deepseek-coding3-v1'
 PLAN = 'DEEPSEEK_CODING3_PLAN.json'
-CASES = 72
+CASES, TASKS, SEEDS = 72, 24, (19, 20, 21)  # frozen design: 24 evaluation tasks x seeds 19-21
 MIN_ENERGY_COVERAGE = 0.9
 ENERGY_NODES = ('01', '02', '03', '04')
 
@@ -43,7 +43,13 @@ def frozen_cases(root):
     """The frozen plan's cases: every evaluation task of the plan's corpus x the plan's seeds (72 = 24 x 19-21)."""
     plan = json.loads((root / PLAN).read_text())
     tasks = [t['id'] for t in json.loads((root / plan['tasks']).read_text())['tasks'] if t['split'] == 'evaluation']
-    return {(t, s) for s in plan['seeds'] for t in tasks}
+    if tuple(plan['seeds']) != SEEDS or len(set(tasks)) != TASKS:
+        raise ValueError(f"plan has seeds {plan['seeds']} and {len(set(tasks))} evaluation tasks; the frozen design is "
+                         f"{TASKS} tasks x seeds {list(SEEDS)}")
+    cases = {(t, s) for s in plan['seeds'] for t in tasks}
+    if len(cases) != CASES:
+        raise ValueError(f'{len(cases)} cases, {CASES} expected')
+    return cases
 
 
 def sign_test(wins, losses):

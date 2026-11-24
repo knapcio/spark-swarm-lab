@@ -47,8 +47,8 @@ class FakeFleet:
 
 
 class StopDeepseekTests(unittest.TestCase):
-    def run_stop(self, fleet, log_path=None):
-        with tempfile.TemporaryDirectory() as d, patch.object(ds, 'ssh', fleet), patch.object(ds, 'CONTAINERS', CONTAINERS), \
+    def run_stop(self, fleet, log_path=None, containers=CONTAINERS):
+        with tempfile.TemporaryDirectory() as d, patch.object(ds, 'ssh', fleet), patch.object(ds, 'CONTAINERS', containers), \
                 patch.object(ds, 'LOG', log_path(Path(d)) if log_path else Path(d) / 'receipts' / 'log.jsonl'), \
                 patch.object(ds.time, 'sleep', lambda s: None), contextlib.redirect_stdout(io.StringIO()):
             try:
@@ -115,6 +115,14 @@ class StopDeepseekTests(unittest.TestCase):
         self.assertFalse(any('service.sh' in c[1] for c in fleet.calls))
         receipt, log = self.run_stop(FakeFleet())
         self.assertLess(log.index('stop-deepseek-start'), log.index('native-stop'))
+
+    def test_unreadable_manifest_stops_nothing(self):
+        for containers in (None, {n: ['a'] for n in ds.NODES}, {'Spark_01': ['a', 'b']}):
+            fleet = FakeFleet()
+            result, log = self.run_stop(fleet, containers=containers)
+            self.assertIsInstance(result, SystemExit)
+            self.assertIn('preflight failed; nothing was stopped', str(result))
+            self.assertFalse(any('service.sh' in c[1] for c in fleet.calls), containers)
 
     def test_existing_steps_unchanged(self):
         self.assertTrue(callable(ds.to_inkling) and callable(ds.to_deepseek) and callable(ds.precheck))

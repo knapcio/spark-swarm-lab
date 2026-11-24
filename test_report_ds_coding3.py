@@ -120,6 +120,23 @@ class DsCoding3Tests(unittest.TestCase):
         self.assertIn("cases differ from the frozen plan's 72 (1 missing, 1 extra)", ' '.join(s['systems']['DS']['reasons']))
         self.assertNotIn('hybrid', s)
 
+    def test_shortened_plan_is_incomplete(self):
+        ok = lambda i: (True, True)
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            write(root, ok, ok, ok)
+            (root / rep.PLAN).write_text(json.dumps(dict(tasks='datasets/tasks.json', seeds=[19, 20])))
+            s = self.build(root)
+        self.assertEqual(s['status'], 'incomplete')
+        self.assertIn('frozen design is 24 tasks x seeds [19, 20, 21]', json.dumps(s))
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            write(root, ok, ok, ok)
+            tasks = json.loads((root / 'datasets' / 'tasks.json').read_text())
+            tasks['tasks'] = tasks['tasks'][1:]  # 23 evaluation tasks
+            (root / 'datasets' / 'tasks.json').write_text(json.dumps(tasks))
+            self.assertEqual(self.build(root)['status'], 'incomplete')
+
     def test_bad_timestamps_are_incomplete(self):
         ok = lambda i: (True, True)
         for meta in (dict(started_utc='nonsense', completed_utc='2026-11-24T22:00:00+00:00', errors=[]),

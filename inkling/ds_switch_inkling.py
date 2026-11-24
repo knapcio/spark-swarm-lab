@@ -185,6 +185,20 @@ def gpu_idle_everywhere():
     return state
 
 
+def stop_preflight():
+    """Local inputs of every later stop-deepseek step: the recorded container manifest (.runtime/INKLING_CONTAINERS.json,
+    readable, a [server id, shim id] pair per node) used by the final receipt check."""
+    problems = []
+    if not isinstance(CONTAINERS, dict):
+        problems.append(f'container manifest {_CONTAINERS} missing or unreadable')
+    else:
+        for n in NODES:
+            ids = CONTAINERS.get(n)
+            if not (isinstance(ids, (list, tuple)) and len(ids) == 2 and all(isinstance(x, str) and x for x in ids)):
+                problems.append(f'container manifest has no [server id, shim id] for {n}')
+    return problems
+
+
 def stop_deepseek():
     """The first half of to_inkling (guards, native stop, wait for free GPUs), then a receipt instead of starting
     Inkling: every node's GPU apps (a successful query with no compute apps), its swarm containers (recorded ids, not
@@ -196,6 +210,9 @@ def stop_deepseek():
         record('stop-deepseek-start', guards=guards_ok())
     except OSError as exc:
         raise SystemExit(f'stop-deepseek: receipt log {LOG} cannot be written ({exc}); nothing was stopped')
+    problems = stop_preflight()
+    if problems:  # every later step's local inputs must exist before anything is stopped
+        fail('stop-deepseek', 'preflight failed; nothing was stopped: ' + '; '.join(problems))
     if not guards_ok():
         fail('stop-deepseek', 'head guards changed')
     out = ssh('Spark_01', f'env FLEET=/home/knapcio/dsgb10/fleet.conf {SERVICE} stop', timeout=300)
