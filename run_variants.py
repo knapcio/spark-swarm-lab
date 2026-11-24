@@ -143,15 +143,17 @@ class JudgeFault(RuntimeError):
         self.record = record
 
 
-def judge_with_reason(candidate, endpoint, events_path, seed):
+def judge_with_reason(candidate, endpoint, events_path, seed, prompt=None, client_factory=None):
     """Thinking judge with a one-sentence reason (judge_once). An attempt that failed by transport loss is retried once
     after JUDGE_RETRY_SECONDS with the same seed (events in <stem>.retry.jsonl). A clean first call returns exactly as
     before (verdict, reason, infra, tokens). After a retry or any fault the record also holds judge_attempts (tokens,
-    infra, error per attempt; tokens is their sum); if the last attempt raised, JudgeFault carries that record."""
-    attempts = [judge_once(candidate, endpoint, events_path, seed)]
+    infra, error per attempt; tokens is their sum); if the last attempt raised, JudgeFault carries that record.
+    prompt / client_factory: another domain's judge prompt and client (judge_replay); default the arithmetic judge."""
+    attempts = [judge_once(candidate, endpoint, events_path, seed, prompt, client_factory)]
     if attempts[0]['infra'] and attempts[0]['retryable']:
         time.sleep(JUDGE_RETRY_SECONDS)
-        attempts.append(judge_once(candidate, endpoint, Path(events_path).with_suffix('.retry.jsonl'), seed))
+        attempts.append(judge_once(candidate, endpoint, Path(events_path).with_suffix('.retry.jsonl'), seed, prompt,
+                                   client_factory))
     last = attempts[-1]
     out = dict(verdict=last['verdict'], reason=last['reason'], infra=last['infra'], tokens=sum(a['tokens'] for a in attempts))
     if len(attempts) > 1:
@@ -202,7 +204,7 @@ def raised_is_retryable(exc):
     return not isinstance(exc, ValueError) and transport_error(f'{type(exc).__name__}: {exc}')
 
 
-def judge_once(candidate, endpoint, events_path, seed):
+def judge_once(candidate, endpoint, events_path, seed, prompt=None, client_factory=None):
     """One attempt of the thinking judge (same prompt and budgets as before). Never raises: an exception (the trace
     cannot be opened or written, /tokenize refused after the first completion, ...) is recorded with the tokens already
     charged. Returns verdict, reason, infra, tokens, error (first transport-loss error, else first error), raised,
@@ -214,10 +216,12 @@ def judge_once(candidate, endpoint, events_path, seed):
                     retryable=False)
     errors, client = [], None
     try:
-        client = run_judge.ChatJudge(endpoint, 'nemotron-lightning', run_judge.Budget(2, 8192), events, seed)
-        prompt = run_judge.judge_prompt(candidate['numbers'], candidate['target'], candidate['plan'])
-        require(prompt.endswith(JUDGE_TAIL), 'judge prompt changed')
-        prompt = prompt[:-len(JUDGE_TAIL)] + REASON_TAIL
+        client = (client_factory or run_judge.ChatJudge)(endpoint, 'nemotron-lightning', run_judge.Budget(2, 8192),
+                                                         events, seed)
+        if prompt is None:  # the arithmetic judge (unchanged)
+            prompt = run_judge.judge_prompt(candidate['numbers'], candidate['target'], candidate['plan'])
+            require(prompt.endswith(JUDGE_TAIL), 'judge prompt changed')
+            prompt = prompt[:-len(JUDGE_TAIL)] + REASON_TAIL
         ids = client.chat_prompt_ids(prompt, thinking=True)
         first = client.complete(0, 'judge', ids, 6144)
         errors.append(first['error'])
