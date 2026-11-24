@@ -38,9 +38,10 @@ def acct(tokens, prompt=None, prefill=None, wall=100, wh=1.0):
     return dict(protocol='swarm-arm-accounting-v1', runner_wall_seconds=round(wall, 1), runner_exit=0, idle_after=True,
                 before=dict(utc=start.isoformat(), nodes={n: dict(generation_tokens=0.0) for n in nodes}),
                 after=dict(utc=(start + timedelta(seconds=wall)).isoformat(), nodes={n: dict(generation_tokens=1.0) for n in nodes}),
-                server=dict(total=total, per_node={n: dict(generation_tokens=tokens / 4, decode_tokens=tokens / 4, requests=3)
+                server=dict(total=total, per_node={n: dict(generation_tokens=tokens / 4, decode_tokens=tokens / 4, requests=3,
+                                                           prompt_tokens=(prompt or 0) / 4, prefill_compute_tokens=(prefill or 0) / 4)
                                                    for n in nodes}),
-                energy=dict(total_wh=wh))
+                energy=dict(total_wh=wh) if wh is not None else dict(error='ssh down'))
 
 
 def write_run(path, plan, policy, rows, record):
@@ -116,6 +117,23 @@ class RelaySwarmReportTests(unittest.TestCase):
         self.assertIn('prefill_compute_tokens missing', ' '.join(s['arms']['RL']['reasons']))
         self.assertIsNone(s['arms']['RL']['total_compute_tokens'])
         self.assertTrue(s['decision'].startswith('incomplete'))
+
+    def test_zero_input_counter_on_an_active_node_and_missing_wh(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            rec = acct(1500, prompt=60000, prefill=21000)
+            rec['server']['per_node']['03']['prefill_compute_tokens'] = 0
+            study(root, rl_record=rec)
+            s = self.build(root)
+        self.assertEqual(s['arms']['RL']['status'], 'incomplete')
+        self.assertIn('node 03 shows activity but prompt/prefill tokens are 0', ' '.join(s['arms']['RL']['reasons']))
+        self.assertTrue(s['decision'].startswith('incomplete'))
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            study(root, rl_record=acct(1500, prompt=60000, prefill=21000, wh=None))
+            s = self.build(root)
+        self.assertEqual(s['arms']['RL']['status'], 'incomplete')
+        self.assertIn('Wh', ' '.join(s['arms']['RL']['reasons']))
 
     def test_missing_arm(self):
         with tempfile.TemporaryDirectory() as d:

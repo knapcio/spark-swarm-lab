@@ -6,7 +6,8 @@ corpus, each arm run alone by inkling/arms.py. Writes results/swarm-relay-hard19
 Validation is shared with report_round3_hard17 (frozen resume rule, accounting validity for every segment directory,
 embedded plan equal to the frozen plan file, wrong answers over ALL attempts, wasted work, unrounded UTC window).
 Server work per arm: generated tokens AND input work (prompt tokens, computed prefill) summed over every segment's
-arm_accounting.json; total compute = generated + computed prefill. A missing or invalid input counter -> incomplete.
+arm_accounting.json; total compute = generated + computed prefill. A missing or invalid input counter, a node with
+activity but 0 prompt/prefill tokens (arms.py writes unread counters as 0), or missing Wh -> incomplete.
 Decision (complete inputs only, unrounded): RL replaces G if RL has 0 wrong answers over all attempts, RL solved >=
 G solved, and RL answers at least as many cases through escalation agents (selected slot >= 4) as G.
 
@@ -37,11 +38,19 @@ DESIGN_DISCLOSURE = (
 
 
 def input_work(a):
-    """Prompt and computed-prefill tokens summed over every segment directory of the arm (None + problem if invalid)."""
+    """Prompt and computed-prefill tokens summed over every segment directory of the arm (None + problem if invalid).
+    arms.py writes a counter it could not read as 0, so a node that shows activity (requests or generated tokens > 0)
+    with prompt_tokens or prefill_compute_tokens == 0 (or missing) is invalid accounting."""
     totals, problems = dict.fromkeys(INPUT_KEYS, 0), []
     for d in r3.segment_dirs(a['arm']['base']):
         f = Path(d) / 'arm_accounting.json'
         rec = json.loads(f.read_text()) if f.exists() else {}
+        for node, x in sorted(((rec.get('server') or {}).get('per_node') or {}).items()):
+            x = x or {}
+            active = (x.get('requests') or 0) > 0 or (x.get('generation_tokens') or 0) > 0
+            if active and any(not isinstance(x.get(k), (int, float)) or x.get(k) == 0 for k in INPUT_KEYS):
+                problems.append(f'{Path(d).name}: node {node} shows activity but prompt/prefill tokens are 0 or missing '
+                                '(an unread counter is written as 0 by arms.py)')
         total = ((rec.get('server') or {}).get('total') or {})
         for k in INPUT_KEYS:
             x = total.get(k)
@@ -57,6 +66,8 @@ def load(path, root, policy):
     if 'arm' not in a:
         return a
     work, problems = input_work(a)
+    if a.get('wh') is None:
+        problems.append('GPU energy (Wh) missing for a segment')
     if problems:
         a = dict(a, status='incomplete', reasons=a['reasons'] + problems)
     return dict(a, input_work=work)

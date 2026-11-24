@@ -21,8 +21,10 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
   roll12relay   roll12cancel, but each escalation agent (slot >= 4) gets relay.PROTOCOL + the verbatim work (last
                 relay.max_chars characters of recorded thinking + answer) of ONE agent of the same case that already
                 ended without an accepted plan, chosen by seeded uniform sampling (relay.selection_seed + case + slot)
-                among those not yet handed over (all again when exhausted); no artifact -> no extra text. Generic: no
-                task-specific text. Seeds and nodes as roll12cancel (slots 0-3 pair exactly).
+                among those not yet handed over; by design, once every failed agent of the case has been handed over,
+                all of them are eligible again (an artifact can be reused by a later escalation agent); no nonempty
+                artifact -> no extra text. Generic: no task-specific text. Seeds and nodes as roll12cancel (slots 0-3
+                pair exactly).
   roll12idle    roll12cancel plus generic idle-capacity escalation: once a case's slots 0-11 have all ended without an
                 accepted plan, extra agents (slots 12-19, no hints) start one at a time on the least-loaded node, only
                 while that node has fewer than IDLE_THRESHOLD requests in flight in the shared slots (permits held by
