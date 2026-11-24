@@ -15,9 +15,11 @@ CONTAINERS = {n: [f'c{n[-1]}aaaa', f's{n[-1]}bbbb'] for n in ds.NODES}
 
 
 class FakeFleet:
-    def __init__(self, gpu_busy_polls=2, running=False, guards=True, stray_app=False):
+    def __init__(self, gpu_busy_polls=2, running=False, guards=True, stray_app=False, stop_rc=0, query_rc=0,
+                 query_garbage=False):
         self.calls, self.polls, self.busy = [], 0, gpu_busy_polls
         self.running, self.guards, self.stray = running, guards, stray_app
+        self.stop_rc, self.query_rc, self.garbage = stop_rc, query_rc, query_garbage
 
     def __call__(self, node, command, timeout=120):
         self.calls.append((node, command))
@@ -25,7 +27,11 @@ class FakeFleet:
         if 'no-autostart' in command:
             out = (f'{ds.OWNER}\n{ds.OWNER}\n' if self.guards else 'BAD\nBAD\n')
         elif 'service.sh stop' in command:
-            out = 'stopped'
+            return subprocess.CompletedProcess([], self.stop_rc, 'stopped' if not self.stop_rc else '', 'err' if self.stop_rc else '')
+        elif command.startswith('nvidia-smi') and self.query_rc:
+            return subprocess.CompletedProcess([], self.query_rc, '', 'NVIDIA-SMI has failed')
+        elif command.startswith('nvidia-smi') and self.garbage:
+            return subprocess.CompletedProcess([], 0, 'No devices were found\n', '')
         elif command.startswith('nvidia-smi'):
             if node == 'Spark_01':
                 self.polls += 1
@@ -41,15 +47,16 @@ class FakeFleet:
 
 
 class StopDeepseekTests(unittest.TestCase):
-    def run_stop(self, fleet):
+    def run_stop(self, fleet, log_path=None):
         with tempfile.TemporaryDirectory() as d, patch.object(ds, 'ssh', fleet), patch.object(ds, 'CONTAINERS', CONTAINERS), \
-                patch.object(ds, 'LOG', Path(d) / 'log.jsonl'), patch.object(ds.time, 'sleep', lambda s: None), \
-                contextlib.redirect_stdout(io.StringIO()):
+                patch.object(ds, 'LOG', log_path(Path(d)) if log_path else Path(d) / 'receipts' / 'log.jsonl'), \
+                patch.object(ds.time, 'sleep', lambda s: None), contextlib.redirect_stdout(io.StringIO()):
             try:
                 result = ds.stop_deepseek()
             except SystemExit as exc:
                 result = exc
-            log = (Path(d) / 'log.jsonl').read_text() if (Path(d) / 'log.jsonl').exists() else ''
+            path = log_path(Path(d)) if log_path else Path(d) / 'receipts' / 'log.jsonl'
+            log = path.read_text() if path.is_file() else ''
         return result, log
 
     def test_stops_native_and_leaves_the_fleet_empty(self):
@@ -80,6 +87,34 @@ class StopDeepseekTests(unittest.TestCase):
         result, log = self.run_stop(FakeFleet(running=True))
         self.assertIsInstance(result, SystemExit)
         self.assertIn('"ok": false', log)
+
+    def test_nonzero_native_stop_fails(self):
+        fleet = FakeFleet(stop_rc=1)
+        result, log = self.run_stop(fleet)
+        self.assertIsInstance(result, SystemExit)
+        self.assertIn('native stop exited 1', str(result))
+        self.assertIn('"step": "deepseek-stopped", "ok": false', log)
+
+    def test_failed_or_unparsable_gpu_query_is_not_idle(self):
+        for fleet in (FakeFleet(query_rc=255), FakeFleet(query_garbage=True)):
+            result, log = self.run_stop(fleet)
+            self.assertIsInstance(result, SystemExit)
+            self.assertIn('GPU query failing', str(result))
+            queries = sum(c[1].startswith('nvidia-smi') for c in fleet.calls)
+            self.assertGreater(queries, 4 * ds.GPU_QUERY_TRIES)  # retried, then polled again
+
+    def test_receipt_log_written_before_the_stop(self):
+        fleet = FakeFleet()
+
+        def blocked(d):
+            (d / 'file').write_text('x')
+            return d / 'file' / 'log.jsonl'  # its parent is a file: cannot be created
+        result, _ = self.run_stop(fleet, log_path=blocked)
+        self.assertIsInstance(result, SystemExit)
+        self.assertIn('cannot be written', str(result))
+        self.assertFalse(any('service.sh' in c[1] for c in fleet.calls))
+        receipt, log = self.run_stop(FakeFleet())
+        self.assertLess(log.index('stop-deepseek-start'), log.index('native-stop'))
 
     def test_existing_steps_unchanged(self):
         self.assertTrue(callable(ds.to_inkling) and callable(ds.to_deepseek) and callable(ds.precheck))

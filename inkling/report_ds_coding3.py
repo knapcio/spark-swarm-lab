@@ -11,7 +11,10 @@ Hybrid (per swarm arm): solved = swarm solved OR (swarm unanswered AND DS solved
 run's UTC timestamps (metadata started_utc / completed_utc), GPU Wh over that window from the node power logs
 (inkling/energy.py window(), as inkling/arms.py calls it), Wh per solved; swarm cost from each arm's
 arm_accounting.json. Incomplete (no comparison) if any DS case has an infrastructure fault (run_agents72.
-operational_fault), a case is missing, or the run did not complete. A failed energy read is reported, not hidden.
+operational_fault), the run did not complete, any system's case set is not exactly the frozen plan's 72 cases
+(DEEPSEEK_CODING3_PLAN.json: evaluation tasks x seeds; never an intersection), the DS timestamps are missing or
+invalid, the power read fails, or any node lacks power samples (never reported as 0 Wh). Paths default to runs/ under
+the repo root of this file (run it from the main tree).
 
 usage: report_ds_coding3.py [--root DIR] [--ds DIR] [--r2 DIR] [--r1 DIR] [--out DIR]
 """
@@ -30,7 +33,17 @@ import energy  # noqa: E402
 from run_agents72 import operational_fault  # noqa: E402
 
 STUDY = 'deepseek-coding3-v1'
+PLAN = 'DEEPSEEK_CODING3_PLAN.json'
 CASES = 72
+MIN_ENERGY_COVERAGE = 0.9
+ENERGY_NODES = ('01', '02', '03', '04')
+
+
+def frozen_cases(root):
+    """The frozen plan's cases: every evaluation task of the plan's corpus x the plan's seeds (72 = 24 x 19-21)."""
+    plan = json.loads((root / PLAN).read_text())
+    tasks = [t['id'] for t in json.loads((root / plan['tasks']).read_text())['tasks'] if t['split'] == 'evaluation']
+    return {(t, s) for s in plan['seeds'] for t in tasks}
 
 
 def sign_test(wins, losses):
@@ -53,8 +66,6 @@ def load_ds(d):
     keys = [(r['task_id'], r['seed']) for r in rows]
     if len(set(keys)) != len(keys):
         reasons.append('a DS case appears twice')
-    if len(set(keys)) != CASES:
-        reasons.append(f'{len(set(keys))} DS cases recorded, {CASES} expected')
     if not meta.get('completed_utc') or meta.get('errors'):
         reasons.append('DS run not completed cleanly')
     cases = {(r['task_id'], r['seed']): dict(answered=bool(r.get('feedback_pass')),
@@ -74,7 +85,7 @@ def load_swarm(d):
                                              wrong=bool(r.get('answered') and not r.get('solved'))) for r in rows}
     acct = json.loads((d / 'arm_accounting.json').read_text()) if (d / 'arm_accounting.json').exists() else {}
     energy_rec = acct.get('energy') if isinstance(acct.get('energy'), dict) else {}
-    reasons = [] if len(cases) == CASES else [f'{len(cases)} swarm cases, {CASES} expected']
+    reasons = []
     return dict(status='incomplete' if reasons else 'complete', reasons=reasons, dir=str(d), cases=cases,
                 cost=dict(server_generation_tokens=((acct.get('server') or {}).get('total') or {}).get('generation_tokens'),
                           wall_seconds=acct.get('runner_wall_seconds'), wh=energy_rec.get('total_wh')))
@@ -87,24 +98,35 @@ def counts(cases):
 
 
 def ds_cost(ds, energy_window=None):
+    """(cost, problems): client tokens, UTC run wall, GPU Wh over the run window. Missing or invalid timestamps, a
+    failed power read, or a node without power samples (no joules, or coverage < MIN_ENERGY_COVERAGE) are problems:
+    the report is then incomplete, never 0 Wh."""
     meta, n = ds['meta'], len(ds['cases'])
     tokens = sum(c['tokens'] for c in ds['cases'].values())
-    out = dict(client_completion_tokens=tokens, client_completion_tokens_per_case=tokens / n if n else None)
+    out = dict(client_completion_tokens=tokens, client_completion_tokens_per_case=tokens / n if n else None,
+               wall_seconds=None, wh=None, wh_per_solved=None)
     try:
         start, end = datetime.fromisoformat(meta['started_utc']), datetime.fromisoformat(meta['completed_utc'])
+        if start.tzinfo is None or end.tzinfo is None or end <= start:
+            raise ValueError('timestamps without zone or not increasing')
         out['wall_seconds'] = (end - start).total_seconds()
-    except (KeyError, TypeError, ValueError):
-        out['wall_seconds'] = None
-        return out
+    except (KeyError, TypeError, ValueError) as exc:
+        return out, [f'DS run timestamps missing or invalid ({type(exc).__name__}: {exc})'[:200]]
     try:
         window = (energy_window or energy.window)(meta['started_utc'], meta['completed_utc'])
-        out['wh'] = window.get('total_wh')
-        out['energy_nodes'] = window.get('nodes')
-    except Exception as exc:  # reported, never silently zero
-        out['wh'], out['energy_error'] = None, f'{type(exc).__name__}: {exc}'[:200]
+    except Exception as exc:
+        out['energy_error'] = f'{type(exc).__name__}: {exc}'[:200]
+        return out, [f"GPU power read failed: {out['energy_error']}"]
+    nodes = window.get('nodes') or {}
+    bad = sorted(x for x in ENERGY_NODES if not (nodes.get(x) or {}).get('joules')
+                 or ((nodes.get(x) or {}).get('coverage') or 0) < MIN_ENERGY_COVERAGE)
+    out['energy_nodes'] = nodes
+    if bad or not window.get('total_wh'):
+        return out, [f'GPU power samples missing or incomplete on node(s) {bad or list(ENERGY_NODES)}']
+    out['wh'] = window['total_wh']
     solved = sum(c['solved'] for c in ds['cases'].values())
-    out['wh_per_solved'] = out['wh'] / solved if out.get('wh') is not None and solved else None
-    return out
+    out['wh_per_solved'] = out['wh'] / solved if solved else None
+    return out, []
 
 
 def paired(ds, sw):
@@ -125,17 +147,34 @@ def hybrid(ds, sw):
 def build(root, dirs, energy_window=None):
     ds = load_ds(root / dirs['ds'])
     swarms = {k: load_swarm(root / dirs[k]) for k in ('r2', 'r1')}
-    s = dict(study=STUDY, systems={'DS': {k: ds[k] for k in ('status', 'reasons', 'dir') if k in ds}})
+    try:
+        expected = frozen_cases(root)
+    except (OSError, ValueError, KeyError) as exc:
+        expected = None
+        ds = dict(ds, status='incomplete', reasons=ds.get('reasons', []) + [f'frozen plan {PLAN} unreadable: {exc}'])
+    for name, sysd in [('ds', ds)] + list(swarms.items()):  # exactly the frozen 72 cases, never an intersection
+        if 'cases' in sysd and expected is not None and set(sysd['cases']) != expected:
+            sysd['status'] = 'incomplete'
+            sysd['reasons'] = sysd.get('reasons', []) + [
+                f"cases differ from the frozen plan's {len(expected)} ({len(expected - set(sysd['cases']))} missing, "
+                f"{len(set(sysd['cases']) - expected)} extra)"]
+    if 'cases' in ds and ds['status'] == 'complete':
+        cost, problems = ds_cost(ds, energy_window)
+        ds['cost'] = cost
+        if problems:
+            ds = dict(ds, status='incomplete', reasons=ds['reasons'] + problems)
+    s = dict(study=STUDY, root=str(root), systems={'DS': {k: ds[k] for k in ('status', 'reasons', 'dir') if k in ds}})
     if 'cases' in ds:
         s['systems']['DS'].update(counts(ds['cases']))
     for k, sw in swarms.items():
         s['systems'][k.upper()] = {x: sw[x] for x in ('status', 'reasons', 'dir') if x in sw}
         if 'cases' in sw:
             s['systems'][k.upper()].update(counts(sw['cases']), cost=sw['cost'])
+    if 'cost' in ds:
+        s['systems']['DS']['cost'] = ds['cost']
     complete = ds['status'] == 'complete' and all(sw['status'] == 'complete' for sw in swarms.values())
     s['status'] = 'complete' if complete else 'incomplete'
     if complete:
-        s['systems']['DS']['cost'] = ds_cost(ds, energy_window)
         s['paired'] = {f'DS_vs_{k.upper()}': paired(ds['cases'], sw['cases']) for k, sw in swarms.items()}
         s['hybrid'] = {f'{k.upper()}+DS': hybrid(ds['cases'], sw['cases']) for k, sw in swarms.items()}
     return s

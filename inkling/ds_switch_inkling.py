@@ -156,23 +156,64 @@ def to_inkling():
     fail('to-inkling', 'Inkling not healthy within 15 minutes')
 
 
+GPU_QUERY_TRIES = 3
+
+
+def gpu_query(node):
+    """(ok, apps): ok only if the ssh + nvidia-smi query exited 0 and every output line parses as 'pid, name'; a failed
+    or unparsable query is NOT idle (stop-deepseek only)."""
+    try:
+        out = ssh(node, 'nvidia-smi --query-compute-apps=pid,process_name --format=csv,noheader')
+    except Exception as exc:  # ssh timeout or launch failure
+        return False, [f'{type(exc).__name__}: {exc}'[:120]]
+    if out.returncode != 0:
+        return False, [f'query exit {out.returncode}: {out.stderr.strip()[:120]}']
+    apps = [line for line in out.stdout.splitlines() if line.strip()]
+    if any(not line.split(',')[0].strip().isdigit() for line in apps):
+        return False, apps
+    return True, apps
+
+
+def gpu_idle_everywhere():
+    """{node: (ok, apps)} with every failed query retried GPU_QUERY_TRIES times."""
+    state = {}
+    for n in NODES:
+        for _ in range(GPU_QUERY_TRIES):
+            state[n] = gpu_query(n)
+            if state[n][0]:
+                break
+    return state
+
+
 def stop_deepseek():
-    """The first half of to_inkling, unchanged (guards, native stop, wait for free GPUs), then a receipt instead of
-    starting Inkling: every node's GPU apps (must be empty), its swarm containers (recorded ids, not running) and
-    guards_ok. The fleet is left with nothing serving."""
+    """The first half of to_inkling (guards, native stop, wait for free GPUs), then a receipt instead of starting
+    Inkling: every node's GPU apps (a successful query with no compute apps), its swarm containers (recorded ids, not
+    running) and guards_ok. Stricter than to_inkling where only this step is concerned: the receipt log is written
+    before the stop is issued (fail early if it cannot be), a non-zero native stop fails the step, and a failed or
+    unparsable GPU query never counts as idle. The fleet is left with nothing serving."""
+    try:
+        LOG.parent.mkdir(parents=True, exist_ok=True)
+        record('stop-deepseek-start', guards=guards_ok())
+    except OSError as exc:
+        raise SystemExit(f'stop-deepseek: receipt log {LOG} cannot be written ({exc}); nothing was stopped')
     if not guards_ok():
         fail('stop-deepseek', 'head guards changed')
     out = ssh('Spark_01', f'env FLEET=/home/knapcio/dsgb10/fleet.conf {SERVICE} stop', timeout=300)
     record('native-stop', rc=out.returncode, stdout_tail=out.stdout[-300:], stderr_tail=out.stderr[-300:])
+    if out.returncode != 0:
+        record('deepseek-stopped', ok=False, guards_ok=guards_ok(), error=f'native stop exited {out.returncode}')
+        raise SystemExit(f'stop-deepseek: native stop exited {out.returncode}')
     for _ in range(30):
-        if not any(gpu_apps(n) for n in NODES):
+        state = gpu_idle_everywhere()
+        if all(ok and not apps for ok, apps in state.values()):
             break
         time.sleep(10)
     else:
-        fail('stop-deepseek', 'GPU still busy after native stop', apps={n: gpu_apps(n) for n in NODES})
-    nodes = {n: dict(gpu=gpu_apps(n), container=container(n)) for n in NODES}
+        fail('stop-deepseek', 'GPU still busy or GPU query failing after native stop',
+             gpus={n: dict(query_ok=ok, apps=apps) for n, (ok, apps) in state.items()})
+    nodes = {n: dict(gpu=apps, gpu_query_ok=ok, container=container(n)) for n, (ok, apps) in gpu_idle_everywhere().items()}
     guards = guards_ok()
-    ok = (guards and all(not v['gpu'] for v in nodes.values())
+    ok = (guards and all(v['gpu_query_ok'] and not v['gpu'] for v in nodes.values())
           and all(not v['container']['running'] and v['container']['id'].startswith(CONTAINERS[n][0])
                   and v['container']['shim_id'].startswith(CONTAINERS[n][1]) for n, v in nodes.items()))
     receipt = record('deepseek-stopped', ok=ok, guards_ok=guards, nodes=nodes)
