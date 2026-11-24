@@ -115,14 +115,14 @@ def build(first_dir, second_dir, plan_file, case_list, mode='replace'):
     (n1, arm1), (n2, arm2) = MODES[mode]
     plan_file, case_list = Path(plan_file), Path(case_list)
     plan = json.loads(plan_file.read_text()) if plan_file.exists() else None
-    plan_sha = hashlib.sha256(plan_file.read_bytes()).hexdigest() if plan else None
+    plan_sha = hashlib.sha256(plan_file.read_bytes()).hexdigest() if plan is not None else None
     frozen = {tuple(c[:3]) for c in json.loads(case_list.read_text())['cases']} if case_list.exists() else None
     arms = {name: load(arm, d, plan_sha, frozen if frozen is not None else set())
             for name, arm, d in ((n1, arm1, first_dir), (n2, arm2, second_dir))}
     s = dict(mode=mode, arm_names=[n1, n2], plan=str(plan_file), plan_sha256=plan_sha, case_list=str(case_list),
              case_list_sha256=hashlib.sha256(case_list.read_bytes()).hexdigest() if frozen is not None else None,
              arms={k: summary(v) for k, v in arms.items()})
-    problems = ([] if plan else ['frozen plan file not found']) + ([] if frozen is not None else ['frozen case list not found'])
+    problems = ([] if plan is not None else ['frozen plan file not found']) + ([] if frozen is not None else ['frozen case list not found'])
     R, P = arms[n1], arms[n2]
     if 'rows' in R and 'rows' in P:
         if set(R['rows']) != set(P['rows']):
@@ -143,6 +143,15 @@ def build(first_dir, second_dir, plan_file, case_list, mode='replace'):
                      or len(R['rows'][k]['workers']) != len(P['rows'][k]['workers'])]
         if differing:
             problems.append(f'{len(differing)} case(s) with different selections or worker counts between the arms')
+        if mode == 'window':  # paired workers: same slots and seeds, same endpoint set and per-endpoint cap
+            seeds_differ = [k for k in set(R['rows']) & set(P['rows'])
+                            if [(w.get('slot'), w.get('agent_seed')) for w in R['rows'][k]['workers']]
+                            != [(w.get('slot'), w.get('agent_seed')) for w in P['rows'][k]['workers']]]
+            if seeds_differ:
+                problems.append(f'{len(seeds_differ)} case(s) whose worker slots or seeds differ between the arms')
+            for field in ('endpoints', 'max_per_endpoint'):
+                if R['meta'].get(field) != P['meta'].get(field):
+                    problems.append(f'the two arms ran with different {field}')
     complete = not problems and all(a.get('status') == 'complete' for a in arms.values())
     s['pairing_problems'] = problems
     s['status'] = 'complete' if complete else 'incomplete'
@@ -162,11 +171,15 @@ def build(first_dir, second_dir, plan_file, case_list, mode='replace'):
                       f'compute_token_ratio_{n1}_over_{n2}': (x['total_compute_tokens'] / y['total_compute_tokens']
                                                              if y['total_compute_tokens'] else None),
                       f'wh_ratio_{n1}_over_{n2}': x['wh'] / y['wh'] if x['wh'] is not None and y['wh'] else None}
-        if mode == 'window':  # rescues per window, and how many workers saw a different excerpt
-            changed = sum(1 for k in common for w1, w2 in zip(R['rows'][k]['workers'], P['rows'][k]['workers'])
-                          if w1.get('artifact_chars_used') != w2.get('artifact_chars_used')
-                          or w1.get('window_end_offset', 0) != w2.get('window_end_offset', 0))
-            s['facts'].update(rescues_per_window={n1: x['rescued'], n2: y['rescued']}, workers_with_changed_excerpt=changed)
+        if mode == 'window':  # the changed-only subset: workers that started in both arms, accepted workers per arm
+            pairs = [(w1, w2) for k in common for w1, w2 in zip(R['rows'][k]['workers'], P['rows'][k]['workers'])]
+            started = [(w1, w2) for w1, w2 in pairs if w1.get('started', True) and w2.get('started', True)]
+            s['facts'].update(rescues_per_window={n1: x['rescued'], n2: y['rescued']},
+                              changed_workers=len(pairs), changed_workers_started_in_both=len(started),
+                              accepted_workers={n1: sum(w1.get('verdict') is True for w1, _ in pairs),
+                                                n2: sum(w2.get('verdict') is True for _, w2 in pairs)},
+                              accepted_workers_started_in_both={n1: sum(w1.get('verdict') is True for w1, _ in started),
+                                                                n2: sum(w2.get('verdict') is True for _, w2 in started)})
     s['decision_rule'] = (plan or {}).get('decision_rule', 'plan not written')
     s['decision'] = ('evaluate the frozen rule against the facts' if complete
                      else 'incomplete - no decision: ' + '; '.join(

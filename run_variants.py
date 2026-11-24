@@ -424,8 +424,19 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
         if slot_feedback and slot >= width:
             extra = slot_feedback(list(results), slot)
         t = threading.Thread(target=run, args=(slot, node, extra, held))
+        try:
+            t.start()
+        except Exception as exc:  # the slot becomes a fault record; a held permit is released; nothing to join
+            state['running'] -= 1
+            state['failed'] = True
+            if held is not None:
+                held.drop_unused()
+            info = fault_record(slot, extra, exc)
+            info.update(started=False, launch_failed=True)
+            results.append(info)
+            return False
         threads.append(t)
-        t.start()
+        return True
 
     def run(slot, node, extra=None, held=None):
         try:
@@ -482,7 +493,10 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
                     return
                 me = ws.cases[key]
                 me['eligible'] = eligible
-                older = any(c['eligible'] and c['order'] < me['order'] for k, c in ws.cases.items() if k != key)
+                # strict oldest-admitted-first: read every older case's LIVE eligibility (its own lock; lock order is
+                # always slots.cond before a case lock), so a younger case never widens ahead of an eligible older one
+                older = any(c['order'] < me['order'] and (c['eligible_fn']() if c.get('eligible_fn') else c['eligible'])
+                            for k, c in ws.cases.items() if k != key)
                 if eligible and ws.pending == 0 and not older:
                     occ = {i: ws.in_flight[e] for i, e in enumerate(ws.endpoints)}
                     node = next((i for i in sorted(occ, key=lambda i: (occ[i], i))
@@ -495,12 +509,20 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
                             if ok:
                                 nxt = state['next']
                                 state['next'] += 1
-                                state['widened'] = state.get('widened', 0) + 1
-                                launch(nxt, node, held)
+                                if launch(nxt, node, held):  # a failed start released the permit and is a fault
+                                    state['widened'] = state.get('widened', 0) + 1
                         if not ok:
                             held.drop_unused()
                         continue
+                ws.cond.notify_all()  # an older eligible case may be waiting for this one to yield
                 ws.cond.wait(poll)
+
+    def eligible_now():
+        with lock:
+            done = (state.get('closed') or race['winner'] is not None or race['cancel'].is_set()
+                    or state.get('failed') or state['next'] >= cap)
+            failures = sum(1 for a in results if a.get('verdict') is not True and not a.get('cancelled'))
+            return not done and failures >= 1 and state['running'] < width * widen.get('factor', WIDE_FACTOR)
     with lock:
         for s in range(first, first + width):
             launch(s, (case_index + s) % 4)
@@ -509,6 +531,8 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
         timer.start()
     wide_thread = None
     if widen:
+        with widen['slots'].cond:
+            widen['slots'].cases[widen['key']]['eligible_fn'] = eligible_now
         race.setdefault('on_cancel', []).append(widen['slots'].wake)
         wide_thread = threading.Thread(target=widener, daemon=True)
         wide_thread.start()
@@ -1074,6 +1098,10 @@ def main(argv=None):
         jobs = [j for j in jobs if (j[0]['id'], j[1], j[3]) not in finished]
         resumed = dict(resumed_from=str(a.resume_from.resolve()), skipped_finished=len(finished), segments=segments)
     require(plan.get('concurrent_requests_per_endpoint', 0) <= MAX_REQUESTS_PER_NODE, 'Per-node request cap above 25')
+    if 'roll12wide' in plan.get('policies', []) and 'roll12cancel' in plan.get('policies', []):
+        offsets = plan.get('seed_offsets', {})
+        require(offsets.get('roll12wide') == offsets.get('roll12cancel'),
+                'roll12wide and roll12cancel must share the seed offset (slots pair exactly)')
     if 'roll12wide' in policies:  # widened agents leave WIDE_JUDGE_RESERVE permits per node for judges; cap <= 20
         require(WIDE_JUDGE_RESERVE < plan.get('concurrent_requests_per_endpoint', 0) <= 20,
                 f'roll12wide needs {WIDE_JUDGE_RESERVE} < concurrent_requests_per_endpoint <= 20')

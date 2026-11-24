@@ -1030,6 +1030,59 @@ class WidePolicyTests(unittest.TestCase):
         self.assertEqual(seen['early'], 5)  # the younger case waited while the older one was eligible
         self.assertGreaterEqual(rec['widened_agents'], 1)
 
+    def test_older_case_live_eligibility_blocks_a_younger_case(self):
+        # sol's probe: the older case's flag is stale (False) but it IS eligible right now: the younger must wait
+        slots = v.WideSlots(20)
+        live = dict(v=True)
+        with slots.cond:
+            slots.cases[('older', 1)] = dict(order=-1, eligible=False, eligible_fn=lambda: live['v'])
+        seen = {}
+
+        def during(slots, log):
+            import time
+            time.sleep(.5)
+            seen['early'] = len(log)
+            with slots.cond:
+                live['v'] = False
+                slots.cond.notify_all()
+        rec, _, _ = self.run_policy(fast={0}, slow=1.0, slots=slots, during=during)
+        self.assertEqual(seen['early'], 5)
+        self.assertGreaterEqual(rec['widened_agents'], 1)
+
+    def test_widened_thread_start_failure_releases_its_permit(self):
+        import threading
+        real = threading.Thread
+
+        class FailWidened(real):
+            def start(self):
+                if self._args and len(self._args) == 4 and self._args[3] is not None:  # a widened launch (held permit)
+                    raise RuntimeError("can't start new thread")
+                return super().start()
+        slots = v.WideSlots(20)
+        with patch.object(v.threading, 'Thread', FailWidened):
+            rec, log, _ = self.run_policy(fast={0}, slow=.3, slots=slots)
+        failed = [a for a in rec['agents'] if a.get('launch_failed')]
+        self.assertEqual(len(failed), 1)
+        self.assertIn("can't start new thread", failed[0]['agent_error'])
+        self.assertGreaterEqual(rec['infra'], 1)
+        self.assertEqual(rec['widened_agents'], 0)
+        self.assertEqual(set(slots.in_flight.values()), {0})
+        self.assertEqual({e: slots.sem[e]._value for e in slots.endpoints}, {e: 20 for e in slots.endpoints})
+
+    def test_runner_refuses_unpaired_offsets(self):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            tasks = [dict(id='t0', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7)]
+            (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=tasks)))
+            plan = dict(protocol='swarm-variants-screen-v1', source_revision='x', dataset=str(root / 'data.json'),
+                        dataset_protocol='p', split='evaluation', tasks=1, seeds=[1], policies=['roll12cancel', 'roll12wide'],
+                        seed_offsets=dict(roll12cancel=20400, roll12wide=20500), concurrent_policy_cases=1,
+                        concurrent_requests_per_endpoint=20)
+            (root / 'plan.json').write_text(json.dumps(plan))
+            with patch.object(v, 'validate_source', lambda *a: None), self.assertRaisesRegex(Exception, 'share the seed offset'):
+                v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d, '--policy', 'roll12cancel'])
+
     def test_widened_agent_accept_cancels_the_rest(self):
         rec, log, _ = self.run_policy(fast={0, 5}, accept={5}, slow=.6)
         self.assertEqual(rec['selected_slot'], 5)

@@ -355,10 +355,10 @@ def arm_dir(root, arm, plan_file, rows, tokens=100, **meta_changes):
     return d
 
 
-def case_row(task, rescued=False, wrong=False, faults=0, slots=(1, 2), seed=1):
+def case_row(task, rescued=False, wrong=False, faults=0, slots=(1, 2), seed=1, workers=None):
     return dict(run='base', task_id=task, seed=seed, arm='x', rescued=rescued, wrong=wrong, answered=rescued or wrong,
-                faults=faults, workers=[{}] * len(slots), selected_source_slots=list(slots), client_tokens=10,
-                artifact_chars_used=50)
+                faults=faults, workers=workers if workers is not None else [{}] * len(slots),
+                selected_source_slots=list(slots), client_tokens=10, artifact_chars_used=50)
 
 
 class ReportTests(unittest.TestCase):
@@ -431,6 +431,38 @@ class ReportTests(unittest.TestCase):
         self.assertIn('tail window vs dense window', md)
         self.assertEqual(bad['status'], 'incomplete')
         self.assertIn('relay windows are', json.dumps(bad))
+
+    def test_window_screen_changed_subset_counts_and_pairing(self):
+        def w(slot, seed, verdict=None, started=True):
+            return dict(slot=slot, agent_seed=seed, verdict=verdict, started=started)
+        tail = [case_row('t0', workers=[w(200, 11), w(201, 12)]), case_row('t1', rescued=True, workers=[w(200, 21, True), w(201, 22)])]
+        dense = [case_row('t0', rescued=True, workers=[w(200, 11, True), w(201, 12, started=False)]),
+                 case_row('t1', rescued=True, workers=[w(200, 21, True), w(201, 22)])]
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            plan = root / 'plan.json'
+            plan.write_text('{}')
+            cl = root / 'cases.json'
+            cl.write_text(json.dumps(dict(cases=[[r['run'], r['task_id'], r['seed']] for r in tail])))
+            st = dict(k=4, changed_only=True)
+            t = arm_dir(root, 'tail', plan, tail, relay_settings=dict(st, window='tail'), meta_arm='relay',
+                        endpoints=['a'], max_per_endpoint=8)
+            x = arm_dir(root, 'dense', plan, dense, relay_settings=dict(st, window='dense'), meta_arm='relay',
+                        endpoints=['a'], max_per_endpoint=8)
+            s = report_relay.build(t, x, plan, cl, mode='window')
+            # mismatched seeds / caps
+            dense_bad = [case_row('t0', workers=[w(200, 99), w(201, 12)]), dense[1]]
+            xb = arm_dir(root, 'dense_bad', plan, dense_bad, relay_settings=dict(st, window='dense'), meta_arm='relay',
+                         endpoints=['a'], max_per_endpoint=4)
+            bad = report_relay.build(t, xb, plan, cl, mode='window')
+        f = s['facts']
+        self.assertEqual(s['status'], 'complete')
+        self.assertEqual((f['changed_workers'], f['changed_workers_started_in_both']), (4, 3))
+        self.assertEqual(f['accepted_workers'], dict(tail=1, dense=2))
+        self.assertEqual(f['accepted_workers_started_in_both'], dict(tail=1, dense=2))
+        self.assertEqual(bad['status'], 'incomplete')
+        self.assertIn('worker slots or seeds differ', json.dumps(bad))
+        self.assertIn('different max_per_endpoint', json.dumps(bad))
 
     def test_window_screen_needs_changed_only_and_identical_workers(self):
         rows = [case_row('t0'), case_row('t1')]
