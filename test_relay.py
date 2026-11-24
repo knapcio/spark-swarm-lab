@@ -82,6 +82,38 @@ class ArtifactTests(unittest.TestCase):
                 counts[slot] += 1
         self.assertLess(max(counts) - min(counts), 0.15 * 1000)
 
+    def test_dense_window_skips_a_repetitive_tail(self):
+        import random as _r
+        rng = _r.Random(7)
+        prose = ''.join(rng.choice('abcdefghijklmnopqrstuvwxyz ,.0123456789') for _ in range(30000))
+        loop = 'Wait, check again. ' * 2000  # 38,000 chars of a repetition loop at the end
+        text = prose + loop
+        self.assertLess(relay.zlib_ratio(text[-12000:]), relay.DENSE_MIN_RATIO)
+        window, offset = relay.dense_window(text, 12000)
+        self.assertEqual(len(window), 12000)
+        self.assertGreaterEqual(relay.zlib_ratio(window), relay.DENSE_MIN_RATIO)
+        self.assertEqual(offset % relay.DENSE_STEP, 0)
+        self.assertEqual(window, text[len(text) - offset - 12000:len(text) - offset])
+        self.assertTrue(text.startswith(prose) and offset > 0)
+        # latest qualifying window: stepping back stops at the first window that is dense enough
+        self.assertLess(relay.zlib_ratio(text[len(text) - offset + relay.DENSE_STEP - 12000:len(text) - offset + relay.DENSE_STEP]),
+                        relay.DENSE_MIN_RATIO)
+        self.assertEqual(relay.excerpt(text, 12000, 'dense'), window)
+        self.assertEqual(relay.excerpt(text, 12000, 'tail'), text[-12000:])
+
+    def test_dense_window_falls_back_to_the_tail(self):
+        loop = 'same line again\n' * 5000
+        self.assertEqual(relay.dense_window(loop, 12000), (loop[-12000:], 0))  # nothing dense: tail
+        self.assertEqual(relay.dense_window('short text', 12000), ('short text', 0))
+        prose = 'a dense and varied text with many words 0123 ' * 10
+        self.assertEqual(relay.relay_extra(prose, 50, 'dense'), relay.PROTOCOL + '\n\n' + relay.dense_window(prose, 50)[0])
+
+    def test_window_setting(self):
+        self.assertEqual(relay.settings({})['window'], 'tail')
+        self.assertEqual(relay.settings(dict(relay=dict(window='dense')))['window'], 'dense')
+        with self.assertRaisesRegex(ValueError, 'relay.window'):
+            relay.settings(dict(relay=dict(window='middle')))
+
     def test_settings_from_plan(self):
         s = relay.settings(dict(relay=dict(k=2, max_chars=50, selection_seed='z'), seed_offsets=dict(relay=1, replace=2)))
         self.assertEqual((s['k'], s['max_chars'], s['selection_seed'], s['seed_offsets']), (2, 50, 'z', dict(relay=1, replace=2)))
@@ -187,7 +219,7 @@ class DriverTests(unittest.TestCase):
         self.assertEqual(lines[0]['failed_agents'], 3)
         self.assertEqual(len(lines[0]['selected_slots']), 2)
         self.assertEqual(lines[-1]['total'], dict(cases=1, failed_agents=3, candidates=3, selected=2, cases_with_workers=1,
-                                                  relay_workers=2, replace_workers=2))
+                                                  dense_window_differs=0, relay_workers=2, replace_workers=2))
         self.assertEqual(lines[-2]['summary']['chars_used_max'], 20)
 
     def test_dedupe_across_runs(self):
@@ -206,6 +238,59 @@ class DriverTests(unittest.TestCase):
         self.assertEqual(cases, [('first', 't0'), ('second', 't1')])  # t0 from the first run listed only
         self.assertEqual((out[False][-1]['dropped_duplicates'], out[False][-1]['distinct_puzzles']), (1, 2))
         self.assertEqual(len([x for x in out[True] if 'task_id' in x]), 3)
+
+    def test_window_override_must_be_frozen_in_the_plan(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            run = write_recorded_run(root)
+            (root / 'plan.json').write_text(json.dumps(dict(relay=dict(k=2))))
+            with patch.object(relay_replay.closer_replay, 'HERE', root), self.assertRaisesRegex(Exception, 'not frozen'):
+                relay_replay.main(['--runs', str(run), '--plan-only', '--plan', str(root / 'plan.json'), '--window', 'dense'])
+            (root / 'plan.json').write_text(json.dumps(dict(relay=dict(k=2, windows=['tail', 'dense']))))
+            buf = io.StringIO()
+            with patch.object(relay_replay.closer_replay, 'HERE', root), contextlib.redirect_stdout(buf):
+                relay_replay.main(['--runs', str(run), '--plan-only', '--plan', str(root / 'plan.json'), '--window', 'dense'])
+            self.assertEqual(json.loads(buf.getvalue().splitlines()[-1])['window'], 'dense')
+
+    def test_changed_only_keeps_positions_and_drops_unchanged_cases(self):
+        import random as _r
+        rng = _r.Random(3)
+        prose = ''.join(rng.choice('abcdefghijklmnopqrstuvwxyz ,.0123456789') for _ in range(6000))
+        looped = prose + 'loop again. ' * 2000  # long repetitive tail: the dense window moves back
+        cp = dict(failed_agents=3, candidates=3,
+                  selected=[dict(source_slot=s, chars=len(t), chars_used=100, text=t)
+                            for s, t in ((5, prose[:90]), (2, looped), (7, looped + 'x'))])
+        out = relay.changed_only(cp, 2000)
+        self.assertEqual([(x['source_slot'], x['position']) for x in out['selected']], [(2, 1), (7, 2)])
+        self.assertEqual(out['selected_before_changed_only'], 3)
+        self.assertTrue(relay.window_changes(looped, 2000))
+        self.assertFalse(relay.window_changes(prose[:90], 2000))
+        # the worker slot (and so the seed) is its position in the full selection
+        rec_full, seen_full = RunArmTests().run_arm('relay', fast={200, 201, 202}, accept=set())
+        cp_full = RunArmTests.CP
+        positions = [dict(x, position=i) for i, x in enumerate(cp_full['selected'])][1:]
+        RunArmTests.CP = dict(cp_full, selected=positions)
+        try:
+            rec_c, seen_c = RunArmTests().run_arm('relay', fast={201, 202}, accept=set())
+        finally:
+            RunArmTests.CP = cp_full
+        self.assertEqual(sorted(seen_c), [201, 202])
+        self.assertEqual({k: v['seed'] for k, v in seen_c.items()}, {k: seen_full[k]['seed'] for k in (201, 202)})
+
+    def test_changed_only_must_be_frozen(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            run = write_recorded_run(root)
+            (root / 'plan.json').write_text(json.dumps(dict(relay=dict(k=2))))
+            with patch.object(relay_replay.closer_replay, 'HERE', root), self.assertRaisesRegex(Exception, 'not frozen'):
+                relay_replay.main(['--runs', str(run), '--plan-only', '--plan', str(root / 'plan.json'), '--changed-only'])
+            (root / 'plan.json').write_text(json.dumps(dict(relay=dict(k=2, max_chars=20, changed_only=True))))
+            buf = io.StringIO()
+            with patch.object(relay_replay.closer_replay, 'HERE', root), contextlib.redirect_stdout(buf):
+                relay_replay.main(['--runs', str(run), '--plan-only', '--plan', str(root / 'plan.json'), '--changed-only'])
+            last = json.loads(buf.getvalue().splitlines()[-1])
+        # the recorded artifacts ('base work N ' * 10) are not repetitive enough to move: the case is dropped
+        self.assertEqual((last['changed_only'], last['dropped_unchanged_cases'], last['total']['cases']), (True, 1, 0))
 
     def test_run_requires_arm_and_admission(self):
         with tempfile.TemporaryDirectory() as d:
@@ -251,6 +336,7 @@ class DriverTests(unittest.TestCase):
 def arm_dir(root, arm, plan_file, rows, tokens=100, **meta_changes):
     d = root / arm
     d.mkdir()
+    arm = meta_changes.pop('meta_arm', arm)
     cohort = [[r['run'], r['task_id'], r['seed']] for r in rows]
     meta = dict(arm=arm, plan_sha256=hashlib.sha256(plan_file.read_bytes()).hexdigest(), relay_settings=dict(k=4),
                 cohort=dict(cases=cohort), completed_utc='2026-11-24T01:00:00+00:00', stopped=False)
@@ -269,10 +355,10 @@ def arm_dir(root, arm, plan_file, rows, tokens=100, **meta_changes):
     return d
 
 
-def case_row(task, rescued=False, wrong=False, faults=0, slots=(1, 2), seed=1):
+def case_row(task, rescued=False, wrong=False, faults=0, slots=(1, 2), seed=1, workers=None):
     return dict(run='base', task_id=task, seed=seed, arm='x', rescued=rescued, wrong=wrong, answered=rescued or wrong,
-                faults=faults, workers=[{}] * len(slots), selected_source_slots=list(slots), client_tokens=10,
-                artifact_chars_used=50)
+                faults=faults, workers=workers if workers is not None else [{}] * len(slots),
+                selected_source_slots=list(slots), client_tokens=10, artifact_chars_used=50)
 
 
 class ReportTests(unittest.TestCase):
@@ -321,6 +407,91 @@ class ReportTests(unittest.TestCase):
         s, code, _ = self.build(ok, ok, frozen=[['base', 't0', 1], ['base', 't1', 1], ['base', 't2', 1]])
         self.assertEqual((s['status'], code), ('incomplete', 3))
         self.assertIn('frozen case list (1 missing', json.dumps(s))
+
+    def test_window_screen(self):
+        tail = [case_row('t0'), case_row('t1', rescued=True), case_row('t2')]
+        dense = [case_row('t0', rescued=True), case_row('t1', rescued=True), case_row('t2', rescued=True)]
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            plan = root / 'plan.json'
+            plan.write_text('{"decision_rule": "dense if >= 5 of 73"}')
+            cl = root / 'cases.json'
+            cl.write_text(json.dumps(dict(cases=[[r['run'], r['task_id'], r['seed']] for r in tail])))
+            t = arm_dir(root, 'tail', plan, tail, relay_settings=dict(k=4, window='tail', changed_only=True), meta_arm='relay')
+            x = arm_dir(root, 'dense', plan, dense, relay_settings=dict(k=4, window='dense', changed_only=True), meta_arm='relay')
+            s = report_relay.build(t, x, plan, cl, mode='window')
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = report_relay.main(['--tail', str(t), '--dense', str(x), '--plan', str(plan), '--case-list', str(cl),
+                                          '--out', str(root / 'out')])
+            md = (root / 'out' / 'REPORT.md').read_text()
+            bad = report_relay.build(t, t, plan, cl, mode='window')  # both arms tail
+        self.assertEqual((s['status'], code), ('complete', 0))
+        self.assertEqual((s['mcnemar']['tail_only'], s['mcnemar']['dense_only']), (0, 2))
+        self.assertEqual(s['facts']['rescues_per_window'], dict(tail=1, dense=3))
+        self.assertIn('tail window vs dense window', md)
+        self.assertEqual(bad['status'], 'incomplete')
+        self.assertIn('relay windows are', json.dumps(bad))
+
+    def test_window_screen_changed_subset_counts_and_pairing(self):
+        def w(slot, seed, verdict=None, started=True):
+            return dict(slot=slot, agent_seed=seed, verdict=verdict, started=started)
+        tail = [case_row('t0', workers=[w(200, 11), w(201, 12)]), case_row('t1', rescued=True, workers=[w(200, 21, True), w(201, 22)])]
+        dense = [case_row('t0', rescued=True, workers=[w(200, 11, True), w(201, 12, started=False)]),
+                 case_row('t1', rescued=True, workers=[w(200, 21, True), w(201, 22)])]
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            plan = root / 'plan.json'
+            plan.write_text('{}')
+            cl = root / 'cases.json'
+            cl.write_text(json.dumps(dict(cases=[[r['run'], r['task_id'], r['seed']] for r in tail])))
+            st = dict(k=4, changed_only=True)
+            t = arm_dir(root, 'tail', plan, tail, relay_settings=dict(st, window='tail'), meta_arm='relay',
+                        endpoints=['a'], max_per_endpoint=8)
+            x = arm_dir(root, 'dense', plan, dense, relay_settings=dict(st, window='dense'), meta_arm='relay',
+                        endpoints=['a'], max_per_endpoint=8)
+            s = report_relay.build(t, x, plan, cl, mode='window')
+            # mismatched seeds / caps
+            dense_bad = [case_row('t0', workers=[w(200, 99), w(201, 12)]), dense[1]]
+            xb = arm_dir(root, 'dense_bad', plan, dense_bad, relay_settings=dict(st, window='dense'), meta_arm='relay',
+                         endpoints=['a'], max_per_endpoint=4)
+            bad = report_relay.build(t, xb, plan, cl, mode='window')
+        f = s['facts']
+        self.assertEqual(s['status'], 'complete')
+        self.assertEqual((f['changed_workers'], f['changed_workers_started_in_both']), (4, 3))
+        self.assertEqual(f['accepted_workers'], dict(tail=1, dense=2))
+        self.assertEqual(f['accepted_workers_started_in_both'], dict(tail=1, dense=2))
+        self.assertEqual(bad['status'], 'incomplete')
+        self.assertIn('worker slots or seeds differ', json.dumps(bad))
+        self.assertIn('different max_per_endpoint', json.dumps(bad))
+
+    def test_relay_vs_replace_accepts_arms_recorded_before_the_update(self):
+        old_rows = [case_row('t0', rescued=True), case_row('t1')]  # no worker_positions (recorded before the update)
+        new_rows = [dict(case_row('t0'), worker_positions=[0, 1]), dict(case_row('t1'), worker_positions=[0, 1])]
+        s, code, _ = self.build(old_rows, new_rows)
+        self.assertEqual((s['status'], code), ('complete', 0))
+        moved = [dict(case_row('t0', rescued=True), worker_positions=[0, 2]), dict(case_row('t1'), worker_positions=[0, 1])]
+        s, code, _ = self.build(moved, new_rows)  # both recorded the field and it differs: incomplete
+        self.assertEqual(s['status'], 'incomplete')
+
+    def test_window_screen_needs_changed_only_and_identical_workers(self):
+        rows = [case_row('t0'), case_row('t1')]
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            plan = root / 'plan.json'
+            plan.write_text('{}')
+            cl = root / 'cases.json'
+            cl.write_text(json.dumps(dict(cases=[[r['run'], r['task_id'], r['seed']] for r in rows])))
+            t = arm_dir(root, 'tail', plan, rows, relay_settings=dict(k=4, window='tail', changed_only=False), meta_arm='relay')
+            x = arm_dir(root, 'dense', plan, rows, relay_settings=dict(k=4, window='dense', changed_only=False), meta_arm='relay')
+            s = report_relay.build(t, x, plan, cl, mode='window')
+            self.assertIn('needs both arms run with relay.changed_only', json.dumps(s))
+            moved = [dict(case_row('t0'), worker_positions=[0, 1]), dict(case_row('t1'), worker_positions=[1, 3])]
+            same = [dict(case_row('t0'), worker_positions=[0, 1]), dict(case_row('t1'), worker_positions=[1, 2])]
+            t2 = arm_dir(root, 'tail2', plan, moved, relay_settings=dict(k=4, window='tail', changed_only=True), meta_arm='relay')
+            x2 = arm_dir(root, 'dense2', plan, same, relay_settings=dict(k=4, window='dense', changed_only=True), meta_arm='relay')
+            s2 = report_relay.build(t2, x2, plan, cl, mode='window')
+        self.assertEqual(s2['status'], 'incomplete')
+        self.assertIn('1 case(s) with different selections or worker counts', json.dumps(s2))
 
     def test_incomplete_inputs(self):
         ok = [case_row('t0'), case_row('t1')]

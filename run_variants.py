@@ -18,13 +18,23 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
   roll12strategy roll8strategy with a cap of 12 agents (failure-driven only, no time trigger)
   roll12cancel  roll8cancel with a cap of 12 agents: roll12strategy WITHOUT any hint (generic: no task-specific text for
                 any slot); same seeds, nodes, race and cancel
-  roll12relay   roll12cancel, but each escalation agent (slot >= 4) gets relay.PROTOCOL + the verbatim work (last
-                relay.max_chars characters of recorded thinking + answer) of ONE agent of the same case that already
+  roll12relay   roll12cancel, but each escalation agent (slot >= 4) gets relay.PROTOCOL + the verbatim work (plan
+                relay.window: 'tail' = last relay.max_chars characters of recorded thinking + answer, 'dense' = the
+                latest zlib-dense window, relay.dense_window) of ONE agent of the same case that already
                 ended without an accepted plan, chosen by seeded uniform sampling (relay.selection_seed + case + slot)
                 among those not yet handed over; by design, once every failed agent of the case has been handed over,
                 all of them are eligible again (an artifact can be reused by a later escalation agent); no nonempty
                 artifact -> no extra text. Generic: no task-specific text. Seeds and nodes as roll12cancel (slots 0-3
                 pair exactly).
+  roll12wide    roll12cancel plus work-conserving widening (Fable round 4, idea 1): while any case is still waiting for
+                admission nothing changes; once none is waiting, a case that already had at least one failed agent may
+                start its next slots at once (without waiting for another failure) up to 2x its base width (8 in
+                flight), never beyond cap 12, oldest admitted case first, least-loaded node first, and only while that
+                node keeps WIDE_JUDGE_RESERVE permits free for judges. Same agents, prompts and seeds as roll12cancel
+                (slots pair exactly; widened slots may run on another node); only start times move. Re-checked on
+                every permit release, agent end, case admission or cancel (or every WIDE_POLL_SECONDS); never
+                time-triggered. Runs alone with WideSlots (exact occupancy); every other policy keeps plain Slots.
+                Per case: max_in_flight, widened_agents, widened_at_s.
   roll12idle    roll12cancel plus generic idle-capacity escalation: once a case's slots 0-11 have all ended without an
                 accepted plan, extra agents (slots 12-19, no hints) start one at a time on the least-loaded node, only
                 while that node has fewer than IDLE_THRESHOLD requests in flight in the shared slots (permits held by
@@ -53,6 +63,7 @@ as infra. Client-side limits (wall limit, timeouts, budget) are never retried.
 The exact verifier never influences decisions; it only scores the selected plan.
 """
 import argparse
+import contextlib
 import json
 import re
 import subprocess
@@ -93,7 +104,7 @@ MAX_REQUESTS_PER_NODE = 25  # fleet rule: never more than 25 concurrent requests
 # rolling policies: slots that may launch per case (cap - first slot); unstarted_agents counts the ones that never did
 IDLE_FIRST, IDLE_CAP, IDLE_THRESHOLD, IDLE_MAX_INFLIGHT, IDLE_POLL_SECONDS = 12, 20, 12, 8, 2.0
 ELIGIBLE_SLOTS = dict(roll8cancel=8, roll8repair=8, roll8strategy=8, roll3to8=8, roll3strategy=8, roll12strategy=12,
-                      roll12cancel=12, roll12idle=12, roll12relay=12,  # roll12idle: extra slots 12-19 are opportunistic, not eligible
+                      roll12cancel=12, roll12idle=12, roll12relay=12, roll12wide=12,  # roll12idle: extra slots 12-19 are opportunistic, not eligible
                       roll12burst=12, **{p: ESC_SHAPE.get(p, ESC_DEFAULT_SHAPE)[2] - ESC_SHAPE.get(p, ESC_DEFAULT_SHAPE)[0]
                                          for p in ESC_HINTS})
 JUDGE_TAIL = 'Return only a JSON object {"valid": true} if every move is legal and the target appears, otherwise {"valid": false}.'
@@ -394,28 +405,56 @@ def critique(info):
 
 
 def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_width=8, feedback=None, first=0,
-            slot_feedback=None):
+            slot_feedback=None, widen=None):
     """Keep `width` agents in flight; an agent that ends without an accept is replaced by the next slot on its node.
     burst_seconds: if the case has no accept by then, raise the in-flight width to burst_width (new slots on nodes
     (case_index + slot) % 4), still within `cap` agents in total. first: number of the first slot (escalation-only arms
     start at 4; `cap` is then the end slot, exclusive). slot_feedback(results_so_far, slot) -> extra text for slots >=
-    width (called under the case lock at launch, like feedback, but also told the slot)."""
+    width (called under the case lock at launch, like feedback, but also told the slot). widen: roll12wide's
+    work-conserving widening (see wide_step): dict(slots=WideSlots, key=case key, t0=case start)."""
     lock, state, results, threads = threading.Lock(), dict(next=first + width, running=0, width=width), [], []
+    t_start = time.monotonic()
+    state['max_running'] = 0
 
-    def launch(slot, node):  # caller holds the lock
+    def launch(slot, node, held=None):  # caller holds the lock
         state['running'] += 1
+        state['max_running'] = max(state['max_running'], state['running'])
+        if state['running'] > width and 'widened_at_s' not in state:
+            state['widened_at_s'] = round(time.monotonic() - t_start, 3)
         extra = feedback(list(results)) if feedback and slot >= width else None
         if slot_feedback and slot >= width:
             extra = slot_feedback(list(results), slot)
-        t = threading.Thread(target=run, args=(slot, node, extra))
-        threads.append(t)
-        t.start()
-
-    def run(slot, node, extra=None):
+        t = threading.Thread(target=run, args=(slot, node, extra, held))
         try:
-            info = agent(slot, node, extra) if feedback or slot_feedback else agent(slot, node)
+            t.start()
+        except Exception as exc:  # the slot becomes a fault record; a held permit is released; nothing to join
+            state['running'] -= 1
+            state['failed'] = True
+            if held is not None:
+                held.drop_unused()
+            info = fault_record(slot, extra, exc)
+            info.update(started=False, launch_failed=True)
+            results.append(info)
+            return False
+        threads.append(t)
+        return True
+
+    def run(slot, node, extra=None, held=None):
+        try:
+            if held is not None:
+                info = agent(slot, node, held=held)
+            else:
+                info = agent(slot, node, extra) if feedback or slot_feedback else agent(slot, node)
         except Exception as exc:  # never lose a slot: record it as an infra fault (resume reruns the case)
             info = fault_record(slot, extra, exc)
+        if held is not None:
+            held.drop_unused()
+            info['widened'] = True
+        _run_end(info, node)
+        if widen:
+            widen['slots'].wake()  # outside the case lock (lock order: slots.cond before the case lock)
+
+    def _run_end(info, node):
         with lock:
             results.append(info)
             state['running'] -= 1
@@ -439,12 +478,72 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
                 nxt = state['next']
                 state['next'] += 1
                 launch(nxt, (case_index + nxt) % 4)
+    def widener():
+        """One widening decision = one critical section: under the scheduler lock (slots.cond) every admitted case's
+        lock is taken in admission order (wideners are serialised by slots.cond; agent threads only ever hold their own
+        case lock and never wait for slots.cond while holding it, so this cannot deadlock), the live eligibility of all
+        cases is computed, and only the OLDEST eligible case may reserve a permit and launch, before any lock is
+        released. A younger case therefore never widens while an older case is eligible at that instant."""
+        ws, key, factor, reserve, poll = (widen['slots'], widen['key'], widen.get('factor', WIDE_FACTOR),
+                                          widen.get('reserve', WIDE_JUDGE_RESERVE), widen.get('poll', WIDE_POLL_SECONDS))
+        with ws.cond:
+            while True:
+                entries = sorted(ws.cases.items(), key=lambda kv: kv[1]['order'])
+                with contextlib.ExitStack() as held_locks:
+                    for _, c in entries:
+                        if c.get('lock') is not None:
+                            held_locks.enter_context(c['lock'])
+                    if done_locked():
+                        ws.cases.get(key, {})['eligible'] = False
+                        ws.cond.notify_all()
+                        return
+                    live = [k for k, c in entries
+                            if (c['eligible_locked']() if c.get('eligible_locked')
+                                else c['eligible_fn']() if c.get('eligible_fn') else c.get('eligible'))]
+                    for k, c in entries:
+                        c['eligible'] = k in live
+                    if ws.pending == 0 and live and live[0] == key:  # this case is the oldest eligible one
+                        occ = {i: ws.in_flight[e] for i, e in enumerate(ws.endpoints)}
+                        node = next((i for i in sorted(occ, key=lambda i: (occ[i], i))
+                                     if ws.try_acquire(ws.endpoints[i], below=ws.cap - reserve)), None)
+                        if node is not None:
+                            held = IdleSlots(ws, ws.endpoints[node], None, poll, race['cancel'])
+                            nxt = state['next']
+                            state['next'] += 1
+                            if launch(nxt, node, held):  # a failed start released the permit and is a fault
+                                state['widened'] = state.get('widened', 0) + 1
+                            continue
+                ws.cond.notify_all()  # an older eligible case may be waiting for this one to yield
+                ws.cond.wait(poll)
+
+    def done_locked():  # caller holds the case lock
+        return (state.get('closed') or race['winner'] is not None or race['cancel'].is_set()
+                or state.get('failed') or state['next'] >= cap)
+
+    def eligible_locked():  # caller holds the case lock
+        failures = sum(1 for a in results if a.get('verdict') is not True and not a.get('cancelled'))
+        return not done_locked() and failures >= 1 and state['running'] < width * widen.get('factor', WIDE_FACTOR)
+
+    def eligible_now():
+        with lock:
+            done = (state.get('closed') or race['winner'] is not None or race['cancel'].is_set()
+                    or state.get('failed') or state['next'] >= cap)
+            failures = sum(1 for a in results if a.get('verdict') is not True and not a.get('cancelled'))
+            return not done and failures >= 1 and state['running'] < width * widen.get('factor', WIDE_FACTOR)
+    if widen:  # registered with the scheduler (lock + live eligibility) BEFORE any agent of the case can start or fail
+        with widen['slots'].cond:
+            widen['slots'].cases[widen['key']].update(lock=lock, eligible_locked=eligible_locked, eligible_fn=eligible_now)
     with lock:
         for s in range(first, first + width):
             launch(s, (case_index + s) % 4)
     if burst_seconds is not None:
         timer = threading.Thread(target=burst, daemon=True)
         timer.start()
+    wide_thread = None
+    if widen:
+        race.setdefault('on_cancel', []).append(widen['slots'].wake)
+        wide_thread = threading.Thread(target=widener, daemon=True)
+        wide_thread.start()
     i = 0
     while True:
         with lock:
@@ -454,6 +553,11 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
             t = threads[i]
         t.join()
         i += 1
+    if wide_thread is not None:
+        widen['slots'].wake()
+        wide_thread.join()
+        race['wide'] = dict(max_in_flight=state['max_running'], widened_agents=state.get('widened', 0),
+                            widened_at_s=state.get('widened_at_s'))
     return sorted(results, key=lambda a: a['slot'])
 
 
@@ -523,6 +627,37 @@ class TrackedSlots(Slots):
 
     def __call__(self, endpoint):
         return self.permit(endpoint)
+
+
+WIDE_FACTOR, WIDE_JUDGE_RESERVE, WIDE_POLL_SECONDS = 2, 2, 2.0
+
+
+class WideSlots(TrackedSlots):
+    """TrackedSlots plus the arm state roll12wide's work-conserving widening reads: `pending` = cases not yet admitted
+    (the runner sets it; 0 = no case waiting) and the active cases in admission order with their widening
+    eligibility. Every change notifies the condition."""
+    def __init__(self, per_endpoint, endpoints=None):
+        super().__init__(per_endpoint, endpoints)
+        self.pending, self.cases, self.admitted = 0, {}, 0
+
+    def set_pending(self, n):
+        with self.cond:
+            self.pending = n
+            self.cond.notify_all()
+
+    def case_started(self, key):
+        """Admission: the case's order is fixed here; rolling() adds its lock and live eligibility under the same lock
+        before launching any agent, so a case's eligibility can only change while it is fully registered."""
+        with self.cond:
+            self.pending = max(0, self.pending - 1)
+            self.admitted += 1
+            self.cases[key] = dict(order=self.admitted, eligible=False)
+            self.cond.notify_all()
+
+    def case_ended(self, key):
+        with self.cond:
+            self.cases.pop(key, None)
+            self.cond.notify_all()
 
 
 class IdleSlots:
@@ -623,8 +758,8 @@ def idle_extension(agent, race, slots, first=None, cap=None, threshold=None, max
 
 
 def relay_feedback(plan, out, task, seed, policy):
-    """roll12relay: extra text of each escalation agent = relay.PROTOCOL + the verbatim artifact (relay.artifact, last
-    relay.max_chars characters) of ONE agent of this case that has already ended without an accepted plan, chosen by
+    """roll12relay: extra text of each escalation agent = relay.PROTOCOL + the verbatim artifact (relay.artifact; plan
+    relay.window 'tail' = last relay.max_chars characters, 'dense' = relay.dense_window) of ONE agent of this case that has already ended without an accepted plan, chosen by
     seeded uniform sampling (plan relay.selection_seed + case + slot) among those not yet handed over in this case
     (all failed ones again once every one was handed over); no nonempty artifact -> no extra text. Returns
     (record {slot: relay_source_slot, relay_chars, relay_chars_used}, slot_feedback)."""
@@ -648,8 +783,8 @@ def relay_feedback(plan, out, task, seed, policy):
         source, text = relay.selection_rng(s['selection_seed'], task['id'], f'{seed}:{slot}').choice(pool)
         handed.add(source)
         record[slot] = dict(relay_source_slot=source, relay_chars=len(text),
-                            relay_chars_used=len(relay.truncate(text, s['max_chars'])))
-        return relay.relay_extra(text, s['max_chars'])
+                            relay_chars_used=len(relay.excerpt(text, s['max_chars'], s['window'])), relay_window=s['window'])
+        return relay.relay_extra(text, s['max_chars'], s['window'])
     return record, extra_for
 
 
@@ -674,7 +809,7 @@ def new_race(t0):
 def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     off = plan['seed_offsets'][policy]
     t0 = time.monotonic()
-    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll3to8', 'roll3strategy', 'roll8repair', 'roll8strategy', 'roll12strategy', 'roll12cancel', 'roll12idle', 'roll12relay', 'roll12burst') or policy in ESC_HINTS else None
+    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll3to8', 'roll3strategy', 'roll8repair', 'roll8strategy', 'roll12strategy', 'roll12cancel', 'roll12idle', 'roll12relay', 'roll12wide', 'roll12burst') or policy in ESC_HINTS else None
     agent = lambda slot, extra='': run_agent_safe(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off, t0, race)
     if policy == 'deep4':
         agents = parallel([lambda s=s: agent(s) for s in range(4)])
@@ -731,6 +866,16 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
         if policy == 'roll12idle' and race['winner'] is None and not any('agent_error' in a for a in agents):
             agents += idle_extension(lambda slot, node, held: run_agent_safe(
                 plan, source, out, task, seed, case_index, policy, slot, '', held, off, t0, race, node), race, slots)
+    elif policy == 'roll12wide':
+        require(isinstance(slots, WideSlots), 'roll12wide needs WideSlots (it runs alone)')
+        key = (task['id'], seed)
+        slots.case_started(key)
+        try:
+            agents = rolling(lambda slot, node, held=None: run_agent_safe(plan, source, out, task, seed, case_index, policy,
+                                                                        slot, '', held or slots, off, t0, race, node),
+                             race, case_index, cap=12, widen=dict(slots=slots, key=key))
+        finally:
+            slots.case_ended(key)
     elif policy == 'roll12relay':
         relayed, extra_for = relay_feedback(plan, out, task, seed, policy)
         agents = rolling(lambda slot, node, extra='': run_agent_safe(plan, source, out, task, seed, case_index, policy, slot,
@@ -761,6 +906,8 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
                      # escalated = started agents beyond the first wave (all agents of the esc_* add-ons, slots 4-11 or 12-19)
                      escalated_agents=sum(a['slot'] >= (3 if policy in ('roll3to8', 'roll3strategy') else 4) and a['started'] for a in agents),
                      burst=bool(race.get('burst_at')),
+                     **({'max_in_flight': race['wide']['max_in_flight'], 'widened_agents': race['wide']['widened_agents'],
+                         'widened_at_s': race['wide']['widened_at_s']} if policy == 'roll12wide' else {}),
                      **({'extra_agents': sum(a['slot'] >= IDLE_FIRST and a['started'] for a in agents),
                          'idle_phase': bool(race.get('idle_ran'))}
                         if policy == 'roll12idle' else {}),
@@ -961,6 +1108,14 @@ def main(argv=None):
         jobs = [j for j in jobs if (j[0]['id'], j[1], j[3]) not in finished]
         resumed = dict(resumed_from=str(a.resume_from.resolve()), skipped_finished=len(finished), segments=segments)
     require(plan.get('concurrent_requests_per_endpoint', 0) <= MAX_REQUESTS_PER_NODE, 'Per-node request cap above 25')
+    if 'roll12wide' in plan.get('policies', []) and 'roll12cancel' in plan.get('policies', []):
+        offsets = plan.get('seed_offsets', {})
+        require(offsets.get('roll12wide') == offsets.get('roll12cancel'),
+                'roll12wide and roll12cancel must share the seed offset (slots pair exactly)')
+    if 'roll12wide' in policies:  # widened agents leave WIDE_JUDGE_RESERVE permits per node for judges; cap <= 20
+        require(WIDE_JUDGE_RESERVE < plan.get('concurrent_requests_per_endpoint', 0) <= 20,
+                f'roll12wide needs {WIDE_JUDGE_RESERVE} < concurrent_requests_per_endpoint <= 20')
+        require(policies == ['roll12wide'] or not a.run, 'roll12wide runs alone (--policy roll12wide)')
     if 'roll12idle' in policies:  # extra agents only below the idle threshold, inside a per-endpoint cap of at most 20
         require(IDLE_THRESHOLD < plan.get('concurrent_requests_per_endpoint', 0) <= 20,
                 f'roll12idle needs {IDLE_THRESHOLD} < concurrent_requests_per_endpoint <= 20')
@@ -978,7 +1133,7 @@ def main(argv=None):
                                       seed_offsets={pol: plan['seed_offsets'][pol] for pol in policies},
                                       concurrent_policy_cases=concurrent, started_utc=datetime.now(timezone.utc).isoformat(), admission=adm))
     # TrackedSlots (exact occupancy, one condition lock) only for a roll12idle arm; every other policy keeps plain Slots
-    slot_class = TrackedSlots if policies == ['roll12idle'] else Slots
+    slot_class = TrackedSlots if policies == ['roll12idle'] else WideSlots if policies == ['roll12wide'] else Slots
     slots, lock, stop, rows = slot_class(plan['concurrent_requests_per_endpoint']), threading.Lock(), threading.Event(), []
 
     def work(job):
@@ -1002,6 +1157,8 @@ def main(argv=None):
             print(json.dumps(dict(done=len(rows), total=len(jobs), policy=pol, task=task['id'], seed=seed, solved=rec['solved'], wrong=rec['wrong'])), flush=True)
 
     start = time.monotonic()
+    if isinstance(slots, WideSlots):  # cases waiting for admission (each case decrements it when it starts)
+        slots.set_pending(len(jobs))
     with ThreadPoolExecutor(concurrent) as pool:
         list(pool.map(work, jobs))
     meta = read(out / 'metadata.json')

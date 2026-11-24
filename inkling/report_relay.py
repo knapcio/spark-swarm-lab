@@ -17,7 +17,12 @@ Both arms' cohorts must equal the frozen case list given with --case-list. Input
 tokens) is reported next to generated tokens; total compute = generated + computed prefill. With several seeds of the
 same puzzle the cases are not independent, so the McNemar p is descriptive only (the report says so).
 
+Window screen (relay.window, Fable round 4 idea 2): --tail DIR --dense DIR compares two RELAY arms on the same frozen
+cohort whose relay settings differ only in the window (same selections, worker counts and worker seeds), with rescues
+per window and the number of workers whose excerpt changed.
+
 usage: report_relay.py --relay DIR --replace DIR --plan PLAN --case-list FILE --out DIR
+       report_relay.py --tail DIR --dense DIR --plan PLAN --case-list FILE --out DIR
 """
 import argparse
 import hashlib
@@ -30,6 +35,9 @@ sys.path.insert(0, str(HERE))
 import report_round3_hard17 as r3  # noqa: E402
 
 ARMS = ('relay', 'replace')
+# comparison modes: (first role, its metadata arm), (second role, its metadata arm)
+MODES = dict(replace=(('relay', 'relay'), ('replace', 'replace')),  # RELAY vs equal-budget REPLACE
+             window=(('tail', 'relay'), ('dense', 'relay')))         # two RELAY arms: tail vs dense window
 
 
 INPUT_KEYS = ('generation_tokens', 'prompt_tokens', 'prefill_compute_tokens')
@@ -101,28 +109,55 @@ def summary(a):
                 distinct_puzzles=len({k[1] for k in a['rows']}))
 
 
-def build(relay_dir, replace_dir, plan_file, case_list):
+def both_differ(r1, r2, field):
+    """A field added in a later version is compared only when both arms recorded it (arms recorded before the update
+    are checked exactly as before)."""
+    return field in r1 and field in r2 and r1[field] != r2[field]
+
+
+def build(first_dir, second_dir, plan_file, case_list, mode='replace'):
+    """mode 'replace': RELAY vs REPLACE (equal settings). mode 'window': two RELAY arms on the same cohort whose relay
+    settings differ only in relay.window (tail vs dense), with the same selections and worker counts per case."""
+    (n1, arm1), (n2, arm2) = MODES[mode]
     plan_file, case_list = Path(plan_file), Path(case_list)
     plan = json.loads(plan_file.read_text()) if plan_file.exists() else None
-    plan_sha = hashlib.sha256(plan_file.read_bytes()).hexdigest() if plan else None
+    plan_sha = hashlib.sha256(plan_file.read_bytes()).hexdigest() if plan is not None else None
     frozen = {tuple(c[:3]) for c in json.loads(case_list.read_text())['cases']} if case_list.exists() else None
-    arms = {arm: load(arm, d, plan_sha, frozen if frozen is not None else set())
-            for arm, d in (('relay', relay_dir), ('replace', replace_dir))}
-    s = dict(plan=str(plan_file), plan_sha256=plan_sha, case_list=str(case_list),
+    arms = {name: load(arm, d, plan_sha, frozen if frozen is not None else set())
+            for name, arm, d in ((n1, arm1, first_dir), (n2, arm2, second_dir))}
+    s = dict(mode=mode, arm_names=[n1, n2], plan=str(plan_file), plan_sha256=plan_sha, case_list=str(case_list),
              case_list_sha256=hashlib.sha256(case_list.read_bytes()).hexdigest() if frozen is not None else None,
              arms={k: summary(v) for k, v in arms.items()})
-    problems = ([] if plan else ['frozen plan file not found']) + ([] if frozen is not None else ['frozen case list not found'])
-    R, P = arms['relay'], arms['replace']
+    problems = ([] if plan is not None else ['frozen plan file not found']) + ([] if frozen is not None else ['frozen case list not found'])
+    R, P = arms[n1], arms[n2]
     if 'rows' in R and 'rows' in P:
         if set(R['rows']) != set(P['rows']):
             problems.append('the two arms ran different cohorts')
-        if R['meta'].get('relay_settings') != P['meta'].get('relay_settings'):
-            problems.append('the two arms ran different relay settings')
+        sr, sp = dict(R['meta'].get('relay_settings') or {}), dict(P['meta'].get('relay_settings') or {})
+        if mode == 'window':
+            if not (sr.get('changed_only') and sp.get('changed_only')):
+                problems.append('a tail-vs-dense screen needs both arms run with relay.changed_only')
+            if (sr.get('window'), sp.get('window')) != (n1, n2):
+                problems.append(f"relay windows are {sr.get('window')!r} / {sp.get('window')!r}, expected {n1!r} / {n2!r}")
+            sr.pop('window', None)
+            sp.pop('window', None)
+        if sr != sp:
+            problems.append('the two arms ran different relay settings' + (' (beyond the window)' if mode == 'window' else ''))
         differing = [k for k in set(R['rows']) & set(P['rows'])
                      if R['rows'][k].get('selected_source_slots') != P['rows'][k].get('selected_source_slots')
+                     or both_differ(R['rows'][k], P['rows'][k], 'worker_positions')
                      or len(R['rows'][k]['workers']) != len(P['rows'][k]['workers'])]
         if differing:
             problems.append(f'{len(differing)} case(s) with different selections or worker counts between the arms')
+        if mode == 'window':  # paired workers: same slots and seeds, same endpoint set and per-endpoint cap
+            seeds_differ = [k for k in set(R['rows']) & set(P['rows'])
+                            if [(w.get('slot'), w.get('agent_seed')) for w in R['rows'][k]['workers']]
+                            != [(w.get('slot'), w.get('agent_seed')) for w in P['rows'][k]['workers']]]
+            if seeds_differ:
+                problems.append(f'{len(seeds_differ)} case(s) whose worker slots or seeds differ between the arms')
+            for field in ('endpoints', 'max_per_endpoint'):
+                if R['meta'].get(field) != P['meta'].get(field):
+                    problems.append(f'the two arms ran with different {field}')
     complete = not problems and all(a.get('status') == 'complete' for a in arms.values())
     s['pairing_problems'] = problems
     s['status'] = 'complete' if complete else 'incomplete'
@@ -131,18 +166,26 @@ def build(relay_dir, replace_dir, plan_file, case_list):
         b = sum(bool(R['rows'][k]['rescued']) and not P['rows'][k]['rescued'] for k in common)
         c = sum(bool(P['rows'][k]['rescued']) and not R['rows'][k]['rescued'] for k in common)
         puzzles = len({k[1] for k in common})
-        s['mcnemar'] = dict(cases=len(common), distinct_puzzles=puzzles, relay_only=b, replace_only=c,
-                            exact_p=r3.sign_test(b, c),
-                            note=('descriptive only: the cases are not independent (several seeds of the same puzzle)'
-                                  if puzzles < len(common) else 'cases are distinct puzzles'))
-        rs, ps = s['arms']['relay'], s['arms']['replace']
-        s['facts'] = dict(relay_rescued=rs['rescued'], replace_rescued=ps['rescued'], relay_wrong=rs['wrong'],
-                          replace_wrong=ps['wrong'],
-                          server_token_ratio_relay_over_replace=(rs['server_tokens'] / ps['server_tokens']
-                                                                if ps['server_tokens'] else None),
-                          compute_token_ratio_relay_over_replace=(rs['total_compute_tokens'] / ps['total_compute_tokens']
-                                                                 if ps['total_compute_tokens'] else None),
-                          wh_ratio_relay_over_replace=rs['wh'] / ps['wh'] if rs['wh'] is not None and ps['wh'] else None)
+        s['mcnemar'] = {'cases': len(common), 'distinct_puzzles': puzzles, f'{n1}_only': b, f'{n2}_only': c,
+                        'exact_p': r3.sign_test(b, c),
+                        'note': ('descriptive only: the cases are not independent (several seeds of the same puzzle)'
+                                 if puzzles < len(common) else 'cases are distinct puzzles')}
+        x, y = s['arms'][n1], s['arms'][n2]
+        s['facts'] = {f'{n1}_rescued': x['rescued'], f'{n2}_rescued': y['rescued'], f'{n1}_wrong': x['wrong'],
+                      f'{n2}_wrong': y['wrong'],
+                      f'server_token_ratio_{n1}_over_{n2}': x['server_tokens'] / y['server_tokens'] if y['server_tokens'] else None,
+                      f'compute_token_ratio_{n1}_over_{n2}': (x['total_compute_tokens'] / y['total_compute_tokens']
+                                                             if y['total_compute_tokens'] else None),
+                      f'wh_ratio_{n1}_over_{n2}': x['wh'] / y['wh'] if x['wh'] is not None and y['wh'] else None}
+        if mode == 'window':  # the changed-only subset: workers that started in both arms, accepted workers per arm
+            pairs = [(w1, w2) for k in common for w1, w2 in zip(R['rows'][k]['workers'], P['rows'][k]['workers'])]
+            started = [(w1, w2) for w1, w2 in pairs if w1.get('started', True) and w2.get('started', True)]
+            s['facts'].update(rescues_per_window={n1: x['rescued'], n2: y['rescued']},
+                              changed_workers=len(pairs), changed_workers_started_in_both=len(started),
+                              accepted_workers={n1: sum(w1.get('verdict') is True for w1, _ in pairs),
+                                                n2: sum(w2.get('verdict') is True for _, w2 in pairs)},
+                              accepted_workers_started_in_both={n1: sum(w1.get('verdict') is True for w1, _ in started),
+                                                                n2: sum(w2.get('verdict') is True for _, w2 in started)})
     s['decision_rule'] = (plan or {}).get('decision_rule', 'plan not written')
     s['decision'] = ('evaluate the frozen rule against the facts' if complete
                      else 'incomplete - no decision: ' + '; '.join(
@@ -154,23 +197,26 @@ def build(relay_dir, replace_dir, plan_file, case_list):
 
 def markdown(s):
     fmt = r3.fmt
-    out = ['# Generic artifact relay vs equal-budget replacement', '', f"Status: {s['status']}", '',
+    n1, n2 = s['arm_names']
+    title = ('Generic artifact relay vs equal-budget replacement' if s['mode'] == 'replace'
+             else 'Artifact relay: tail window vs dense window')
+    out = [f'# {title}', '', f"Status: {s['status']}", '',
            '| arm | status | cases | puzzles | workers | rescued | wrong | generated | prompt | prefill computed | '
            'total compute | Wh | artifact chars |', '|---|---|---|---|---|---|---|---|---|---|---|---|---|']
-    for k in ARMS:
+    for k in (n1, n2):
         a = s['arms'][k]
         out.append(f"| {k} | {a['status']} | " + ' | '.join(fmt(a.get(c)) for c in (
             'cases', 'distinct_puzzles', 'workers', 'rescued', 'wrong', 'generation_tokens', 'prompt_tokens',
             'prefill_compute_tokens', 'total_compute_tokens', 'wh', 'artifact_chars_used')) + ' |')
     out += ['', 'total compute = generated + prefill computed (server counters; cached prompt tokens are not recomputed).']
-    for k in ARMS:
+    for k in (n1, n2):
         if s['arms'][k].get('reasons'):
             out.append(f"\n{k} incomplete: {'; '.join(s['arms'][k]['reasons'])}")
     if s['pairing_problems']:
         out.append(f"\nPairing problems: {'; '.join(s['pairing_problems'])}")
     if 'mcnemar' in s:
         m = s['mcnemar']
-        out += ['', f"Paired (exact McNemar): relay-only rescued {m['relay_only']}, replace-only {m['replace_only']}, "
+        out += ['', f"Paired (exact McNemar): {n1}-only rescued {m[n1 + '_only']}, {n2}-only {m[n2 + '_only']}, "
                     f"p = {m['exact_p']:.4g} over {m['cases']} cases / {m['distinct_puzzles']} distinct puzzles ({m['note']})",
                 '', f"Facts: {json.dumps(s['facts'])}"]
     out += ['', f"Frozen rule: {s['decision_rule']}", '', f"Decision: {s['decision']}", '', '## Disclosures', '',
@@ -180,13 +226,22 @@ def markdown(s):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument('--relay', type=Path, required=True)
-    p.add_argument('--replace', type=Path, required=True)
+    p.add_argument('--relay', type=Path, help='mode replace: the RELAY arm')
+    p.add_argument('--replace', type=Path, help='mode replace: the REPLACE arm')
+    p.add_argument('--tail', type=Path, help='mode window: the RELAY arm run with relay.window tail')
+    p.add_argument('--dense', type=Path, help='mode window: the RELAY arm run with relay.window dense')
     p.add_argument('--plan', type=Path, required=True)
     p.add_argument('--case-list', type=Path, required=True, help='the frozen case list both arms were run on')
     p.add_argument('--out', type=Path, required=True)
     a = p.parse_args(argv)
-    s = build(a.relay, a.replace, a.plan, a.case_list)
+    if a.tail or a.dense:
+        if not (a.tail and a.dense) or a.relay or a.replace:
+            raise SystemExit('window screen: give --tail and --dense (and not --relay/--replace)')
+        s = build(a.tail, a.dense, a.plan, a.case_list, mode='window')
+    else:
+        if not (a.relay and a.replace):
+            raise SystemExit('give --relay and --replace, or --tail and --dense')
+        s = build(a.relay, a.replace, a.plan, a.case_list)
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / 'report.json').write_text(json.dumps(s, indent=1, default=list) + '\n')
     (a.out / 'REPORT.md').write_text(markdown(s))

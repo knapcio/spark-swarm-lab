@@ -56,16 +56,34 @@ def case_plans(runs, s):
     out = []
     for run in runs:
         for c in run['cases']:
-            out.append((run, c, relay.case_plan(c['seg'], c['row'], c['task'], c['seed'], s)))
+            cp = c.get('cp') or relay.case_plan(c['seg'], c['row'], c['task'], c['seed'], s)
+            out.append((run, c, relay.changed_only(cp, s['max_chars']) if s['changed_only'] else cp))
     return out
 
 
-def plan_only(runs, s, duplicates=()):
+def apply_changed_only(runs, s):
+    """Changed-only screen: drop the cases in which no selected worker's dense excerpt differs from its tail excerpt
+    (from the cohort itself, so case lists and both arms agree); returns the dropped [[run, task_id, seed], ...]."""
+    dropped = []
+    for run in runs:
+        kept = []
+        for c in run['cases']:
+            c['cp'] = relay.case_plan(c['seg'], c['row'], c['task'], c['seed'], s)
+            if relay.changed_only(c['cp'], s['max_chars'])['selected']:
+                kept.append(c)
+            else:
+                dropped.append([run['run'], c['task']['id'], c['seed']])
+        run['cases'] = kept
+    return dropped
+
+
+def plan_only(runs, s, duplicates=(), dropped_unchanged=()):
     plans = case_plans(runs, s)
     per_run = {}
     for run, c, cp in plans:
         agg = per_run.setdefault(run['run'], dict(cases=0, failed_agents=0, candidates=0, selected=0, cases_with_workers=0,
-                                                  chars_used=[]))
+                                                  dense_window_differs=0, chars_used=[]))
+        agg['dense_window_differs'] += sum(relay.dense_window(x['text'], s['max_chars'])[1] > 0 for x in cp['selected'])
         agg['cases'] += 1
         agg['failed_agents'] += cp['failed_agents']
         agg['candidates'] += cp['candidates']
@@ -75,7 +93,7 @@ def plan_only(runs, s, duplicates=()):
         print(json.dumps(dict(run=run['run'], task_id=c['task']['id'], seed=c['seed'], failed_agents=cp['failed_agents'],
                               candidates=cp['candidates'], selected_slots=[x['source_slot'] for x in cp['selected']],
                               chars=[x['chars'] for x in cp['selected']])))
-    total = dict(cases=0, failed_agents=0, candidates=0, selected=0, cases_with_workers=0)
+    total = dict(cases=0, failed_agents=0, candidates=0, selected=0, cases_with_workers=0, dense_window_differs=0)
     for name, agg in per_run.items():
         chars = agg.pop('chars_used')
         agg.update(relay_workers=agg['selected'], replace_workers=agg['selected'],
@@ -83,7 +101,8 @@ def plan_only(runs, s, duplicates=()):
         print(json.dumps(dict(summary=dict(run=name, **agg))))
         for k in total:
             total[k] += agg[k]
-    print(json.dumps(dict(mode='plan', model_calls=0, dropped_duplicates=len(duplicates),
+    print(json.dumps(dict(mode='plan', model_calls=0, window=s['window'], changed_only=s['changed_only'],
+                          dropped_unchanged_cases=len(dropped_unchanged), dropped_duplicates=len(duplicates),
                           distinct_puzzles=len({c['task']['id'] for r in runs for c in r['cases']}), k=s['k'], max_chars=s['max_chars'], selection_seed=s['selection_seed'],
                           total=dict(total, relay_workers=total['selected'], replace_workers=total['selected']))))
     return 0
@@ -101,6 +120,13 @@ def main(argv=None):
     p.add_argument('--max-per-endpoint', type=int, default=8)
     p.add_argument('--plan-only', action='store_true')
     p.add_argument('--case-list', type=Path)
+    p.add_argument('--window', choices=('tail', 'dense'),
+                   help='relay window for this arm (a window screen runs two RELAY arms); must be listed in plan '
+                        'relay.windows (frozen), default the plan relay.window')
+    p.add_argument('--changed-only', action='store_true',
+                   help='tail-vs-dense screen: run only selected workers whose dense excerpt differs from the tail one '
+                        '(same slots and seeds); cases without one are dropped and listed. Must match plan '
+                        'relay.changed_only (frozen); the plan field alone also enables it')
     p.add_argument('--no-dedupe', dest='dedupe', action='store_false',
                    help='keep a (task_id, seed) that several runs abstained on once per run (default: once overall)')
     p.add_argument('--write-case-list', type=Path)
@@ -111,12 +137,19 @@ def main(argv=None):
     duplicates = dedupe(runs) if a.dedupe else []
     plan = read(a.plan) if a.plan else {}
     s = relay.settings(plan)
+    if a.window:
+        allowed = (plan.get('relay') or {}).get('windows') or [s['window']]
+        require(a.window in allowed, f'--window {a.window} is not frozen in plan relay.windows {allowed}')
+        s['window'] = a.window
     require(s['k'] >= 1 and s['max_chars'] >= 1, 'relay.k and relay.max_chars must be >= 1')
+    if a.changed_only:
+        require(s['changed_only'], '--changed-only is not frozen in the plan (relay.changed_only: true)')
+    dropped_unchanged = apply_changed_only(runs, s) if s['changed_only'] else []
     if a.plan_only:
         if a.write_case_list:
             require(not a.write_case_list.exists(), 'case list file exists')
             write(a.write_case_list, closer_replay.cohort_list(runs))
-        return plan_only(runs, s, duplicates)
+        return plan_only(runs, s, duplicates, dropped_unchanged)
     require(a.arm and a.plan and a.output and a.admission, '--arm, --plan, --output and --admission are required for a run')
     out = a.output.resolve()
     require(not out.exists(), 'output exists')
@@ -136,7 +169,7 @@ def main(argv=None):
                                       runner_sha256=sha(Path(__file__)), relay_sha256=sha(HERE / 'relay.py'),
                                       run_variants_sha256=sha(HERE / 'run_variants.py'), runs=[str(r['dir']) for r in runs],
                                       cohort=closer_replay.cohort_list(runs), agent_variants=variants,
-                                      dedupe=a.dedupe, dropped_duplicates=duplicates,
+                                      dedupe=a.dedupe, dropped_duplicates=duplicates, dropped_unchanged_cases=dropped_unchanged,
                                       case_list=str(a.case_list) if a.case_list else None,
                                       case_list_sha256=sha(a.case_list) if a.case_list else None,
                                       cost_note='client_tokens are client-side completion tokens only; server-side cost '
@@ -158,7 +191,8 @@ def main(argv=None):
             rec = dict(arm=a.arm, task_id=c['task']['id'], seed=c['seed'], case_index=c['case_index'], workers=[],
                        rescued=False, wrong=False, answered=False, faults=1, client_tokens=0, artifact_chars_used=0,
                        error=f'{type(exc).__name__}: {exc}'[:300])
-        rec = dict(run=run['run'], selected_source_slots=[x['source_slot'] for x in cp['selected']], **rec)
+        rec = dict(run=run['run'], selected_source_slots=[x['source_slot'] for x in cp['selected']],
+                   worker_positions=[x.get('position', i) for i, x in enumerate(cp['selected'])], **rec)
         with lock:
             rows.append(rec)
             if rec['faults']:
