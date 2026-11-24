@@ -830,6 +830,87 @@ class GenericPolicyTests(unittest.TestCase):
                             run()
 
 
+class RelayPolicyTests(unittest.TestCase):
+    """roll12relay with a fake worker that records its own thinking (no model)."""
+    def run_policy(self, policy, fast=tuple(range(12)), accept=(), empty=(), relay_plan=None):
+        import json, threading, time
+        seen, lock = {}, threading.Lock()
+
+        def execute(job, deadline_seconds, cancel=None):
+            slot = int(job['events'].rsplit('-a', 1)[1].split('.')[0])
+            c = job['command']
+            with lock:
+                seen[slot] = dict(extra=Path(c[c.index('--extra-file') + 1]).read_text() if '--extra-file' in c else '',
+                                  seed=int(c[c.index('--seed') + 1]), endpoint=job['endpoint'])
+            text = '' if slot in empty else f'thinking of agent {slot} ' * 3
+            Path(job['events']).write_text(json.dumps(dict(type='request_end', reasoning=text, response=None)) + '\n')
+            if slot in fast:
+                time.sleep(.01 * (slot % 4))  # stagger the first wave a little
+                return dict(deadline=False, cancelled=False, returncode=0)
+            for _ in range(200):
+                if cancel is not None and cancel.is_set():
+                    return dict(deadline=False, cancelled=True, returncode=-15)
+                time.sleep(.01)
+            return dict(deadline=False, cancelled=False, returncode=0)
+
+        def judge(cand, endpoint, events_path, seed):
+            slot = int(str(events_path).rsplit('-a', 1)[1].split('.')[0])
+            return dict(verdict=slot in accept, reason='', infra=0, tokens=1)
+        plan = dict(PLAN, seed_offsets=dict(roll12cancel=1400, roll12relay=1400), relay=relay_plan or {})
+        with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute_cancellable', execute), \
+                patch.object(v, 'plan_of', lambda p: dict(plan={'moves': [1]}, verifier_solved=True, tokens=5, infra=0)), \
+                patch.object(v, 'judge_with_reason', judge):
+            out = Path(d)
+            (out / 'agents').mkdir(); (out / 'extra').mkdir(); (out / 'judges').mkdir()
+            rec = v.run_policy(plan, Path('/src'), out, TASK, 1, 0, policy, v.Slots(8))
+        return rec, seen
+
+    def test_escalation_agents_get_protocol_and_one_failed_artifact(self):
+        import relay
+        rec, seen = self.run_policy('roll12relay')
+        self.assertEqual(sorted(seen), list(range(12)))
+        self.assertTrue(all(seen[s]['extra'] == '' for s in range(4)))  # first wave: no extra text
+        for a in rec['agents']:
+            if a['slot'] < 4:
+                self.assertIsNone(a['relay_source_slot'])
+                continue
+            src = a['relay_source_slot']
+            self.assertLess(src, a['slot'])
+            text = f'thinking of agent {src} ' * 3
+            self.assertEqual(seen[a['slot']]['extra'], relay.PROTOCOL + '\n\n' + text)
+            self.assertEqual((a['relay_chars'], a['relay_chars_used'], a['extra']), (len(text), len(text), True))
+        sources = [a['relay_source_slot'] for a in sorted(rec['agents'], key=lambda a: a['slot']) if a['slot'] >= 4]
+        self.assertEqual(len(set(sources[:4])), 4)  # four distinct handovers while unhanded failures remain
+        self.assertEqual((rec['escalated_agents'], rec['unstarted_agents'], rec['answered']), (8, 0, False))
+
+    def test_seeds_and_first_wave_pair_with_roll12cancel(self):
+        rec_c, seen_c = self.run_policy('roll12cancel')
+        rec_r, seen_r = self.run_policy('roll12relay')
+        self.assertEqual({s: x['seed'] for s, x in seen_c.items()}, {s: x['seed'] for s, x in seen_r.items()})
+        self.assertEqual({s: seen_c[s]['endpoint'] for s in range(4)}, {s: seen_r[s]['endpoint'] for s in range(4)})
+
+    def test_truncation_and_empty_artifacts(self):
+        rec, seen = self.run_policy('roll12relay', empty={0, 1, 2}, relay_plan=dict(max_chars=10))
+        relayed = [a for a in rec['agents'] if a['relay_source_slot'] is not None]
+        self.assertTrue(relayed)
+        self.assertFalse({a['relay_source_slot'] for a in relayed} & {0, 1, 2})  # empty artifacts are never handed over
+        self.assertTrue(all(a['relay_chars_used'] == 10 for a in relayed))
+        first = min(relayed, key=lambda a: a['slot'])
+        src = first['relay_source_slot']
+        self.assertTrue(seen[first['slot']]['extra'].endswith((f'thinking of agent {src} ' * 3)[-10:]))
+        # an escalation agent launched before any nonempty artifact existed gets no extra text
+        self.assertTrue(all(seen[a['slot']]['extra'] == '' for a in rec['agents'] if a['slot'] >= 4 and a['relay_source_slot'] is None))
+        rec, seen = self.run_policy('roll12relay', empty=set(range(12)))
+        self.assertTrue(all(x['extra'] == '' for x in seen.values()))
+        self.assertTrue(all(a['relay_source_slot'] is None for a in rec['agents']))
+
+    def test_cancel_on_accept_still_applies(self):
+        rec, seen = self.run_policy('roll12relay', fast={0, 1, 2, 3, 5}, accept={5})
+        self.assertEqual(rec['selected_slot'], 5)
+        self.assertIsNotNone(next(a for a in rec['agents'] if a['slot'] == 5)['relay_source_slot'])
+        self.assertTrue(rec['solved'])
+
+
 class StrictHardCasesTests(unittest.TestCase):
     from inkling import strict_hard_cases as shc
     EXPECTED = {('a', 1), ('a', 2), ('b', 1), ('b', 2)}

@@ -18,6 +18,13 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
   roll12strategy roll8strategy with a cap of 12 agents (failure-driven only, no time trigger)
   roll12cancel  roll8cancel with a cap of 12 agents: roll12strategy WITHOUT any hint (generic: no task-specific text for
                 any slot); same seeds, nodes, race and cancel
+  roll12relay   roll12cancel, but each escalation agent (slot >= 4) gets relay.PROTOCOL + the verbatim work (last
+                relay.max_chars characters of recorded thinking + answer) of ONE agent of the same case that already
+                ended without an accepted plan, chosen by seeded uniform sampling (relay.selection_seed + case + slot)
+                among those not yet handed over; by design, once every failed agent of the case has been handed over,
+                all of them are eligible again (an artifact can be reused by a later escalation agent); no nonempty
+                artifact -> no extra text. Generic: no task-specific text. Seeds and nodes as roll12cancel (slots 0-3
+                pair exactly).
   roll12idle    roll12cancel plus generic idle-capacity escalation: once a case's slots 0-11 have all ended without an
                 accepted plan, extra agents (slots 12-19, no hints) start one at a time on the least-loaded node, only
                 while that node has fewer than IDLE_THRESHOLD requests in flight in the shared slots (permits held by
@@ -86,7 +93,7 @@ MAX_REQUESTS_PER_NODE = 25  # fleet rule: never more than 25 concurrent requests
 # rolling policies: slots that may launch per case (cap - first slot); unstarted_agents counts the ones that never did
 IDLE_FIRST, IDLE_CAP, IDLE_THRESHOLD, IDLE_MAX_INFLIGHT, IDLE_POLL_SECONDS = 12, 20, 12, 8, 2.0
 ELIGIBLE_SLOTS = dict(roll8cancel=8, roll8repair=8, roll8strategy=8, roll3to8=8, roll3strategy=8, roll12strategy=12,
-                      roll12cancel=12, roll12idle=12,  # roll12idle: extra slots 12-19 are opportunistic, not eligible
+                      roll12cancel=12, roll12idle=12, roll12relay=12,  # roll12idle: extra slots 12-19 are opportunistic, not eligible
                       roll12burst=12, **{p: ESC_SHAPE.get(p, ESC_DEFAULT_SHAPE)[2] - ESC_SHAPE.get(p, ESC_DEFAULT_SHAPE)[0]
                                          for p in ESC_HINTS})
 JUDGE_TAIL = 'Return only a JSON object {"valid": true} if every move is legal and the target appears, otherwise {"valid": false}.'
@@ -386,23 +393,27 @@ def critique(info):
     return f"A previous attempt proposed {json.dumps(info['plan'])}; a careful checker rejected it: {info['reason'] or 'invalid'}."
 
 
-def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_width=8, feedback=None, first=0):
+def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_width=8, feedback=None, first=0,
+            slot_feedback=None):
     """Keep `width` agents in flight; an agent that ends without an accept is replaced by the next slot on its node.
     burst_seconds: if the case has no accept by then, raise the in-flight width to burst_width (new slots on nodes
     (case_index + slot) % 4), still within `cap` agents in total. first: number of the first slot (escalation-only arms
-    start at 4; `cap` is then the end slot, exclusive)."""
+    start at 4; `cap` is then the end slot, exclusive). slot_feedback(results_so_far, slot) -> extra text for slots >=
+    width (called under the case lock at launch, like feedback, but also told the slot)."""
     lock, state, results, threads = threading.Lock(), dict(next=first + width, running=0, width=width), [], []
 
     def launch(slot, node):  # caller holds the lock
         state['running'] += 1
         extra = feedback(list(results)) if feedback and slot >= width else None
+        if slot_feedback and slot >= width:
+            extra = slot_feedback(list(results), slot)
         t = threading.Thread(target=run, args=(slot, node, extra))
         threads.append(t)
         t.start()
 
     def run(slot, node, extra=None):
         try:
-            info = agent(slot, node, extra) if feedback else agent(slot, node)
+            info = agent(slot, node, extra) if feedback or slot_feedback else agent(slot, node)
         except Exception as exc:  # never lose a slot: record it as an infra fault (resume reruns the case)
             info = fault_record(slot, extra, exc)
         with lock:
@@ -611,6 +622,37 @@ def idle_extension(agent, race, slots, first=None, cap=None, threshold=None, max
     return sorted(results, key=lambda a: a['slot'])
 
 
+def relay_feedback(plan, out, task, seed, policy):
+    """roll12relay: extra text of each escalation agent = relay.PROTOCOL + the verbatim artifact (relay.artifact, last
+    relay.max_chars characters) of ONE agent of this case that has already ended without an accepted plan, chosen by
+    seeded uniform sampling (plan relay.selection_seed + case + slot) among those not yet handed over in this case
+    (all failed ones again once every one was handed over); no nonempty artifact -> no extra text. Returns
+    (record {slot: relay_source_slot, relay_chars, relay_chars_used}, slot_feedback)."""
+    import relay  # lazy: relay imports run_variants
+    s = relay.settings(plan)
+    record, handed = {}, set()
+
+    def extra_for(results, slot):
+        failed = []
+        for a in sorted(results, key=lambda a: a['slot']):
+            if a.get('verdict') is True or a.get('cancelled') or not a.get('started', True):
+                continue
+            path = out / 'agents' / f"{task['id']}-s{seed}-{policy}-a{a['slot']}.jsonl"
+            text = relay.artifact(path) if path.exists() else ''
+            if text.strip():
+                failed.append((a['slot'], text))
+        if not failed:
+            record[slot] = dict(relay_source_slot=None, relay_chars=0, relay_chars_used=0)
+            return ''
+        pool = [f for f in failed if f[0] not in handed] or failed
+        source, text = relay.selection_rng(s['selection_seed'], task['id'], f'{seed}:{slot}').choice(pool)
+        handed.add(source)
+        record[slot] = dict(relay_source_slot=source, relay_chars=len(text),
+                            relay_chars_used=len(relay.truncate(text, s['max_chars'])))
+        return relay.relay_extra(text, s['max_chars'])
+    return record, extra_for
+
+
 def new_race(t0):
     """Shared per-case cancel state: the first accepted agent (in time) wins and cancels the rest."""
     lock, race = threading.Lock(), dict(cancel=threading.Event(), winner=None, answer_s=None)
@@ -632,7 +674,7 @@ def new_race(t0):
 def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     off = plan['seed_offsets'][policy]
     t0 = time.monotonic()
-    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll3to8', 'roll3strategy', 'roll8repair', 'roll8strategy', 'roll12strategy', 'roll12cancel', 'roll12idle', 'roll12burst') or policy in ESC_HINTS else None
+    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll3to8', 'roll3strategy', 'roll8repair', 'roll8strategy', 'roll12strategy', 'roll12cancel', 'roll12idle', 'roll12relay', 'roll12burst') or policy in ESC_HINTS else None
     agent = lambda slot, extra='': run_agent_safe(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off, t0, race)
     if policy == 'deep4':
         agents = parallel([lambda s=s: agent(s) for s in range(4)])
@@ -689,6 +731,13 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
         if policy == 'roll12idle' and race['winner'] is None and not any('agent_error' in a for a in agents):
             agents += idle_extension(lambda slot, node, held: run_agent_safe(
                 plan, source, out, task, seed, case_index, policy, slot, '', held, off, t0, race, node), race, slots)
+    elif policy == 'roll12relay':
+        relayed, extra_for = relay_feedback(plan, out, task, seed, policy)
+        agents = rolling(lambda slot, node, extra='': run_agent_safe(plan, source, out, task, seed, case_index, policy, slot,
+                                                                extra or '', slots, off, t0, race, node),
+                         race, case_index, cap=12, slot_feedback=extra_for)
+        for a in agents:
+            a.update(relayed.get(a['slot'], dict(relay_source_slot=None, relay_chars=0, relay_chars_used=0)))
     elif policy == 'roll8strategy':
         agents = rolling(lambda slot, node: run_agent_safe(plan, source, out, task, seed, case_index, policy, slot,
                                                       STRATEGIES[(slot - 4) % 4] if slot >= 4 else '', slots, off, t0, race, node),
