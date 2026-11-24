@@ -1,0 +1,81 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason), unchanged; the exact verifier only scores",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_requests_per_endpoint": 20,
+ "execution": "Arms run sequentially in arm_order, each alone on the fleet via inkling/arms.py (fresh admission with the shim sha and mem fraction below, prefix-cache flush, server counters, idle wait, GPU energy). Watchdog inkling/watch.sh; MemAvailable logged every 60 s.",
+ "resume_rule": "If an arm stops on an infrastructure fault (runner stop flag, worker or judge infra failure, node fault), the fault is fixed and the same arm is continued with arms.py --resume-from (skips its cases that finished without infra faults; reruns the others with the same seeds) and documented as an amendment. Server tokens, wall and energy of an arm are then the sums over its segments (wasted work of the stopped segment included and reported separately). Never a silent restart; no case is dropped.",
+ "exclusions": "None. All 96 cases of each arm count.",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh, MEM=0.75 since 2026-11-21 16:25 Europe/Warsaw (KV ~1.08M tokens per node)",
+  "adapter": "inkling/shim.py (vLLM dialect; client disconnects close the upstream stream and count as shim:client_cancels)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "temperature": "0.8 (harness constant)",
+  "mem_fraction": "0.75"
+ },
+ "concurrent_policy_cases": 20,
+ "concurrency_note": "S and G: at most 4 agents in flight per case, 20 cases at once, per-endpoint slot cap 20 (agents and judges) <= 25 per node. GI: the same for slots 0-11; after a case's first 12 agents failed, up to 8 extra agents (slots 12-19) in flight for that case, each extra agent and its judge admitted only while its node holds fewer than 12 requests; the per-endpoint cap 20 bounds everything. Each arm runs alone.",
+ "status": "FROZEN",
+ "study": "swarm-generic-hard18-v1",
+ "study_group": "swarm-generic-hard18-v1",
+ "dataset": "datasets/arithmetic-hard-v18/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v18",
+ "split": "evaluation",
+ "tasks": 48,
+ "seeds": [
+  1,
+  2
+ ],
+ "agent_variant": "xl_forced_original",
+ "policies": [
+  "roll12strategy",
+  "roll12cancel",
+  "roll12idle"
+ ],
+ "arm_order": [
+  "roll12strategy",
+  "roll12cancel",
+  "roll12idle"
+ ],
+ "seed_offsets": {
+  "roll12strategy": 18400,
+  "roll12cancel": 18400,
+  "roll12idle": 18400
+ },
+ "source_revision": "553307333e81db4961b75687a6ed815f9e410a0d",
+ "source_path": ".runtime/xl-night-source",
+ "code_sha256": {
+  "run_variants.py": "21f9f0771ff82c0793b6ee85a412c9dc34d315ad5e07fe5253dc2e1edbc3b03f",
+  "run_judge.py": "dadc67dba63432c095794dff9c04d81ac7952eecc0215488b3f6d7c28ca21956",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "445349b83e910f1189df8908aff2428ab3ee1dd0bb862f1fc46978b31bda82c6",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "inkling/report_cancel_hard6.py": "9509f8ded6368a49475a6e4ddb8b106d3afae5c232a9dc201a0687d77de6f1d9",
+  "inkling/report_generic_hard18.py": "c8eb270a2932a18164a7f8608958a9aa0135caa3de1a09d98d24567aa7662ea0",
+  "inkling/report_round3_hard17.py": "9ba6cbd008a5411ac0708e587f7c106d5c469b2b0d9f5efb6974228318dffe89",
+  ".runtime/xl-night-source/forced72.py": "831062043f224c575ac88fedaa94d5e47f53b0a1ff44e05c6f6d67fa9f649a4e",
+  ".runtime/xl-night-source/forced72_worker.py": "4614d49ed3cca7e8cad5c8c7d033e4d95f7d28dc8099c07beb9f78b9403260f1"
+ },
+ "generator": "make_arithmetic_hard.py --seed 2026112418 --protocol arithmetic-hard-v18 --output datasets/arithmetic-hard-v18 (after this plan is committed and pushed); same rules as hard-v5..v17",
+ "question": "Owner rule 2026-11-24: the swarm must be generic (no task-specific prompt text). S = roll12strategy (current default; its escalation strategy hints are task-specific), G = roll12cancel (same policy, no hints: the proposed generic default), GI = roll12idle (G plus live idle-capacity escalation). Does dropping the hints cost anything, and do idle-capacity extra agents rescue cases at an acceptable wall time?",
+ "idle_capacity": {
+  "first_extra_slot": 12,
+  "cap": 20,
+  "start_if_node_occupancy_below": 12,
+  "max_extra_in_flight_per_case": 8,
+  "recheck": "on any permit release or every 2.0 s",
+  "rule": "extra agents (slots 12-19, no hints) only after slots 0-11 of the case all ended without an accepted plan; each starts on the least-loaded node; never time-triggered"
+ },
+ "pairing": "Same tasks, seeds, agent base seeds (1000*seed + 18400 + slot), initial node placement and judge base seeds in all arms. S and G differ only in the escalation agents' hint text; GI equals G for slots 0-11 and adds slots 12-19 when nodes are idle. Escalation agents run on the node of the agent whose end freed the slot (as in the default); sampling seeds also hash the prompt.",
+ "primary_outcomes": {
+  "accuracy": "Solved and wrong per arm; paired exact sign tests G vs S and GI vs G.",
+  "mechanism": "GI: cases answered by slots >= 12, extra agents started per case and node occupancy at their start.",
+  "cost": "Server tokens per case, arm wall, GPU Wh per solved case (reported; GI wall is gated)."
+ },
+ "decision_rule": "G (roll12cancel) replaces S as the arithmetic default if G has 0 wrong and G solved >= S solved - 2 (noise band; the owner rule prefers the generic policy). GI (roll12idle) then replaces G if GI has 0 wrong, GI solved >= G solved, at least 1 case is answered by a slot >= 12, and GI arm wall <= 1.10 x G arm wall.",
+ "report": "inkling/report_generic_hard18.py -> results/swarm-generic-hard18-v1/REPORT.md + report.json",
+ "baseline_note": "Defaults before this study: arithmetic roll12strategy (cap 12), coding R2; worker research/xl-night-v1 (transport retry) and judge retry since swarm-round3-hard17-v1."
+}
