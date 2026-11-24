@@ -82,6 +82,38 @@ class ArtifactTests(unittest.TestCase):
                 counts[slot] += 1
         self.assertLess(max(counts) - min(counts), 0.15 * 1000)
 
+    def test_dense_window_skips_a_repetitive_tail(self):
+        import random as _r
+        rng = _r.Random(7)
+        prose = ''.join(rng.choice('abcdefghijklmnopqrstuvwxyz ,.0123456789') for _ in range(30000))
+        loop = 'Wait, check again. ' * 2000  # 38,000 chars of a repetition loop at the end
+        text = prose + loop
+        self.assertLess(relay.zlib_ratio(text[-12000:]), relay.DENSE_MIN_RATIO)
+        window, offset = relay.dense_window(text, 12000)
+        self.assertEqual(len(window), 12000)
+        self.assertGreaterEqual(relay.zlib_ratio(window), relay.DENSE_MIN_RATIO)
+        self.assertEqual(offset % relay.DENSE_STEP, 0)
+        self.assertEqual(window, text[len(text) - offset - 12000:len(text) - offset])
+        self.assertTrue(text.startswith(prose) and offset > 0)
+        # latest qualifying window: stepping back stops at the first window that is dense enough
+        self.assertLess(relay.zlib_ratio(text[len(text) - offset + relay.DENSE_STEP - 12000:len(text) - offset + relay.DENSE_STEP]),
+                        relay.DENSE_MIN_RATIO)
+        self.assertEqual(relay.excerpt(text, 12000, 'dense'), window)
+        self.assertEqual(relay.excerpt(text, 12000, 'tail'), text[-12000:])
+
+    def test_dense_window_falls_back_to_the_tail(self):
+        loop = 'same line again\n' * 5000
+        self.assertEqual(relay.dense_window(loop, 12000), (loop[-12000:], 0))  # nothing dense: tail
+        self.assertEqual(relay.dense_window('short text', 12000), ('short text', 0))
+        prose = 'a dense and varied text with many words 0123 ' * 10
+        self.assertEqual(relay.relay_extra(prose, 50, 'dense'), relay.PROTOCOL + '\n\n' + relay.dense_window(prose, 50)[0])
+
+    def test_window_setting(self):
+        self.assertEqual(relay.settings({})['window'], 'tail')
+        self.assertEqual(relay.settings(dict(relay=dict(window='dense')))['window'], 'dense')
+        with self.assertRaisesRegex(ValueError, 'relay.window'):
+            relay.settings(dict(relay=dict(window='middle')))
+
     def test_settings_from_plan(self):
         s = relay.settings(dict(relay=dict(k=2, max_chars=50, selection_seed='z'), seed_offsets=dict(relay=1, replace=2)))
         self.assertEqual((s['k'], s['max_chars'], s['selection_seed'], s['seed_offsets']), (2, 50, 'z', dict(relay=1, replace=2)))
@@ -187,7 +219,7 @@ class DriverTests(unittest.TestCase):
         self.assertEqual(lines[0]['failed_agents'], 3)
         self.assertEqual(len(lines[0]['selected_slots']), 2)
         self.assertEqual(lines[-1]['total'], dict(cases=1, failed_agents=3, candidates=3, selected=2, cases_with_workers=1,
-                                                  relay_workers=2, replace_workers=2))
+                                                  dense_window_differs=0, relay_workers=2, replace_workers=2))
         self.assertEqual(lines[-2]['summary']['chars_used_max'], 20)
 
     def test_dedupe_across_runs(self):
@@ -206,6 +238,19 @@ class DriverTests(unittest.TestCase):
         self.assertEqual(cases, [('first', 't0'), ('second', 't1')])  # t0 from the first run listed only
         self.assertEqual((out[False][-1]['dropped_duplicates'], out[False][-1]['distinct_puzzles']), (1, 2))
         self.assertEqual(len([x for x in out[True] if 'task_id' in x]), 3)
+
+    def test_window_override_must_be_frozen_in_the_plan(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            run = write_recorded_run(root)
+            (root / 'plan.json').write_text(json.dumps(dict(relay=dict(k=2))))
+            with patch.object(relay_replay.closer_replay, 'HERE', root), self.assertRaisesRegex(Exception, 'not frozen'):
+                relay_replay.main(['--runs', str(run), '--plan-only', '--plan', str(root / 'plan.json'), '--window', 'dense'])
+            (root / 'plan.json').write_text(json.dumps(dict(relay=dict(k=2, windows=['tail', 'dense']))))
+            buf = io.StringIO()
+            with patch.object(relay_replay.closer_replay, 'HERE', root), contextlib.redirect_stdout(buf):
+                relay_replay.main(['--runs', str(run), '--plan-only', '--plan', str(root / 'plan.json'), '--window', 'dense'])
+            self.assertEqual(json.loads(buf.getvalue().splitlines()[-1])['window'], 'dense')
 
     def test_run_requires_arm_and_admission(self):
         with tempfile.TemporaryDirectory() as d:
@@ -251,6 +296,7 @@ class DriverTests(unittest.TestCase):
 def arm_dir(root, arm, plan_file, rows, tokens=100, **meta_changes):
     d = root / arm
     d.mkdir()
+    arm = meta_changes.pop('meta_arm', arm)
     cohort = [[r['run'], r['task_id'], r['seed']] for r in rows]
     meta = dict(arm=arm, plan_sha256=hashlib.sha256(plan_file.read_bytes()).hexdigest(), relay_settings=dict(k=4),
                 cohort=dict(cases=cohort), completed_utc='2026-11-24T01:00:00+00:00', stopped=False)
@@ -321,6 +367,30 @@ class ReportTests(unittest.TestCase):
         s, code, _ = self.build(ok, ok, frozen=[['base', 't0', 1], ['base', 't1', 1], ['base', 't2', 1]])
         self.assertEqual((s['status'], code), ('incomplete', 3))
         self.assertIn('frozen case list (1 missing', json.dumps(s))
+
+    def test_window_screen(self):
+        tail = [case_row('t0'), case_row('t1', rescued=True), case_row('t2')]
+        dense = [case_row('t0', rescued=True), case_row('t1', rescued=True), case_row('t2', rescued=True)]
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            plan = root / 'plan.json'
+            plan.write_text('{"decision_rule": "dense if >= 5 of 73"}')
+            cl = root / 'cases.json'
+            cl.write_text(json.dumps(dict(cases=[[r['run'], r['task_id'], r['seed']] for r in tail])))
+            t = arm_dir(root, 'tail', plan, tail, relay_settings=dict(k=4, window='tail'), meta_arm='relay')
+            x = arm_dir(root, 'dense', plan, dense, relay_settings=dict(k=4, window='dense'), meta_arm='relay')
+            s = report_relay.build(t, x, plan, cl, mode='window')
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = report_relay.main(['--tail', str(t), '--dense', str(x), '--plan', str(plan), '--case-list', str(cl),
+                                          '--out', str(root / 'out')])
+            md = (root / 'out' / 'REPORT.md').read_text()
+            bad = report_relay.build(t, t, plan, cl, mode='window')  # both arms tail
+        self.assertEqual((s['status'], code), ('complete', 0))
+        self.assertEqual((s['mcnemar']['tail_only'], s['mcnemar']['dense_only']), (0, 2))
+        self.assertEqual(s['facts']['rescues_per_window'], dict(tail=1, dense=3))
+        self.assertIn('tail window vs dense window', md)
+        self.assertEqual(bad['status'], 'incomplete')
+        self.assertIn('relay windows are', json.dumps(bad))
 
     def test_incomplete_inputs(self):
         ok = [case_row('t0'), case_row('t1')]

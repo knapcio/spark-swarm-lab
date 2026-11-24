@@ -16,6 +16,7 @@ import hashlib
 import json
 import random
 import time
+import zlib
 from pathlib import Path
 
 import closers  # generic helpers only: failed_agents, agent_events, EndpointSlots (no matching code is used)
@@ -25,8 +26,20 @@ PROTOCOL = ('Another solver worked on this exact task and did not reach an accep
             'contain mistakes. Use whatever is correct in it, finish the task, and give your answer in the required format.')
 ARMS = ('relay', 'replace')
 DEFAULT_K, DEFAULT_MAX_CHARS = 4, 12000
+WINDOWS = ('tail', 'dense')
+# 'dense' window (Fable round 4, idea 2): the latest max_chars-character window whose zlib compression ratio
+# (len(zlib.compress(utf-8 bytes, level 6)) / len(bytes)) is at least DENSE_MIN_RATIO, stepping the window's end back
+# DENSE_STEP characters at a time from the end of the text; the tail if no window qualifies (or the text is shorter
+# than max_chars). A low ratio means repetitive text (a loop); the rule reads no task content.
+DENSE_MIN_RATIO, DENSE_STEP, ZLIB_LEVEL = 0.25, 2000, 6
 SLOT_BASE = dict(relay=200, replace=300)  # worker slot = base + position; stems, seeds and judge seeds stay distinct
 DEFAULT_SEED_OFFSETS = dict(relay=19000, replace=19500)
+
+
+def _window(name):
+    if name not in WINDOWS:
+        raise ValueError(f'relay.window must be one of {WINDOWS}, not {name!r}')
+    return name
 
 
 def settings(plan):
@@ -34,6 +47,7 @@ def settings(plan):
     r = plan.get('relay') or {}
     return dict(k=int(r.get('k', DEFAULT_K)), max_chars=int(r.get('max_chars', DEFAULT_MAX_CHARS)),
                 selection_seed=str(r.get('selection_seed', 'relay-v1')), variant=r.get('variant'),
+                window=_window(r.get('window', 'tail')),
                 seed_offsets={arm: (plan.get('seed_offsets') or {}).get(arm, DEFAULT_SEED_OFFSETS[arm]) for arm in ARMS})
 
 
@@ -55,6 +69,30 @@ def artifact(events_path):
 def truncate(text, max_chars):
     """Frozen policy: keep the LAST max_chars characters."""
     return text[-max_chars:] if len(text) > max_chars else text
+
+
+def zlib_ratio(text):
+    data = text.encode('utf-8')
+    return len(zlib.compress(data, ZLIB_LEVEL)) / len(data) if data else 0.0
+
+
+def dense_window(text, max_chars):
+    """(window text, chars after its end): the latest max_chars window with zlib ratio >= DENSE_MIN_RATIO, its end
+    stepped back DENSE_STEP characters at a time; (tail, 0) if none qualifies or the text is not longer than max_chars."""
+    if len(text) <= max_chars:
+        return text, 0
+    end = len(text)
+    while end >= max_chars:
+        window = text[end - max_chars:end]
+        if zlib_ratio(window) >= DENSE_MIN_RATIO:
+            return window, len(text) - end
+        end -= DENSE_STEP
+    return text[-max_chars:], 0
+
+
+def excerpt(text, max_chars, window='tail'):
+    """The part of an artifact a relay worker sees: 'tail' = last max_chars characters, 'dense' = dense_window."""
+    return truncate(text, max_chars) if window == 'tail' else dense_window(text, max_chars)[0]
 
 
 def candidates(seg, case_row):
@@ -82,8 +120,8 @@ def select(cands, k, rng):
     return rng.sample(cands, min(k, len(cands)))
 
 
-def relay_extra(text, max_chars):
-    return PROTOCOL + '\n\n' + truncate(text, max_chars)
+def relay_extra(text, max_chars, window='tail'):
+    return PROTOCOL + '\n\n' + excerpt(text, max_chars, window)
 
 
 def case_plan(seg, case_row, task, seed, s):
@@ -91,7 +129,9 @@ def case_plan(seg, case_row, task, seed, s):
     cands = candidates(seg, case_row)
     chosen = select(cands, s['k'], selection_rng(s['selection_seed'], task['id'], seed))
     return dict(failed_agents=len(closers.failed_agents(case_row)), candidates=len(cands),
-                selected=[dict(source_slot=c['slot'], chars=len(c['text']), chars_used=len(truncate(c['text'], s['max_chars'])),
+                selected=[dict(source_slot=c['slot'], chars=len(c['text']),
+                               chars_used=len(excerpt(c['text'], s['max_chars'], s['window'])),
+                               window_end_offset=dense_window(c['text'], s['max_chars'])[1] if s['window'] == 'dense' else 0,
                                text=c['text']) for c in chosen])
 
 
@@ -110,12 +150,13 @@ def run_arm(arm, plan, source, out, task, seed, case_index, cp, slots, endpoints
 
     def worker(i, sel):
         slot = SLOT_BASE[arm] + i
-        extra = relay_extra(sel['text'], s['max_chars']) if arm == 'relay' else ''
+        extra = relay_extra(sel['text'], s['max_chars'], s['window']) if arm == 'relay' else ''
         agent_seed = worker_seed(arm, s, run_name, task['id'], seed, slot)
         info = run_variants.run_agent_safe(plan, source, out, task, seed, case_index, arm, slot, extra, slots, offset,
                                            t0, race, endpoints=endpoints, agent_seed=agent_seed)
         return dict(info, position=i, agent_seed=agent_seed, source_slot=sel['source_slot'] if arm == 'relay' else None,
-                    artifact_chars_used=sel['chars_used'] if arm == 'relay' else 0)
+                    artifact_chars_used=sel['chars_used'] if arm == 'relay' else 0,
+                    window_end_offset=sel.get('window_end_offset', 0) if arm == 'relay' else 0)
     workers = run_variants.parallel([lambda i=i, sel=sel: worker(i, sel) for i, sel in enumerate(cp['selected'])])
     selected = next((w for w in workers if w['slot'] == race['winner']), None)
     return dict(arm=arm, task_id=task['id'], seed=seed, case_index=case_index, failed_agents=cp['failed_agents'],

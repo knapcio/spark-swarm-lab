@@ -716,7 +716,7 @@ class GenericPolicyTests(unittest.TestCase):
         import json, contextlib, io
         from datetime import datetime, timezone
         seen = {}
-        for policy, expected in (('roll12cancel', v.Slots), ('roll12idle', v.TrackedSlots)):
+        for policy, expected in (('roll12cancel', v.Slots), ('roll12idle', v.TrackedSlots), ('roll12wide', v.WideSlots)):
             with tempfile.TemporaryDirectory() as d:
                 root = Path(d)
                 tasks = [dict(id='t0', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7)]
@@ -904,11 +904,157 @@ class RelayPolicyTests(unittest.TestCase):
         self.assertTrue(all(x['extra'] == '' for x in seen.values()))
         self.assertTrue(all(a['relay_source_slot'] is None for a in rec['agents']))
 
+    def test_dense_window_option(self):
+        import relay
+        rec, seen = self.run_policy('roll12relay', relay_plan=dict(window='dense', max_chars=20))
+        relayed = [a for a in rec['agents'] if a['relay_source_slot'] is not None]
+        self.assertTrue(relayed)
+        for a in relayed:
+            text = f"thinking of agent {a['relay_source_slot']} " * 3
+            self.assertEqual(a['relay_window'], 'dense')
+            self.assertEqual(seen[a['slot']]['extra'], relay.PROTOCOL + '\n\n' + relay.dense_window(text, 20)[0])
+            self.assertEqual(a['relay_chars_used'], 20)
+
     def test_cancel_on_accept_still_applies(self):
         rec, seen = self.run_policy('roll12relay', fast={0, 1, 2, 3, 5}, accept={5})
         self.assertEqual(rec['selected_slot'], 5)
         self.assertIsNotNone(next(a for a in rec['agents'] if a['slot'] == 5)['relay_source_slot'])
         self.assertTrue(rec['solved'])
+
+
+class WidePolicyTests(unittest.TestCase):
+    """roll12wide work-conserving widening with a fake worker (no model) and WideSlots."""
+    def run_policy(self, policy='roll12wide', fast=(), slow=.4, accept=(), slots=None, pending=0, during=None, key='t'):
+        import threading, time
+        lock, log, state = threading.Lock(), [], dict(now=0, peak=0)
+
+        def execute(job, deadline_seconds, cancel=None):
+            slot = int(job['events'].rsplit('-a', 1)[1].split('.')[0])
+            c = job['command']
+            with lock:
+                log.append(dict(slot=slot, endpoint=job['endpoint'], seed=int(c[c.index('--seed') + 1]), t=time.monotonic()))
+                state['now'] += 1
+                state['peak'] = max(state['peak'], state['now'])
+            try:
+                end = time.monotonic() + (0 if slot in fast else slow)
+                while time.monotonic() < end:
+                    if cancel is not None and cancel.is_set():
+                        return dict(deadline=False, cancelled=True, returncode=-15)
+                    time.sleep(.01)
+                return dict(deadline=False, cancelled=False, returncode=0)
+            finally:
+                with lock:
+                    state['now'] -= 1
+
+        def judge(cand, endpoint, events_path, seed):
+            slot = int(str(events_path).rsplit('-a', 1)[1].split('.')[0])
+            return dict(verdict=slot in accept, reason='', infra=0, tokens=1)
+        plan = dict(PLAN, seed_offsets=dict(roll12cancel=1400, roll12wide=1400))
+        if slots is None:
+            slots = v.WideSlots(20) if policy == 'roll12wide' else v.Slots(20)
+        if isinstance(slots, v.WideSlots):
+            slots.set_pending(pending)
+        out_rec = {}
+        with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute_cancellable', execute), \
+                patch.object(v, 'plan_of', lambda p: dict(plan={'moves': [1]}, verifier_solved=True, tokens=5, infra=0)), \
+                patch.object(v, 'judge_with_reason', judge):
+            out = Path(d)
+            (out / 'agents').mkdir(); (out / 'extra').mkdir(); (out / 'judges').mkdir()
+            task = dict(TASK, id=key)
+            worker = threading.Thread(target=lambda: out_rec.update(rec=v.run_policy(plan, Path('/src'), out, task, 1, 0, policy, slots)))
+            worker.start()
+            if during:
+                during(slots, log)
+            worker.join()
+        return out_rec['rec'], log, state
+
+    def test_widens_to_eight_after_the_first_failure_when_no_case_waits(self):
+        rec, log, state = self.run_policy(fast={0})
+        self.assertEqual(rec['max_in_flight'], 8)
+        self.assertGreaterEqual(rec['widened_agents'], 4)
+        self.assertIsNotNone(rec['widened_at_s'])
+        self.assertEqual(sorted(e['slot'] for e in log), list(range(12)))  # never beyond cap 12
+        self.assertLessEqual(state['peak'], 8)
+        self.assertEqual(sorted(e['seed'] for e in log), [1000 + 1400 + s for s in range(12)])  # roll12cancel seeds
+        self.assertTrue(any(a.get('widened') for a in rec['agents']))
+
+    def test_no_widening_while_cases_wait_or_before_a_failure(self):
+        rec, log, state = self.run_policy(fast={0}, pending=3)  # other cases still waiting for admission
+        self.assertEqual((rec['max_in_flight'], rec['widened_agents']), (4, 0))
+        self.assertIsNone(rec['widened_at_s'])
+        rec, log, _ = self.run_policy(fast={2}, accept={2})  # first agent to end is accepted: no failure, no widening
+        self.assertEqual((rec['max_in_flight'], rec['widened_agents'], rec['selected_slot']), (4, 0, 2))
+
+    def test_pairs_with_roll12cancel_without_widening(self):
+        rec_c, log_c, _ = self.run_policy('roll12cancel', fast=set(range(12)), slow=0)
+        rec_w, log_w, _ = self.run_policy('roll12wide', fast=set(range(12)), slow=0, pending=10 ** 6)
+        self.assertEqual({e['slot']: e['seed'] for e in log_c}, {e['slot']: e['seed'] for e in log_w})
+        self.assertEqual({e['slot']: e['endpoint'] for e in log_c if e['slot'] < 4},
+                         {e['slot']: e['endpoint'] for e in log_w if e['slot'] < 4})
+        self.assertEqual(rec_w['widened_agents'], 0)
+
+    def test_judge_reserve_blocks_widening_on_full_nodes(self):
+        slots = v.WideSlots(20)
+        with slots.cond:  # every node at cap - reserve (18): no widened start may take a judge permit
+            for e in slots.endpoints:
+                slots.in_flight[e] = 20 - v.WIDE_JUDGE_RESERVE
+
+        def during(slots, log):
+            import time
+            time.sleep(.5)
+            seen['early'] = len(log)  # first wave + one replacement, nothing widened
+            with slots.cond:
+                slots.in_flight[slots.endpoints[3]] = 0
+                slots.cond.notify_all()
+        seen = {}
+        rec, log, _ = self.run_policy(fast={0}, slow=1.0, slots=slots, during=during)
+        self.assertEqual(seen['early'], 5)
+        self.assertGreaterEqual(rec['widened_agents'], 1)
+        widened = [a for a in rec['agents'] if a.get('widened')]
+        self.assertTrue(all(log_e['endpoint'] == slots.endpoints[3] for log_e in log if log_e['slot'] in {a['slot'] for a in widened}))
+
+    def test_oldest_eligible_case_goes_first(self):
+        slots = v.WideSlots(20)
+        with slots.cond:
+            slots.cases[('older', 1)] = dict(order=-1, eligible=True)  # an older case that also wants to widen
+
+        def during(slots, log):
+            import time
+            time.sleep(.5)
+            seen['early'] = len(log)
+            with slots.cond:
+                slots.cases[('older', 1)]['eligible'] = False
+                slots.cond.notify_all()
+        seen = {}
+        rec, _, _ = self.run_policy(fast={0}, slow=1.0, slots=slots, during=during)
+        self.assertEqual(seen['early'], 5)  # the younger case waited while the older one was eligible
+        self.assertGreaterEqual(rec['widened_agents'], 1)
+
+    def test_widened_agent_accept_cancels_the_rest(self):
+        rec, log, _ = self.run_policy(fast={0, 5}, accept={5}, slow=.6)
+        self.assertEqual(rec['selected_slot'], 5)
+        self.assertTrue(rec['solved'])
+        self.assertLess(rec['case_seconds'], 1.5)
+
+    def test_plan_checks(self):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            tasks = [dict(id='t0', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7)]
+            (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=tasks)))
+            base = dict(protocol='swarm-variants-screen-v1', source_revision='x', dataset=str(root / 'data.json'),
+                        dataset_protocol='p', split='evaluation', tasks=1, seeds=[1], policies=['roll12wide'],
+                        concurrent_policy_cases=1)
+            for cap, ok in ((20, True), (21, False), (2, False)):
+                (root / 'plan.json').write_text(json.dumps(dict(base, concurrent_requests_per_endpoint=cap)))
+                run = lambda: v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d])
+                with patch.object(v, 'validate_source', lambda *a: None):
+                    if ok:
+                        with __import__('contextlib').redirect_stdout(__import__('io').StringIO()):
+                            self.assertEqual(run(), 0)
+                    else:
+                        with self.assertRaisesRegex(Exception, 'roll12wide needs'):
+                            run()
 
 
 class StrictHardCasesTests(unittest.TestCase):
