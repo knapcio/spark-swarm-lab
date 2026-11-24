@@ -79,7 +79,7 @@ class CancelPolicyTests(unittest.TestCase):
         def judge(cand, endpoint, events_path, seed):
             slot = int(str(events_path).rsplit('-a', 1)[1].split('.')[0])
             return dict(verdict=slot in accept, reason='', infra=0, tokens=1)
-        plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], deep4cancel=1400, waves2cancel=1400, roll8cancel=1400, roll12burst=1400, roll8repair=1400, roll8strategy=1400, roll3to8=1400, roll3strategy=1400, roll12strategy=1400, esc_none=1400, esc_strategy=1400, esc_h02=1400, esc_split=1400, esc_extra=1400), burst_seconds=0.3)
+        plan = dict(PLAN, seed_offsets=dict(PLAN['seed_offsets'], deep4cancel=1400, waves2cancel=1400, roll8cancel=1400, roll12burst=1400, roll8repair=1400, roll8strategy=1400, roll3to8=1400, roll3strategy=1400, roll12strategy=1400, roll12split=1400, esc_none=1400, esc_strategy=1400, esc_h02=1400, esc_split=1400, esc_extra=1400), burst_seconds=0.3)
         with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute', execute), patch.object(v, 'plan_of', plan_of), \
                 patch.object(v, 'execute_cancellable', execute), patch.object(v, 'judge_with_reason', judge):
             out = Path(d)
@@ -198,6 +198,46 @@ class CancelPolicyTests(unittest.TestCase):
         self.assertEqual(sorted(started), list(range(12)))
         self.assertEqual(rec['escalated_agents'], 8)
         self.assertTrue(all(a['extra'] for a in rec['agents'][4:]))
+
+    def test_roll12split_escalates_to_twelve_with_split_hints(self):
+        rec, started = self.run_policy('roll12split', fast=set(range(12)), accept=set())
+        self.assertEqual(sorted(started), list(range(12)))
+        self.assertEqual(rec['escalated_agents'], 8)
+        self.assertEqual(rec['unstarted_agents'], 0)
+        self.assertFalse(rec['answered'])
+        self.assertFalse(any(a['extra'] for a in rec['agents'][:4]))
+        self.assertTrue(all(a['extra'] for a in rec['agents'][4:]))
+        self.assertEqual(v.ELIGIBLE_SLOTS['roll12split'], 12)
+
+    def test_roll12split_hint_text_per_slot(self):
+        seen = {}
+
+        def execute(job, deadline_seconds, cancel=None):
+            c = job['command']
+            slot = int(job['events'].rsplit('-a', 1)[1].split('.')[0])
+            seen[slot] = Path(c[c.index('--extra-file') + 1]).read_text() if '--extra-file' in c else ''
+            return dict(deadline=False, cancelled=False, returncode=0)
+        plan = dict(PLAN, seed_offsets=dict(roll12split=1400))
+        with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute_cancellable', execute), \
+                patch.object(v, 'plan_of', lambda p: dict(plan=None, verifier_solved=False, tokens=1, infra=0)):
+            out = Path(d)
+            (out / 'agents').mkdir(); (out / 'extra').mkdir(); (out / 'judges').mkdir()
+            rec = v.run_policy(plan, Path('/src'), out, TASK, 1, 0, 'roll12split', v.Slots(8))
+        self.assertEqual([seen[s] for s in range(12)], [''] * 4 + [v.SPLIT_HINTS[i % 4] for i in range(8)])
+        self.assertNotIn(v.STRATEGIES[0], seen.values())
+        self.assertEqual(rec['calls'], 12)
+
+    def test_roll12split_cancels_on_accept_and_counts_unstarted(self):
+        rec, started = self.run_policy('roll12split', fast={0, 1, 2, 3, 6}, accept={6})
+        self.assertEqual(rec['selected_slot'], 6)
+        self.assertTrue(rec['answered'] and rec['solved'])
+        self.assertLessEqual(set(started), set(range(8)))
+        self.assertGreaterEqual(rec['escalated_agents'], 3)
+        self.assertEqual(rec['unstarted_agents'], 12 - len(started))
+        self.assertLess(rec['case_seconds'], 1.5)
+        rec, started = self.run_policy('roll12split', fast={1}, accept={1})
+        self.assertEqual((rec['selected_slot'], rec['escalated_agents']), (1, 0))
+        self.assertLessEqual(set(started), {0, 1, 2, 3})
 
     def test_escalation_only_arms_run_slots_4_to_11_with_their_hints(self):
         for policy, hints in (('esc_none', ['']*8), ('esc_strategy', [v.STRATEGIES[i % 4] for i in range(8)]),

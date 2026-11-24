@@ -16,6 +16,8 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
   roll3to8      roll8cancel with 3 agents in flight instead of 4 (failures replaced by fresh-seed agents up to 8 in total)
   roll3strategy roll8strategy with 3 agents in flight instead of 4 (escalation agents, slot >= 3, get the strategy hints)
   roll12strategy roll8strategy with a cap of 12 agents (failure-driven only, no time trigger)
+  roll12split   roll12strategy, but each escalation agent (slot >= 4) gets the last-move partition hint
+                SPLIT_HINTS[(slot - 4) % 4] instead of STRATEGIES[(slot - 4) % 4] (the hints that won swarm-hints-hard16-v1)
   roll8strategy roll8cancel, but each escalation agent (slot >= 4) gets one of the four task-agnostic strategy hints
                 (STRATEGIES[slot - 4]); the first four agents are unchanged
   esc_none, esc_strategy, esc_h02, esc_split
@@ -74,7 +76,7 @@ ADDON_DEFAULT_POLICY = 'roll12strategy'  # the only baseline an add-on may pair 
 MAX_REQUESTS_PER_NODE = 25  # fleet rule: never more than 25 concurrent requests on one Spark
 # rolling policies: slots that may launch per case (cap - first slot); unstarted_agents counts the ones that never did
 ELIGIBLE_SLOTS = dict(roll8cancel=8, roll8repair=8, roll8strategy=8, roll3to8=8, roll3strategy=8, roll12strategy=12,
-                      roll12burst=12, **{p: ESC_SHAPE.get(p, ESC_DEFAULT_SHAPE)[2] - ESC_SHAPE.get(p, ESC_DEFAULT_SHAPE)[0]
+                      roll12split=12, roll12burst=12, **{p: ESC_SHAPE.get(p, ESC_DEFAULT_SHAPE)[2] - ESC_SHAPE.get(p, ESC_DEFAULT_SHAPE)[0]
                                          for p in ESC_HINTS})
 JUDGE_TAIL = 'Return only a JSON object {"valid": true} if every move is legal and the target appears, otherwise {"valid": false}.'
 REASON_TAIL = ('Return only a JSON object {"valid": true} if every move is legal and the target appears; otherwise '
@@ -447,7 +449,7 @@ def new_race(t0):
 def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     off = plan['seed_offsets'][policy]
     t0 = time.monotonic()
-    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll3to8', 'roll3strategy', 'roll8repair', 'roll8strategy', 'roll12strategy', 'roll12burst') or policy in ESC_HINTS else None
+    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll3to8', 'roll3strategy', 'roll8repair', 'roll8strategy', 'roll12strategy', 'roll12split', 'roll12burst') or policy in ESC_HINTS else None
     agent = lambda slot, extra='': run_agent_safe(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off, t0, race)
     if policy == 'deep4':
         agents = parallel([lambda s=s: agent(s) for s in range(4)])
@@ -497,6 +499,10 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     elif policy == 'roll12strategy':
         agents = rolling(lambda slot, node: run_agent_safe(plan, source, out, task, seed, case_index, policy, slot,
                                                       STRATEGIES[(slot - 4) % 4] if slot >= 4 else '', slots, off, t0, race, node),
+                         race, case_index, cap=12)
+    elif policy == 'roll12split':
+        agents = rolling(lambda slot, node: run_agent_safe(plan, source, out, task, seed, case_index, policy, slot,
+                                                      SPLIT_HINTS[(slot - 4) % 4] if slot >= 4 else '', slots, off, t0, race, node),
                          race, case_index, cap=12)
     elif policy == 'roll8strategy':
         agents = rolling(lambda slot, node: run_agent_safe(plan, source, out, task, seed, case_index, policy, slot,
