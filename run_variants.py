@@ -16,6 +16,14 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
   roll3to8      roll8cancel with 3 agents in flight instead of 4 (failures replaced by fresh-seed agents up to 8 in total)
   roll3strategy roll8strategy with 3 agents in flight instead of 4 (escalation agents, slot >= 3, get the strategy hints)
   roll12strategy roll8strategy with a cap of 12 agents (failure-driven only, no time trigger)
+  roll12cancel  roll8cancel with a cap of 12 agents: roll12strategy WITHOUT any hint (generic: no task-specific text for
+                any slot); same seeds, nodes, race and cancel
+  roll12idle    roll12cancel plus generic idle-capacity escalation: once a case's slots 0-11 have all ended without an
+                accepted plan, extra agents (slots 12-19, no hints) start one at a time on the least-loaded node, only
+                while that node has fewer than IDLE_THRESHOLD requests in flight in the shared Slots (agents + judges +
+                extra agents already claimed), at most IDLE_MAX_INFLIGHT extra agents in flight per case; occupancy is
+                re-checked whenever any request of any case releases its slot (or every IDLE_POLL_SECONDS); never
+                time-triggered. Slots 0-11 pair exactly with roll12cancel (seeds 1000*seed + offset + slot).
   roll8strategy roll8cancel, but each escalation agent (slot >= 4) gets one of the four task-agnostic strategy hints
                 (STRATEGIES[slot - 4]); the first four agents are unchanged
   esc_none, esc_strategy, esc_h02, esc_split
@@ -73,7 +81,9 @@ PAIRED_ADDONS = {'esc_extra'}
 ADDON_DEFAULT_POLICY = 'roll12strategy'  # the only baseline an add-on may pair with  # add-on arms on a recorded default arm's clean abstentions (check_pairing)
 MAX_REQUESTS_PER_NODE = 25  # fleet rule: never more than 25 concurrent requests on one Spark
 # rolling policies: slots that may launch per case (cap - first slot); unstarted_agents counts the ones that never did
+IDLE_FIRST, IDLE_CAP, IDLE_THRESHOLD, IDLE_MAX_INFLIGHT, IDLE_POLL_SECONDS = 12, 20, 12, 8, 2.0
 ELIGIBLE_SLOTS = dict(roll8cancel=8, roll8repair=8, roll8strategy=8, roll3to8=8, roll3strategy=8, roll12strategy=12,
+                      roll12cancel=12, roll12idle=12,  # roll12idle: extra slots 12-19 are opportunistic, not eligible
                       roll12burst=12, **{p: ESC_SHAPE.get(p, ESC_DEFAULT_SHAPE)[2] - ESC_SHAPE.get(p, ESC_DEFAULT_SHAPE)[0]
                                          for p in ESC_HINTS})
 JUDGE_TAIL = 'Return only a JSON object {"valid": true} if every move is legal and the target appears, otherwise {"valid": false}.'
@@ -431,6 +441,120 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
     return sorted(results, key=lambda a: a['slot'])
 
 
+class TrackedSlots(Slots):
+    """Slots with occupancy: requests holding a permit per endpoint (agents and judges) plus extra agents claimed by
+    roll12idle but not yet holding a permit. Same per-endpoint cap and blocking behaviour as Slots; every release
+    notifies `cond` (roll12idle re-checks occupancy then)."""
+    def __init__(self, per_endpoint, endpoints=None):
+        super().__init__(per_endpoint)
+        self.endpoints = list(endpoints or ENDPOINTS)
+        if endpoints:
+            self.sem = {e: threading.BoundedSemaphore(per_endpoint) for e in self.endpoints}
+        self.cap = per_endpoint
+        self.cond = threading.Condition()
+        self.in_flight = {e: 0 for e in self.endpoints}
+        self.claimed = {e: 0 for e in self.endpoints}
+
+    def __call__(self, endpoint):
+        slots = self
+
+        class Permit:
+            def __enter__(self):
+                slots.sem[endpoint].acquire()
+                with slots.cond:
+                    slots.in_flight[endpoint] += 1
+                return self
+
+            def __exit__(self, *exc):
+                with slots.cond:
+                    slots.in_flight[endpoint] -= 1
+                    slots.cond.notify_all()
+                slots.sem[endpoint].release()
+                return False
+        return Permit()
+
+    def occupancy(self, endpoint):  # caller holds cond
+        return self.in_flight[endpoint] + self.claimed[endpoint]
+
+
+class ClaimedSlots:
+    """The slots an extra roll12idle agent uses: its node's claim is released when the agent first holds a permit (it
+    is then counted in in_flight) or when the agent ends without ever holding one."""
+    def __init__(self, slots, endpoint):
+        self.slots, self.endpoint, self.open = slots, endpoint, True
+
+    def release(self):
+        with self.slots.cond:
+            if self.open:
+                self.open = False
+                self.slots.claimed[self.endpoint] -= 1
+                self.slots.cond.notify_all()
+
+    def __call__(self, endpoint):
+        permit, claim = self.slots(endpoint), self
+
+        class Permit:
+            def __enter__(self):
+                permit.__enter__()
+                claim.release()
+                return self
+
+            def __exit__(self, *exc):
+                return permit.__exit__(*exc)
+        return Permit()
+
+
+def idle_extension(agent, race, slots, first=None, cap=None, threshold=None, max_inflight=None, poll=None):
+    """roll12idle phase 2 (called once slots 0-11 all ended without an accept): start extra agents first..cap-1 while
+    the least-loaded node has fewer than `threshold` requests in flight (TrackedSlots occupancy, claims included), at
+    most `max_inflight` extra agents of this case in flight; re-check when any request of any case releases a permit
+    (cond) or every `poll` seconds; stop launching on the first accept (race). agent(slot, node, claimed_slots)."""
+    first = IDLE_FIRST if first is None else first
+    cap = IDLE_CAP if cap is None else cap
+    threshold = IDLE_THRESHOLD if threshold is None else threshold
+    max_inflight = IDLE_MAX_INFLIGHT if max_inflight is None else max_inflight
+    poll = IDLE_POLL_SECONDS if poll is None else poll
+    require(isinstance(slots, TrackedSlots), 'roll12idle needs TrackedSlots (occupancy)')
+    results, threads, state = [], [], dict(running=0)
+
+    def run(slot, node, claimed, occupancy):
+        try:
+            info = agent(slot, node, claimed)
+        except Exception as exc:  # never lose a slot
+            info = fault_record(slot, '', exc)
+        claimed.release()
+        info.update(idle_node=node, idle_occupancy_at_start=occupancy)
+        with slots.cond:
+            results.append(info)
+            state['running'] -= 1
+            if 'agent_error' in info:
+                state['failed'] = True
+            slots.cond.notify_all()
+
+    nxt = first
+    with slots.cond:
+        while nxt < cap and race['winner'] is None and not race['cancel'].is_set() and not state.get('failed'):
+            while nxt < cap and state['running'] < max_inflight and not race['cancel'].is_set():
+                occ = {i: slots.occupancy(e) for i, e in enumerate(slots.endpoints)}
+                node = min(occ, key=lambda i: (occ[i], i))
+                if occ[node] >= threshold:
+                    break
+                endpoint = slots.endpoints[node]
+                slots.claimed[endpoint] += 1
+                claimed = ClaimedSlots(slots, endpoint)
+                state['running'] += 1
+                t = threading.Thread(target=run, args=(nxt, node, claimed, occ[node]))
+                threads.append(t)
+                t.start()
+                nxt += 1
+            if nxt >= cap:
+                break
+            slots.cond.wait(poll)
+    for t in threads:
+        t.join()
+    return sorted(results, key=lambda a: a['slot'])
+
+
 def new_race(t0):
     """Shared per-case cancel state: the first accepted agent (in time) wins and cancels the rest."""
     lock, race = threading.Lock(), dict(cancel=threading.Event(), winner=None, answer_s=None)
@@ -447,7 +571,7 @@ def new_race(t0):
 def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     off = plan['seed_offsets'][policy]
     t0 = time.monotonic()
-    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll3to8', 'roll3strategy', 'roll8repair', 'roll8strategy', 'roll12strategy', 'roll12burst') or policy in ESC_HINTS else None
+    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll3to8', 'roll3strategy', 'roll8repair', 'roll8strategy', 'roll12strategy', 'roll12cancel', 'roll12idle', 'roll12burst') or policy in ESC_HINTS else None
     agent = lambda slot, extra='': run_agent_safe(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off, t0, race)
     if policy == 'deep4':
         agents = parallel([lambda s=s: agent(s) for s in range(4)])
@@ -498,6 +622,12 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
         agents = rolling(lambda slot, node: run_agent_safe(plan, source, out, task, seed, case_index, policy, slot,
                                                       STRATEGIES[(slot - 4) % 4] if slot >= 4 else '', slots, off, t0, race, node),
                          race, case_index, cap=12)
+    elif policy in ('roll12cancel', 'roll12idle'):
+        agents = rolling(lambda slot, node: run_agent_safe(plan, source, out, task, seed, case_index, policy, slot, '', slots,
+                                                      off, t0, race, node), race, case_index, cap=12)
+        if policy == 'roll12idle' and race['winner'] is None and not any('agent_error' in a for a in agents):
+            agents += idle_extension(lambda slot, node, claimed: run_agent_safe(
+                plan, source, out, task, seed, case_index, policy, slot, '', claimed, off, t0, race, node), race, slots)
     elif policy == 'roll8strategy':
         agents = rolling(lambda slot, node: run_agent_safe(plan, source, out, task, seed, case_index, policy, slot,
                                                       STRATEGIES[(slot - 4) % 4] if slot >= 4 else '', slots, off, t0, race, node),
@@ -521,6 +651,9 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
                      # escalated = started agents beyond the first wave (all agents of the esc_* add-ons, slots 4-11 or 12-19)
                      escalated_agents=sum(a['slot'] >= (3 if policy in ('roll3to8', 'roll3strategy') else 4) and a['started'] for a in agents),
                      burst=bool(race.get('burst_at')),
+                     **({'extra_agents': sum(a['slot'] >= IDLE_FIRST and a['started'] for a in agents),
+                         'idle_phase': race['winner'] is None or any(a['slot'] >= IDLE_FIRST for a in agents)}
+                        if policy == 'roll12idle' else {}),
                      skipped_judges=sum(a['judge_skipped'] for a in agents))
     else:  # answer = first accepted in slot order
         selected = next((a for a in agents if a['verdict'] is True), None)
@@ -718,6 +851,9 @@ def main(argv=None):
         jobs = [j for j in jobs if (j[0]['id'], j[1], j[3]) not in finished]
         resumed = dict(resumed_from=str(a.resume_from.resolve()), skipped_finished=len(finished), segments=segments)
     require(plan.get('concurrent_requests_per_endpoint', 0) <= MAX_REQUESTS_PER_NODE, 'Per-node request cap above 25')
+    if 'roll12idle' in policies:  # extra agents only below the idle threshold, inside a per-endpoint cap of at most 20
+        require(IDLE_THRESHOLD < plan.get('concurrent_requests_per_endpoint', 0) <= 20,
+                f'roll12idle needs {IDLE_THRESHOLD} < concurrent_requests_per_endpoint <= 20')
     if not a.run:
         print(json.dumps(dict(mode='plan', policy_cases=len(jobs), model_calls=0)))
         return 0
@@ -730,7 +866,7 @@ def main(argv=None):
                                       agent_variant=plan['agent_variant'],
                                       seed_offsets={pol: plan['seed_offsets'][pol] for pol in policies},
                                       concurrent_policy_cases=concurrent, started_utc=datetime.now(timezone.utc).isoformat(), admission=adm))
-    slots, lock, stop, rows = Slots(plan['concurrent_requests_per_endpoint']), threading.Lock(), threading.Event(), []
+    slots, lock, stop, rows = TrackedSlots(plan['concurrent_requests_per_endpoint']), threading.Lock(), threading.Event(), []
 
     def work(job):
         task, seed, index, pol = job
