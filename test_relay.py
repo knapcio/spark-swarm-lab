@@ -464,6 +464,15 @@ class ReportTests(unittest.TestCase):
         self.assertIn('worker slots or seeds differ', json.dumps(bad))
         self.assertIn('different max_per_endpoint', json.dumps(bad))
 
+    def test_relay_vs_replace_accepts_arms_recorded_before_the_update(self):
+        old_rows = [case_row('t0', rescued=True), case_row('t1')]  # no worker_positions (recorded before the update)
+        new_rows = [dict(case_row('t0'), worker_positions=[0, 1]), dict(case_row('t1'), worker_positions=[0, 1])]
+        s, code, _ = self.build(old_rows, new_rows)
+        self.assertEqual((s['status'], code), ('complete', 0))
+        moved = [dict(case_row('t0', rescued=True), worker_positions=[0, 2]), dict(case_row('t1'), worker_positions=[0, 1])]
+        s, code, _ = self.build(moved, new_rows)  # both recorded the field and it differs: incomplete
+        self.assertEqual(s['status'], 'incomplete')
+
     def test_window_screen_needs_changed_only_and_identical_workers(self):
         rows = [case_row('t0'), case_row('t1')]
         with tempfile.TemporaryDirectory() as d:

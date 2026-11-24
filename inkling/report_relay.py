@@ -109,6 +109,12 @@ def summary(a):
                 distinct_puzzles=len({k[1] for k in a['rows']}))
 
 
+def both_differ(r1, r2, field):
+    """A field added in a later version is compared only when both arms recorded it (arms recorded before the update
+    are checked exactly as before)."""
+    return field in r1 and field in r2 and r1[field] != r2[field]
+
+
 def build(first_dir, second_dir, plan_file, case_list, mode='replace'):
     """mode 'replace': RELAY vs REPLACE (equal settings). mode 'window': two RELAY arms on the same cohort whose relay
     settings differ only in relay.window (tail vs dense), with the same selections and worker counts per case."""
@@ -139,7 +145,7 @@ def build(first_dir, second_dir, plan_file, case_list, mode='replace'):
             problems.append('the two arms ran different relay settings' + (' (beyond the window)' if mode == 'window' else ''))
         differing = [k for k in set(R['rows']) & set(P['rows'])
                      if R['rows'][k].get('selected_source_slots') != P['rows'][k].get('selected_source_slots')
-                     or R['rows'][k].get('worker_positions') != P['rows'][k].get('worker_positions')
+                     or both_differ(R['rows'][k], P['rows'][k], 'worker_positions')
                      or len(R['rows'][k]['workers']) != len(P['rows'][k]['workers'])]
         if differing:
             problems.append(f'{len(differing)} case(s) with different selections or worker counts between the arms')

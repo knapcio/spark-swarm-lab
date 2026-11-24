@@ -63,6 +63,7 @@ as infra. Client-side limits (wall limit, timeouts, budget) are never retried.
 The exact verifier never influences decisions; it only scores the selected plan.
 """
 import argparse
+import contextlib
 import json
 import re
 import subprocess
@@ -478,44 +479,50 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
                 state['next'] += 1
                 launch(nxt, (case_index + nxt) % 4)
     def widener():
+        """One widening decision = one critical section: under the scheduler lock (slots.cond) every admitted case's
+        lock is taken in admission order (wideners are serialised by slots.cond; agent threads only ever hold their own
+        case lock and never wait for slots.cond while holding it, so this cannot deadlock), the live eligibility of all
+        cases is computed, and only the OLDEST eligible case may reserve a permit and launch, before any lock is
+        released. A younger case therefore never widens while an older case is eligible at that instant."""
         ws, key, factor, reserve, poll = (widen['slots'], widen['key'], widen.get('factor', WIDE_FACTOR),
                                           widen.get('reserve', WIDE_JUDGE_RESERVE), widen.get('poll', WIDE_POLL_SECONDS))
         with ws.cond:
             while True:
-                with lock:
-                    done = (state.get('closed') or race['winner'] is not None or race['cancel'].is_set()
-                            or state.get('failed') or state['next'] >= cap)
-                    failures = sum(1 for a in results if a.get('verdict') is not True and not a.get('cancelled'))
-                    eligible = not done and failures >= 1 and state['running'] < width * factor
-                if done:
-                    ws.cases.get(key, {})['eligible'] = False
-                    ws.cond.notify_all()
-                    return
-                me = ws.cases[key]
-                me['eligible'] = eligible
-                # strict oldest-admitted-first: read every older case's LIVE eligibility (its own lock; lock order is
-                # always slots.cond before a case lock), so a younger case never widens ahead of an eligible older one
-                older = any(c['order'] < me['order'] and (c['eligible_fn']() if c.get('eligible_fn') else c['eligible'])
-                            for k, c in ws.cases.items() if k != key)
-                if eligible and ws.pending == 0 and not older:
-                    occ = {i: ws.in_flight[e] for i, e in enumerate(ws.endpoints)}
-                    node = next((i for i in sorted(occ, key=lambda i: (occ[i], i))
-                                 if ws.try_acquire(ws.endpoints[i], below=ws.cap - reserve)), None)
-                    if node is not None:
-                        held = IdleSlots(ws, ws.endpoints[node], None, poll, race['cancel'])
-                        with lock:
-                            ok = (not state.get('closed') and race['winner'] is None and not race['cancel'].is_set()
-                                  and not state.get('failed') and state['next'] < cap and state['running'] < width * factor)
-                            if ok:
-                                nxt = state['next']
-                                state['next'] += 1
-                                if launch(nxt, node, held):  # a failed start released the permit and is a fault
-                                    state['widened'] = state.get('widened', 0) + 1
-                        if not ok:
-                            held.drop_unused()
-                        continue
+                entries = sorted(ws.cases.items(), key=lambda kv: kv[1]['order'])
+                with contextlib.ExitStack() as held_locks:
+                    for _, c in entries:
+                        if c.get('lock') is not None:
+                            held_locks.enter_context(c['lock'])
+                    if done_locked():
+                        ws.cases.get(key, {})['eligible'] = False
+                        ws.cond.notify_all()
+                        return
+                    live = [k for k, c in entries
+                            if (c['eligible_locked']() if c.get('eligible_locked')
+                                else c['eligible_fn']() if c.get('eligible_fn') else c.get('eligible'))]
+                    for k, c in entries:
+                        c['eligible'] = k in live
+                    if ws.pending == 0 and live and live[0] == key:  # this case is the oldest eligible one
+                        occ = {i: ws.in_flight[e] for i, e in enumerate(ws.endpoints)}
+                        node = next((i for i in sorted(occ, key=lambda i: (occ[i], i))
+                                     if ws.try_acquire(ws.endpoints[i], below=ws.cap - reserve)), None)
+                        if node is not None:
+                            held = IdleSlots(ws, ws.endpoints[node], None, poll, race['cancel'])
+                            nxt = state['next']
+                            state['next'] += 1
+                            if launch(nxt, node, held):  # a failed start released the permit and is a fault
+                                state['widened'] = state.get('widened', 0) + 1
+                            continue
                 ws.cond.notify_all()  # an older eligible case may be waiting for this one to yield
                 ws.cond.wait(poll)
+
+    def done_locked():  # caller holds the case lock
+        return (state.get('closed') or race['winner'] is not None or race['cancel'].is_set()
+                or state.get('failed') or state['next'] >= cap)
+
+    def eligible_locked():  # caller holds the case lock
+        failures = sum(1 for a in results if a.get('verdict') is not True and not a.get('cancelled'))
+        return not done_locked() and failures >= 1 and state['running'] < width * widen.get('factor', WIDE_FACTOR)
 
     def eligible_now():
         with lock:
@@ -532,7 +539,7 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
     wide_thread = None
     if widen:
         with widen['slots'].cond:
-            widen['slots'].cases[widen['key']]['eligible_fn'] = eligible_now
+            widen['slots'].cases[widen['key']].update(lock=lock, eligible_locked=eligible_locked, eligible_fn=eligible_now)
         race.setdefault('on_cancel', []).append(widen['slots'].wake)
         wide_thread = threading.Thread(target=widener, daemon=True)
         wide_thread.start()

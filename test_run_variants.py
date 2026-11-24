@@ -1049,6 +1049,42 @@ class WidePolicyTests(unittest.TestCase):
         self.assertEqual(seen['early'], 5)
         self.assertGreaterEqual(rec['widened_agents'], 1)
 
+    def test_older_case_cannot_become_eligible_between_check_and_reserve(self):
+        # sol's probe: the older case turns eligible (under its own lock, as an agent end does) right while the younger
+        # case is deciding; the decision holds every case lock from check to reserve, so the change must wait
+        import threading
+        slots = v.WideSlots(20)
+        older_lock, flag, probe = threading.Lock(), dict(eligible=False), {}
+        with slots.cond:
+            slots.cases[('older', 1)] = dict(order=-1, eligible=False, lock=older_lock,
+                                             eligible_locked=lambda: flag['eligible'])
+        real_try = v.WideSlots.try_acquire
+
+        def try_acquire(self, endpoint, below=None):
+            if 'blocked' not in probe and below is not None:  # the widening decision's reservation (not an agent's permit)
+                def flip():
+                    with older_lock:
+                        flag['eligible'] = True
+                t = threading.Thread(target=flip)
+                t.start()
+                t.join(.2)
+                probe['blocked'] = t.is_alive()  # still waiting for the older case's lock: the decision is atomic
+                probe['thread'] = t
+            return real_try(self, endpoint, below)
+
+        def during(slots, log):
+            import time
+            time.sleep(1.0)  # the older case is now eligible: no further widening of the younger one
+            with slots.cond:
+                probe['widened_while_older_eligible'] = None
+                flag['eligible'] = False
+                slots.cond.notify_all()
+        with patch.object(v.WideSlots, 'try_acquire', try_acquire):
+            rec, log, _ = self.run_policy(fast={0}, slow=1.5, slots=slots, during=during)
+        probe['thread'].join(1)
+        self.assertTrue(probe['blocked'])
+        self.assertTrue(flag['eligible'] is False)
+
     def test_widened_thread_start_failure_releases_its_permit(self):
         import threading
         real = threading.Thread
