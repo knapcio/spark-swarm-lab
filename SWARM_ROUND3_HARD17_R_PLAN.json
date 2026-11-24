@@ -1,0 +1,65 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason), unchanged; the exact verifier only scores",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_requests_per_endpoint": 20,
+ "execution": "Run once, alone on the fleet, after D (and L) finished, wrapped by inkling/account_cmd.py (fresh admission, exact-body checked prefix-cache flush, server counters before/after, idle drain, GPU energy; non-zero exit on any missing accounting). Cohort: D's clean abstentions selected by the runner's own frozen-resume loader (no explicit list).",
+ "resume_rule": "A replay that stops on an infrastructure fault is rerun once in full into a new output (documented as an amendment); the report uses the complete run.",
+ "exclusions": "None. All 96 cases of each arm count.",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh, MEM=0.75 since 2026-11-21 16:25 Europe/Warsaw (KV ~1.08M tokens per node)",
+  "adapter": "inkling/shim.py (vLLM dialect; client disconnects close the upstream stream and count as shim:client_cancels)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "temperature": "0.8 (harness constant)",
+  "mem_fraction": "0.75"
+ },
+ "status": "FROZEN",
+ "study_group": "swarm-round3-hard17-v1",
+ "dataset": "datasets/arithmetic-hard-v17/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v17",
+ "split": "evaluation",
+ "tasks": 48,
+ "seeds": [
+  1,
+  2
+ ],
+ "policies": [
+  "roll12strategy"
+ ],
+ "seed_offsets": {
+  "roll12strategy": 17400,
+  "esc_extra": 17400
+ },
+ "source_revision": "5533073",
+ "source_path": ".runtime/xl-night-source",
+ "code_sha256": {
+  "run_variants.py": "4195de5b534986e5b211be2758aac96af72bdf52a848150d8049bca4449fdc8b",
+  "run_judge.py": "dadc67dba63432c095794dff9c04d81ac7952eecc0215488b3f6d7c28ca21956",
+  "closers.py": "3b4d3833054121fcd83a6cfc33970ba1ad559085ed400f79c2aee5b4971c6ccc",
+  "closer_replay.py": "cad5e4f2c0613aa41185c8e905eb1113ad94b3471c14cccbf05e7fbb86ef4871",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "445349b83e910f1189df8908aff2428ab3ee1dd0bb862f1fc46978b31bda82c6",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "inkling/account_cmd.py": "aaaa8e4fb449a0f437f51087a69f2634b3e2d3449eb9dc97b5a429a0298aafaa",
+  "inkling/round3_gate.py": "c6fe27f52d064b1546ea4d035a63545850bb823d30b9febfeb207462eff751de",
+  "inkling/report_round3_hard17.py": "c49bc1f9dee3c48300c70607afe3d22724ce99940ed4cd4e7fc2755e64411cbe",
+  ".runtime/xl-night-source/forced72.py": "831062043f224c575ac88fedaa94d5e47f53b0a1ff44e05c6f6d67fa9f649a4e",
+  ".runtime/xl-night-source/forced72_worker.py": "4614d49ed3cca7e8cad5c8c7d033e4d95f7d28dc8099c07beb9f78b9403260f1",
+  ".runtime/xl-night-source/tail_replay.py": "a2f0c89cc8e848f03210dbc2fe9a2f4859bcb9cb49a080e2c6d12ac5a70ac346"
+ },
+ "concurrent_policy_cases": 20,
+ "concurrency_note": "At most 4 agents in flight per case (add-on X: 8), 20 cases at once, per-endpoint slot cap 20 (agents and judges) <= 25.",
+ "generator": "make_arithmetic_hard.py --seed 2026112317 --protocol arithmetic-hard-v17 --output datasets/arithmetic-hard-v17 (after these plans are committed and pushed); same rules as hard-v5..v16",
+ "baseline_note": "Defaults: arithmetic roll12strategy (cap 12); coding R2 replacement. New in this study for all arms: worker research/xl-night-v1 (one retry on upstream transport loss, charged; byte-identical otherwise) and judge retry (runner night/round3).",
+ "design": "Fable round 3 (IDEAS-swarm-round3-fable.md) ideas 1 (closers), 2 stage A (slots 12-19 on abstentions), 4 (end-of-budget recall) and the R2-6a leftover sentence; one default arm D, one paired prompt arm L, three add-ons on D's clean abstentions (an add-on cannot lose a case: gates are wrong answers and cost).",
+ "study": "swarm-round3-hard17-v1-r",
+ "agent_variant": "xl_forced_original (tail_replay recall mode)",
+ "runner": ".runtime/xl-night-source/tail_replay.py --runs runs/swarm-round3-hard17-v1-d-roll12strategy --mode recall --output runs/swarm-round3-hard17-v1-r.jsonl --endpoint (the four admitted tunnels 127.0.0.1:18081-18084) (case rows in runs/swarm-round3-hard17-v1-r.cases.jsonl; accounting dir runs/swarm-round3-hard17-v1-r)",
+ "gate": "Runs only if the recall dev screen on the same 30 recorded abstentions (runs/round3-screen-recall.cases.jsonl, gate: inkling/round3_gate.py screen) rescued >= 4 cases with 0 wrong.",
+ "question": "R (idea 4): end-of-budget recall pass on D's abstained agents that ended at their thinking budget.",
+ "decision_rule": "The recall pass becomes part of the default worker if 0 wrong, >= 2 of D's abstentions rescued, and recall server tokens <= 10 % of D's server tokens; if both C and R pass, the one with more rescues (ties: fewer tokens) is adopted first and the other is re-tested on top.",
+ "report": "inkling/report_round3_hard17.py -> results/swarm-round3-hard17-v1/REPORT.md + report.json (written before any hard-v17 data)"
+}
