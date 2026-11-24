@@ -530,6 +530,9 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
                     or state.get('failed') or state['next'] >= cap)
             failures = sum(1 for a in results if a.get('verdict') is not True and not a.get('cancelled'))
             return not done and failures >= 1 and state['running'] < width * widen.get('factor', WIDE_FACTOR)
+    if widen:  # registered with the scheduler (lock + live eligibility) BEFORE any agent of the case can start or fail
+        with widen['slots'].cond:
+            widen['slots'].cases[widen['key']].update(lock=lock, eligible_locked=eligible_locked, eligible_fn=eligible_now)
     with lock:
         for s in range(first, first + width):
             launch(s, (case_index + s) % 4)
@@ -538,8 +541,6 @@ def rolling(agent, race, case_index, width=4, cap=8, burst_seconds=None, burst_w
         timer.start()
     wide_thread = None
     if widen:
-        with widen['slots'].cond:
-            widen['slots'].cases[widen['key']].update(lock=lock, eligible_locked=eligible_locked, eligible_fn=eligible_now)
         race.setdefault('on_cancel', []).append(widen['slots'].wake)
         wide_thread = threading.Thread(target=widener, daemon=True)
         wide_thread.start()
@@ -645,6 +646,8 @@ class WideSlots(TrackedSlots):
             self.cond.notify_all()
 
     def case_started(self, key):
+        """Admission: the case's order is fixed here; rolling() adds its lock and live eligibility under the same lock
+        before launching any agent, so a case's eligibility can only change while it is fully registered."""
         with self.cond:
             self.pending = max(0, self.pending - 1)
             self.admitted += 1

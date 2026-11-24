@@ -1085,6 +1085,54 @@ class WidePolicyTests(unittest.TestCase):
         self.assertTrue(probe['blocked'])
         self.assertTrue(flag['eligible'] is False)
 
+    def test_two_cases_registered_before_any_agent_and_older_widens_first(self):
+        # sol's two-case probe: the older case's first agent fails at once; it must already be registered (lock + live
+        # eligibility) when that happens, so the younger case never widens ahead of it
+        import threading, time
+        slots = v.WideSlots(20)
+        lock, log, unregistered = threading.Lock(), [], []
+
+        def execute(job, deadline_seconds, cancel=None):
+            stem = Path(job['events']).name
+            task_id, slot = stem.split('-s1-')[0], int(stem.rsplit('-a', 1)[1].split('.')[0])
+            with slots.cond:
+                entry = slots.cases.get((task_id, 1), {})
+                if 'eligible_locked' not in entry or 'lock' not in entry:
+                    unregistered.append((task_id, slot))
+            with lock:
+                log.append((task_id, slot, time.monotonic()))
+            end = time.monotonic() + (0 if slot == 0 else .8)
+            while time.monotonic() < end:
+                if cancel is not None and cancel.is_set():
+                    return dict(deadline=False, cancelled=True, returncode=-15)
+                time.sleep(.01)
+            return dict(deadline=False, cancelled=False, returncode=0)
+        plan = dict(PLAN, seed_offsets=dict(roll12wide=1400))
+        recs = {}
+        with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute_cancellable', execute), \
+                patch.object(v, 'plan_of', lambda p: dict(plan={'moves': [1]}, verifier_solved=True, tokens=5, infra=0)), \
+                patch.object(v, 'judge_with_reason', lambda *a: dict(verdict=False, reason='', infra=0, tokens=1)):
+            out = Path(d)
+            (out / 'agents').mkdir(); (out / 'extra').mkdir(); (out / 'judges').mkdir()
+
+            def case(name, index):
+                recs[name] = v.run_policy(plan, Path('/src'), out, dict(TASK, id=name), 1, index, 'roll12wide', slots)
+            older = threading.Thread(target=case, args=('older', 0))
+            older.start()
+            time.sleep(.05)
+            younger = threading.Thread(target=case, args=('younger', 1))
+            younger.start()
+            older.join()
+            younger.join()
+        self.assertEqual(unregistered, [])
+        widened = {name: sorted(a['slot'] for a in rec['agents'] if a.get('widened')) for name, rec in recs.items()}
+        start = {(tid, slot): t for tid, slot, t in log}
+        first = {name: min(start[(name, s)] for s in slots_) for name, slots_ in widened.items() if slots_}
+        self.assertIn('older', first)
+        if 'younger' in first:
+            self.assertLessEqual(first['older'], first['younger'])
+        self.assertEqual(set(slots.in_flight.values()), {0})
+
     def test_widened_thread_start_failure_releases_its_permit(self):
         import threading
         real = threading.Thread
