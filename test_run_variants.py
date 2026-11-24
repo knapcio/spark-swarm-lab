@@ -534,13 +534,15 @@ class MultiResumeTests(unittest.TestCase):
 
 class GenericPolicyTests(unittest.TestCase):
     """roll12cancel and roll12idle with a fake worker (no model); roll12idle with TrackedSlots occupancy."""
-    def run_policy(self, policy, fast=(), accept=(), slots=None, extra_sleep=0.0, during=None):
+    def run_policy(self, policy, fast=(), accept=(), slots=None, extra_sleep=0.0, during=None, boom=()):
         import threading, time
         lock, log, state = threading.Lock(), [], dict(now=0, peak=0)
 
         def execute(job, deadline_seconds, cancel=None):
             slot = int(job['events'].rsplit('-a', 1)[1].split('.')[0])
             c = job['command']
+            if slot in boom:
+                raise RuntimeError('controller bug')
             with lock:
                 log.append(dict(slot=slot, endpoint=job['endpoint'], seed=int(c[c.index('--seed') + 1]),
                                 extra='--extra-file' in c))
@@ -656,6 +658,84 @@ class GenericPolicyTests(unittest.TestCase):
         self.assertEqual([a['idle_node'] for a in extras[:3]], [2, 2, 2])  # only the node below the threshold
         self.assertEqual([a['idle_occupancy_at_start'] for a in extras[:3]], [9, 10, 11])
         self.assertTrue(all(a['idle_occupancy_at_start'] < v.IDLE_THRESHOLD for a in extras))
+
+    def test_admission_prefers_the_least_loaded_node_and_logs_true_occupancy(self):
+        # sol's reproduction: cap 20, nodes at 18 / 19 / 2 / 12 -> extras only on the node at 2, logged 2, 3, ...
+        import threading, time
+        slots = v.TrackedSlots(20)
+        with slots.cond:
+            for e, n in zip(slots.endpoints, (18, 19, 2, 12)):
+                slots.in_flight[e] = n
+        waited = {}
+
+        def during(slots, log):
+            time.sleep(.5)  # extras admitted by now and running (1 s each)
+            t0 = time.monotonic()
+            with slots.permit(slots.endpoints[0]):  # another case's first-wave request on the node at 18 (< cap 20)
+                waited['s'] = time.monotonic() - t0
+        rec, log, state = self.run_policy('roll12idle', fast=set(range(20)), slots=slots, extra_sleep=1.0, during=during)
+        extras = sorted((a for a in rec['agents'] if a['slot'] >= 12), key=lambda a: a['slot'])
+        self.assertEqual(len(extras), 8)
+        self.assertTrue(all(a['idle_node'] == 2 for a in extras[:8]))
+        self.assertEqual(sorted(a['idle_occupancy_at_start'] for a in extras), list(range(2, 10)))
+        self.assertLess(waited['s'], .1)  # extras never hold a permit on the busy nodes
+
+    def test_extra_agent_judge_is_idle_gated(self):
+        import threading, time
+        slots = v.TrackedSlots(20, endpoints=['e0'])
+        with slots.cond:
+            self.assertTrue(slots.try_acquire('e0', below=12))  # the admission permit
+        idle = v.IdleSlots(slots, 'e0', 12, .05)
+        with idle('e0'):  # the worker uses the permit taken at admission
+            self.assertEqual(slots.in_flight['e0'], 1)
+        self.assertEqual(slots.in_flight['e0'], 0)
+        with slots.cond:
+            slots.in_flight['e0'] = 12  # node busy with other cases' requests
+        entered = threading.Event()
+
+        def judge():
+            with idle('e0'):
+                entered.set()
+        t = threading.Thread(target=judge)
+        t.start()
+        time.sleep(.3)
+        self.assertFalse(entered.is_set())  # waits: occupancy 12 is not below the threshold
+        with slots.cond:
+            slots.in_flight['e0'] = 11
+            slots.cond.notify_all()
+        t.join(2)
+        self.assertTrue(entered.is_set())
+        self.assertEqual(slots.in_flight['e0'], 11)
+
+    def test_idle_phase_not_set_after_a_first_phase_fault(self):
+        rec, log, _ = self.run_policy('roll12idle', fast=set(range(20)), boom={5})
+        self.assertTrue(any('agent_error' in a for a in rec['agents']))
+        self.assertEqual((rec['idle_phase'], rec['extra_agents']), (False, 0))
+
+    def test_tracked_slots_only_for_a_roll12idle_arm(self):
+        import json, contextlib, io
+        from datetime import datetime, timezone
+        seen = {}
+        for policy, expected in (('roll12cancel', v.Slots), ('roll12idle', v.TrackedSlots)):
+            with tempfile.TemporaryDirectory() as d:
+                root = Path(d)
+                tasks = [dict(id='t0', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7)]
+                (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=tasks)))
+                plan = dict(protocol='swarm-variants-screen-v1', status='FROZEN', source_revision='x',
+                            dataset=str(root / 'data.json'), dataset_protocol='p', split='evaluation', tasks=1, seeds=[1],
+                            policies=[policy], concurrent_policy_cases=1, concurrent_requests_per_endpoint=20,
+                            agent_variant='xl_forced_original', seed_offsets={policy: 1})
+                (root / 'plan.json').write_text(json.dumps(plan))
+                (root / 'adm.json').write_text(json.dumps(dict(verified=True, verified_utc=datetime.now(timezone.utc).isoformat())))
+
+                def fake(plan, source, out, task, seed, index, pol, slots):
+                    seen[pol] = type(slots)
+                    return dict(policy=pol, agents=[], answered=False, solved=False, wrong=False, infra=0)
+                with patch.object(v, 'validate_source', lambda *a: None), patch.object(v, 'run_policy', fake), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d, '--run',
+                            '--admission', str(root / 'adm.json')])
+            self.assertIs(seen[policy], expected, policy)
 
     def test_tracked_slots_count_and_cap(self):
         import threading, time

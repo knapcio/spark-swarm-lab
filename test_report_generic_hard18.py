@@ -28,10 +28,13 @@ def row(task, policy, slot=None, solved=True, wrong=False, infra=0, agents=None,
 
 
 def acct(tokens, wall=100, wh=1.0):
+    from datetime import datetime, timedelta, timezone
     nodes = ('01', '02', '03', '04')
-    return dict(protocol='swarm-arm-accounting-v1', runner_wall_seconds=wall, runner_exit=0, idle_after=True,
-                before=dict(nodes={n: dict(generation_tokens=0.0) for n in nodes}),
-                after=dict(nodes={n: dict(generation_tokens=tokens / 4) for n in nodes}),
+    start = datetime(2026, 11, 24, tzinfo=timezone.utc)
+    return dict(protocol='swarm-arm-accounting-v1', runner_wall_seconds=round(wall, 1), runner_exit=0, idle_after=True,
+                before=dict(utc=start.isoformat(), nodes={n: dict(generation_tokens=0.0) for n in nodes}),
+                after=dict(utc=(start + timedelta(seconds=wall)).isoformat(),
+                           nodes={n: dict(generation_tokens=tokens / 4) for n in nodes}),
                 server=dict(total=dict(generation_tokens=tokens),
                             per_node={n: dict(generation_tokens=tokens / 4, decode_tokens=tokens / 4, requests=3) for n in nodes}),
                 energy=dict(total_wh=wh))
@@ -44,7 +47,7 @@ def write_run(path, plan, policy, rows, tokens, wall=100, wh=1.0):
     (path / 'arm_accounting.json').write_text(json.dumps(acct(tokens, wall, wh)))
 
 
-def study(root, gi_wall=105, with_gi=True, gi_rows=None):
+def study(root, gi_wall=105, with_gi=True, gi_rows=None, g_wall=100):
     (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=TASKS)))
     plan = dict(study=STUDY, dataset=str(root / 'data.json'), dataset_protocol='p', split='evaluation', tasks=3, seeds=[1],
                 policies=list(rep.ARMS.values()), agent_variant='xl_forced_original',
@@ -54,7 +57,7 @@ def study(root, gi_wall=105, with_gi=True, gi_rows=None):
     write_run(runs / f'{STUDY}-roll12strategy', plan, 'roll12strategy',
               [row('t0', 'roll12strategy', 0), row('t1', 'roll12strategy', 5), row('t2', 'roll12strategy')], 1200)
     write_run(runs / f'{STUDY}-roll12cancel', plan, 'roll12cancel',
-              [row('t0', 'roll12cancel', 0), row('t1', 'roll12cancel'), row('t2', 'roll12cancel', 6)], 1100)
+              [row('t0', 'roll12cancel', 0), row('t1', 'roll12cancel'), row('t2', 'roll12cancel', 6)], 1100, wall=g_wall)
     if not with_gi:
         return
     t1 = row('t1', 'roll12idle', 14, idle_phase=True, extra_agents=3,
@@ -102,6 +105,33 @@ class GenericReportTests(unittest.TestCase):
             s = self.build(root)
         self.assertFalse(s['decisions']['GI']['wall_at_most_110pct_of_G'])
         self.assertFalse(s['decisions']['GI']['GI_replaces_G'])
+
+    def test_wall_from_unrounded_timestamps(self):
+        # sol's case: G 100.04 s, GI 110.049 s; arms.py rounds both to tenths (100.0 / 110.0 would pass 1.10 x)
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            study(root, g_wall=100.04, gi_wall=110.049)
+            s = self.build(root)
+        self.assertAlmostEqual(s['arms']['G']['wall_seconds'], 100.04, places=4)
+        self.assertEqual(s['arms']['GI']['runner_wall_seconds_rounded'], 110.0)
+        self.assertFalse(s['decisions']['GI']['wall_at_most_110pct_of_G'])
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            study(root, g_wall=100.04, gi_wall=110.04)
+            self.assertTrue(self.build(root)['decisions']['GI']['wall_at_most_110pct_of_G'])
+
+    def test_missing_timestamp_makes_the_arm_incomplete(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            study(root)
+            f = root / 'runs' / f'{STUDY}-roll12idle' / 'arm_accounting.json'
+            rec = json.loads(f.read_text())
+            del rec['after']['utc']
+            f.write_text(json.dumps(rec))
+            s = self.build(root)
+        self.assertEqual(s['arms']['GI']['status'], 'incomplete')
+        self.assertIn('UTC timestamps', ' '.join(s['arms']['GI']['reasons']))
+        self.assertTrue(s['decisions']['GI'].startswith('incomplete'))
 
     def test_gi_needs_an_extra_slot_answer_and_no_wrong(self):
         with tempfile.TemporaryDirectory() as d:

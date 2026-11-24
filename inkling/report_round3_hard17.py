@@ -37,6 +37,7 @@ usage: report_round3_hard17.py [--root DIR] [--out DIR] [--d DIR] [--l DIR] [--x
 import argparse
 import hashlib
 import json
+from datetime import datetime
 import math
 import re
 import sys
@@ -114,7 +115,7 @@ def accounting(dirs, wrapper=False):
     problems listed (never zero-filled). Every record also needs idle_after == true and a generation_tokens counter
     for every node in both its before and after snapshots. 'segments' lists each directory's own totals (wasted work
     of faulted segments is reported from it)."""
-    problems, tokens, wall, whs, segments = [], 0, 0.0, [], []
+    problems, tokens, wall, whs, segments, window = [], 0, 0.0, [], [], 0.0
     for d in dirs:
         f = Path(d) / 'arm_accounting.json'
         if not f.exists():
@@ -127,6 +128,14 @@ def accounting(dirs, wrapper=False):
                              server_tokens=((a.get('server') or {}).get('total') or {}).get('generation_tokens'),
                              wall_seconds=a.get('runner_wall_seconds'), wh=energy0.get('total_wh'),
                              runner_exit=a.get('runner_exit'), cases=case_count(d)))
+        try:  # the arm window from the unrounded UTC timestamps (runner_wall_seconds is rounded to tenths)
+            seconds = (datetime.fromisoformat(a['after']['utc']) - datetime.fromisoformat(a['before']['utc'])).total_seconds()
+            if not math.isfinite(seconds) or seconds < 0:
+                raise ValueError(seconds)
+            window += seconds
+            segments[-1]['window_seconds'] = seconds
+        except (KeyError, TypeError, ValueError, AttributeError):
+            problems.append(f'{Path(d).name}: before/after UTC timestamps missing or invalid')
         for snap in ('before', 'after'):
             nodes = (a.get(snap) or {}).get('nodes') or {}
             missing = sorted(n for n in NODES if not isinstance((nodes.get(n) or {}).get('generation_tokens'), (int, float)))
@@ -162,6 +171,7 @@ def accounting(dirs, wrapper=False):
         energy = a.get('energy') if isinstance(a.get('energy'), dict) else {}
         whs.append(energy.get('total_wh') if not energy.get('error') else None)
     return dict(server_tokens=None if problems or not dirs else tokens, wall_seconds=wall,
+                window_seconds=None if problems or not dirs else window,
                 wh=sum(whs) if whs and None not in whs else None, accounting_valid=not problems and bool(dirs),
                 accounting_problems=problems, segment_accounting=segments)
 

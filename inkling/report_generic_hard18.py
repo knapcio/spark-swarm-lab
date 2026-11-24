@@ -12,6 +12,8 @@ Decisions (complete inputs only, unrounded values):
   G replaces S  if G has 0 wrong (all attempts) and G solved >= S solved - 2;
   GI replaces G if GI has 0 wrong (all attempts), GI solved >= G solved, at least 1 case answered by a slot >= 12,
                 and GI arm wall <= 1.10 x G arm wall.
+Arm wall = the sum over segments of (after.utc - before.utc) in arm_accounting.json (unrounded; runner_wall_seconds is
+rounded to tenths by arms.py); a missing timestamp makes the arm incomplete.
 
 usage: report_generic_hard18.py [--root DIR] [--out DIR] [--s DIR] [--g DIR] [--gi DIR]
 """
@@ -49,7 +51,8 @@ def summarize(a):
     out = dict(status=a['status'], reasons=a['reasons'], segments=a['segments'], cases=n, solved=solved, wrong=wrong,
                wrong_all_attempts=a['wrong_all_attempts'], wrong_attempts=a['wrong_attempts'], wasted_work=a['wasted_work'],
                abstain=sum(not r['answered'] for r in rows), unresolved=len(a['unresolved']), server_tokens=tok,
-               server_tokens_per_case=tok / n if tok is not None and n else None, wall_seconds=a['wall_seconds'], wh=wh,
+               server_tokens_per_case=tok / n if tok is not None and n else None, wall_seconds=a['window_seconds'],
+               runner_wall_seconds_rounded=a['wall_seconds'], wh=wh,
                wh_per_solved=wh / solved if wh is not None and solved else None, plan_sha256=a['plan_sha256'])
     extra = [r for r in rows if any(x['slot'] >= EXTRA_SLOT for x in r['agents'])]
     if extra or any('extra_agents' in r for r in rows):
@@ -92,7 +95,8 @@ def decisions(arms):
     if out['GI'] is None:
         rule = dict(zero_wrong=GI['wrong_all_attempts'] == 0, solved_at_least_G=GI['solved'] >= G['solved'],
                     answered_by_extra_slot=GI.get('answered_by_extra', 0) >= 1,
-                    wall_at_most_110pct_of_G=G['wall_seconds'] > 0 and GI['wall_seconds'] <= WALL_LIMIT * G['wall_seconds'])
+                    wall_at_most_110pct_of_G=(G['wall_seconds'] is not None and GI['wall_seconds'] is not None
+                                              and G['wall_seconds'] > 0 and GI['wall_seconds'] <= WALL_LIMIT * G['wall_seconds']))
         rule['GI_replaces_G'] = all(rule.values())
         out['GI'] = rule
     return out

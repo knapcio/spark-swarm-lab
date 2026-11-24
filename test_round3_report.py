@@ -36,7 +36,7 @@ def write_run(path, plan, rows, tokens, resume_of=None, wh=1.0):
 
 
 def acct(tokens, wh=1.0, wrapper=False, **changes):
-    snaps = {k: dict(nodes={n: dict(generation_tokens=float(i)) for n in ('01', '02', '03', '04')})
+    snaps = {k: dict(utc=f'2026-11-24T00:0{i}:00+00:00', nodes={n: dict(generation_tokens=float(i)) for n in ('01', '02', '03', '04')})
              for i, k in enumerate(('before', 'after'))}
     rec = dict(protocol='swarm-arm-accounting-v1', **snaps, runner_wall_seconds=10, runner_exit=0, idle_after=True,
                server=dict(total=dict(generation_tokens=tokens), per_node={'01': dict(generation_tokens=tokens)}),
