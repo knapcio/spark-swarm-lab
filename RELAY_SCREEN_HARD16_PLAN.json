@@ -1,0 +1,51 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason), unchanged; the exact verifier only scores",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_requests_per_endpoint": 20,
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh, MEM=0.75 since 2026-11-21 16:25 Europe/Warsaw (KV ~1.08M tokens per node)",
+  "adapter": "inkling/shim.py (vLLM dialect; client disconnects close the upstream stream and count as shim:client_cancels)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "temperature": "0.8 (harness constant)",
+  "mem_fraction": "0.75"
+ },
+ "dataset": "datasets/arithmetic-hard-v16/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v16",
+ "split": "evaluation",
+ "agent_variant": "xl_forced_original",
+ "status": "FROZEN",
+ "study": "relay-screen-hard16-v1",
+ "study_group": "relay-screen-hard16-v1",
+ "source_revision": "553307333e81db4961b75687a6ed815f9e410a0d",
+ "source_path": ".runtime/xl-night-source",
+ "runs": [
+  "runs/swarm-hints-hard16-v1-esc_none"
+ ],
+ "relay": {
+  "k": 4,
+  "max_chars": 12000,
+  "selection_seed": 2026112420
+ },
+ "seed_offsets": {
+  "relay": 20400,
+  "replace": 20500
+ },
+ "code_sha256": {
+  "relay.py": "6dcdbc69897832143b019733a5e3d40689076c9bec89fd243e398fbff2ec271d",
+  "relay_replay.py": "1df6e17e6cb3a9827a5d755ee9cb058212677b37a03391c0dd7651d55bde61aa",
+  "inkling/report_relay.py": "759e317cf8fef65b8c9dccf7daef917022fd7637fa5fb38fc18453b000f35a58",
+  "run_variants.py": "afdf5423b1ac9af2b01d40cdc3f9602b1acb7d1bdec8fdb0dc6ba7caa45bd8aa",
+  "run_judge.py": "dadc67dba63432c095794dff9c04d81ac7952eecc0215488b3f6d7c28ca21956",
+  "inkling/account_cmd.py": "aaaa8e4fb449a0f437f51087a69f2634b3e2d3449eb9dc97b5a429a0298aafaa",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "445349b83e910f1189df8908aff2428ab3ee1dd0bb862f1fc46978b31bda82c6"
+ },
+ "question": "REPLICATION of relay-screen-hard18-v1 (RELAY 4 vs REPLACE 0 rescues of 14) on a separate generic cohort: the 29 clean abstentions of the unhinted escalation arm esc_none of swarm-hints-hard16-v1 (6 puzzles), relay outcomes unseen. Owner rule: generic swarm only. Astra-designed fair test of task-agnostic closers (artifact relay): on the clean abstentions of the two generic hard-v18 arms (roll12cancel, roll12idle; each task-seed pair once), does handing up to 4 uniformly sampled failed-agent artifacts (last 12,000 characters, fixed generic protocol sentence: use what is correct, finish the task, answer in the required format) to new workers rescue more cases than the same number of fresh independent workers with the same budget?",
+ "design": "Dev screen on recorded abstentions (outcomes of relay/replace unseen); the roll12strategy arm is excluded because its agents carried task-specific hints; repeated puzzles make the McNemar p descriptive only. RELAY arm then REPLACE arm, each alone on the fleet, each wrapped by inkling/account_cmd.py; paired by case; unchanged judge; cancel on accept within an arm; verifier only scores.",
+ "decision_rule": "The hard-v18 screen replicates if RELAY rescues at least 3 more cases than REPLACE with 0 wrong in RELAY (McNemar descriptive: 6 puzzles). The in-swarm relay study proceeds only if, pooled over both screens, RELAY rescues more cases than REPLACE with 0 wrong.",
+ "report": "inkling/report_relay.py -> results/relay-screen-hard16-v1/"
+}

@@ -1,0 +1,72 @@
+{
+ "plan": "RELAY_SCREEN_HARD18_PLAN.json",
+ "plan_sha256": "6a0123595f1c025cb9a87bf706cc6c6110e151d4ed808803ec97b5c380ce791c",
+ "case_list": "results/relay-screen-hard18-v1/case_list.json",
+ "case_list_sha256": "7e30f7b3a4e7f9cb299a03f0fef5318c25c831220551e6daa08ffa087666fdf1",
+ "arms": {
+  "relay": {
+   "status": "complete",
+   "reasons": [],
+   "cases": 14,
+   "workers": 56,
+   "rescued": 4,
+   "wrong": 0,
+   "answered": 4,
+   "faults": 0,
+   "client_tokens": 1539685,
+   "artifact_chars_used": 672000,
+   "server_tokens": 1623907.0,
+   "wh": 59.46,
+   "window_seconds": 1991.556609,
+   "generation_tokens": 1623907.0,
+   "prompt_tokens": 2245092.0,
+   "prefill_compute_tokens": 466660.0,
+   "total_compute_tokens": 2090567.0,
+   "total_tokens_incl_cached_prompt": 3868999.0,
+   "distinct_puzzles": 7
+  },
+  "replace": {
+   "status": "complete",
+   "reasons": [],
+   "cases": 14,
+   "workers": 56,
+   "rescued": 0,
+   "wrong": 0,
+   "answered": 0,
+   "faults": 0,
+   "client_tokens": 1759034,
+   "artifact_chars_used": 0,
+   "server_tokens": 1759034.0,
+   "wh": 61.23,
+   "window_seconds": 2069.359933,
+   "generation_tokens": 1759034.0,
+   "prompt_tokens": 1755574.0,
+   "prefill_compute_tokens": 33718.0,
+   "total_compute_tokens": 1792752.0,
+   "total_tokens_incl_cached_prompt": 3514608.0,
+   "distinct_puzzles": 7
+  }
+ },
+ "pairing_problems": [],
+ "status": "complete",
+ "mcnemar": {
+  "cases": 14,
+  "distinct_puzzles": 7,
+  "relay_only": 4,
+  "replace_only": 0,
+  "exact_p": 0.125,
+  "note": "descriptive only: the cases are not independent (several seeds of the same puzzle)"
+ },
+ "facts": {
+  "relay_rescued": 4,
+  "replace_rescued": 0,
+  "relay_wrong": 0,
+  "replace_wrong": 0,
+  "server_token_ratio_relay_over_replace": 0.9231811323715176,
+  "compute_token_ratio_relay_over_replace": 1.1661216944675001,
+  "wh_ratio_relay_over_replace": 0.9710926016658501
+ },
+ "decision_rule": "Go to a frozen fresh-corpus study of relay inside the default swarm only if RELAY rescues at least 3 more cases than REPLACE with 0 wrong in RELAY (exact McNemar reported). Otherwise artifact relay is not pursued (rejection to astra review).",
+ "decision": "evaluate the frozen rule against the facts",
+ "disclosure": "Weaknesses that remain in arms.py-driven arms (arms.py is pinned; disclose in reports): flush_caches ignores the ssh exit status and the HTTP status (only the response text is recorded), delta() accepts negative deltas after a counter reset, parse() counts a missing counter as 0 and accepts non-finite values, wait_idle() returns a busy snapshot after its limit without failing, and an energy failure does not change the exit code."
+}
