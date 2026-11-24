@@ -194,6 +194,10 @@ def load_arm(path, root, policy, plan_file=None):
     acct = accounting(dirs)
     reasons = ([f"{len(arm['unresolved'])} unresolved infra case(s)"] if arm['unresolved'] else []) + acct['accounting_problems']
     plan_sha = None
+    for seg in dirs:  # every segment directory, with or without case rows, must record the plan it ran
+        meta = Path(seg) / 'metadata.json'
+        if not meta.exists() or not isinstance(json.loads(meta.read_text()).get('protocol'), dict):
+            reasons.append(f'{Path(seg).name}: no metadata.json with the embedded plan')
     if plan_file is not None:
         plan_file = Path(plan_file) if Path(plan_file).is_absolute() else root / plan_file
         if not plan_file.exists():
@@ -215,8 +219,11 @@ def load_arm(path, root, policy, plan_file=None):
                                        infra=bool(r.get('infra')) or 'error' in r))
         if not current:
             superseded_by_segment.setdefault(seg.name, []).append([key[0], key[1]])
-    wasted = [dict(seg, superseded_cases=superseded_by_segment[seg['dir']]) for seg in acct['segment_accounting']
-              if seg['dir'] in superseded_by_segment]
+    # wasted work: segments with superseded cases, and segments without any case row (e.g. a failed start)
+    wasted = [dict(seg, superseded_cases=superseded_by_segment.get(seg['dir'], []),
+                   no_case_rows=not case_count(Path(path).parent / seg['dir']))
+              for seg in acct['segment_accounting']
+              if seg['dir'] in superseded_by_segment or not case_count(Path(path).parent / seg['dir'])]
     return dict(status='incomplete' if reasons else 'complete', reasons=reasons, dir=str(path), arm=arm, rows=rows,
                 segments=[s.name for s in dirs], superseded=arm['superseded'], unresolved=arm['unresolved'],
                 tasks={t['id']: t for t in arm['tasks']}, wrong_attempts=wrong_attempts,

@@ -363,11 +363,15 @@ class ReportTests(unittest.TestCase):
         def caseless_segment(root):  # a resume that crashed before writing any case still cost server tokens
             seg = runs(root) / f'{STUDY}-d-roll12strategy-resume2'
             seg.mkdir()
+            plan = json.loads((root / 'SWARM_ROUND3_HARD17_D_PLAN.json').read_text())
+            (seg / 'metadata.json').write_text(json.dumps(dict(protocol=plan, policies=['roll12strategy'], resume={})))
             (seg / 'arm_accounting.json').write_text(json.dumps(acct(
                 55, server=dict(total=dict(generation_tokens=55), per_node={'01': dict(generation_tokens=0)}))))
         s = self.study_status(caseless_segment)
         self.assertEqual((s['arms']['D']['status'], s['arms']['D']['server_tokens']), ('complete', 1255))
         self.assertEqual(len(s['arms']['D']['segments']), 3)
+        self.assertIn((f'{STUDY}-d-roll12strategy-resume2', 55, True),
+                      [(w['dir'], w['server_tokens'], w['no_case_rows']) for w in s['arms']['D']['wasted_work']])
 
         def caseless_without_accounting(root):
             (runs(root) / f'{STUDY}-d-roll12strategy-resume2').mkdir()

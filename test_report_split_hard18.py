@@ -136,6 +136,31 @@ class SplitReportTests(unittest.TestCase):
         self.assertIn('wasted segment', md)
         self.assertIn('escalation agent runs on the node of the agent whose end freed its slot', md)
 
+    def test_caseless_segment_is_wasted_work_and_needs_metadata(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            study(root)
+            seg = root / 'runs' / f'{STUDY}-roll12split-resume2'  # a failed start: accounting, no case rows
+            seg.mkdir()
+            plan = json.loads((root / rep.PLAN).read_text())
+            (seg / 'metadata.json').write_text(json.dumps(dict(protocol=plan, policies=['roll12split'],
+                                                               resume=dict(resumed_from='x'))))
+            (seg / 'arm_accounting.json').write_text(json.dumps(acct(40, wh=0.2)))
+            s = self.build(root)
+            B = s['arms']['roll12split']
+            self.assertEqual((B['status'], B['server_tokens']), ('complete', 1440))
+            self.assertEqual([(w['dir'], w['server_tokens'], w['no_case_rows'], w['superseded_cases']) for w in B['wasted_work']],
+                             [(f'{STUDY}-roll12split', 1000, False, [['t2', 1]]),
+                              (f'{STUDY}-roll12split-resume2', 40, True, [])])
+            with contextlib.redirect_stdout(io.StringIO()):
+                rep.main(['--root', d])
+            self.assertIn('resume2: server tokens 40', (root / 'results' / STUDY / 'REPORT.md').read_text())
+            (seg / 'metadata.json').unlink()
+            s = self.build(root)
+        self.assertEqual(s['arms']['roll12split']['status'], 'incomplete')
+        self.assertIn('resume2: no metadata.json with the embedded plan', ' '.join(s['arms']['roll12split']['reasons']))
+        self.assertTrue(s['decision'].startswith('incomplete'))
+
     def test_both_arms_must_embed_the_frozen_plan(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

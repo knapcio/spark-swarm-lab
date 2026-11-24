@@ -135,7 +135,9 @@ def markdown(s):
                    (f": {json.dumps(a['wrong_attempts'])}" if a['wrong_attempts'] else ''))
         for w in a['wasted_work']:
             out.append(f"  - wasted segment {w['dir']}: server tokens {fmt(w.get('server_tokens'))}, wall "
-                       f"{fmt(w.get('wall_seconds'))} s, {fmt(w.get('wh'))} Wh; superseded cases {w['superseded_cases']}")
+                       f"{fmt(w.get('wall_seconds'))} s, {fmt(w.get('wh'))} Wh; "
+                       + ('no case rows' if w.get('no_case_rows') else f"superseded cases {w['superseded_cases']}")
+                       + ('' if w.get('accounting') else ' (no accounting record)'))
     out += ['', '## Disclosures', '', s['disclosure'], '', DESIGN_DISCLOSURE, '']
     return '\n'.join(out)
 
