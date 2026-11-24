@@ -129,6 +129,8 @@ def build(first_dir, second_dir, plan_file, case_list, mode='replace'):
             problems.append('the two arms ran different cohorts')
         sr, sp = dict(R['meta'].get('relay_settings') or {}), dict(P['meta'].get('relay_settings') or {})
         if mode == 'window':
+            if not (sr.get('changed_only') and sp.get('changed_only')):
+                problems.append('a tail-vs-dense screen needs both arms run with relay.changed_only')
             if (sr.get('window'), sp.get('window')) != (n1, n2):
                 problems.append(f"relay windows are {sr.get('window')!r} / {sp.get('window')!r}, expected {n1!r} / {n2!r}")
             sr.pop('window', None)
@@ -137,6 +139,7 @@ def build(first_dir, second_dir, plan_file, case_list, mode='replace'):
             problems.append('the two arms ran different relay settings' + (' (beyond the window)' if mode == 'window' else ''))
         differing = [k for k in set(R['rows']) & set(P['rows'])
                      if R['rows'][k].get('selected_source_slots') != P['rows'][k].get('selected_source_slots')
+                     or R['rows'][k].get('worker_positions') != P['rows'][k].get('worker_positions')
                      or len(R['rows'][k]['workers']) != len(P['rows'][k]['workers'])]
         if differing:
             problems.append(f'{len(differing)} case(s) with different selections or worker counts between the arms')

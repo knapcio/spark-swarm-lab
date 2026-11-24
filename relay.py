@@ -47,7 +47,7 @@ def settings(plan):
     r = plan.get('relay') or {}
     return dict(k=int(r.get('k', DEFAULT_K)), max_chars=int(r.get('max_chars', DEFAULT_MAX_CHARS)),
                 selection_seed=str(r.get('selection_seed', 'relay-v1')), variant=r.get('variant'),
-                window=_window(r.get('window', 'tail')),
+                window=_window(r.get('window', 'tail')), changed_only=bool(r.get('changed_only', False)),
                 seed_offsets={arm: (plan.get('seed_offsets') or {}).get(arm, DEFAULT_SEED_OFFSETS[arm]) for arm in ARMS})
 
 
@@ -124,6 +124,18 @@ def relay_extra(text, max_chars, window='tail'):
     return PROTOCOL + '\n\n' + excerpt(text, max_chars, window)
 
 
+def window_changes(text, max_chars):
+    """True if the dense excerpt of an artifact differs from its tail excerpt."""
+    return excerpt(text, max_chars, 'dense') != excerpt(text, max_chars, 'tail')
+
+
+def changed_only(cp, max_chars):
+    """A tail-vs-dense screen's case plan: only the selected workers whose dense excerpt differs from the tail one,
+    each keeping its position in the full selection (same worker slot and seed as in a full screen)."""
+    kept = [dict(x, position=i) for i, x in enumerate(cp['selected']) if window_changes(x['text'], max_chars)]
+    return dict(cp, selected=kept, selected_before_changed_only=len(cp['selected']))
+
+
 def case_plan(seg, case_row, task, seed, s):
     """What a case gets in both arms: the selected artifacts (RELAY) and as many replacement workers (REPLACE)."""
     cands = candidates(seg, case_row)
@@ -149,6 +161,7 @@ def run_arm(arm, plan, source, out, task, seed, case_index, cp, slots, endpoints
     offset = s['seed_offsets'][arm]
 
     def worker(i, sel):
+        i = sel.get('position', i)  # changed-only screens keep each worker's position in the full selection
         slot = SLOT_BASE[arm] + i
         extra = relay_extra(sel['text'], s['max_chars'], s['window']) if arm == 'relay' else ''
         agent_seed = worker_seed(arm, s, run_name, task['id'], seed, slot)
