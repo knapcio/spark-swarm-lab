@@ -250,6 +250,13 @@ exact task ... use whatever is correct in it, finish the task"), against the sam
 input). Gate passed; a replication on 29 unhinted esc_none abstentions of hard-v16 is running, then an in-swarm study
 (roll12relay: escalation agents receive one failed artifact) on a fresh corpus.
 
+## 2026-11-24 (21): artifact relay replicated ([relay-screen-hard16-v1](relay-screen-hard16-v1/REPORT.md))
+
+29 unhinted esc_none abstentions of hard-v16 (6 puzzles), plan 80c6f4f frozen first: **RELAY 5 vs REPLACE 2 rescues**
+(relay-only 4, replace-only 1), 0 wrong; total compute +21 % (artifacts are prompt input). Pooled over both screens
+RELAY 9 vs REPLACE 2 of 43, 0 wrong: the pre-registered gate for the in-swarm study passed; swarm-relay-hard19-v1
+(roll12cancel vs roll12relay, plan 7ee58f6, corpus 61ca1bf) started 18:40Z.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
