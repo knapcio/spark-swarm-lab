@@ -473,21 +473,40 @@ class TrackedSlots(Slots):
             self.sem[endpoint].release()
             self.cond.notify_all()
 
-    def permit(self, endpoint, below=None, poll=None):
-        """Context manager: wait (condition, re-checked on every release or every `poll` s) until try_acquire succeeds."""
+    def permit(self, endpoint, below=None, poll=None, cancel=None, record=None):
+        """Context manager: wait (condition, re-checked on every release, on the case's cancel, or every `poll` s)
+        until try_acquire succeeds. If `cancel` is set while waiting, it enters WITHOUT a permit at once (the caller
+        sees the cancel and skips its work). record(dict): the occupancy at acquisition, or cancelled=True."""
         slots = self
 
         class Permit:
+            held = False
+
             def __enter__(self):
                 with slots.cond:
-                    while not slots.try_acquire(endpoint, below):
+                    while True:
+                        if cancel is not None and cancel.is_set():
+                            if record:
+                                record(dict(cancelled=True))
+                            return self
+                        occupancy = slots.in_flight[endpoint]
+                        if slots.try_acquire(endpoint, below):
+                            self.held = True
+                            if record:
+                                record(dict(occupancy=occupancy))
+                            return self
                         slots.cond.wait(poll)
-                return self
 
             def __exit__(self, *exc):
-                slots.release(endpoint)
+                if self.held:
+                    self.held = False
+                    slots.release(endpoint)
                 return False
         return Permit()
+
+    def wake(self):
+        with self.cond:
+            self.cond.notify_all()
 
     def __call__(self, endpoint):
         return self.permit(endpoint)
@@ -498,9 +517,10 @@ class IdleSlots:
     start); every later permit (its judge) is idle-gated the same way: taken only while the node has fewer than
     `threshold` requests in flight, so extra agents never delay other cases' first-wave agents or judges by more than
     the permits they already hold."""
-    def __init__(self, slots, endpoint, threshold, poll):
-        self.slots, self.endpoint, self.threshold, self.poll = slots, endpoint, threshold, poll
+    def __init__(self, slots, endpoint, threshold, poll, cancel=None):
+        self.slots, self.endpoint, self.threshold, self.poll, self.cancel = slots, endpoint, threshold, poll, cancel
         self.held = True  # the admission permit, not yet handed to the worker
+        self.judge_admission = None  # {'occupancy': n} or {'cancelled': True}
 
     def drop_unused(self):
         if self.held:
@@ -520,7 +540,8 @@ class IdleSlots:
                     owner.slots.release(endpoint)
                     return False
             return Held()
-        return self.slots.permit(endpoint, below=self.threshold, poll=self.poll)
+        return self.slots.permit(endpoint, below=self.threshold, poll=self.poll, cancel=self.cancel,
+                                 record=lambda r: setattr(owner, 'judge_admission', r))
 
 
 def idle_extension(agent, race, slots, first=None, cap=None, threshold=None, max_inflight=None, poll=None):
@@ -537,6 +558,9 @@ def idle_extension(agent, race, slots, first=None, cap=None, threshold=None, max
     poll = IDLE_POLL_SECONDS if poll is None else poll
     require(isinstance(slots, TrackedSlots), 'roll12idle needs TrackedSlots (occupancy)')
     race['idle_ran'] = True
+    race.setdefault('on_cancel', []).append(slots.wake)  # an accept wakes this case's waiters immediately
+    if race['cancel'].is_set():
+        return []
     results, threads, state = [], [], dict(running=0)
 
     def run(slot, node, held, occupancy):
@@ -545,7 +569,7 @@ def idle_extension(agent, race, slots, first=None, cap=None, threshold=None, max
         except Exception as exc:  # never lose a slot
             info = fault_record(slot, '', exc)
         held.drop_unused()
-        info.update(idle_node=node, idle_occupancy_at_start=occupancy)
+        info.update(idle_node=node, idle_occupancy_at_start=occupancy, idle_judge_admission=held.judge_admission)
         with slots.cond:
             results.append(info)
             state['running'] -= 1
@@ -562,11 +586,20 @@ def idle_extension(agent, race, slots, first=None, cap=None, threshold=None, max
                              if slots.try_acquire(slots.endpoints[i], below=threshold)), None)
                 if node is None:
                     break
+                held = IdleSlots(slots, slots.endpoints[node], threshold, poll, race['cancel'])
+                t = threading.Thread(target=run, args=(nxt, node, held, occ[node]))
+                try:
+                    t.start()
+                except Exception as exc:  # the reserved permit is released and the slot recorded as a fault
+                    held.drop_unused()  # cond is re-entrant (RLock)
+                    info = fault_record(nxt, '', exc)
+                    info.update(idle_node=node, idle_occupancy_at_start=occ[node], started=False)
+                    results.append(info)
+                    state['failed'] = True
+                    nxt += 1
+                    break
                 state['running'] += 1
-                t = threading.Thread(target=run, args=(nxt, node, IdleSlots(slots, slots.endpoints[node], threshold, poll),
-                                                       occ[node]))
                 threads.append(t)
-                t.start()
                 nxt += 1
             if nxt >= cap:
                 break
@@ -585,6 +618,11 @@ def new_race(t0):
             if race['winner'] is None:
                 race.update(winner=slot, answer_s=round(time.monotonic() - t0, 3))
                 race['cancel'].set()
+                hooks = list(race.get('on_cancel', []))
+            else:
+                hooks = []
+        for hook in hooks:  # e.g. roll12idle: wake every waiter of this case at once
+            hook()
     race['accept'] = accept
     return race
 

@@ -12,8 +12,9 @@ Decisions (complete inputs only, unrounded values):
   G replaces S  if G has 0 wrong (all attempts) and G solved >= S solved - 2;
   GI replaces G if GI has 0 wrong (all attempts), GI solved >= G solved, at least 1 case answered by a slot >= 12,
                 and GI arm wall <= 1.10 x G arm wall.
-Arm wall = the sum over segments of (after.utc - before.utc) in arm_accounting.json (unrounded; runner_wall_seconds is
-rounded to tenths by arms.py); a missing timestamp makes the arm incomplete.
+Arm wall = the sum over segments of (after.utc - before.utc) in arm_accounting.json, in exact integer microseconds
+(runner_wall_seconds is rounded to tenths by arms.py); the gate compares 100 x GI <= 110 x G exactly; a missing
+timestamp makes the arm incomplete.
 
 usage: report_generic_hard18.py [--root DIR] [--out DIR] [--s DIR] [--g DIR] [--gi DIR]
 """
@@ -31,7 +32,7 @@ STUDY = 'swarm-generic-hard18-v1'
 PLAN = 'SWARM_GENERIC_HARD18_PLAN.json'
 ARMS = dict(S='roll12strategy', G='roll12cancel', GI='roll12idle')
 EXTRA_SLOT = 12
-NOISE, WALL_LIMIT = 2, 1.10
+NOISE = 2
 DESIGN_DISCLOSURE = (
     'Design notes: (1) escalation agents run on the node of the agent whose end freed their slot, so the same slot can '
     'run on different nodes in different arms; (2) each request\'s sampling seed hashes the agent seed, stage and '
@@ -52,13 +53,16 @@ def summarize(a):
                wrong_all_attempts=a['wrong_all_attempts'], wrong_attempts=a['wrong_attempts'], wasted_work=a['wasted_work'],
                abstain=sum(not r['answered'] for r in rows), unresolved=len(a['unresolved']), server_tokens=tok,
                server_tokens_per_case=tok / n if tok is not None and n else None, wall_seconds=a['window_seconds'],
+               wall_us=a['window_us'],
                runner_wall_seconds_rounded=a['wall_seconds'], wh=wh,
                wh_per_solved=wh / solved if wh is not None and solved else None, plan_sha256=a['plan_sha256'])
     extra = [r for r in rows if any(x['slot'] >= EXTRA_SLOT for x in r['agents'])]
     if extra or any('extra_agents' in r for r in rows):
         per_case = [sum(x['slot'] >= EXTRA_SLOT and x.get('started', True) for x in r['agents']) for r in rows]
-        occupancy = [x['idle_occupancy_at_start'] for r in rows for x in r['agents']
-                     if x['slot'] >= EXTRA_SLOT and 'idle_occupancy_at_start' in x]
+        started = [x for r in rows for x in r['agents'] if x['slot'] >= EXTRA_SLOT and x.get('started', True)]
+        occupancy = [x['idle_occupancy_at_start'] for x in started if 'idle_occupancy_at_start' in x]
+        judged = [(x.get('idle_judge_admission') or {}) for x in started]
+        judge_occ = [j['occupancy'] for j in judged if 'occupancy' in j]
         by_extra = [r for r in rows if r['answered'] and (r.get('selected_slot') or 0) >= EXTRA_SLOT]
         out.update(idle_phase_cases=sum(bool(r.get('idle_phase')) for r in rows),
                    extra_agents_total=sum(per_case), extra_agents_per_case=per_case,
@@ -67,7 +71,11 @@ def summarize(a):
                    wrong_by_extra=sum(bool(r['wrong']) for r in by_extra),
                    occupancy_at_start=dict(n=len(occupancy), median=r3.median(occupancy),
                                            max=max(occupancy) if occupancy else None,
-                                           histogram={str(k): occupancy.count(k) for k in sorted(set(occupancy))}))
+                                           histogram={str(k): occupancy.count(k) for k in sorted(set(occupancy))}),
+                   judge_occupancy_at_admission=dict(n=len(judge_occ), median=r3.median(judge_occ),
+                                                     max=max(judge_occ) if judge_occ else None,
+                                                     cancelled_while_waiting=sum(bool(j.get('cancelled')) for j in judged),
+                                                     histogram={str(k): judge_occ.count(k) for k in sorted(set(judge_occ))}))
     return out
 
 
@@ -85,6 +93,13 @@ def blocked(arms, *names):
     return f"incomplete - {' | '.join(why)}" if why else None
 
 
+def wall_within(gi_us, g_us):
+    """GI wall <= 1.10 x G wall, exactly: integer microseconds summed over segments, compared as 100*GI <= 110*G."""
+    if gi_us is None or g_us is None or g_us <= 0:
+        return False
+    return 100 * gi_us <= 110 * g_us
+
+
 def decisions(arms):
     S, G, GI = arms['S'], arms['G'], arms['GI']
     out = dict(G=blocked(arms, 'S', 'G'), GI=blocked(arms, 'G', 'GI'))
@@ -95,8 +110,7 @@ def decisions(arms):
     if out['GI'] is None:
         rule = dict(zero_wrong=GI['wrong_all_attempts'] == 0, solved_at_least_G=GI['solved'] >= G['solved'],
                     answered_by_extra_slot=GI.get('answered_by_extra', 0) >= 1,
-                    wall_at_most_110pct_of_G=(G['wall_seconds'] is not None and GI['wall_seconds'] is not None
-                                              and G['wall_seconds'] > 0 and GI['wall_seconds'] <= WALL_LIMIT * G['wall_seconds']))
+                    wall_at_most_110pct_of_G=wall_within(GI.get('wall_us'), G.get('wall_us')))
         rule['GI_replaces_G'] = all(rule.values())
         out['GI'] = rule
     return out
@@ -141,8 +155,12 @@ def markdown(s):
                 f"(per idle case: {gi['extra_agents_per_idle_case']})",
                 f"- cases answered by a slot >= 12: {gi['answered_by_extra']} (solved {gi['solved_by_extra']}, wrong "
                 f"{gi['wrong_by_extra']})",
-                f"- node occupancy when an extra agent started: n {occ['n']}, median {fmt(occ['median'])}, max "
-                f"{fmt(occ['max'])}, histogram {occ['histogram']}"]
+                f"- node occupancy when an extra agent started (started agents only): n {occ['n']}, median "
+                f"{fmt(occ['median'])}, max {fmt(occ['max'])}, histogram {occ['histogram']}",
+                f"- node occupancy when an extra agent's judge was admitted: n {gi['judge_occupancy_at_admission']['n']}, "
+                f"max {fmt(gi['judge_occupancy_at_admission']['max'])}, cancelled while waiting "
+                f"{gi['judge_occupancy_at_admission']['cancelled_while_waiting']}, histogram "
+                f"{gi['judge_occupancy_at_admission']['histogram']}"]
     else:
         out.append(f"- {gi['status']}")
     out += ['', '## Decisions (complete inputs, unrounded values)', '']

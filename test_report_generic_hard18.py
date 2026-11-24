@@ -61,8 +61,11 @@ def study(root, gi_wall=105, with_gi=True, gi_rows=None, g_wall=100):
     if not with_gi:
         return
     t1 = row('t1', 'roll12idle', 14, idle_phase=True, extra_agents=3,
-             agents=[agent(s) for s in range(12)] + [agent(12, idle_occupancy_at_start=3), agent(13, idle_occupancy_at_start=5),
-                                                     agent(14, True, True, idle_occupancy_at_start=4)])
+             agents=[agent(s) for s in range(12)] + [
+                 agent(12, idle_occupancy_at_start=3, idle_judge_admission=dict(occupancy=6)),
+                 agent(13, idle_occupancy_at_start=5, idle_judge_admission=dict(cancelled=True)),
+                 agent(14, True, True, idle_occupancy_at_start=4, idle_judge_admission=dict(occupancy=7)),
+                 dict(agent(15, idle_occupancy_at_start=11), started=False)])  # cancelled before start: not counted
     rows = gi_rows or [row('t0', 'roll12idle', 0, idle_phase=False, extra_agents=0), t1,
                        row('t2', 'roll12idle', 6, idle_phase=False, extra_agents=0)]
     write_run(runs / f'{STUDY}-roll12idle', plan, 'roll12idle', rows, 1500, wall=gi_wall, wh=1.5)
@@ -87,6 +90,8 @@ class GenericReportTests(unittest.TestCase):
         self.assertEqual((GI['idle_phase_cases'], GI['extra_agents_total'], GI['extra_agents_per_idle_case']), (1, 3, [3]))
         self.assertEqual((GI['answered_by_extra'], GI['solved_by_extra'], GI['wrong_by_extra']), (1, 1, 0))
         self.assertEqual(GI['occupancy_at_start'], dict(n=3, median=4, max=5, histogram={'3': 1, '4': 1, '5': 1}))
+        self.assertEqual(GI['judge_occupancy_at_admission'], dict(n=2, median=6.5, max=7, cancelled_while_waiting=1,
+                                                                  histogram={'6': 1, '7': 1}))
         self.assertNotIn('extra_agents_total', G)
         self.assertEqual(s['paired']['G_vs_S'], dict(cases=3, first_only=1, second_only=1, sign_test_p=1.0))
         self.assertEqual(s['paired']['GI_vs_G'], dict(cases=3, first_only=1, second_only=0, sign_test_p=1.0))
@@ -120,6 +125,22 @@ class GenericReportTests(unittest.TestCase):
             study(root, g_wall=100.04, gi_wall=110.04)
             self.assertTrue(self.build(root)['decisions']['GI']['wall_at_most_110pct_of_G'])
 
+    def test_exactly_110_percent_passes_across_segments(self):
+        # GI split over two segments whose float sum would exceed 1.10 x G by rounding
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            study(root, g_wall=100.1, gi_wall=0.1)
+            seg = root / 'runs' / f'{STUDY}-roll12idle-resume1'
+            seg.mkdir()
+            plan = json.loads((root / rep.PLAN).read_text())
+            (seg / 'metadata.json').write_text(json.dumps(dict(protocol=plan, policies=['roll12idle'], resume={})))
+            (seg / 'arm_accounting.json').write_text(json.dumps(acct(10, wall=110.01)))  # 0.1 + 110.01 = 110.11 = 1.1 x 100.1
+            s = self.build(root)
+        self.assertEqual((s['arms']['G']['wall_us'], s['arms']['GI']['wall_us']), (100_100_000, 110_110_000))
+        self.assertTrue(s['decisions']['GI']['wall_at_most_110pct_of_G'])
+        self.assertTrue(rep.wall_within(110_110_000, 100_100_000))
+        self.assertFalse(rep.wall_within(110_110_001, 100_100_000))
+
     def test_missing_timestamp_makes_the_arm_incomplete(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -149,15 +170,15 @@ class GenericReportTests(unittest.TestCase):
 
     def test_rules_on_synthetic_values(self):
         arms = dict(S=dict(status='complete', solved=30), G=dict(status='complete', solved=28, wrong_all_attempts=0,
-                                                                 wall_seconds=1000.0),
-                    GI=dict(status='complete', solved=28, wrong_all_attempts=0, answered_by_extra=1, wall_seconds=1100.0))
+                                                                 wall_us=1_000_000_000),
+                    GI=dict(status='complete', solved=28, wrong_all_attempts=0, answered_by_extra=1, wall_us=1_100_000_000))
         dec = rep.decisions(arms)
         self.assertTrue(dec['G']['G_replaces_S'] and dec['GI']['GI_replaces_G'])
         arms['G']['solved'] = 27
         self.assertFalse(rep.decisions(arms)['G']['G_replaces_S'])
-        arms['GI']['wall_seconds'] = 1100.1  # 1.1001 x G
+        arms['GI']['wall_us'] = 1_100_000_001  # just above 1.10 x G
         self.assertFalse(rep.decisions(arms)['GI']['wall_at_most_110pct_of_G'])
-        arms['GI'].update(wall_seconds=1000.0, solved=26)
+        arms['GI'].update(wall_us=1_000_000_000, solved=26)
         self.assertFalse(rep.decisions(arms)['GI']['solved_at_least_G'])
 
     def test_missing_or_incomplete_arms_block_only_their_rules(self):

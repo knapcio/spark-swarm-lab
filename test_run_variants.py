@@ -737,6 +737,57 @@ class GenericPolicyTests(unittest.TestCase):
                             '--admission', str(root / 'adm.json')])
             self.assertIs(seen[policy], expected, policy)
 
+    def test_cancel_wakes_a_waiting_extra_judge_at_once(self):
+        import threading, time
+        slots = v.TrackedSlots(20, endpoints=['e0'])
+        race = v.new_race(time.monotonic())
+        race.setdefault('on_cancel', []).append(slots.wake)
+        with slots.cond:
+            self.assertTrue(slots.try_acquire('e0', below=12))
+        idle = v.IdleSlots(slots, 'e0', 12, 30.0, race['cancel'])  # 30 s poll: only the cancel can wake it in time
+        with idle('e0'):
+            pass
+        with slots.cond:
+            slots.in_flight['e0'] = 12  # busy node: the judge must wait
+        entered = threading.Event()
+
+        def judge():
+            with idle('e0'):
+                entered.set()
+        t = threading.Thread(target=judge)
+        t.start()
+        time.sleep(.2)
+        self.assertFalse(entered.is_set())
+        t0 = time.monotonic()
+        race['accept'](3)  # another agent of the case is accepted
+        t.join(2)
+        self.assertTrue(entered.is_set())
+        self.assertLess(time.monotonic() - t0, .5)
+        self.assertEqual(idle.judge_admission, dict(cancelled=True))
+        self.assertEqual(slots.in_flight['e0'], 12)  # entered without a permit; nothing released twice
+
+    def test_judge_admission_occupancy_is_logged(self):
+        rec, log, _ = self.run_policy('roll12idle', fast=set(range(20)))
+        extras = [a for a in rec['agents'] if a['slot'] >= 12]
+        self.assertTrue(all(a['idle_judge_admission'] and a['idle_judge_admission']['occupancy'] < v.IDLE_THRESHOLD
+                            for a in extras))
+
+    def test_failed_extra_launch_releases_its_permit_and_is_a_fault(self):
+        import threading, time
+        slots = v.TrackedSlots(20)
+        race = v.new_race(time.monotonic())
+
+        class NoThread(threading.Thread):
+            def start(self):
+                raise RuntimeError("can't start new thread")
+        with patch.object(v.threading, 'Thread', NoThread):
+            out = v.idle_extension(lambda slot, node, held: self.fail('agent must not run'), race, slots)
+        self.assertEqual(len(out), 1)
+        self.assertIn("can't start new thread", out[0]['agent_error'])
+        self.assertEqual((out[0]['slot'], out[0]['infra'], out[0]['started']), (12, 1, False))
+        self.assertEqual(set(slots.in_flight.values()), {0})
+        self.assertEqual({e: slots.sem[e]._value for e in slots.endpoints}, {e: 20 for e in slots.endpoints})
+
     def test_tracked_slots_count_and_cap(self):
         import threading, time
         slots = v.TrackedSlots(2)
