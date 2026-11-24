@@ -1,0 +1,33 @@
+{
+ "protocol": "deepseek-coding-reference-v1",
+ "status": "FROZEN",
+ "frozen_note": "Frozen 2026-11-24 ~21:35 Europe/Warsaw (owner OK 20:25) before any DeepSeek call on these seeds; corpus shas checked against the files.",
+ "tasks": "datasets/coding-hard-v1/tasks.json",
+ "tests": "datasets/coding-hard-v1/hidden-tests.json",
+ "tasks_sha256": "01cb39b1b18d7e6565576fa8b96a30681b3fe2a31796399bfd8f0f6761033da0",
+ "tests_sha256": "57cf4420c5db07ae2afab10b86c93f07fc24da6318386856cd10399b11effa13",
+ "seeds": [
+  19,
+  20,
+  21
+ ],
+ "agent_seed_offset": 6700,
+ "model": "deepseek-v4.1-flash",
+ "max_tokens": 32768,
+ "concurrency": 8,
+ "agent_wall_deadline_seconds": 3600,
+ "method": "One DeepSeek call per task and seed: same public task context, Python-source instruction, system prompt, parser and CPU sandbox as the Nemotron coding agents; thinking on, frontend default effort (high), max_tokens 32,768, streamed (120 s idle = infrastructure fault). Solved = passes feedback AND holdout (same rule as a selected Nemotron program).",
+ "compare": "coding-roll3-v1 (5a6da39): R2 67/72 wrong 4, R1 66/72 wrong 6 (same seeds and tasks).",
+ "study": "deepseek-coding3-v1",
+ "code_sha256": {
+  "run_ds_coding.py": "4c92a45f4216b927644f4b71bb70e77403921037621da4f39b9c1409f272bb9a",
+  "ds_coding_worker.py": "dedbfe9ece7ba4ce8c592ef13285b68ac21d949913f1d7c10d14449e8d0500b8",
+  "inkling/ds_switch_inkling.py": "347050398d3e7616b186bac223e4f4466177a97779ab43a4ba3f8827d042a7e5"
+ },
+ "question": "One DeepSeek V4.1 (native TP4 on Spark_01-04, one thinking call per case, same task context, parser and CPU sandbox) on exactly the 72 coding-hard-v1 cases of coding-roll3-v1 (24 tasks x seeds 19-21): solved and wrong vs the Inkling swarm R2 (67/72, default) and R1 (66/72) on the same cases; paired wins/losses; hybrid (DeepSeek only where the swarm did not answer).",
+ "hybrid_score": "solved = swarm solved OR (swarm unanswered AND DeepSeek solved); wrong counted for both parts",
+ "cost": "DeepSeek: client completion tokens per case, run wall from UTC timestamps, GPU Wh from the node power logs over the run window (inkling/energy.py), Wh per solved; swarm figures from the coding-roll3-v1 arm accounting.",
+ "switch": "inkling/ds_switch_inkling.py precheck + to-deepseek after the night swarm queue; owned tunnel 127.0.0.1:18889 -> Spark_01:8888; afterwards native stop only (stop-deepseek), leaving Spark_01-04 free for the Inkling TP4 bring-up (owner 20:25 Warsaw). Never fleet.sh restore / window.sh prod; head guards on Spark_01 kept.",
+ "report": "inkling/report_ds_coding3.py -> results/deepseek-coding3-v1/REPORT.md + report.json",
+ "limits": "Bundled differences (model, engine, one call vs a swarm); no causal model-size claim."
+}
