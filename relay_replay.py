@@ -5,8 +5,8 @@ One invocation runs ONE arm (--arm relay or --arm replace), so inkling/account_c
 server-side accounting; run RELAY first, then REPLACE, on the same cohort (frozen with --case-list). Per case both arms
 get the same number of workers: the number of artifacts RELAY selected for that case (seeded uniform sampling of up to
 K distinct, nonempty failed-agent artifacts), so the arms are paired by case and equal in worker budget. Workers use
-the recorded run's agent variant (same budget) unless the plan sets relay.variant. Seeds: 1000*seed + offset + slot
-(slot = 200 + i for RELAY, 300 + i for REPLACE; offsets from plan seed_offsets.relay / .replace).
+the recorded run's agent variant (same budget) unless the plan sets relay.variant. Worker seeds: a stable hash of
+(arm, plan salt, source run, task, case seed, slot); slot = 200 + i for RELAY, 300 + i for REPLACE. With several runs, each (task_id, seed) is used once (first run listed; --no-dedupe keeps all).
 
 Cohort: as closer_replay (frozen resume rule, clean abstentions, each case once; --case-list / --write-case-list).
 Plan fields: relay = {k, max_chars, selection_seed, variant?}, seed_offsets.relay/.replace, source_revision,
@@ -35,6 +35,23 @@ HERE = Path(__file__).resolve().parent
 MAX_PER_ENDPOINT = 20
 
 
+def dedupe(runs):
+    """Each (task_id, seed) once across the given runs: the first run listed supplies it (its agents' artifacts);
+    returns the dropped duplicates [[run, task_id, seed, kept_from_run], ...]."""
+    owner, dropped = {}, []
+    for run in runs:
+        kept = []
+        for c in run['cases']:
+            key = (c['task']['id'], c['seed'])
+            if key in owner:
+                dropped.append([run['run'], key[0], key[1], owner[key]])
+            else:
+                owner[key] = run['run']
+                kept.append(c)
+        run['cases'] = kept
+    return dropped
+
+
 def case_plans(runs, s):
     out = []
     for run in runs:
@@ -43,7 +60,7 @@ def case_plans(runs, s):
     return out
 
 
-def plan_only(runs, s):
+def plan_only(runs, s, duplicates=()):
     plans = case_plans(runs, s)
     per_run = {}
     for run, c, cp in plans:
@@ -66,7 +83,8 @@ def plan_only(runs, s):
         print(json.dumps(dict(summary=dict(run=name, **agg))))
         for k in total:
             total[k] += agg[k]
-    print(json.dumps(dict(mode='plan', model_calls=0, k=s['k'], max_chars=s['max_chars'], selection_seed=s['selection_seed'],
+    print(json.dumps(dict(mode='plan', model_calls=0, dropped_duplicates=len(duplicates),
+                          distinct_puzzles=len({c['task']['id'] for r in runs for c in r['cases']}), k=s['k'], max_chars=s['max_chars'], selection_seed=s['selection_seed'],
                           total=dict(total, relay_workers=total['selected'], replace_workers=total['selected']))))
     return 0
 
@@ -83,11 +101,14 @@ def main(argv=None):
     p.add_argument('--max-per-endpoint', type=int, default=8)
     p.add_argument('--plan-only', action='store_true')
     p.add_argument('--case-list', type=Path)
+    p.add_argument('--no-dedupe', dest='dedupe', action='store_false',
+                   help='keep a (task_id, seed) that several runs abstained on once per run (default: once overall)')
     p.add_argument('--write-case-list', type=Path)
     a = p.parse_args(argv)
     require(1 <= a.max_per_endpoint <= MAX_PER_ENDPOINT, 'max-per-endpoint must be 1..20')
     require(len(set(a.endpoints)) == len(a.endpoints), 'duplicate endpoints')
     runs = closer_replay.load_cohort(a.runs, a.case_list)
+    duplicates = dedupe(runs) if a.dedupe else []
     plan = read(a.plan) if a.plan else {}
     s = relay.settings(plan)
     require(s['k'] >= 1 and s['max_chars'] >= 1, 'relay.k and relay.max_chars must be >= 1')
@@ -95,7 +116,7 @@ def main(argv=None):
         if a.write_case_list:
             require(not a.write_case_list.exists(), 'case list file exists')
             write(a.write_case_list, closer_replay.cohort_list(runs))
-        return plan_only(runs, s)
+        return plan_only(runs, s, duplicates)
     require(a.arm and a.plan and a.output and a.admission, '--arm, --plan, --output and --admission are required for a run')
     out = a.output.resolve()
     require(not out.exists(), 'output exists')
@@ -115,6 +136,7 @@ def main(argv=None):
                                       runner_sha256=sha(Path(__file__)), relay_sha256=sha(HERE / 'relay.py'),
                                       run_variants_sha256=sha(HERE / 'run_variants.py'), runs=[str(r['dir']) for r in runs],
                                       cohort=closer_replay.cohort_list(runs), agent_variants=variants,
+                                      dedupe=a.dedupe, dropped_duplicates=duplicates,
                                       case_list=str(a.case_list) if a.case_list else None,
                                       case_list_sha256=sha(a.case_list) if a.case_list else None,
                                       cost_note='client_tokens are client-side completion tokens only; server-side cost '
@@ -131,7 +153,7 @@ def main(argv=None):
         wplan = dict(agent_variant=variants[run['run']], agent_wall_deadline_seconds=plan['agent_wall_deadline_seconds'])
         try:
             rec = relay.run_arm(a.arm, wplan, source, out / 'runs' / run['run'], c['task'], c['seed'], c['case_index'], cp,
-                                slots, a.endpoints, s)
+                                slots, a.endpoints, s, run_name=run['run'])
         except Exception as exc:  # never lose the case: a fault row (the arm is then incomplete)
             rec = dict(arm=a.arm, task_id=c['task']['id'], seed=c['seed'], case_index=c['case_index'], workers=[],
                        rescued=False, wrong=False, answered=False, faults=1, client_tokens=0, artifact_chars_used=0,

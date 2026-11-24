@@ -13,7 +13,11 @@ Paired comparison: exact McNemar (two-sided binomial on the discordant cases) of
 Costs: server generation tokens and GPU Wh of each arm from its account_cmd record (handoff/context input is charged
 there too: prompt processing is server work).
 
-usage: report_relay.py --relay DIR --replace DIR --plan PLAN --out DIR
+Both arms' cohorts must equal the frozen case list given with --case-list. Input work (prompt and computed prefill
+tokens) is reported next to generated tokens; total compute = generated + computed prefill. With several seeds of the
+same puzzle the cases are not independent, so the McNemar p is descriptive only (the report says so).
+
+usage: report_relay.py --relay DIR --replace DIR --plan PLAN --case-list FILE --out DIR
 """
 import argparse
 import hashlib
@@ -28,7 +32,27 @@ import report_round3_hard17 as r3  # noqa: E402
 ARMS = ('relay', 'replace')
 
 
-def load(arm, d, plan_sha):
+INPUT_KEYS = ('generation_tokens', 'prompt_tokens', 'prefill_compute_tokens')
+
+
+def server_work(d):
+    """Generation and input work of the arm from its account_cmd record (None + problem if a counter is invalid)."""
+    rec = json.loads((Path(d) / 'arm_accounting.json').read_text()) if (Path(d) / 'arm_accounting.json').exists() else {}
+    total = ((rec.get('server') or {}).get('total') or {})
+    values, problems = {}, []
+    for k in INPUT_KEYS:
+        x = total.get(k)
+        if not isinstance(x, (int, float)) or x != x or x < 0:
+            problems.append(f'server {k} missing or invalid')
+        values[k] = x
+    if problems:
+        return dict.fromkeys(('generation_tokens', 'prompt_tokens', 'prefill_compute_tokens', 'total_compute_tokens',
+                              'total_tokens_incl_cached_prompt')), problems
+    return dict(values, total_compute_tokens=values['generation_tokens'] + values['prefill_compute_tokens'],
+                total_tokens_incl_cached_prompt=values['generation_tokens'] + values['prompt_tokens']), []
+
+
+def load(arm, d, plan_sha, frozen_cases=None):
     d = Path(d)
     if not (d / 'cases.jsonl').exists():
         return dict(status='not run', dir=str(d))
@@ -52,8 +76,14 @@ def load(arm, d, plan_sha):
     faulted = [k for k, r in zip(keys, rows) if r.get('faults') or 'error' in r]
     if faulted:
         reasons.append(f'{len(faulted)} faulted case row(s)')
+    if frozen_cases is not None and set(keys) != frozen_cases:
+        reasons.append(f'cases differ from the frozen case list ({len(frozen_cases - set(keys))} missing, '
+                       f'{len(set(keys) - frozen_cases)} extra)')
     acct = r3.accounting([d], wrapper=True)
     reasons += acct['accounting_problems']
+    work, work_problems = server_work(d)
+    reasons += work_problems
+    acct = dict(acct, server_work=work)
     return dict(status='incomplete' if reasons else 'complete', reasons=reasons, dir=str(d), meta=meta,
                 rows={k: r for k, r in zip(keys, rows)}, **acct)
 
@@ -67,16 +97,21 @@ def summary(a):
                 answered=sum(bool(r['answered']) for r in rows), faults=sum(bool(r.get('faults')) for r in rows),
                 client_tokens=sum(r.get('client_tokens') or 0 for r in rows),
                 artifact_chars_used=sum(r.get('artifact_chars_used') or 0 for r in rows),
-                server_tokens=a['server_tokens'], wh=a['wh'], window_seconds=a['window_seconds'])
+                server_tokens=a['server_tokens'], wh=a['wh'], window_seconds=a['window_seconds'], **a['server_work'],
+                distinct_puzzles=len({k[1] for k in a['rows']}))
 
 
-def build(relay_dir, replace_dir, plan_file):
-    plan_file = Path(plan_file)
+def build(relay_dir, replace_dir, plan_file, case_list):
+    plan_file, case_list = Path(plan_file), Path(case_list)
     plan = json.loads(plan_file.read_text()) if plan_file.exists() else None
     plan_sha = hashlib.sha256(plan_file.read_bytes()).hexdigest() if plan else None
-    arms = {arm: load(arm, d, plan_sha) for arm, d in (('relay', relay_dir), ('replace', replace_dir))}
-    s = dict(plan=str(plan_file), plan_sha256=plan_sha, arms={k: summary(v) for k, v in arms.items()})
-    problems = [] if plan else ['frozen plan file not found']
+    frozen = {tuple(c[:3]) for c in json.loads(case_list.read_text())['cases']} if case_list.exists() else None
+    arms = {arm: load(arm, d, plan_sha, frozen if frozen is not None else set())
+            for arm, d in (('relay', relay_dir), ('replace', replace_dir))}
+    s = dict(plan=str(plan_file), plan_sha256=plan_sha, case_list=str(case_list),
+             case_list_sha256=hashlib.sha256(case_list.read_bytes()).hexdigest() if frozen is not None else None,
+             arms={k: summary(v) for k, v in arms.items()})
+    problems = ([] if plan else ['frozen plan file not found']) + ([] if frozen is not None else ['frozen case list not found'])
     R, P = arms['relay'], arms['replace']
     if 'rows' in R and 'rows' in P:
         if set(R['rows']) != set(P['rows']):
@@ -95,12 +130,18 @@ def build(relay_dir, replace_dir, plan_file):
         common = sorted(R['rows'])
         b = sum(bool(R['rows'][k]['rescued']) and not P['rows'][k]['rescued'] for k in common)
         c = sum(bool(P['rows'][k]['rescued']) and not R['rows'][k]['rescued'] for k in common)
-        s['mcnemar'] = dict(cases=len(common), relay_only=b, replace_only=c, exact_p=r3.sign_test(b, c))
+        puzzles = len({k[1] for k in common})
+        s['mcnemar'] = dict(cases=len(common), distinct_puzzles=puzzles, relay_only=b, replace_only=c,
+                            exact_p=r3.sign_test(b, c),
+                            note=('descriptive only: the cases are not independent (several seeds of the same puzzle)'
+                                  if puzzles < len(common) else 'cases are distinct puzzles'))
         rs, ps = s['arms']['relay'], s['arms']['replace']
         s['facts'] = dict(relay_rescued=rs['rescued'], replace_rescued=ps['rescued'], relay_wrong=rs['wrong'],
                           replace_wrong=ps['wrong'],
                           server_token_ratio_relay_over_replace=(rs['server_tokens'] / ps['server_tokens']
                                                                 if ps['server_tokens'] else None),
+                          compute_token_ratio_relay_over_replace=(rs['total_compute_tokens'] / ps['total_compute_tokens']
+                                                                 if ps['total_compute_tokens'] else None),
                           wh_ratio_relay_over_replace=rs['wh'] / ps['wh'] if rs['wh'] is not None and ps['wh'] else None)
     s['decision_rule'] = (plan or {}).get('decision_rule', 'plan not written')
     s['decision'] = ('evaluate the frozen rule against the facts' if complete
@@ -114,12 +155,14 @@ def build(relay_dir, replace_dir, plan_file):
 def markdown(s):
     fmt = r3.fmt
     out = ['# Generic artifact relay vs equal-budget replacement', '', f"Status: {s['status']}", '',
-           '| arm | status | cases | workers | rescued | wrong | server tokens | Wh | client tokens | artifact chars |',
-           '|---|---|---|---|---|---|---|---|---|---|']
+           '| arm | status | cases | puzzles | workers | rescued | wrong | generated | prompt | prefill computed | '
+           'total compute | Wh | artifact chars |', '|---|---|---|---|---|---|---|---|---|---|---|---|---|']
     for k in ARMS:
         a = s['arms'][k]
         out.append(f"| {k} | {a['status']} | " + ' | '.join(fmt(a.get(c)) for c in (
-            'cases', 'workers', 'rescued', 'wrong', 'server_tokens', 'wh', 'client_tokens', 'artifact_chars_used')) + ' |')
+            'cases', 'distinct_puzzles', 'workers', 'rescued', 'wrong', 'generation_tokens', 'prompt_tokens',
+            'prefill_compute_tokens', 'total_compute_tokens', 'wh', 'artifact_chars_used')) + ' |')
+    out += ['', 'total compute = generated + prefill computed (server counters; cached prompt tokens are not recomputed).']
     for k in ARMS:
         if s['arms'][k].get('reasons'):
             out.append(f"\n{k} incomplete: {'; '.join(s['arms'][k]['reasons'])}")
@@ -128,7 +171,8 @@ def markdown(s):
     if 'mcnemar' in s:
         m = s['mcnemar']
         out += ['', f"Paired (exact McNemar): relay-only rescued {m['relay_only']}, replace-only {m['replace_only']}, "
-                    f"p = {m['exact_p']:.4g}", '', f"Facts: {json.dumps(s['facts'])}"]
+                    f"p = {m['exact_p']:.4g} over {m['cases']} cases / {m['distinct_puzzles']} distinct puzzles ({m['note']})",
+                '', f"Facts: {json.dumps(s['facts'])}"]
     out += ['', f"Frozen rule: {s['decision_rule']}", '', f"Decision: {s['decision']}", '', '## Disclosures', '',
             s['disclosure'], '']
     return '\n'.join(out)
@@ -139,9 +183,10 @@ def main(argv=None):
     p.add_argument('--relay', type=Path, required=True)
     p.add_argument('--replace', type=Path, required=True)
     p.add_argument('--plan', type=Path, required=True)
+    p.add_argument('--case-list', type=Path, required=True, help='the frozen case list both arms were run on')
     p.add_argument('--out', type=Path, required=True)
     a = p.parse_args(argv)
-    s = build(a.relay, a.replace, a.plan)
+    s = build(a.relay, a.replace, a.plan, a.case_list)
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / 'report.json').write_text(json.dumps(s, indent=1, default=list) + '\n')
     (a.out / 'REPORT.md').write_text(markdown(s))

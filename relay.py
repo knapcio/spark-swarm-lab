@@ -5,8 +5,9 @@ For a case the recorded swarm left unanswered:
            the case; no ranking, no task knowledge) and start one worker per artifact on the original task with the
            extra text PROTOCOL + the artifact verbatim (the agent's recorded thinking and answer text in order, frozen
            truncation: the LAST max_chars characters).
-  REPLACE  the control: the same number of fresh independent workers (no artifact) with the same budget and the same
-           seeds structure (offset from the plan).
+  REPLACE  the control: the same number of fresh independent workers (no extra text at all) with the same budget.
+Worker seeds come from a stable hash of (arm, plan salt, source run, task, case seed, slot): unique everywhere, and
+REPLACE seeds are independent of RELAY seeds.
 Both arms: unchanged judge (run_variants.judge_with_reason, with retry), the first accepted plan per case within the
 arm wins and cancels the arm's other workers, the exact verifier only scores. Nothing here reads the task's content:
 artifacts are opaque text, selection is a seeded shuffle of slot numbers.
@@ -20,9 +21,8 @@ from pathlib import Path
 import closers  # generic helpers only: failed_agents, agent_events, EndpointSlots (no matching code is used)
 import run_variants
 
-PROTOCOL = ('Another solver worked on this exact task and did not reach an accepted answer. Its work is below. If it '
-            'can be completed into a full answer that satisfies the task, give that answer; otherwise abstain using the '
-            'answer format.')
+PROTOCOL = ('Another solver worked on this exact task and did not reach an accepted answer. Its work is below; it may '
+            'contain mistakes. Use whatever is correct in it, finish the task, and give your answer in the required format.')
 ARMS = ('relay', 'replace')
 DEFAULT_K, DEFAULT_MAX_CHARS = 4, 12000
 SLOT_BASE = dict(relay=200, replace=300)  # worker slot = base + position; stems, seeds and judge seeds stay distinct
@@ -95,7 +95,14 @@ def case_plan(seg, case_row, task, seed, s):
                                text=c['text']) for c in chosen])
 
 
-def run_arm(arm, plan, source, out, task, seed, case_index, cp, slots, endpoints, s):
+def worker_seed(arm, s, run_name, task_id, seed, slot):
+    """Stable per-worker seed from (arm, plan salt, source run, task, case seed, slot): no two workers of any arm,
+    run or case share a seed, and REPLACE seeds are independent of RELAY seeds."""
+    material = f"{arm}:{s['selection_seed']}:{s['seed_offsets'][arm]}:{run_name}:{task_id}:{seed}:{slot}".encode()
+    return int.from_bytes(hashlib.sha256(material).digest()[:4], 'big') & 0x7FFFFFFF
+
+
+def run_arm(arm, plan, source, out, task, seed, case_index, cp, slots, endpoints, s, run_name=''):
     """One arm on one case: len(cp['selected']) workers (RELAY with artifacts, REPLACE without), first accept wins."""
     t0 = time.monotonic()
     race = run_variants.new_race(t0)
@@ -104,9 +111,10 @@ def run_arm(arm, plan, source, out, task, seed, case_index, cp, slots, endpoints
     def worker(i, sel):
         slot = SLOT_BASE[arm] + i
         extra = relay_extra(sel['text'], s['max_chars']) if arm == 'relay' else ''
+        agent_seed = worker_seed(arm, s, run_name, task['id'], seed, slot)
         info = run_variants.run_agent_safe(plan, source, out, task, seed, case_index, arm, slot, extra, slots, offset,
-                                           t0, race, endpoints=endpoints)
-        return dict(info, position=i, source_slot=sel['source_slot'] if arm == 'relay' else None,
+                                           t0, race, endpoints=endpoints, agent_seed=agent_seed)
+        return dict(info, position=i, agent_seed=agent_seed, source_slot=sel['source_slot'] if arm == 'relay' else None,
                     artifact_chars_used=sel['chars_used'] if arm == 'relay' else 0)
     workers = run_variants.parallel([lambda i=i, sel=sel: worker(i, sel) for i, sel in enumerate(cp['selected'])])
     selected = next((w for w in workers if w['slot'] == race['winner']), None)

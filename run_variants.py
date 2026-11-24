@@ -293,10 +293,11 @@ def execute_cancellable(case, deadline_seconds, cancel):
 
 
 def run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, slots, seed_offset, t0=None, race=None,
-              node=None, endpoints=None):
+              node=None, endpoints=None, agent_seed=None):
     """One agent + its judge. race (cancel policies): dict(cancel=Event, accept=callable) shared by the case.
     node: endpoint index override (escalation agents run on the node of the agent they replace).
-    endpoints: endpoint list override (default the four tunnels; slots must cover the same endpoints)."""
+    endpoints: endpoint list override (default the four tunnels; slots must cover the same endpoints).
+    agent_seed: explicit worker seed (replay drivers); default 1000*seed + seed_offset + slot as everywhere."""
     t0 = time.monotonic() if t0 is None else t0
     cancel = race['cancel'] if race else None
     endpoints = endpoints or ENDPOINTS
@@ -309,7 +310,8 @@ def run_agent(plan, source, out, task, seed, case_index, policy, slot, extra, sl
         extra_file.write_text(extra)
     command = [sys.executable, str(source / 'forced72_worker.py'), '--run', '--variant', plan['agent_variant'],
                '--puzzle', ','.join(map(str, task['numbers'])) + ':' + str(task['target']), '--endpoint', endpoint,
-               '--seed', str(1000 * seed + seed_offset + slot), '--events', str(events), '--model', 'nemotron-lightning']
+               '--seed', str(1000 * seed + seed_offset + slot if agent_seed is None else agent_seed), '--events', str(events),
+               '--model', 'nemotron-lightning']
     if extra_file:
         command[2:2] = ['--extra-file', str(extra_file)]
     job = dict(task_id=task['id'], split='development', arm=policy, seed=seed, endpoint=endpoint, command=command,
