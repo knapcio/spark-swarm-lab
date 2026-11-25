@@ -268,6 +268,14 @@ RELAY 9 vs REPLACE 2 of 43, 0 wrong: the pre-registered gate for the in-swarm st
   winners but also 61/684 correct (8.9 % > 5 % cap): not pursued; a second arithmetic judge on forced answers found 0 false
   accepts in 2,787 invalid forced plans and rejected 0 of 54 valid ones: nothing to gain. Rejections to astra review.
 
+## 2026-11-25 (26): One DeepSeek on the coding-roll3 cases ([deepseek-coding3-v1](deepseek-coding3-v1/REPORT.md))
+
+Owner OK; plan 11fd27d frozen before any call. Native DeepSeek V4.1 TP4, one thinking call per case, same 72 cases:
+DeepSeek 57/72 (0 wrong, 15 unanswered) vs swarm R2 67/72 (4 wrong) and R1 66/72 (6 wrong). Paired: swarm R2 +11/-1
+(p = 0.006), R1 +13/-4 (p = 0.049). Hybrid R2 + DeepSeek on R2's 1 unanswered case: 67/72. Wh per solved: DeepSeek 2.64,
+R2 1.33, R1 1.32. DeepSeek never answered wrong but left 21 % unanswered; the swarm answers almost everything at half the
+energy per solved case, with 4-6 wrong answers that pass the public tests.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
