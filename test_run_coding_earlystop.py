@@ -155,7 +155,27 @@ class EarlyStopTests(unittest.TestCase):
             code, cases, started = self.run_main(fast_pass={3}, holdout={3}, rolling=dict(width=2), acceptance=mode)
             self.assertEqual(code, 0)
             self.assertTrue(all(c['answered'] and c['solved'] and c['winner_agent'] == 3 for c in cases))
-            self.assertTrue(all(c[-2:] == ['--acceptance', mode] for c in self.commands))
+            flags = [] if mode == 'self_tests' else r.judge_flags(r.JUDGE_DEFAULTS)
+            self.assertTrue(all(c[len(c) - 2 - len(flags):] == ['--acceptance', mode] + flags for c in self.commands))
+
+    def test_judge_budget_reaches_every_worker(self):
+        self.run_main(fast_pass={0}, holdout={0}, rolling=dict(width=2), acceptance='judge',
+                      plan_extra=dict(judge=dict(thinking_tokens=16384)))
+        tail = ['--acceptance', 'judge', '--judge-thinking-tokens', '16384', '--judge-answer-tokens', '2048',
+                '--judge-max-calls', '2']
+        self.assertTrue(self.commands and all(c[-len(tail):] == tail for c in self.commands))
+        self.run_main(fast_pass={0}, holdout={0}, rolling=dict(width=2), acceptance='judge')
+        self.assertTrue(all(c[-6:] == ['--judge-thinking-tokens', '6144', '--judge-answer-tokens', '2048',
+                                       '--judge-max-calls', '2'] for c in self.commands))
+        self.run_main(fast_pass={0}, holdout={0}, rolling=dict(width=2), acceptance='self_tests')
+        self.assertTrue(all('--judge-thinking-tokens' not in c for c in self.commands))
+
+    def test_judge_budget_plan_checks(self):
+        for acceptance, judge in ((None, dict(thinking_tokens=16384)), ('self_tests', dict(max_calls=1)),
+                                  ('judge', dict(max_calls=3)), ('judge', dict(thinking_tokens=0)),
+                                  ('judge', dict(thinking=16384)), ('judge', dict(answer_tokens='2048'))):
+            with self.assertRaises(ValueError):
+                self.run_main(fast_pass={0}, holdout={0}, acceptance=acceptance, plan_extra=dict(judge=judge))
 
     def test_acceptance_solved_needs_every_hidden_case(self):
         # accepted agent 0 passes the holdout but not the hidden feedback cases: answered, wrong

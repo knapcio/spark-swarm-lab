@@ -47,11 +47,26 @@ SAME_FIELDS = (('matrix',), ('agent_variants',), ('agent_seed_offset',), ('rolli
                ('limits',), ('scheduling', 'concurrent_agents_per_node'), ('serving', 'container'),
                ('serving', 'image_id'), ('serving', 'mem_fraction'))
 JUDGE_STAGES = ('judge', 'judge_forced')
-JUDGE_MAX_CALLS, JUDGE_MAX_TOKENS = 2, 8192  # coding_forced.JUDGE_TOTAL (6,144 thinking + forced answer)
-DISCLOSURE = (f'Budgets: the solver budget is identical in all arms. The judge arm adds, per parsed proposal, up to '
-              f'{JUDGE_MAX_CALLS} judge calls and {JUDGE_MAX_TOKENS:,} completion tokens on the same server; they are '
-              'included in its server and client tokens and GPU Wh and shown separately as judge tokens per case '
-              '(completed judge calls of cancelled agents included).')
+JUDGE_DEFAULTS = dict(thinking_tokens=6144, answer_tokens=2048, max_calls=2)  # run_coding_earlystop.JUDGE_DEFAULTS
+
+
+def judge_plan_budget(plan):
+    return dict(JUDGE_DEFAULTS, **((plan or {}).get('judge') or {}))
+
+
+def disclosure(judge_plan=None):
+    """Budget disclosure with the judge arm's frozen budget (plan field judge; defaults 6,144 + 2,048, 2 calls)."""
+    b = judge_plan_budget(judge_plan)
+    calls = 'up to 2 judge calls' if b['max_calls'] == 2 else '1 judge call'
+    return (f'Budgets: the solver budget is identical in all arms. The judge arm adds, per parsed proposal, {calls} and '
+            f'up to {b["thinking_tokens"] + b["answer_tokens"]:,} completion tokens ({b["thinking_tokens"]:,} thinking'
+            + (f' + {b["answer_tokens"]:,} for a forced verdict' if b['max_calls'] == 2 else '') +
+            ') on the same server; they are included in its server and client tokens and GPU Wh and shown separately as '
+            'judge tokens per case (completed judge calls of cancelled agents included). A forced verdict is one given '
+            'after the judge\'s thinking hit its cap; the forced-verdict share is reported per arm.')
+
+
+DISCLOSURE = disclosure()
 DECISION_TIMING = ('Decision timing: the public-tests arm is the unchanged default path of every earlier coding study: it '
                    'decides at the first feedback pass observed when a worker exits, i.e. after the hidden holdout grading '
                    'that runs inside the worker. The no-tests arms decide BEFORE hidden grading: the winner is the '
@@ -64,11 +79,12 @@ def read(path):
 
 
 def trace(run_dir, events):
-    """(puzzle_end, judge completion tokens) of one agent trace, located by name inside the run directory."""
+    """(puzzle_end, judge completion tokens, judge verdicts [judge_end events]) of one agent trace, located by name
+    inside the run directory."""
     path = Path(run_dir) / Path(events).name
-    end, judge = {}, 0
+    end, judge, verdicts = {}, 0, []
     if not path.exists():
-        return None, 0
+        return None, 0, []
     for line in path.read_text(errors='replace').splitlines():
         try:
             record = json.loads(line)
@@ -76,9 +92,11 @@ def trace(run_dir, events):
             continue
         if record.get('type') == 'puzzle_end':
             end = record
+        elif record.get('type') == 'judge_end':
+            verdicts.append(record)
         elif record.get('type') == 'request_end' and record.get('stage') in JUDGE_STAGES:
             judge += (record.get('usage') or {}).get('completion_tokens', 0) or 0
-    return end, judge
+    return end, judge, verdicts
 
 
 def plan_field(plan, keys):
@@ -98,10 +116,11 @@ def arm(run_dir, mode):
     n = len(cases)
     quality = dict(finished=0, parsed=0, accepted=0, accepted_correct=0, accepted_wrong=0, rejected_correct=0,
                    self_tests_invalid=0, judge_unparsed=0, traces_missing=0, late_decisions=0)
-    judge_tokens = 0
+    judge_tokens, verdicts = 0, []
     for row in rows:
-        end, judge = trace(run_dir, row['events'])
+        end, judge, judged = trace(run_dir, row['events'])
         judge_tokens += judge  # every completed judge call, cancelled agents included: judge tokens, never solver tokens
+        verdicts += judged  # every completed verdict, cancelled agents included
         if row.get('cancelled'):
             continue
         if row.get('late_decision'):  # recorded after the agent deadline: not an acceptance, not in the quality table
@@ -141,6 +160,10 @@ def arm(run_dir, mode):
         stop_p90=round(stops[min(len(stops) - 1, int(.9 * len(stops)))]) if stops else None,
         started_per_case=round(sum(c['started'] for c in cases.values()) / n, 2) if n else None,
         never_started=sum(c['never_started'] for c in cases.values()), acceptance_quality=quality,
+        judge=dict(budget=judge_plan_budget(plan), verdicts=len(verdicts),
+                   forced=sum(bool(v.get('judge_forced')) for v in verdicts),
+                   forced_share=round(sum(bool(v.get('judge_forced')) for v in verdicts) / len(verdicts), 3)
+                   if verdicts else None) if mode == 'judge' else None,
         runner_exit=acct.get('runner_exit') if acct else None, errors=len(meta.get('errors') or []),
         accounting=acct is not None, completed=bool(meta.get('completed_utc')))
     return cases, summary, plan
@@ -234,7 +257,15 @@ def tables(res):
             lines.append(f"| {labels[name]} | {q['finished']} | {q['parsed']} | {q['accepted']} | {q['accepted_correct']} | "
                          f"{q['accepted_wrong']} | {q['rejected_correct']} | {q['self_tests_invalid']} | {q['judge_unparsed']} | "
                          f"{q['late_decisions']} |")
-    lines += ['', DISCLOSURE, '', DECISION_TIMING, '']
+    for name, _ in ARMS:
+        j = (res['arms'].get(name) or {}).get('judge')
+        if j:
+            b = j['budget']
+            share = f"{j['forced_share'] * 100:.1f} %" if j['forced_share'] is not None else '-'
+            lines += ['', f"Judge verdicts ({labels[name]}; budget {b['thinking_tokens']:,} thinking + "
+                          f"{b['answer_tokens']:,} answer, {b['max_calls']} calls): {j['verdicts']}, forced after the "
+                          f"thinking cap: {j['forced']} ({share})."]
+    lines += ['', res['disclosure'], '', DECISION_TIMING, '']
     for name, p in res['paired'].items():
         lines.append(f"{labels[name]} vs public tests, paired on {p['cases']} cases: solved +{p['wins']} / -{p['losses']} "
                      f"(p = {p['p']:.2g}); answered +{p['answered_wins']} / -{p['answered_losses']} "
@@ -268,7 +299,8 @@ def main(argv=None):
             problems.append(f'{mode}: task/seed set is not the frozen {len(expected)} ({missing} missing, {extra} extra)')
     problems += consistency({m: d[2] for m, d in data.items()}) if len(data) > 1 else []
     complete = not problems and len(data) == len(names)
-    res = dict(status='complete' if complete else 'incomplete', problems=problems, disclosure=DISCLOSURE,
+    res = dict(status='complete' if complete else 'incomplete', problems=problems,
+               disclosure=disclosure(data['judge'][2] if 'judge' in data else None),
                decision_timing=DECISION_TIMING,
                arms={m: d[1] for m, d in data.items()},
                paired={m: paired(data['public'][0], d[0]) for m, d in data.items() if m != 'public'} if complete else {})

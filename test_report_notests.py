@@ -36,6 +36,7 @@ def make_arm(root, name, acceptance, outcomes, wh=10.0, server=1000, plan_extra=
             records = [dict(type='request_end', stage='code_propose', usage=dict(completion_tokens=50))]
             if acceptance == 'judge':
                 records.append(dict(type='request_end', stage='judge', usage=dict(completion_tokens=judge_tokens)))
+                records.append(dict(type='judge_end', judge_forced=bool(extra.get('_forced'))))
             if not extra.get('_cancelled'):
                 records.append(dict(type='puzzle_end', parsed=True, accepted=accepted, feedback_pass=feedback,
                                     holdout_pass=holdout, **extra))
@@ -51,7 +52,8 @@ def make_arm(root, name, acceptance, outcomes, wh=10.0, server=1000, plan_extra=
 
 
 class ReportNoTestsTests(unittest.TestCase):
-    def build(self, root, judge_plan=None, judge_exit=0, drop_judge_case=False, skip_judge=False, cancelled_judge=False):
+    def build(self, root, judge_plan=None, judge_exit=0, drop_judge_case=False, skip_judge=False, cancelled_judge=False,
+              forced_judge=False):
         ok = (True, True, False, {})
         make_arm(root, 'pub', None, {'a': (True, True, [ok]), 'b': (True, False, [(False, True, False, {})]),
                                      'c': (False, False, [(False, False, False, {})] * 2)})
@@ -61,6 +63,8 @@ class ReportNoTestsTests(unittest.TestCase):
         judge = {'a': (False, False, [(False, True, True, dict(judge_verdict=None))] * 2),
                  'b': (True, False, [(True, False, True, dict(judge_verdict=True))]),
                  'c': (False, False, [(False, False, False, dict(judge_verdict=False))])}
+        if forced_judge:
+            judge['b'] = (True, False, [(True, False, True, dict(judge_verdict=True, _forced=True))])
         if cancelled_judge:  # a cancelled agent whose judge call completed before the cancel
             judge['c'] = (False, False, judge['c'][2] + [(False, False, False, dict(_cancelled=True))])
         if drop_judge_case:
@@ -97,7 +101,7 @@ class ReportNoTestsTests(unittest.TestCase):
         self.assertEqual(jud['judge_tokens_per_case'], 40)  # 4 judged agents x 30 tokens / 3 cases
         self.assertEqual(jud['solver_tokens_per_case'], 60)  # client 100 per case minus judge
         self.assertEqual(res['status'], 'complete')
-        self.assertIn('up to 2 judge calls and 8,192 completion tokens', md)
+        self.assertIn('up to 2 judge calls and up to 8,192 completion tokens (6,144 thinking + 2,048 for a forced', md)
         self.assertEqual(res['disclosure'], rn.DISCLOSURE)
         self.assertEqual(res['paired']['self_tests'], dict(cases=3, wins=2, losses=0, p=0.5, answered_wins=1,
                                                            answered_losses=0, answered_p=1.0))
@@ -133,6 +137,20 @@ class ReportNoTestsTests(unittest.TestCase):
         q = res['arms']['self_tests']['acceptance_quality']
         self.assertEqual((q['finished'], q['accepted'], q['accepted_correct'], q['late_decisions']), (1, 1, 1, 1))
         self.assertIn('Late decisions (excluded)', md)
+
+    def test_forced_verdict_share_and_budget_disclosure(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self.build(root, judge_plan=dict(judge=dict(thinking_tokens=16384)), forced_judge=True)
+            res, md = self.run_report(root)
+        j = res['arms']['judge']['judge']
+        self.assertEqual((j['verdicts'], j['forced'], j['forced_share']), (4, 1, .25))
+        self.assertEqual(j['budget'], dict(thinking_tokens=16384, answer_tokens=2048, max_calls=2))
+        self.assertIsNone(res['arms']['self_tests']['judge'])
+        self.assertIn('up to 18,432 completion tokens (16,384 thinking + 2,048 for a forced verdict)', md)
+        self.assertIn('forced after the thinking cap: 1 (25.0 %)', md)
+        # judge plan differences are not a cross-arm inconsistency (only the judge arm has a judge budget)
+        self.assertEqual(res['status'], 'complete', res['problems'])
 
     def test_decision_timing_disclosed(self):
         with tempfile.TemporaryDirectory() as d:

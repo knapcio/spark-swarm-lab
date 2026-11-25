@@ -16,7 +16,8 @@ hidden grading. The winner is the accepted proposal with the EARLIEST recorded d
 accepted decision, the case Arbiter collects every decision already recorded by the case's agents and picks the earliest
 (not the poll order). A decision recorded after its agent's deadline is not an acceptance (the agent counts as a
 deadline; when the deadline timer fires, the trace is read once more and a decision recorded at or before the deadline
-still counts). The hidden feedback and holdout grading after a decision is scoring only (bounded by SCORING_GRACE_SECONDS) and
+still counts). Optional plan field judge = {"thinking_tokens", "answer_tokens", "max_calls"} (acceptance "judge"
+only; defaults 6144 / 2048 / 2, the original judge budget) is passed to every worker as --judge-* options. The hidden feedback and holdout grading after a decision is scoring only (bounded by SCORING_GRACE_SECONDS) and
 can neither change the winner nor move the decision. A case is solved if the winner passes ALL hidden cases (feedback and
 holdout). Without the field everything is exactly as before (the public-tests path: the first feedback pass observed when a
 worker exits, after its in-worker hidden grading, as in every earlier coding study). Plan-only by default.
@@ -37,6 +38,26 @@ from run_variants import execute_cancellable
 
 ACCEPTANCE = ('self_tests', 'judge')
 EARLY_STOP = {None: 'first_feedback_pass_in_time', 'self_tests': 'first_accepted_in_time', 'judge': 'first_accepted_in_time'}
+JUDGE_DEFAULTS = dict(thinking_tokens=6144, answer_tokens=2048, max_calls=2)  # the original judge budget (8192 in total)
+
+
+def judge_budget(plan):
+    """Plan field judge = {thinking_tokens, answer_tokens, max_calls} (acceptance 'judge' only; omitted keys take the
+    original defaults 6144 / 2048 / 2). Returned with every key resolved."""
+    judge = plan.get('judge')
+    require(judge is None or plan.get('acceptance') == 'judge', 'judge budget needs acceptance judge')
+    out = dict(JUDGE_DEFAULTS, **(judge or {}))
+    require(isinstance(judge, (dict, type(None))) and set(out) == set(JUDGE_DEFAULTS)
+            and all(type(v) is int for v in out.values()) and out['thinking_tokens'] > 0 and out['answer_tokens'] > 0
+            and out['max_calls'] in (1, 2), 'Invalid judge budget')
+    return out
+
+
+def judge_flags(budget):
+    return ['--judge-thinking-tokens', str(budget['thinking_tokens']), '--judge-answer-tokens',
+            str(budget['answer_tokens']), '--judge-max-calls', str(budget['max_calls'])]
+
+
 SCORING_GRACE_SECONDS = 600  # hidden grading after a decision: two sandbox grades, normally well under a minute
 
 
@@ -235,9 +256,11 @@ def main(argv=None):
         tasks = [t for t in tasks if t['id'] in plan['matrix']['task_ids']]
     require(len(tasks) == plan['matrix']['tasks_count'], 'Wrong task count')
     jobs = make_jobs(tasks, output, source, plan, tasks_path, tests_path)
+    judge = judge_budget(plan)
     if acceptance:
         for job in jobs:
-            job['command'] = job['command'] + ['--acceptance', acceptance]
+            job['command'] = job['command'] + ['--acceptance', acceptance] + (judge_flags(judge) if acceptance == 'judge'
+                                                                               else [])
     per_node, deadline = plan['scheduling']['concurrent_agents_per_node'], plan['limits']['agent_wall_deadline_seconds']
     meta = dict(protocol=plan, plan_sha256=sha(a.plan), jobs=len(jobs), source_sha256=before, output=str(output),
                 runner_sha256=sha(Path(__file__)))
