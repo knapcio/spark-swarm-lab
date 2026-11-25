@@ -12,7 +12,11 @@ and started (never removed/recreated); native DeepSeek starts with the exact sav
 (sha 4ac01755...) sent as a remote `bash -c` argument with local stdin=DEVNULL; native stop uses
 service.sh stop. Never fleet.sh restore / window.sh prod. Each step re-checks state first.
 
-Usage: inkling/ds_switch_inkling.py precheck | to-deepseek | to-inkling     (prints a JSON receipt per step)
+stop-deepseek = exactly the first half of to-inkling (guards, native `service.sh stop` over the same ssh, wait until no
+GPU apps on all four nodes) WITHOUT starting swarm-inkling / swarm-inkling-shim; its final receipt lists every node's
+GPU apps (empty) and container states (stopped) and guards_ok.
+
+Usage: inkling/ds_switch_inkling.py precheck | to-deepseek | to-inkling | stop-deepseek   (a JSON receipt per step)
 """
 import hashlib
 import json
@@ -26,7 +30,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
 NODES = ['Spark_01', 'Spark_02', 'Spark_03', 'Spark_04']
-CONTAINERS = json.loads((HERE / '.runtime/INKLING_CONTAINERS.json').read_text())  # recorded before the first switch
+_CONTAINERS = HERE / '.runtime/INKLING_CONTAINERS.json'  # recorded before the first switch
+CONTAINERS = json.loads(_CONTAINERS.read_text()) if _CONTAINERS.exists() else None  # None only outside the fleet tree
 START_SCRIPT = HERE / '.runtime/start-native-reference-exact-v1.sh'
 START_SHA = '4ac017501254e826406ea97232ff5d5b99591159102f985a481bd48fd3048f36'
 SERVICE = '/home/knapcio/dsgb10/pico-dgx-ds4/ds41f-4xgx10-switchless/engine/server/service.sh'
@@ -151,5 +156,89 @@ def to_inkling():
     fail('to-inkling', 'Inkling not healthy within 15 minutes')
 
 
+GPU_QUERY_TRIES = 3
+
+
+def gpu_query(node):
+    """(ok, apps): ok only if the ssh + nvidia-smi query exited 0 and every output line parses as 'pid, name'; a failed
+    or unparsable query is NOT idle (stop-deepseek only)."""
+    try:
+        out = ssh(node, 'nvidia-smi --query-compute-apps=pid,process_name --format=csv,noheader')
+    except Exception as exc:  # ssh timeout or launch failure
+        return False, [f'{type(exc).__name__}: {exc}'[:120]]
+    if out.returncode != 0:
+        return False, [f'query exit {out.returncode}: {out.stderr.strip()[:120]}']
+    apps = [line for line in out.stdout.splitlines() if line.strip()]
+    if any(not line.split(',')[0].strip().isdigit() for line in apps):
+        return False, apps
+    return True, apps
+
+
+def gpu_idle_everywhere():
+    """{node: (ok, apps)} with every failed query retried GPU_QUERY_TRIES times."""
+    state = {}
+    for n in NODES:
+        for _ in range(GPU_QUERY_TRIES):
+            state[n] = gpu_query(n)
+            if state[n][0]:
+                break
+    return state
+
+
+def stop_preflight():
+    """Local inputs of every later stop-deepseek step: the recorded container manifest (.runtime/INKLING_CONTAINERS.json,
+    readable, a [server id, shim id] pair per node) used by the final receipt check."""
+    problems = []
+    if not isinstance(CONTAINERS, dict):
+        problems.append(f'container manifest {_CONTAINERS} missing or unreadable')
+    else:
+        for n in NODES:
+            ids = CONTAINERS.get(n)
+            if not (isinstance(ids, (list, tuple)) and len(ids) == 2 and all(isinstance(x, str) and x for x in ids)):
+                problems.append(f'container manifest has no [server id, shim id] for {n}')
+    return problems
+
+
+def stop_deepseek():
+    """The first half of to_inkling (guards, native stop, wait for free GPUs), then a receipt instead of starting
+    Inkling: every node's GPU apps (a successful query with no compute apps), its swarm containers (recorded ids, not
+    running) and guards_ok. Stricter than to_inkling where only this step is concerned: the receipt log is written
+    before the stop is issued (fail early if it cannot be), a non-zero native stop fails the step, and a failed or
+    unparsable GPU query never counts as idle. The fleet is left with nothing serving."""
+    try:
+        LOG.parent.mkdir(parents=True, exist_ok=True)
+        record('stop-deepseek-start', guards=guards_ok())
+    except OSError as exc:
+        raise SystemExit(f'stop-deepseek: receipt log {LOG} cannot be written ({exc}); nothing was stopped')
+    problems = stop_preflight()
+    if problems:  # every later step's local inputs must exist before anything is stopped
+        fail('stop-deepseek', 'preflight failed; nothing was stopped: ' + '; '.join(problems))
+    if not guards_ok():
+        fail('stop-deepseek', 'head guards changed')
+    out = ssh('Spark_01', f'env FLEET=/home/knapcio/dsgb10/fleet.conf {SERVICE} stop', timeout=300)
+    record('native-stop', rc=out.returncode, stdout_tail=out.stdout[-300:], stderr_tail=out.stderr[-300:])
+    if out.returncode != 0:
+        record('deepseek-stopped', ok=False, guards_ok=guards_ok(), error=f'native stop exited {out.returncode}')
+        raise SystemExit(f'stop-deepseek: native stop exited {out.returncode}')
+    for _ in range(30):
+        state = gpu_idle_everywhere()
+        if all(ok and not apps for ok, apps in state.values()):
+            break
+        time.sleep(10)
+    else:
+        fail('stop-deepseek', 'GPU still busy or GPU query failing after native stop',
+             gpus={n: dict(query_ok=ok, apps=apps) for n, (ok, apps) in state.items()})
+    nodes = {n: dict(gpu=apps, gpu_query_ok=ok, container=container(n)) for n, (ok, apps) in gpu_idle_everywhere().items()}
+    guards = guards_ok()
+    ok = (guards and all(v['gpu_query_ok'] and not v['gpu'] for v in nodes.values())
+          and all(not v['container']['running'] and v['container']['id'].startswith(CONTAINERS[n][0])
+                  and v['container']['shim_id'].startswith(CONTAINERS[n][1]) for n, v in nodes.items()))
+    receipt = record('deepseek-stopped', ok=ok, guards_ok=guards, nodes=nodes)
+    if not ok:
+        raise SystemExit('stop-deepseek: GPU apps, swarm containers or guards not as expected')
+    return receipt
+
+
 if __name__ == '__main__':
-    {'precheck': precheck, 'to-deepseek': to_deepseek, 'to-inkling': to_inkling}[sys.argv[1]]()
+    {'precheck': precheck, 'to-deepseek': to_deepseek, 'to-inkling': to_inkling,
+     'stop-deepseek': stop_deepseek}[sys.argv[1]]()
