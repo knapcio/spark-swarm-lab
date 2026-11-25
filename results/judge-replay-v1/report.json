@@ -1,0 +1,131 @@
+{
+ "parts": {
+  "coding": {
+   "status": "complete",
+   "dir": "runs/judge-replay-v1-coding",
+   "reasons": [],
+   "table": {
+    "winner": {
+     "correct": {
+      "True": 623,
+      "False": 61
+     },
+     "wrong": {
+      "False": 20,
+      "True": 11
+     }
+    }
+   },
+   "client_tokens": 4324980,
+   "server": {
+    "generation_tokens": 4324980.0,
+    "prompt_tokens": 6254586.0,
+    "prefill_compute_tokens": 929786.0,
+    "total_compute_tokens": 5254766.0,
+    "total_tokens_incl_cached_prompt": 10579566.0,
+    "wh": 176.58,
+    "window_seconds": 5923.769181
+   },
+   "facts": {
+    "winners": 715,
+    "wrong_winners": 31,
+    "correct_winners": 684,
+    "wrong_rejected": 20,
+    "wrong_accepted": 11,
+    "correct_rejected": 61,
+    "correct_accepted": 623,
+    "no_verdict": 0,
+    "wrong_rejected_tasks": [
+     "eva-date_diff_ymd",
+     "eva-decode_repeat",
+     "eva-lex_shortest_path",
+     "eva-poly_expand",
+     "eva-render_table",
+     "eva-shell_words",
+     "eva-spreadsheet_eval"
+    ],
+    "correct_rejected_by_task": {
+     "eva-rational_eval": 7,
+     "eva-order_book": 5,
+     "eva-decode_repeat": 8,
+     "eva-cron_next": 6,
+     "eva-poly_expand": 7,
+     "eva-min_coins_lex": 1,
+     "eva-monthly_occurrences": 3,
+     "eva-spreadsheet_eval": 5,
+     "eva-date_diff_ymd": 2,
+     "eva-stable_topo": 2,
+     "eva-json_select": 8,
+     "eva-render_table": 1,
+     "eva-bool_minterms": 2,
+     "eva-canonical_huffman": 1,
+     "eva-grid_portals": 1,
+     "eva-lex_shortest_path": 1,
+     "eva-common_free_slots": 1
+    },
+    "forced_winners": 30
+   }
+  },
+  "arith": {
+   "status": "complete",
+   "dir": "runs/judge-replay-v1-arith",
+   "reasons": [],
+   "table": {
+    "forced": {
+     "correct": {
+      "True": 54
+     },
+     "wrong": {}
+    },
+    "control": {
+     "correct": {
+      "True": 53,
+      "False": 1
+     },
+     "wrong": {}
+    },
+    "forced_rejected": {
+     "correct": {},
+     "wrong": {
+      "False": 2787
+     }
+    }
+   },
+   "client_tokens": 2541739,
+   "server": {
+    "generation_tokens": 2535595.0,
+    "prompt_tokens": 1126959.0,
+    "prefill_compute_tokens": 910383.0,
+    "total_compute_tokens": 3445978.0,
+    "total_tokens_incl_cached_prompt": 3662554.0,
+    "wh": 86.18,
+    "window_seconds": 2860.265426
+   },
+   "facts": {
+    "forced": {
+     "plans": 54,
+     "valid": 54,
+     "valid_rejected": 0,
+     "invalid_accepted": 0,
+     "no_verdict": 0
+    },
+    "control": {
+     "plans": 54,
+     "valid": 54,
+     "valid_rejected": 1,
+     "invalid_accepted": 0,
+     "no_verdict": 0
+    },
+    "forced_rejected": {
+     "plans": 2787,
+     "invalid": 2787,
+     "false_accepts": 0,
+     "valid_accepted": 0,
+     "no_verdict": 0
+    }
+   }
+  }
+ },
+ "decision_rule": "Screen only (recorded candidates). A live study of the coding judge as a second key is planned only if it rejects at least half of the wrong winners while rejecting at most 5 % of the correct winners; a live second judge on forced answers only if it would turn at least 1 false accept into a reject per 1,000 forced plans without rejecting more than 1 % of valid accepted plans. Cost reported.",
+ "disclosure": "Weaknesses that remain in arms.py-driven arms (arms.py is pinned; disclose in reports): flush_caches ignores the ssh exit status and the HTTP status (only the response text is recorded), delta() accepts negative deltas after a counter reset, parse() counts a missing counter as 0 and accepts non-finite values, wait_idle() returns a busy snapshot after its limit without failing, and an energy failure does not change the exit code."
+}
