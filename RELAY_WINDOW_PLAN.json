@@ -1,0 +1,58 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason), unchanged; the exact verifier only scores",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_requests_per_endpoint": 20,
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh, MEM=0.75 since 2026-11-21 16:25 Europe/Warsaw (KV ~1.08M tokens per node)",
+  "adapter": "inkling/shim.py (vLLM dialect; client disconnects close the upstream stream and count as shim:client_cancels)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "temperature": "0.8 (harness constant)",
+  "mem_fraction": "0.75"
+ },
+ "dataset": "datasets/arithmetic-hard-v18/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v18",
+ "split": "evaluation",
+ "agent_variant": "xl_forced_original",
+ "status": "FROZEN",
+ "study": "relay-window-v1",
+ "study_group": "relay-window-v1",
+ "source_revision": "553307333e81db4961b75687a6ed815f9e410a0d",
+ "source_path": ".runtime/xl-night-source",
+ "runs": [
+  "runs/swarm-generic-hard18-v1-roll12cancel",
+  "runs/swarm-generic-hard18-v1-roll12idle",
+  "runs/swarm-hints-hard16-v1-esc_none"
+ ],
+ "relay": {
+  "k": 4,
+  "max_chars": 12000,
+  "selection_seed": 2026112422,
+  "windows": [
+   "tail",
+   "dense"
+  ],
+  "changed_only": true
+ },
+ "seed_offsets": {
+  "relay": 22400,
+  "replace": 22500
+ },
+ "code_sha256": {
+  "relay.py": "b9830ed90f5831b3c26be58f1bdf190749e1634ef29afa7d73c94850bce6adb4",
+  "relay_replay.py": "8fdbcb8df44da38c398076d5499ac1ec173d5941d1384513c7b7b14fcf097b56",
+  "inkling/report_relay.py": "d77c0b8858f046c29558043f1a431e3bd1f573496fc02628172a43193e0b65eb",
+  "run_variants.py": "aaaf67dcebbdb32417592b7ed4fffb31bdd9a2af6eba79ad03e24c40a69efc45",
+  "run_judge.py": "dadc67dba63432c095794dff9c04d81ac7952eecc0215488b3f6d7c28ca21956",
+  "inkling/account_cmd.py": "aaaa8e4fb449a0f437f51087a69f2634b3e2d3449eb9dc97b5a429a0298aafaa",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "445349b83e910f1189df8908aff2428ab3ee1dd0bb862f1fc46978b31bda82c6"
+ },
+ "question": "Generic relay variant (Fable round 4 idea 2): hand over the last information-dense 12,000 characters (latest window with zlib ratio >= 0.25, stepping back 2,000 characters) instead of the raw tail (43 % of tails are repetitive). Paired screen on the generic abstentions of hard-v18 (roll12cancel, roll12idle) and hard-v16 esc_none, deduplicated; only workers whose dense excerpt differs from the tail run, in both arms, with identical selection and seeds.",
+ "design": "Two RELAY arms (window tail, window dense), each alone, each wrapped by inkling/account_cmd.py; unchanged judge; cancel on accept within an arm; verifier only scores.",
+ "decision_rule": "roll12relay switches to the dense window (after the in-swarm study adopts relay) if dense rescues more cases than tail with 0 wrong; otherwise the tail stays. McNemar reported, descriptive (12 puzzles).",
+ "report": "inkling/report_relay.py --tail --dense -> results/relay-window-v1/"
+}
