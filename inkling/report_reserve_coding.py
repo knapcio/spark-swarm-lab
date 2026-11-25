@@ -10,7 +10,8 @@ results/coding-reserve-v1/{REPORT.md, report.json}.
 Validation and pairing are report_aot_coding's (embedded frozen plan, R2 runner, one variant per arm, clean
 completion, no operational fault under the runner's own rule, exact case set, accounting, Wh, no retry events; both
 plans equal in agent count, matrix, seeds, offsets, rolling width and the other compute fields; the same non-empty
-case set). Decision (Fable, complete inputs only, unrounded): the reserve is adopted if A unanswered <= P unanswered,
+case set; with code_elastic the A plan must declare limits.per_agent_completion_tokens = 40,960, its only allowed
+difference, disclosed as a +25 % per-agent cap). Decision (Fable, complete inputs only, unrounded): the reserve is adopted if A unanswered <= P unanswered,
 A solved >= P solved - 1, A wrong <= P wrong + 1 and A server generation tokens <= 1.00 x P; otherwise not. Reported
 with it: arm wall, cut-off answers per arm (an agent whose final answer still ended by length), and the path of every
 wrong answer (the winner's own end: self-closed answer, forced answer or continued answer, with its answer steps).
@@ -34,6 +35,8 @@ STUDY = 'coding-reserve-v1'
 ARMS = dict(P=dict(plan='CODING_RESERVE_P_PLAN.json', dir=f'runs/{STUDY}-p', variant='code_xl'),
             A=dict(plan='CODING_RESERVE_A_PLAN.json', dir=f'runs/{STUDY}-a', variant='code_reserve'))
 RESERVE_VARIANTS = ('code_reserve', 'code_elastic')
+# the only plan difference allowed besides the agent variant: code_elastic's declared per-agent cap (32,768 + 8,192)
+A_LIMITS = dict(code_reserve=None, code_elastic=dict(per_agent_completion_tokens=40960))
 
 
 def trace_end(a, row):
@@ -105,7 +108,7 @@ def build(root, dirs, plans=None, variant='code_reserve'):
     variants = dict(P='code_xl', A=variant)
     loaded = {k: rac.load(root, dirs[k], plans[k], variants[k]) for k in ARMS}
     s = dict(study=STUDY, variant=variant, arms={k: rac.summarize(a) for k, a in loaded.items()})
-    s['pairing_problems'] = rac.pairing(loaded)
+    s['pairing_problems'] = rac.pairing(loaded, A_LIMITS[variant])
     P, A = loaded['P'], loaded['A']
     if 'cases' in P and 'cases' in A:
         common = sorted(set(P['cases']) & set(A['cases']))
@@ -149,8 +152,9 @@ def markdown(s):
             'length is continued in the same sequence in 2,048-token steps, at most 10,240 answer tokens, every step '
             'charged and reported. ' + ('code_reserve keeps the 32,768-token agent budget (thinking cap 26,624).'
                                         if s['variant'] == 'code_reserve' else
-                                        'code_elastic gives an agent up to 8,192 more tokens than the frozen 32,768 '
-                                        '(40,960; answer phase only); any comparison against other systems must state it.'),
+                                        'code_elastic raises the per-agent cap by 25 % (40,960 instead of 32,768; the '
+                                        'extra 8,192 tokens are usable by the answer phase only), declared in the A plan\'s '
+                                        'limits; any comparison against other systems must state it.'),
             'Neither worker has a transport retry. Acceptance is the public feedback cases; the hidden holdout cases only '
             'score. Tokens are server counters over each arm\'s window. Idea: IDEAS-swarm-round5-fable.md, idea 1.', '']
     return '\n'.join(out)

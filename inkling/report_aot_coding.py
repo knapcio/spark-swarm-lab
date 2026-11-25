@@ -170,12 +170,21 @@ def summarize(a):
     return out
 
 
-def pairing(loaded):
-    """Complete pairing: the same case-defining and compute-defining plan fields and the same non-empty case set."""
+def pairing(loaded, a_limits=None):
+    """Complete pairing: the same case-defining and compute-defining plan fields and the same non-empty case set.
+    a_limits: declared exceptions for the A plan's limits (e.g. {'per_agent_completion_tokens': 40960} for an A variant
+    with a larger per-agent cap): A's limits must then equal P's limits updated with exactly these values; every other
+    field must still match."""
     problems = []
     plans = {k: loaded[k].get('plan') for k in ARMS}
     if all(isinstance(p, dict) for p in plans.values()):
-        diff = [f for f in PAIRED_FIELDS if plans['P'].get(f) != plans['A'].get(f)]
+        expected_a = dict(plans['A'])
+        if a_limits:
+            expected_a['limits'] = None if not isinstance(plans['P'].get('limits'), dict) else dict(plans['P']['limits'], **a_limits)
+            if plans['A'].get('limits') != expected_a['limits']:
+                problems.append(f"A plan limits {plans['A'].get('limits')} are not P's limits with exactly {a_limits}")
+            expected_a['limits'] = plans['P'].get('limits')
+        diff = [f for f in PAIRED_FIELDS if plans['P'].get(f) != expected_a.get(f)]
         if len(plans['P'].get('agent_variants') or []) != len(plans['A'].get('agent_variants') or []):
             diff.insert(0, 'agent count')
         if diff:

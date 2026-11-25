@@ -42,14 +42,17 @@ def write_arm(root, k, p, outcomes, tokens):
     (d / 'arm_accounting.json').write_text(json.dumps(acct(tokens, prompt=10000, prefill=3000)))
 
 
-def study(root, p_out=None, a_out=None, p_tokens=1000, a_tokens=1000, variant='code_reserve'):
+def study(root, p_out=None, a_out=None, p_tokens=1000, a_tokens=1000, variant='code_reserve', a_limits=None):
     (root / 'corpus.json').write_text(json.dumps(dict(tasks=TASKS)))
     p_out = p_out or {c: (('solved', SELF) if i < 5 else ('wrong', XL_FORCED) if i == 5 else ('none', XL_CUT))
                       for i, c in enumerate(CASES)}
     a_out = a_out or {c: (('solved', SELF) if i < 5 else ('wrong', RES_FORCED) if i == 5 else ('solved', RES_FORCED))
                       for i, c in enumerate(CASES)}
     write_arm(root, 'P', plan('code_xl'), p_out, p_tokens)
-    write_arm(root, 'A', plan(variant), a_out, a_tokens)
+    a_plan = plan(variant)
+    if a_limits is not None:
+        a_plan['limits'] = dict(a_plan['limits'], **a_limits)
+    write_arm(root, 'A', a_plan, a_out, a_tokens)
 
 
 class ReserveReportTests(unittest.TestCase):
@@ -95,11 +98,22 @@ class ReserveReportTests(unittest.TestCase):
     def test_variant_must_match_the_plan_and_elastic_is_disclosed(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            study(root, variant='code_elastic')
+            study(root, variant='code_elastic', a_limits=dict(per_agent_completion_tokens=40960))
             self.assertIn('expected only code_reserve', ' '.join(self.build(root)['arms']['A']['reasons']))
             s = self.build(root, 'code_elastic')
+            self.assertEqual(s['pairing_problems'], [])
             self.assertTrue(s['decision']['reserve_adopted'])
-            self.assertIn('8,192 more tokens', rep.markdown(s))
+            self.assertIn('by 25 %', rep.markdown(s))
+        for limits, why in ((None, 'not P\'s limits'), (dict(per_agent_completion_tokens=50000), 'not P\'s limits'),
+                            (dict(per_agent_completion_tokens=40960, idle_timeout_seconds=1), 'not P\'s limits')):
+            with tempfile.TemporaryDirectory() as d:
+                root = Path(d)  # elastic must declare exactly the +8,192 cap and nothing else
+                study(root, variant='code_elastic', a_limits=limits)
+                self.assertIn(why, self.build(root, 'code_elastic')['decision'])
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)  # code_reserve may not change the limits at all
+            study(root, a_limits=dict(per_agent_completion_tokens=40960))
+            self.assertIn("frozen plans differ in ['limits']", self.build(root)['decision'])
         with self.assertRaises(ValueError):
             rep.build(Path('/nonexistent'), {}, variant='code_xl')
 
