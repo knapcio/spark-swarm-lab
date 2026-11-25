@@ -123,6 +123,30 @@ class CodingAotReportTests(unittest.TestCase):
         empty = dict(plan=plan('code_xl'), cases={})
         self.assertIn('no paired cases', rep.pairing(dict(P=empty, A=dict(empty, plan=plan('code_aot')))))
 
+    def test_r2_cancellations_are_not_faults_but_unequal_agent_counts_are_unpaired(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            study(root)
+            a_dir = root / rep.ARMS['A']['dir']
+            rows = json.loads((a_dir / 'summary.json').read_text())
+            loser = dict(rows[0], agent=1, cancelled=True, controller_stop=True, returncode=-15, status='cancelled',
+                         unfinished_calls=1, infrastructure_failures=1, feedback_pass=False, holdout_pass=False)
+            (a_dir / 'summary.json').write_text(json.dumps(rows + [loser]))
+            s = self.build(root)
+            self.assertEqual(s['arms']['A']['status'], 'complete', s['arms']['A'].get('reasons'))
+            self.assertIsInstance(s['decision'], dict)
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            study(root, a_plan=plan('code_aot', agent_variants=['code_aot'] * 6))
+            s = self.build(root)
+        self.assertEqual(s['arms']['A']['status'], 'complete')
+        self.assertIn("frozen plans differ in ['agent count']", s['decision'])
+        for field, value in (('agent_seed_offset', 1), ('rolling', dict(width=3))):
+            with tempfile.TemporaryDirectory() as d:
+                root = Path(d)
+                study(root, a_plan=plan('code_aot', **{field: value}))
+                self.assertIn(field, self.build(root)['decision'])
+
     def test_arm_validation(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)  # a missing case

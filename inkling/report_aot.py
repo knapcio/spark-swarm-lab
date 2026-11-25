@@ -19,7 +19,9 @@ handed to the final call (from each agent's puzzle_end 'aot' summary).
 Transport retries (listed per arm from every agent trace of every segment): the worker retries a lost request once.
 In A (xl_aot) a retry is a dispatch and its lost streamed tokens are charged to the agent's own 32,768 budget; in P
 (xl_forced_original) the reviewed behaviour is kept and a retry is charged in the accounting only, not in the agent's
-budget. Both arms' server generation tokens include every retry.
+budget. A retry blocked by the wall limit is not a dispatch. A lost attempt's streamed-token count is a LOWER BOUND of the
+server's work on it, so on a rare transport loss an AoT agent can exceed 32,768 server-counted tokens by the unstreamed
+part of that attempt. Both arms' server generation tokens (the decision's measure) include every retry and that work.
 
 usage: report_aot.py [--root DIR] [--out DIR] [--p DIR] [--a DIR]
 """
@@ -195,7 +197,10 @@ def markdown(s):
             "alkimiadev's taskgraph idea. Both arms run the same worker source revision; the AoT agent uses the plain "
             "agent's per-agent completion-token budget (32,768) and the same agent count, so the compute cap is equal. "
             "Asymmetry: an AoT agent's transport retry is charged to its own budget and counts toward its call cap; a "
-            "plain agent's (rare) retry is not charged to its budget (reviewed behaviour kept), only to the accounting.", '']
+            "plain agent's (rare) retry is not charged to its budget (reviewed behaviour kept), only to the accounting. A lost "
+            "attempt's streamed-token count is a lower bound of the server's work on it, so an AoT agent can exceed "
+            "32,768 server-counted tokens by the unstreamed part of a lost attempt; the server counters used by the "
+            "decision include it.", '']
     return '\n'.join(out)
 
 

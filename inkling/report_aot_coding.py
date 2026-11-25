@@ -10,12 +10,15 @@ github.com/qixucen/atom); the task-graph framing follows alkimiadev's taskgraph 
 Validation per arm (any failure -> the arm is incomplete, never zero-filled): cases.json, summary.json and
 metadata.json present; the embedded plan equals the frozen plan file; the plan is FROZEN, runs run_coding_earlystop.py
 with early stop and rolling width 2, and every agent variant is the arm's (code_xl / code_aot); the run completed with no
-controller errors and no source change; no agent row has an operational fault (run_agents72.operational_fault); the
+controller errors and no source change; no agent row has an operational fault under the runner's own rule
+(run_coding_earlystop.fault: a non-winning agent terminated by R2 after an accept is a controller decision, not a fault;
+only a controller, trace or transport failure is); the
 case set is exactly the plan's corpus (split tasks, optional task_ids, x seeds); arm_accounting.json is valid
 (report_round3_hard17.accounting: server generation tokens, idle after, per-node counters, UTC window), runner exit 0
 and GPU Wh present; and no agent trace holds a transport-retry event (the pinned coding transport has none).
-Pairing must be complete: both frozen plans agree on every field that defines the cases and the compute (matrix, seeds,
-source revision and path, limits, scheduling, runner, agent seed offset, early stop, rolling, serving) and both arms
+Pairing must be complete: both frozen plans agree on every field that defines the cases and the compute (agent count,
+matrix incl. seeds, source revision and path, limits, scheduling, runner, agent seed offset, early stop, rolling width,
+serving) and both arms
 finished the same non-empty case set; otherwise the decision is incomplete.
 
 Decision (complete inputs only, unrounded): AoT is adopted if A solved >= P solved + 3, A wrong <= P wrong, and A server
@@ -40,7 +43,7 @@ ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(HERE))
 import report_round3_hard17 as r3  # noqa: E402
-from run_agents72 import operational_fault  # noqa: E402
+from run_coding_earlystop import fault as operational_fault  # noqa: E402  (the runner's own rule)
 
 STUDY = 'coding-aot-v1'
 ARMS = dict(P=dict(plan='CODING_AOT_P_PLAN.json', dir=f'runs/{STUDY}-p', variant='code_xl'),
@@ -173,6 +176,8 @@ def pairing(loaded):
     plans = {k: loaded[k].get('plan') for k in ARMS}
     if all(isinstance(p, dict) for p in plans.values()):
         diff = [f for f in PAIRED_FIELDS if plans['P'].get(f) != plans['A'].get(f)]
+        if len(plans['P'].get('agent_variants') or []) != len(plans['A'].get('agent_variants') or []):
+            diff.insert(0, 'agent count')
         if diff:
             problems.append(f'frozen plans differ in {diff}')
     else:
