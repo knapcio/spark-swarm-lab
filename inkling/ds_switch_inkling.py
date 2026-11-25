@@ -16,13 +16,19 @@ stop-deepseek = exactly the first half of to-inkling (guards, native `service.sh
 GPU apps on all four nodes) WITHOUT starting swarm-inkling / swarm-inkling-shim; its final receipt lists every node's
 GPU apps (empty) and container states (stopped) and guards_ok.
 
-start-deepseek = exactly to-deepseek's native start (pinned script, sha check) and health wait WITHOUT stopping any
+start-deepseek = to-deepseek's native start (pinned script; the bytes executed are the bytes hashed, sha in the
+receipt) and health wait (explicit: run/state serving AND /health 200) WITHOUT stopping any
 swarm container: it runs only on a fleet whose swarm is already stopped. Its preflight (nothing started on any
-failure) requires the head guards, a successful GPU query with no compute apps on all four nodes, and none of
+failure) requires the head guards, the start script hash, a successful GPU query with no compute apps and no
+dsgb10_rank/dsfront process (/proc scan) on all four nodes, and none of
 swarm-inkling, swarm-recipe, swarm-inkling-shim running on any node (a container counts as absent only on docker's
 exact "No such object/container" error; any other inspection failure fails the preflight).
 
-Usage: inkling/ds_switch_inkling.py precheck | to-deepseek | to-inkling | stop-deepseek | start-deepseek
+stop-native = the native stop for start-deepseek: service.sh stop, then confirmed shutdown (run/state stopped,
+/health not 200, no dsgb10_rank/dsfront process on any node by a /proc scan) and a successful idle GPU query on all
+four nodes; it touches no container and needs no container manifest.
+
+Usage: inkling/ds_switch_inkling.py precheck | to-deepseek | to-inkling | stop-deepseek | start-deepseek | stop-native
        (a JSON receipt per step)
 """
 import hashlib
@@ -289,7 +295,13 @@ def start_preflight():
         problems.append('start script hash differs')
     for n, (ok, apps) in gpu_idle_everywhere().items():
         ok_c, containers = swarm_containers(n)
-        observed['nodes'][n] = dict(gpu_query_ok=ok, gpu=apps, containers_ok=ok_c, containers=containers)
+        ok_p, procs = native_procs(n)
+        observed['nodes'][n] = dict(gpu_query_ok=ok, gpu=apps, containers_ok=ok_c, containers=containers,
+                                    procs_ok=ok_p, procs=procs)
+        if not ok_p:
+            problems.append(f'{n}: process scan failed')
+        elif procs:
+            problems.append(f'{n}: native process already running')
         if not ok:
             problems.append(f'{n}: GPU query failed')
         elif apps:
@@ -312,19 +324,84 @@ def start_deepseek():
     record('start-preflight', ok=not problems, problems=problems, **observed)
     if problems:
         fail('start-deepseek', 'preflight failed; nothing was started: ' + '; '.join(problems))
-    script = START_SCRIPT.read_text()
-    out = ssh('Spark_01', 'bash -c ' + shlex.quote(script), timeout=900)
-    record('native-start', rc=out.returncode, stdout_tail=out.stdout[-400:], stderr_tail=out.stderr[-400:])
+    data = START_SCRIPT.read_bytes()  # the exact bytes executed below, hashed once more right before the start
+    launcher_sha = hashlib.sha256(data).hexdigest()
+    if launcher_sha != START_SHA:
+        fail('start-deepseek', 'start script hash differs; nothing was started', launcher_sha=launcher_sha)
+    out = ssh('Spark_01', 'bash -c ' + shlex.quote(data.decode()), timeout=900)
+    record('native-start', rc=out.returncode, launcher_sha=launcher_sha, stdout_tail=out.stdout[-400:],
+           stderr_tail=out.stderr[-400:])
     if out.returncode != 0:
         fail('start-deepseek', 'native start returned nonzero')
     for _ in range(90):
         state = native_state()
-        if state.endswith('200'):
-            return record('native-healthy', ok=True, state=state, guards=guards_ok())
+        if native_healthy(state):
+            return record('native-healthy', ok=True, state=state, launcher_sha=launcher_sha, guards=guards_ok())
         time.sleep(10)
     fail('start-deepseek', 'native did not become healthy within 15 minutes', state=native_state())
 
 
+def _state_parts(state):
+    """(service state word, /health HTTP code) from native_state()'s two parts; ('', '') when malformed."""
+    lines = [line.strip() for line in state.splitlines() if line.strip()]
+    if len(lines) != 2 or not lines[0].split():
+        return '', ''
+    return lines[0].split()[0], lines[1]
+
+
+def native_healthy(state):
+    """Explicit success only: run/state says serving AND /health answered exactly 200."""
+    return _state_parts(state) == ('serving', '200')
+
+
+NATIVE_PROCS = ('dsgb10_rank', 'dsfront')
+
+
+def native_procs(node):
+    """(ok, ['pid comm', ...]) of the native engine's processes, by /proc/<pid>/comm (never matches the checking
+    shell); ok only if the scan ran to its end marker."""
+    cmd = ('for d in /proc/[0-9]*; do c=$(cat "$d/comm" 2>/dev/null) || continue; case "$c" in '
+           + '|'.join(NATIVE_PROCS) + ') echo "${d#/proc/} $c";; esac; done; echo END-OF-SCAN')
+    try:
+        out = ssh(node, cmd)
+    except Exception as exc:  # ssh timeout or launch failure
+        return False, [f'{type(exc).__name__}: {exc}'[:120]]
+    lines = out.stdout.splitlines()
+    if out.returncode != 0 or not lines or lines[-1] != 'END-OF-SCAN':
+        return False, [f'scan exit {out.returncode}: {out.stderr.strip()[:120]}']
+    return True, lines[:-1]
+
+
+def stop_native():
+    """Native stop with confirmed shutdown: service.sh stop exits 0, then (polled) run/state says stopped and
+    /health is not 200, no dsgb10_rank/dsfront process on any node (/proc scan), and a successful GPU query with no
+    compute apps on all four nodes. Touches no container and needs no container manifest. Receipts:
+    stop-native-start, native-stop, native-stopped."""
+    try:
+        LOG.parent.mkdir(parents=True, exist_ok=True)
+        record('stop-native-start')
+    except OSError as exc:
+        raise SystemExit(f'stop-native: receipt log {LOG} cannot be written ({exc}); nothing was stopped')
+    if not guards_ok():
+        fail('stop-native', 'head guards changed; nothing was stopped')
+    out = ssh('Spark_01', f'env FLEET=/home/knapcio/dsgb10/fleet.conf {SERVICE} stop', timeout=300)
+    record('native-stop', rc=out.returncode, stdout_tail=out.stdout[-300:], stderr_tail=out.stderr[-300:])
+    if out.returncode != 0:
+        fail('stop-native', f'native stop exited {out.returncode}')
+    observed = {}
+    for _ in range(30):
+        state = native_state()
+        word, code = _state_parts(state)
+        procs = {n: native_procs(n) for n in NODES}
+        gpus = gpu_idle_everywhere()
+        observed = dict(state=state, nodes={n: dict(procs_ok=procs[n][0], procs=procs[n][1], gpu_query_ok=gpus[n][0],
+                                                     gpu=gpus[n][1]) for n in NODES})
+        if (word == 'stopped' and code != '200' and all(ok and not p for ok, p in procs.values())
+                and all(ok and not apps for ok, apps in gpus.values())):
+            return record('native-stopped', ok=True, guards=guards_ok(), **observed)
+        time.sleep(10)
+    fail('stop-native', 'native shutdown not confirmed (state, processes or GPUs)', **observed)
+
 if __name__ == '__main__':
     {'precheck': precheck, 'to-deepseek': to_deepseek, 'to-inkling': to_inkling,
-     'stop-deepseek': stop_deepseek, 'start-deepseek': start_deepseek}[sys.argv[1]]()
+     'stop-deepseek': stop_deepseek, 'start-deepseek': start_deepseek, 'stop-native': stop_native}[sys.argv[1]]()

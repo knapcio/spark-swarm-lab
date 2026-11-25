@@ -22,11 +22,13 @@ def done(rc=0, out='', err=''):
 
 class FakeFleet:
     def __init__(self, guards=True, gpu=None, query_rc=0, garbage=False, running=(), absent=(), inspect_fail=(),
-                 inspect_raise=False, start_rc=0, healthy_after=2, old_docker=False):
+                 inspect_raise=False, start_rc=0, healthy_after=2, old_docker=False, procs=None, scan_fail=(),
+                 healthy_state='serving 1795 http://127.0.0.1:8888/v1\n200'):
         self.calls, self.health_polls = [], 0
         self.guards, self.gpu, self.query_rc, self.garbage = guards, gpu or {}, query_rc, garbage
         self.running, self.absent, self.inspect_fail, self.inspect_raise = running, absent, inspect_fail, inspect_raise
         self.start_rc, self.healthy_after, self.old_docker = start_rc, healthy_after, old_docker
+        self.procs, self.scan_fail, self.healthy_state = procs or {}, scan_fail, healthy_state
 
     def __call__(self, node, command, timeout=120):
         self.calls.append((node, command))
@@ -48,11 +50,15 @@ class FakeFleet:
                 msg = f'Error: No such object: {name}' if self.old_docker else f'error: no such object: {name}'
                 return done(1, out='\n', err=msg + '\n')
             return done(out='true\n' if (node, name) in self.running else 'false\n')
+        if command.startswith('for d in /proc/'):
+            if node in self.scan_fail:
+                return done(255, err='ssh: connect to host')
+            return done(out=self.procs.get(node, '') + 'END-OF-SCAN\n')
         if command.startswith('bash -c '):
             return done(self.start_rc, out='service: serving', err='')
         if 'service/run/state' in command:
             self.health_polls += 1
-            return done(out='serving 1\n200' if self.health_polls >= self.healthy_after else 'starting\n000')
+            return done(out=self.healthy_state if self.health_polls >= self.healthy_after else 'starting 1795 x\n000')
         if 'docker start' in command or 'docker stop' in command or 'service.sh stop' in command:
             raise AssertionError('start-deepseek must not start/stop containers or stop the native service')
         raise AssertionError(f'unexpected command {command!r}')
@@ -175,6 +181,48 @@ class StartDeepseekTests(unittest.TestCase):
         result, _ = self.run_start(fleet, log_path=blocked)
         self.assert_nothing_started(fleet, result, 'cannot be written')
         self.assertEqual(fleet.calls, [])
+
+    def test_running_native_process_or_failed_scan_starts_nothing(self):
+        fleet = FakeFleet(procs={'Spark_02': '4242 dsgb10_rank\n'})
+        result, _ = self.run_start(fleet)
+        self.assert_nothing_started(fleet, result)
+        self.assertIn('Spark_02: native process already running', str(result))
+        fleet = FakeFleet(scan_fail={'Spark_04'})
+        result, _ = self.run_start(fleet)
+        self.assert_nothing_started(fleet, result)
+        self.assertIn('Spark_04: process scan failed', str(result))
+
+    def test_executed_bytes_are_the_hashed_bytes(self):
+        fleet = FakeFleet()
+        receipt, log = self.run_start(fleet)
+        sha = hashlib.sha256(SCRIPT.encode()).hexdigest()
+        self.assertEqual(receipt['launcher_sha'], sha)
+        self.assertIn(f'"launcher_sha": "{sha}"', log.split('"step": "native-start"')[1].split('\n')[0])
+
+        class Flipping:  # preflight sees the pinned bytes, the start would see others
+            def __init__(self):
+                self.n = 0
+
+            def read_bytes(self):
+                self.n += 1
+                return SCRIPT.encode() if self.n == 1 else b'echo other\n'
+        fleet = FakeFleet()
+        with patch.object(ds, 'START_SCRIPT', Flipping()):
+            with tempfile.TemporaryDirectory() as d, patch.object(ds, 'ssh', fleet), \
+                    patch.object(ds, 'START_SHA', sha), patch.object(ds, 'LOG', Path(d) / 'l.jsonl'), \
+                    patch.object(ds.time, 'sleep', lambda s: None), contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaises(SystemExit) as cm:
+                    ds.start_deepseek()
+        self.assertIn('start script hash differs', str(cm.exception))
+        self.assertEqual(self.started(fleet), [])
+
+    def test_health_needs_serving_and_exactly_200(self):
+        for state in ('starting 1795 x\n200', 'serving 1795 x\n1200', 'serving 1795 x\n000', '200', ''):
+            self.assertFalse(ds.native_healthy(state), state)
+        self.assertTrue(ds.native_healthy('serving 1795 http://127.0.0.1:8888/v1\n200'))
+        fleet = FakeFleet(healthy_state='lent 1795 x\n200')
+        result, _ = self.run_start(fleet)
+        self.assertIn('did not become healthy', str(result))
 
     def test_existing_steps_unchanged(self):
         self.assertIn("docker stop -t 60 swarm-inkling-shim swarm-inkling", inspect.getsource(ds.to_deepseek))
