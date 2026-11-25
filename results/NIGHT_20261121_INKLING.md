@@ -284,6 +284,19 @@ in both; plain-only 7, AoT-only 0 (p = 0.016); AoT 2.1x server tokens, 2.15x wal
 every AoT agent decomposed and contracted (326/333); the split budget leaves the final solve only 16K of thinking,
 which these hard search tasks need in one stream. **AoT not adopted** (rejection to astra review); coding AoT running.
 
+## 2026-11-25 (28): AoT on coding ([coding-aot-v1](coding-aot-v1/REPORT.md))
+
+code_aot 66/72 vs plain code_xl 68/72 (AoT-only 3, plain-only 5, p = 0.73), 3 vs 4 wrong, 3 unanswered, 2.5x tokens,
+1.78 vs 0.64 Wh per solved: **not adopted** (with arithmetic AoT, both rejections go to astra).
+
+## 2026-11-25 (29): coding without provided tests ([coding-notests-v1](coding-notests-v1/REPORT.md))
+
+Owner question: what does the swarm lose without given tests? Same 72 fresh cases, scored on all hidden tests. Public
+tests (default) 69/72, 3 wrong; no tests + Inkling judge acceptance (16,384-token judge) 70/72, 2 wrong; no tests + the
+agents' own tests 68/72, 1 wrong, 3 unanswered. **No measurable accuracy loss** (paired +3/-2 and +3/-4, p = 1), but about
+2x wall and 2.2x energy per solved case (0.77 -> 1.65-1.72 Wh). Even at 16,384 thinking tokens 51 % of judge verdicts
+were forced after the cap.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
