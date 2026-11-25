@@ -99,6 +99,15 @@ def trace(run_dir, events):
     return end, judge, verdicts
 
 
+def judge_summary(plan, judge_ends):
+    """Verdicts = parsed judge results (judge_verdict true/false); unparseable results are counted separately and are not
+    in the forced-verdict share."""
+    parsed = [v for v in judge_ends if isinstance(v.get('judge_verdict'), bool)]
+    forced = sum(bool(v.get('judge_forced')) for v in parsed)
+    return dict(budget=judge_plan_budget(plan), verdicts=len(parsed), unparseable=len(judge_ends) - len(parsed),
+                forced=forced, forced_share=round(forced / len(parsed), 3) if parsed else None)
+
+
 def plan_field(plan, keys):
     value = plan
     for key in keys:
@@ -160,10 +169,7 @@ def arm(run_dir, mode):
         stop_p90=round(stops[min(len(stops) - 1, int(.9 * len(stops)))]) if stops else None,
         started_per_case=round(sum(c['started'] for c in cases.values()) / n, 2) if n else None,
         never_started=sum(c['never_started'] for c in cases.values()), acceptance_quality=quality,
-        judge=dict(budget=judge_plan_budget(plan), verdicts=len(verdicts),
-                   forced=sum(bool(v.get('judge_forced')) for v in verdicts),
-                   forced_share=round(sum(bool(v.get('judge_forced')) for v in verdicts) / len(verdicts), 3)
-                   if verdicts else None) if mode == 'judge' else None,
+        judge=judge_summary(plan, verdicts) if mode == 'judge' else None,
         runner_exit=acct.get('runner_exit') if acct else None, errors=len(meta.get('errors') or []),
         accounting=acct is not None, completed=bool(meta.get('completed_utc')))
     return cases, summary, plan
@@ -263,8 +269,9 @@ def tables(res):
             b = j['budget']
             share = f"{j['forced_share'] * 100:.1f} %" if j['forced_share'] is not None else '-'
             lines += ['', f"Judge verdicts ({labels[name]}; budget {b['thinking_tokens']:,} thinking + "
-                          f"{b['answer_tokens']:,} answer, {b['max_calls']} calls): {j['verdicts']}, forced after the "
-                          f"thinking cap: {j['forced']} ({share})."]
+                          f"{b['answer_tokens']:,} answer, {b['max_calls']} calls): {j['verdicts']} parsed, forced after "
+                          f"the thinking cap: {j['forced']} ({share}); unparseable results (not in the share): "
+                          f"{j['unparseable']}."]
     lines += ['', res['disclosure'], '', DECISION_TIMING, '']
     for name, p in res['paired'].items():
         lines.append(f"{labels[name]} vs public tests, paired on {p['cases']} cases: solved +{p['wins']} / -{p['losses']} "

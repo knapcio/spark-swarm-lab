@@ -36,7 +36,8 @@ def make_arm(root, name, acceptance, outcomes, wh=10.0, server=1000, plan_extra=
             records = [dict(type='request_end', stage='code_propose', usage=dict(completion_tokens=50))]
             if acceptance == 'judge':
                 records.append(dict(type='request_end', stage='judge', usage=dict(completion_tokens=judge_tokens)))
-                records.append(dict(type='judge_end', judge_forced=bool(extra.get('_forced'))))
+                records.append(dict(type='judge_end', judge_forced=bool(extra.get('_forced')),
+                                    judge_verdict=extra.get('judge_verdict')))
             if not extra.get('_cancelled'):
                 records.append(dict(type='puzzle_end', parsed=True, accepted=accepted, feedback_pass=feedback,
                                     holdout_pass=holdout, **extra))
@@ -144,13 +145,21 @@ class ReportNoTestsTests(unittest.TestCase):
             self.build(root, judge_plan=dict(judge=dict(thinking_tokens=16384)), forced_judge=True)
             res, md = self.run_report(root)
         j = res['arms']['judge']['judge']
-        self.assertEqual((j['verdicts'], j['forced'], j['forced_share']), (4, 1, .25))
+        # a: 2 unparseable (verdict None); b: 1 forced true; c: 1 false -> 2 parsed verdicts, 1 forced
+        self.assertEqual((j['verdicts'], j['unparseable'], j['forced'], j['forced_share']), (2, 2, 1, .5))
         self.assertEqual(j['budget'], dict(thinking_tokens=16384, answer_tokens=2048, max_calls=2))
         self.assertIsNone(res['arms']['self_tests']['judge'])
         self.assertIn('up to 18,432 completion tokens (16,384 thinking + 2,048 for a forced verdict)', md)
-        self.assertIn('forced after the thinking cap: 1 (25.0 %)', md)
+        self.assertIn('2 parsed, forced after the thinking cap: 1 (50.0 %); unparseable results (not in the share): 2.', md)
         # judge plan differences are not a cross-arm inconsistency (only the judge arm has a judge budget)
         self.assertEqual(res['status'], 'complete', res['problems'])
+
+    def test_forced_unparseable_results_are_not_verdicts(self):
+        ends = [dict(judge_verdict=None, judge_forced=True), dict(judge_verdict=None, judge_forced=True),
+                dict(judge_verdict=False, judge_forced=True), dict(judge_verdict=True, judge_forced=False)]
+        j = rn.judge_summary({}, ends)
+        self.assertEqual((j['verdicts'], j['unparseable'], j['forced'], j['forced_share']), (2, 2, 1, .5))
+        self.assertIsNone(rn.judge_summary({}, [dict(judge_verdict=None)])['forced_share'])
 
     def test_decision_timing_disclosed(self):
         with tempfile.TemporaryDirectory() as d:
