@@ -1,0 +1,97 @@
+{
+ "study": "swarm-wide-hard20-v1",
+ "policies": {
+  "G": "roll12cancel",
+  "W": "roll12wide"
+ },
+ "arms": {
+  "G": {
+   "status": "complete",
+   "reasons": [],
+   "segments": [
+    "swarm-wide-hard20-v1-roll12cancel"
+   ],
+   "cases": 96,
+   "solved": 87,
+   "wrong": 0,
+   "wrong_all_attempts": 0,
+   "wrong_attempts": [],
+   "wasted_work": [],
+   "abstain": 9,
+   "unresolved": 0,
+   "generated_tokens": 7168772.0,
+   "prompt_tokens": 4793593.0,
+   "prefill_compute_tokens": 149497.0,
+   "total_compute_tokens": 7318269.0,
+   "generated_per_case": 74674.70833333333,
+   "wall_seconds": 6085.590416,
+   "wall_us": 6085590416,
+   "wh": 193.27,
+   "wh_per_solved": 2.2214942528735633,
+   "judge_latency_median": 32.763000000000005,
+   "judge_latency_p90": 53.01999999999998,
+   "max_in_flight_histogram": null,
+   "widened_cases": 0,
+   "widened_agents": 0,
+   "widened_at_s_median": null,
+   "plan_sha256": "c51b56c9786bcb78565a6206c8a8f944945fa33fd0d82032fdd7796c0353a4b3"
+  },
+  "W": {
+   "status": "complete",
+   "reasons": [],
+   "segments": [
+    "swarm-wide-hard20-v1-roll12wide"
+   ],
+   "cases": 96,
+   "solved": 87,
+   "wrong": 0,
+   "wrong_all_attempts": 0,
+   "wrong_attempts": [],
+   "wasted_work": [],
+   "abstain": 9,
+   "unresolved": 0,
+   "generated_tokens": 7248453.0,
+   "prompt_tokens": 4724151.0,
+   "prefill_compute_tokens": 137271.0,
+   "total_compute_tokens": 7385724.0,
+   "generated_per_case": 75504.71875,
+   "wall_seconds": 5476.134836,
+   "wall_us": 5476134836,
+   "wh": 175.78,
+   "wh_per_solved": 2.0204597701149427,
+   "judge_latency_median": 34.76400000000001,
+   "judge_latency_p90": 54.68600000000015,
+   "max_in_flight_histogram": {
+    "4": 82,
+    "6": 1,
+    "7": 1,
+    "8": 12
+   },
+   "widened_cases": 14,
+   "widened_agents": 58,
+   "widened_at_s_median": 2424.827,
+   "plan_sha256": "c51b56c9786bcb78565a6206c8a8f944945fa33fd0d82032fdd7796c0353a4b3"
+  }
+ },
+ "paired": {
+  "cases": 96,
+  "w_only": 3,
+  "g_only": 3,
+  "sign_test_p": 1.0
+ },
+ "facts": {
+  "wall_ratio_w_over_g": 0.8998526784849596,
+  "generated_tokens_ratio": 1.0111150138405853,
+  "total_compute_ratio": 1.009217343609534,
+  "wh_ratio": 0.9095048377916903
+ },
+ "decision": {
+  "zero_wrong": true,
+  "solved_within_noise": true,
+  "wall_at_most_95pct_of_G": true,
+  "W_replaces_G": true
+ },
+ "frozen_rule": "W (roll12wide) replaces G (roll12cancel) as the arithmetic default if W has 0 wrong, W solved >= G solved - 2 (noise band), and W arm wall <= 0.95 x G arm wall (exact, from UTC timestamps).",
+ "disclosure": "Weaknesses that remain in arms.py-driven arms (arms.py is pinned; disclose in reports): flush_caches ignores the ssh exit status and the HTTP status (only the response text is recorded), delta() accepts negative deltas after a counter reset, parse() counts a missing counter as 0 and accepts non-finite values, wait_idle() returns a busy snapshot after its limit without failing, and an energy failure does not change the exit code.",
+ "design_disclosure": "Design notes: (1) G and W run the same agents with the same prompts and seeds (slots pair exactly); W only moves start times: once no case waits for admission, a case with at least one failed agent may start its next slots up to 8 in flight, oldest case first, least-loaded node first, keeping 2 permits per node free for judges; widened slots may run on another node than in G; (2) the trigger is slot occupancy and failure counts, never elapsed time and never task content; (3) the plan's code_sha256 pins are records checked by review, not enforced by the runner."
+}

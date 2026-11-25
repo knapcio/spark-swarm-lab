@@ -1,0 +1,90 @@
+{
+ "study": "swarm-relay-hard19-v1",
+ "policies": {
+  "G": "roll12cancel",
+  "RL": "roll12relay"
+ },
+ "arms": {
+  "G": {
+   "status": "complete",
+   "reasons": [],
+   "segments": [
+    "swarm-relay-hard19-v1-roll12cancel"
+   ],
+   "cases": 96,
+   "solved": 84,
+   "wrong": 0,
+   "wrong_all_attempts": 0,
+   "wrong_attempts": [],
+   "wasted_work": [],
+   "abstain": 12,
+   "unresolved": 0,
+   "generated_tokens": 8036885.0,
+   "prompt_tokens": 6093766.0,
+   "prefill_compute_tokens": 160710.0,
+   "total_compute_tokens": 8197595.0,
+   "generated_per_case": 83717.55208333333,
+   "prompt_per_case": 63476.729166666664,
+   "prefill_compute_per_case": 1674.0625,
+   "total_compute_per_case": 85391.61458333333,
+   "wall_seconds": 6589.805619,
+   "wall_us": 6589805619,
+   "wh": 208.06,
+   "wh_per_solved": 2.4769047619047617,
+   "escalation_answered": 6,
+   "escalation_solved": 6,
+   "relayed_answered": 0,
+   "relayed_solved": 0,
+   "relayed_agents": 0,
+   "plan_sha256": "784bec773db8de839a0112f66073b6cefe472a4709be037c70333d97f98aad43"
+  },
+  "RL": {
+   "status": "complete",
+   "reasons": [],
+   "segments": [
+    "swarm-relay-hard19-v1-roll12relay"
+   ],
+   "cases": 96,
+   "solved": 83,
+   "wrong": 0,
+   "wrong_all_attempts": 0,
+   "wrong_attempts": [],
+   "wasted_work": [],
+   "abstain": 13,
+   "unresolved": 0,
+   "generated_tokens": 8011709.0,
+   "prompt_tokens": 7636782.0,
+   "prefill_compute_tokens": 1149742.0,
+   "total_compute_tokens": 9161451.0,
+   "generated_per_case": 83455.30208333333,
+   "prompt_per_case": 79549.8125,
+   "prefill_compute_per_case": 11976.479166666666,
+   "total_compute_per_case": 95431.78125,
+   "wall_seconds": 6696.745464,
+   "wall_us": 6696745464,
+   "wh": 214.44,
+   "wh_per_solved": 2.583614457831325,
+   "escalation_answered": 6,
+   "escalation_solved": 6,
+   "relayed_answered": 6,
+   "relayed_solved": 6,
+   "relayed_agents": 138,
+   "plan_sha256": "784bec773db8de839a0112f66073b6cefe472a4709be037c70333d97f98aad43"
+  }
+ },
+ "paired": {
+  "cases": 96,
+  "rl_only": 0,
+  "g_only": 1,
+  "sign_test_p": 1.0
+ },
+ "decision": {
+  "zero_wrong": true,
+  "solved_at_least_G": false,
+  "escalation_answers_at_least_G": true,
+  "RL_replaces_G": false
+ },
+ "frozen_rule": "RL (roll12relay) replaces G (roll12cancel) as the arithmetic default if RL has 0 wrong, RL solved >= G solved, and RL answers at least as many cases through escalation agents as G. Cost and wall are reported, not gated (owner priority: quality).",
+ "disclosure": "Weaknesses that remain in arms.py-driven arms (arms.py is pinned; disclose in reports): flush_caches ignores the ssh exit status and the HTTP status (only the response text is recorded), delta() accepts negative deltas after a counter reset, parse() counts a missing counter as 0 and accepts non-finite values, wait_idle() returns a busy snapshot after its limit without failing, and an energy failure does not change the exit code.",
+ "design_disclosure": "Design notes: (1) G and RL share slots 0-3 exactly (seeds, nodes, prompts); escalation agents run on the node of the agent whose end freed their slot, so their nodes can differ between arms; (2) each request's sampling seed hashes the prompt, so RL's escalation agents (prompt + relayed work) sample differently from G's even with equal agent seeds; (3) the relayed work is chosen by seeded uniform sampling among the case's already failed agents, never by content; (4) the plan's code_sha256 pins are records checked by review, not enforced by the runner."
+}

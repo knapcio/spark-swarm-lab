@@ -1,0 +1,91 @@
+{
+ "mode": "window",
+ "arm_names": [
+  "tail",
+  "dense"
+ ],
+ "plan": "RELAY_WINDOW_PLAN.json",
+ "plan_sha256": "949a855dedd54f5088141bbcac11e8f327bca26cb46f2502546a750a8c0053a4",
+ "case_list": "results/relay-window-v1/case_list.json",
+ "case_list_sha256": "6c877badfb0622b59e56ef59e10d8296997d31593b641a930100067ba8d9ebd5",
+ "arms": {
+  "tail": {
+   "status": "complete",
+   "reasons": [],
+   "cases": 38,
+   "workers": 81,
+   "rescued": 1,
+   "wrong": 0,
+   "answered": 1,
+   "faults": 0,
+   "client_tokens": 2512472,
+   "artifact_chars_used": 972000,
+   "server_tokens": 2514457.0,
+   "wh": 93.02,
+   "window_seconds": 3355.923994,
+   "generation_tokens": 2514457.0,
+   "prompt_tokens": 3925386.0,
+   "prefill_compute_tokens": 755466.0,
+   "total_compute_tokens": 3269923.0,
+   "total_tokens_incl_cached_prompt": 6439843.0,
+   "distinct_puzzles": 13
+  },
+  "dense": {
+   "status": "complete",
+   "reasons": [],
+   "cases": 38,
+   "workers": 81,
+   "rescued": 1,
+   "wrong": 0,
+   "answered": 1,
+   "faults": 0,
+   "client_tokens": 2490727,
+   "artifact_chars_used": 972000,
+   "server_tokens": 2490727.0,
+   "wh": 80.93,
+   "window_seconds": 2841.807756,
+   "generation_tokens": 2490727.0,
+   "prompt_tokens": 3613383.0,
+   "prefill_compute_tokens": 638535.0,
+   "total_compute_tokens": 3129262.0,
+   "total_tokens_incl_cached_prompt": 6104110.0,
+   "distinct_puzzles": 13
+  }
+ },
+ "pairing_problems": [],
+ "status": "complete",
+ "mcnemar": {
+  "cases": 38,
+  "distinct_puzzles": 13,
+  "tail_only": 1,
+  "dense_only": 1,
+  "exact_p": 1.0,
+  "note": "descriptive only: the cases are not independent (several seeds of the same puzzle)"
+ },
+ "facts": {
+  "tail_rescued": 1,
+  "dense_rescued": 1,
+  "tail_wrong": 0,
+  "dense_wrong": 0,
+  "server_token_ratio_tail_over_dense": 1.0095273388050958,
+  "compute_token_ratio_tail_over_dense": 1.0449502150986398,
+  "wh_ratio_tail_over_dense": 1.1493883603113801,
+  "rescues_per_window": {
+   "tail": 1,
+   "dense": 1
+  },
+  "changed_workers": 81,
+  "changed_workers_started_in_both": 81,
+  "accepted_workers": {
+   "tail": 1,
+   "dense": 1
+  },
+  "accepted_workers_started_in_both": {
+   "tail": 1,
+   "dense": 1
+  }
+ },
+ "decision_rule": "roll12relay switches to the dense window (after the in-swarm study adopts relay) if dense rescues more cases than tail with 0 wrong; otherwise the tail stays. McNemar reported, descriptive (12 puzzles).",
+ "decision": "evaluate the frozen rule against the facts",
+ "disclosure": "Weaknesses that remain in arms.py-driven arms (arms.py is pinned; disclose in reports): flush_caches ignores the ssh exit status and the HTTP status (only the response text is recorded), delta() accepts negative deltas after a counter reset, parse() counts a missing counter as 0 and accepts non-finite values, wait_idle() returns a busy snapshot after its limit without failing, and an energy failure does not change the exit code."
+}
