@@ -276,6 +276,14 @@ DeepSeek 57/72 (0 wrong, 15 unanswered) vs swarm R2 67/72 (4 wrong) and R1 66/72
 R2 1.33, R1 1.32. DeepSeek never answered wrong but left 21 % unanswered; the swarm answers almost everything at half the
 energy per solved case, with 4-6 wrong answers that pass the public tests.
 
+## 2026-11-25 (27): generic Atom-of-Thoughts decomposition ([swarm-aot-hard21-v1](swarm-aot-hard21-v1/REPORT.md))
+
+Owner-approved (Teng et al. 2025, arXiv 2502.12018; taskgraph idea credited to alkimiadev). Fresh hard-v21, plans 58257fb,
+v2.9.2 recipe serving, roll12wide in both arms, same 32,768-token budget per agent. Plain 89/96 vs AoT 82/96, 0 wrong
+in both; plain-only 7, AoT-only 0 (p = 0.016); AoT 2.1x server tokens, 2.15x wall, 3.46 vs 1.50 Wh per solved. Nearly
+every AoT agent decomposed and contracted (326/333); the split budget leaves the final solve only 16K of thinking,
+which these hard search tasks need in one stream. **AoT not adopted** (rejection to astra review); coding AoT running.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load

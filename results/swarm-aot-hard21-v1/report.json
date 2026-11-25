@@ -1,0 +1,111 @@
+{
+ "study": "swarm-aot-hard21-v1",
+ "arms": {
+  "P": {
+   "status": "complete",
+   "reasons": [],
+   "segments": [
+    "swarm-aot-hard21-v1-p-roll12wide"
+   ],
+   "cases": 96,
+   "solved": 89,
+   "wrong": 0,
+   "wrong_all_attempts": 0,
+   "wrong_attempts": [],
+   "wasted_work": [],
+   "abstain": 7,
+   "unresolved": 0,
+   "generated_tokens": 6654006.0,
+   "prompt_tokens": 4014650.0,
+   "prefill_compute_tokens": 174650.0,
+   "total_compute_tokens": 6828656.0,
+   "generated_per_case": 69312.5625,
+   "wall_seconds": 3887.740796,
+   "wall_us": 3887740796,
+   "wh": 133.14,
+   "wh_per_solved": 1.4959550561797752,
+   "judge_latency_median": 25.02599999999984,
+   "judge_latency_p90": 40.947999999999865,
+   "max_in_flight_histogram": {
+    "4": 82,
+    "7": 1,
+    "8": 13
+   },
+   "widened_cases": 14,
+   "widened_agents": 71,
+   "widened_at_s_median": 1564.1860000000001,
+   "plan_sha256": "dd174b5672932ef2fd157aae1e3a830f8a10125098a00a7320e1a394bb28fde3",
+   "transport_retries": {
+    "retries": 0,
+    "lost_completion_tokens": 0,
+    "retries_not_sent": 0
+   }
+  },
+  "A": {
+   "status": "complete",
+   "reasons": [],
+   "segments": [
+    "swarm-aot-hard21-v1-a-roll12wide"
+   ],
+   "cases": 96,
+   "solved": 82,
+   "wrong": 0,
+   "wrong_all_attempts": 0,
+   "wrong_attempts": [],
+   "wasted_work": [],
+   "abstain": 14,
+   "unresolved": 0,
+   "generated_tokens": 14054410.0,
+   "prompt_tokens": 10885433.0,
+   "prefill_compute_tokens": 5771449.0,
+   "total_compute_tokens": 19825859.0,
+   "generated_per_case": 146400.10416666666,
+   "wall_seconds": 8366.209394,
+   "wall_us": 8366209394,
+   "wh": 283.27,
+   "wh_per_solved": 3.454512195121951,
+   "judge_latency_median": 30.05200000000002,
+   "judge_latency_p90": 44.21100000000024,
+   "max_in_flight_histogram": {
+    "4": 83,
+    "8": 13
+   },
+   "widened_cases": 13,
+   "widened_agents": 71,
+   "widened_at_s_median": 1224.519,
+   "plan_sha256": "4ead0fe02875169396d8c90b6c6a1d37cef7d95d35d98e923ce0449f12001c8f",
+   "transport_retries": {
+    "retries": 0,
+    "lost_completion_tokens": 0,
+    "retries_not_sent": 0
+   }
+  }
+ },
+ "pairing_problems": [],
+ "paired": {
+  "cases": 96,
+  "aot_only": 0,
+  "plain_only": 7,
+  "sign_test_p": 0.015625
+ },
+ "mechanism": {
+  "agents": 333,
+  "round1_unparsed": 7,
+  "contracted": 326,
+  "with_facts": 326,
+  "facts": 653,
+  "accepted_with_facts": 88,
+  "round1_decomposed": 326
+ },
+ "decision": {
+  "zero_wrong": true,
+  "solved_at_least_plain_plus_3": false,
+  "tokens_at_most_110pct": false,
+  "AoT_adopted": false
+ },
+ "frozen_rules": {
+  "P": "AoT is adopted if A has 0 wrong over all attempts, A solved >= P solved + 3, and A server generation tokens <= 1.10 x P (exact, complete pairing).",
+  "A": "AoT is adopted if A has 0 wrong over all attempts, A solved >= P solved + 3, and A server generation tokens <= 1.10 x P (exact, complete pairing)."
+ },
+ "disclosure": "Weaknesses that remain in arms.py-driven arms (arms.py is pinned; disclose in reports): flush_caches ignores the ssh exit status and the HTTP status (only the response text is recorded), delta() accepts negative deltas after a counter reset, parse() counts a missing counter as 0 and accepts non-finite values, wait_idle() returns a busy snapshot after its limit without failing, and an energy failure does not change the exit code."
+}
