@@ -1329,7 +1329,15 @@ def main(argv=None):
     if isinstance(slots, (WideSlots, FairSlots)):  # cases waiting for admission (each case decrements it when it starts)
         slots.set_pending(len(jobs))
     with ThreadPoolExecutor(concurrent) as pool:
-        list(pool.map(work, jobs))
+        try:
+            list(pool.map(work, jobs))
+        except BaseException as exc:  # e.g. a controller thread that cannot start: the pool raises at submission
+            with lock:
+                stop.set()
+                rows.append(dict(task_id=None, seed=None, policy=policies[0] if len(policies) == 1 else None,
+                                 error=f'controller start failed: {type(exc).__name__}: {exc}'[:300]))
+            if isinstance(slots, FairSlots):  # BEFORE the pool waits: registered cases stop waiting for the others
+                slots.halt()
     if isinstance(slots, FairSlots):
         slots.close()
     meta = read(out / 'metadata.json')

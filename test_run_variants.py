@@ -1340,6 +1340,63 @@ class FairPolicyTests(unittest.TestCase):
                 with self.assertRaisesRegex(Exception, 'share the seed offset'):
                     run()
 
+    def test_controller_start_failure_halts_instead_of_deadlocking(self):
+        import concurrent.futures, contextlib, io, json, threading, time
+        real = v.ThreadPoolExecutor
+
+        class FailSecond(real):  # sol's case: the second controller thread cannot start
+            submitted = 0
+
+            def submit(self, *a, **k):
+                FailSecond.submitted += 1
+                if FailSecond.submitted == 2:
+                    raise RuntimeError("can't start new thread")
+                return super().submit(*a, **k)
+
+        def execute(job, deadline_seconds, cancel=None):
+            end = time.monotonic() + .2
+            while time.monotonic() < end and not (cancel and cancel.is_set()):
+                time.sleep(.01)
+            return dict(deadline=False, cancelled=False, returncode=0)
+        out = {}
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            tasks = [dict(id=f't{i}', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7) for i in range(3)]
+            (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=tasks)))
+            plan = dict(protocol='swarm-variants-screen-v1', status='FROZEN', source_revision='x', dataset=str(root / 'data.json'),
+                        dataset_protocol='p', split='evaluation', tasks=3, seeds=[1], policies=['roll12fair'],
+                        seed_offsets=dict(roll12fair=22400), concurrent_policy_cases=3, concurrent_requests_per_endpoint=20,
+                        agent_variant='x', agent_wall_deadline_seconds=60)
+            (root / 'plan.json').write_text(json.dumps(plan))
+            (root / 'adm.json').write_text(json.dumps(dict(verified=True, verified_utc=v.datetime.now(v.timezone.utc).isoformat())))
+            made = []
+
+            class fair(v.FairSlots):
+                def __init__(self, *a, **k):
+                    super().__init__(*a, **dict(k, poll=.05))
+                    made.append(self)
+
+            def main():
+                with patch.object(v, 'validate_source', lambda *a: None), patch.object(v, 'ThreadPoolExecutor', FailSecond), \
+                        patch.object(v, 'FairSlots', fair), patch.object(v, 'execute_cancellable', execute), \
+                        patch.object(v, 'plan_of', lambda p: dict(plan={'moves': [1]}, verifier_solved=True, tokens=5, infra=0)), \
+                        patch.object(v, 'judge_with_reason', lambda *a: dict(verdict=False, reason='', infra=0, tokens=1)), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    out['code'] = v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d,
+                                          '--admission', str(root / 'adm.json'), '--run'])
+            t = threading.Thread(target=main, daemon=True)
+            t.start()
+            t.join(20)
+            self.assertFalse(t.is_alive(), 'runner deadlocked after a controller start failure')
+            meta = json.loads((root / 'out' / 'metadata.json').read_text())
+        self.assertEqual(out['code'], 1)
+        self.assertTrue(meta['stopped'])
+        self.assertTrue(any('controller start failed' in e['error'] for e in meta['errors']))
+        self.assertTrue(any('halted' in e['error'] for e in meta['errors']))  # the registered case is not a clean row
+        slots = made[0]
+        self.assertEqual(set(slots.in_flight.values()), {0})
+        self.assertEqual({e: slots.sem[e]._value for e in slots.endpoints}, {e: 20 for e in slots.endpoints})
+
     def test_runner_runs_every_case_at_once_and_records_case_start(self):
         import contextlib, io, json
         seen = []
