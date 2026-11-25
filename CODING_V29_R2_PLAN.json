@@ -1,0 +1,88 @@
+{
+ "protocol": "coding-agents-v1",
+ "status": "FROZEN",
+ "source_revision": "c2eb89e0a7a78c21f6f0b1471766ad24b09780d3",
+ "source_path": ".runtime/coding-xl-source",
+ "limits": {
+  "per_agent_completion_tokens": 32768,
+  "idle_timeout_seconds": 120,
+  "agent_wall_deadline_seconds": 7200,
+  "sandbox": "CPU-only Docker python@c61cffc3, no network, 256 MB, 1 CPU, 10 s per grade"
+ },
+ "scheduling": {
+  "concurrent_agents_per_node": 20,
+  "placement": "agent j of case c on replica/grader host (c+j)%4",
+  "concurrency_note": "each arm alone on the fleet: 20 client requests per node <= 25"
+ },
+ "runner": "run_coding_earlystop.py",
+ "study": "coding-v29-r2-v1",
+ "agent_variants": [
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl"
+ ],
+ "agent_seed_offset": 6700,
+ "matrix": {
+  "tasks": "datasets/coding-hard-v1/tasks.json",
+  "tests": "datasets/coding-hard-v1/hidden-tests.json",
+  "tasks_sha256": "01cb39b1b18d7e6565576fa8b96a30681b3fe2a31796399bfd8f0f6761033da0",
+  "tests_sha256": "57cf4420c5db07ae2afab10b86c93f07fc24da6318386856cd10399b11effa13",
+  "split": "evaluation",
+  "tasks_count": 24,
+  "seeds": [
+   19,
+   20,
+   21
+  ]
+ },
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@ed40e7da625f594fc9c4990f5f66be24873c22d7 (the recipe revision; the stock arm used 6e7c8248)",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "Inkling-2-Mini-1x-DGX-Spark v2.9 (67e7be6) scripts/launch.sh up with release defaults (SPEC=dflash2 drafter incoai/Inkling-2-Mini-DFlash2@4f9088ea, 22 default overlays, MEM_FRACTION 0.88, CTX 262144) and only the swarm wiring env: NAME=swarm-v29 PORT=30000 HOST=127.0.0.1 SERVED=inkling; recipe memguard (stop if MemAvailable < 3.5 GiB in the first 1200 s)",
+  "container": "swarm-v29",
+  "shim_container": "swarm-inkling-shim",
+  "adapter": "inkling/shim.py (unchanged; upstream 127.0.0.1:30000)",
+  "temperature": "0.8 (harness constant)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "mem_fraction": "0.88"
+ },
+ "early_stop": "first_feedback_pass_in_time",
+ "selection": "the first proposal in TIME order that passes ALL feedback cases ends the case: other agents of the case are terminated, queued ones never start; solved if it passes ALL holdout cases",
+ "resume_rule": "As in earlier coding plans: on an operational fault the runner stops admissions; the same arm is continued only for unfinished cases with the same seeds and documented as an amendment.",
+ "frozen_note": "Frozen 2026-11-25 ~08:35 Europe/Warsaw (owner request 08:45) before any call on the v2.9 servers. Identical to coding-roll3-v1 R2 (cases, seeds 19-21, agent seed offset 6700, rolling width 2, early stop, worker, prompts) except the serving.",
+ "study_group": "coding-v29-r2-v1",
+ "question": "Owner request: the coding swarm R2 on our own single-Spark recipe v2.9 instead of the stock cookbook serving (DSpark, mem 0.75): solved, wrong, unanswered, tokens, wall, GPU Wh and Wh per solved, against stock R2 (coding-roll3-v1: 67/72, 4 wrong, 1 unanswered, 1.33 Wh per solved, 3,542 s) and One DeepSeek (deepseek-coding3-v1: 57/72, 0 wrong, 15 unanswered, 2.64 Wh per solved).",
+ "arms_order": [
+  "S coding-roll-v1-s (default)",
+  "R4 coding-roll-v1-r4",
+  "R2 coding-roll-v1-r2"
+ ],
+ "execution": "Each arm alone on the fleet via inkling/coding_arms.py (fresh admission with shim sha and mem fraction 0.75, prefix-cache flush, server counters, idle wait, GPU energy), 20 agents per node, in the order S, R4, R2.",
+ "primary_outcomes": {
+  "tokens": "Server-counted generated tokens per case, R4 and R2 vs S.",
+  "accuracy": "Solved/72 per arm, paired two-sided exact sign tests vs S (run-to-run noise of a few cases applies).",
+  "wall": "Arm wall time and median / p90 case stop time."
+ },
+ "decision_rule": "Measurement for the owner (no default change implied): report the comparison table; paired sign test vs stock R2 on the same 72 cases.",
+ "secondary_outcomes": "GPU energy per solved case; agents started per case; cases with replacement; never-started agents; wrong answers (passed public tests, failed holdout).",
+ "exclusions": "None; all 72 cases of each arm count.",
+ "report": "results/coding-v29-r2-v1/ (coding report tables + comparison)",
+ "rolling": {
+  "width": 2
+ },
+ "arm": "R2: early stop, 2 in flight, every agent ending without a passing proposal is replaced, up to 8",
+ "code_sha256": {
+  "run_coding_earlystop.py": "77e2442bdc531b448e8e30dcbe8b33cb48e97b015cd117a4ba06170dc358bdf3",
+  "run_variants.py": "a4712f5320f9a6776ceed142bfdad3065f4b2ca75af298dd02ec65018c7db005",
+  "inkling/coding_arms.py": "9f4979df5e603558600c5628fb7319bb161a03fd98af66645e897983992afff3",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "8f6ed916d36798130f0e209b2c4121ee59def652fb7b897f2826204401518304",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3"
+ }
+}
