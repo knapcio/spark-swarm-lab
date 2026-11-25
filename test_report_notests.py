@@ -36,10 +36,11 @@ def make_arm(root, name, acceptance, outcomes, wh=10.0, server=1000, plan_extra=
             records = [dict(type='request_end', stage='code_propose', usage=dict(completion_tokens=50))]
             if acceptance == 'judge':
                 records.append(dict(type='request_end', stage='judge', usage=dict(completion_tokens=judge_tokens)))
-            records.append(dict(type='puzzle_end', parsed=True, accepted=accepted, feedback_pass=feedback,
-                                holdout_pass=holdout, **extra))
+            if not extra.get('_cancelled'):
+                records.append(dict(type='puzzle_end', parsed=True, accepted=accepted, feedback_pass=feedback,
+                                    holdout_pass=holdout, **extra))
             (d / Path(events).name).write_text('\n'.join(json.dumps(r) for r in records) + '\n')
-            rows.append(dict(events=events, cancelled=False, task_id=task, seed=1, agent=i))
+            rows.append(dict(events=events, cancelled=bool(extra.get('_cancelled')), task_id=task, seed=1, agent=i))
     (d / 'cases.json').write_text(json.dumps(cases))
     (d / 'summary.json').write_text(json.dumps(rows))
     (d / 'arm_accounting.json').write_text(json.dumps(dict(server=dict(total=dict(generation_tokens=server)),
@@ -49,7 +50,7 @@ def make_arm(root, name, acceptance, outcomes, wh=10.0, server=1000, plan_extra=
 
 
 class ReportNoTestsTests(unittest.TestCase):
-    def build(self, root, judge_plan=None, judge_exit=0, drop_judge_case=False, skip_judge=False):
+    def build(self, root, judge_plan=None, judge_exit=0, drop_judge_case=False, skip_judge=False, cancelled_judge=False):
         ok = (True, True, False, {})
         make_arm(root, 'pub', None, {'a': (True, True, [ok]), 'b': (True, False, [(False, True, False, {})]),
                                      'c': (False, False, [(False, False, False, {})] * 2)})
@@ -59,6 +60,8 @@ class ReportNoTestsTests(unittest.TestCase):
         judge = {'a': (False, False, [(False, True, True, dict(judge_verdict=None))] * 2),
                  'b': (True, False, [(True, False, True, dict(judge_verdict=True))]),
                  'c': (False, False, [(False, False, False, dict(judge_verdict=False))])}
+        if cancelled_judge:  # a cancelled agent whose judge call completed before the cancel
+            judge['c'] = (False, False, judge['c'][2] + [(False, False, False, dict(_cancelled=True))])
         if drop_judge_case:
             del judge['c']
         if not skip_judge:
@@ -105,6 +108,25 @@ class ReportNoTestsTests(unittest.TestCase):
         self.assertEqual(pub['acceptance_quality']['accepted_wrong'], 2)  # public: accepted = feedback pass
         self.assertEqual(res['problems'], [])
         self.assertIn('R2, no tests: own tests vs public tests', md)
+
+    def test_cancelled_agents_judge_tokens_are_judge_tokens(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self.build(root, cancelled_judge=True)
+            res, md = self.run_report(root)
+        jud = res['arms']['judge']
+        self.assertEqual(jud['judge_tokens_per_case'], 50)  # 5 judge calls x 30 tokens / 3 cases
+        self.assertEqual(jud['solver_tokens_per_case'], 50)  # client 100 per case minus judge
+        self.assertEqual(jud['acceptance_quality']['finished'], 4)  # the cancelled agent is not a finished agent
+
+    def test_decision_timing_disclosed(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            self.build(root)
+            res, md = self.run_report(root)
+        self.assertIn('the public-tests arm is the unchanged default path', md)
+        self.assertIn('decide BEFORE hidden grading', md)
+        self.assertEqual(res['decision_timing'], rn.DECISION_TIMING)
 
     def test_plan_differences_make_it_incomplete(self):
         with tempfile.TemporaryDirectory() as d:

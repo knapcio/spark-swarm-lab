@@ -71,16 +71,23 @@ class EarlyStopTests(unittest.TestCase):
                 fb = agent in fast_pass if not acceptance else (feedback is None or agent in feedback)
                 return dict(parsed=True, feedback_pass=fb, holdout_pass=agent in holdout, budget_forced=False)
 
-            def execute_accepting(job, deadline, cancel, claim):
-                """Fast agents decide 'accepted' at once and claim the case; the rest wait until cancelled."""
+            def execute_accepting(job, deadline, arbiter):
+                """Fast agents record an accepted decision at once (a real trace event) and ask the arbiter; the rest
+                wait until another agent is the winner."""
+                key, me = (job['task_id'], job['seed']), job['agent']
                 started.append((job['task_id'], job['agent']))
                 self.commands.append(job['command'])
+                arbiter.register(key, me, job['events'], time.monotonic(), deadline)
                 base = dict(deadline=False, controller_error=None, controller_stop=False, calls=1, unfinished_calls=0,
-                            infrastructure_failures=0, completion_tokens=10, scoring_timeout=False)
-                if job['agent'] in fast_pass:
-                    return dict(base, cancelled=False, returncode=0, status='complete', accepted=True, won=claim())
+                            infrastructure_failures=0, completion_tokens=10, scoring_timeout=False, late_decision=False)
+                if me in fast_pass:
+                    Path(job['events']).write_text(json.dumps(dict(type='acceptance', accepted=True,
+                                                                   decided_monotonic=time.monotonic())) + '\n')
+                    arbiter.decide(key)
+                    return dict(base, cancelled=False, returncode=0, status='complete', accepted=True,
+                                won=arbiter.winner(key) == me)
                 for _ in range(300):
-                    if cancel.is_set():
+                    if arbiter.winner(key) not in (None, me):
                         return dict(base, cancelled=True, returncode=-15, controller_stop=True, status='cancelled',
                                     unfinished_calls=1, infrastructure_failures=None, completion_tokens=0,
                                     accepted=False, won=False)
@@ -183,66 +190,96 @@ def emit(kind, **f):
 emit('request_start')
 time.sleep(decide_after)
 emit('request_end', usage=dict(completion_tokens=5))
-emit('acceptance', accepted=accepted)
+emit('acceptance', accepted=accepted, decided_monotonic=time.monotonic())
 time.sleep(score_seconds)  # hidden grading, scoring only
 emit('puzzle_end', accepted=accepted, feedback_pass=True, holdout_pass=True)
 emit('run_end', status='complete', infrastructure_failures=0)
 """
+KEY = ('t1', 4)
 
 
 class ExecuteAcceptingTests(unittest.TestCase):
     """execute_accepting against real worker processes (a tiny script writing the trace protocol)."""
-    def job(self, root, name, decide_after, accepted, score_seconds):
-        events = root / (name + '.jsonl')
-        return dict(command=[sys.executable, '-c', SCRIPT, str(events), str(decide_after), '1' if accepted else '0',
-                             str(score_seconds)], events=str(events), stdout=str(root / (name + '.out')),
-                    stderr=str(root / (name + '.err')), arm='code_xl')
+    def job(self, root, agent, decide_after, accepted, score_seconds):
+        events = root / f'a{agent}.jsonl'
+        return dict(task_id=KEY[0], seed=KEY[1], agent=agent, arm='code_xl', events=str(events),
+                    command=[sys.executable, '-c', SCRIPT, str(events), str(decide_after), '1' if accepted else '0',
+                             str(score_seconds)], stdout=str(root / f'a{agent}.out'), stderr=str(root / f'a{agent}.err'))
 
-    def test_winner_claimed_at_decision_and_scoring_not_cut_by_deadline_or_cancel(self):
+    def arbiter(self):
+        return r.Arbiter({KEY: threading.Event()})
+
+    def test_winner_at_decision_and_scoring_not_cut_by_deadline(self):
+        arbiter = self.arbiter()
         with tempfile.TemporaryDirectory() as d:
-            cancel, claims = threading.Event(), []
-
-            def claim():
-                claims.append(time.monotonic())
-                cancel.set()  # as the controller does for the other agents of the case
-                return True
             t0 = time.monotonic()
-            row = r.execute_accepting(self.job(Path(d), 'a', .2, True, 1.5), 1.0, cancel, claim, poll=.02)
+            row = r.execute_accepting(self.job(Path(d), 0, .2, True, 1.5), 1.0, arbiter, poll=.02)
         self.assertTrue(row['accepted'] and row['won'])
-        self.assertFalse(row['cancelled'] or row['deadline'] or row['scoring_timeout'])
-        self.assertLess(claims[0] - t0, 1.0)  # claimed at the decision, before the 1.5 s of scoring
+        self.assertFalse(row['cancelled'] or row['deadline'] or row['scoring_timeout'] or row['late_decision'])
+        self.assertLess(arbiter.decided(KEY) - t0, 1.0)  # the recorded decision time, before the 1.5 s of scoring
+        self.assertTrue(arbiter.cancels[KEY].is_set())
         self.assertGreater(row['wall_seconds'], 1.5)  # scoring ran past the 1 s agent deadline
         self.assertEqual(row['status'], 'complete')
 
-    def test_case_already_claimed_terminates_a_later_accept(self):
+    def test_earliest_recorded_decision_wins_not_poll_order(self):
+        # agent 1 records its acceptance first (0.2 s) but its executor polls every 1.5 s; agent 0 records at 0.5 s and
+        # polls fast, so agent 0's executor observes first; the arbiter still picks agent 1
+        arbiter, rows = self.arbiter(), {}
         with tempfile.TemporaryDirectory() as d:
-            cancel = threading.Event()
+            def run(agent, decide_after, poll):
+                rows[agent] = r.execute_accepting(self.job(Path(d), agent, decide_after, True, .3), 30, arbiter, poll=poll)
+            threads = [threading.Thread(target=run, args=(1, .2, 1.5)), threading.Thread(target=run, args=(0, .5, .02))]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+        self.assertEqual(arbiter.winner(KEY), 1)
+        self.assertTrue(rows[1]['won'] and rows[1]['accepted'])
+        self.assertFalse(rows[0]['won'])
 
-            def claim():  # another agent of the case was accepted first: the case is closed
-                cancel.set()
-                return False
-            row = r.execute_accepting(self.job(Path(d), 'b', .1, True, 5), 30, cancel, claim, poll=.02)
-        self.assertTrue(row['cancelled'])
+    def test_decision_recorded_after_the_deadline_is_not_an_acceptance(self):
+        arbiter = self.arbiter()
+        with tempfile.TemporaryDirectory() as d:  # observed only at the 2 s poll: recorded at 0.8 s > deadline 0.5 s
+            row = r.execute_accepting(self.job(Path(d), 0, .8, True, 0), .5, arbiter, poll=2.0)
+        self.assertTrue(row['deadline'] and row['late_decision'])
         self.assertFalse(row['accepted'] or row['won'])
+        self.assertIsNone(arbiter.winner(KEY))
 
-    def test_rejected_decision_never_claims(self):
+    def test_rejected_decision_never_wins(self):
+        arbiter = self.arbiter()
         with tempfile.TemporaryDirectory() as d:
-            row = r.execute_accepting(self.job(Path(d), 'c', .1, False, .1), 30, threading.Event(),
-                                      lambda: self.fail('claimed a rejected proposal'), poll=.02)
+            row = r.execute_accepting(self.job(Path(d), 0, .1, False, .1), 30, arbiter, poll=.02)
         self.assertFalse(row['accepted'] or row['won'] or row['cancelled'])
+        self.assertIsNone(arbiter.winner(KEY))
 
     def test_deadline_applies_until_the_decision(self):
         with tempfile.TemporaryDirectory() as d:
-            row = r.execute_accepting(self.job(Path(d), 'e', 5, True, 0), .5, threading.Event(),
-                                      lambda: self.fail('decided after the deadline'), poll=.02)
+            row = r.execute_accepting(self.job(Path(d), 0, 5, True, 0), .5, self.arbiter(), poll=.02)
         self.assertTrue(row['deadline'])
         self.assertFalse(row['accepted'] or row['scoring_timeout'])
 
     def test_scoring_grace_bounds_hidden_grading(self):
         with tempfile.TemporaryDirectory() as d:
-            row = r.execute_accepting(self.job(Path(d), 'f', .1, True, 10), 30, threading.Event(), lambda: True,
-                                      grace_seconds=.5, poll=.02)
+            row = r.execute_accepting(self.job(Path(d), 0, .1, True, 10), 30, self.arbiter(), grace_seconds=.5, poll=.02)
         self.assertTrue(row['won'] and row['scoring_timeout'] and row['deadline'])
+
+    def test_arbiter_ignores_rejected_late_and_untimed_decisions(self):
+        arbiter = self.arbiter()
+        with tempfile.TemporaryDirectory() as d:
+            def trace(agent, **event):
+                path = Path(d) / f'{agent}.jsonl'
+                path.write_text(json.dumps(dict(type='acceptance', **event)) + '\n')
+                return str(path)
+            arbiter.register(KEY, 0, trace(0, accepted=True, decided_monotonic=100.0), 90.0, 5)    # late (10 s > 5)
+            arbiter.register(KEY, 1, trace(1, accepted=False, decided_monotonic=91.0), 90.0, 50)   # rejected
+            arbiter.register(KEY, 2, trace(2, accepted=True), 90.0, 50)                            # no timestamp
+            arbiter.register(KEY, 3, trace(3, accepted=True, decided_monotonic=120.0), 90.0, 50)   # in time
+            arbiter.register(KEY, 4, trace(4, accepted=True, decided_monotonic=110.0), 90.0, 50)   # in time, earliest
+            arbiter.register(KEY, 5, str(Path(d) / 'none.jsonl'), 90.0, 50)                       # no decision yet
+            self.assertEqual(arbiter.decide(KEY), 4)
+            self.assertEqual(arbiter.decided(KEY), 110.0)
+            arbiter.register(KEY, 6, trace(6, accepted=True, decided_monotonic=95.0), 90.0, 50)
+            self.assertEqual(arbiter.decide(KEY), 4)  # a winner is final
 
 
 if __name__ == '__main__':

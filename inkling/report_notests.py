@@ -14,7 +14,10 @@ rejected but correct). Paired solved and answered counts against the public arm 
 
 Cost disclosure: the solver budget is the same in every arm; the judge arm adds, per parsed proposal, up to 2 judge calls
 and 8,192 completion tokens. Those tokens are inside the judge arm's server tokens, client tokens and GPU Wh and are also
-reported separately (judge tokens per case; solver tokens per case = client minus judge).
+reported separately (judge tokens per case, including completed judge calls of cancelled agents; solver tokens per case =
+client minus judge). Decision timing differs by design and is disclosed: the public arm (the unchanged default path)
+decides at the first feedback pass seen when a worker exits, after its in-worker hidden grading; the no-tests arms
+decide before hidden grading (earliest recorded in-time acceptance).
 
 Completeness: the comparison is made only when all three arms are present, every run finished cleanly (arm accounting
 present, runner exit 0, no recorded errors, completed) and every arm's task/seed set equals the frozen set of its plan
@@ -47,7 +50,13 @@ JUDGE_STAGES = ('judge', 'judge_forced')
 JUDGE_MAX_CALLS, JUDGE_MAX_TOKENS = 2, 8192  # coding_forced.JUDGE_TOTAL (6,144 thinking + forced answer)
 DISCLOSURE = (f'Budgets: the solver budget is identical in all arms. The judge arm adds, per parsed proposal, up to '
               f'{JUDGE_MAX_CALLS} judge calls and {JUDGE_MAX_TOKENS:,} completion tokens on the same server; they are '
-              'included in its server and client tokens and GPU Wh and shown separately as judge tokens per case.')
+              'included in its server and client tokens and GPU Wh and shown separately as judge tokens per case '
+              '(completed judge calls of cancelled agents included).')
+DECISION_TIMING = ('Decision timing: the public-tests arm is the unchanged default path of every earlier coding study: it '
+                   'decides at the first feedback pass observed when a worker exits, i.e. after the hidden holdout grading '
+                   'that runs inside the worker. The no-tests arms decide BEFORE hidden grading: the winner is the '
+                   'accepted proposal with the earliest recorded decision within the agent deadline, and hidden grading '
+                   'runs afterwards for scoring only.')
 
 
 def read(path):
@@ -91,11 +100,11 @@ def arm(run_dir, mode):
                    self_tests_invalid=0, judge_unparsed=0, traces_missing=0)
     judge_tokens = 0
     for row in rows:
+        end, judge = trace(run_dir, row['events'])
+        judge_tokens += judge  # every completed judge call, cancelled agents included: judge tokens, never solver tokens
         if row.get('cancelled'):
             continue
         quality['finished'] += 1
-        end, judge = trace(run_dir, row['events'])
-        judge_tokens += judge
         if end is None:
             quality['traces_missing'] += 1
             continue
@@ -220,7 +229,7 @@ def tables(res):
             q = res['arms'][name]['acceptance_quality']
             lines.append(f"| {labels[name]} | {q['finished']} | {q['parsed']} | {q['accepted']} | {q['accepted_correct']} | "
                          f"{q['accepted_wrong']} | {q['rejected_correct']} | {q['self_tests_invalid']} | {q['judge_unparsed']} |")
-    lines += ['', DISCLOSURE, '']
+    lines += ['', DISCLOSURE, '', DECISION_TIMING, '']
     for name, p in res['paired'].items():
         lines.append(f"{labels[name]} vs public tests, paired on {p['cases']} cases: solved +{p['wins']} / -{p['losses']} "
                      f"(p = {p['p']:.2g}); answered +{p['answered_wins']} / -{p['answered_losses']} "
@@ -255,6 +264,7 @@ def main(argv=None):
     problems += consistency({m: d[2] for m, d in data.items()}) if len(data) > 1 else []
     complete = not problems and len(data) == len(names)
     res = dict(status='complete' if complete else 'incomplete', problems=problems, disclosure=DISCLOSURE,
+               decision_timing=DECISION_TIMING,
                arms={m: d[1] for m, d in data.items()},
                paired={m: paired(data['public'][0], d[0]) for m, d in data.items() if m != 'public'} if complete else {})
     md = tables(res)
