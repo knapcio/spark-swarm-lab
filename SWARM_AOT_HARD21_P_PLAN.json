@@ -1,0 +1,63 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason), unchanged; the exact verifier only scores",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_requests_per_endpoint": 20,
+ "execution": "Arms run sequentially in arm_order, each alone on the fleet via inkling/arms.py (fresh admission with the shim sha and mem fraction below, prefix-cache flush, server counters, idle wait, GPU energy). Watchdog inkling/watch.sh; MemAvailable logged every 60 s.",
+ "resume_rule": "If an arm stops on an infrastructure fault (runner stop flag, worker or judge infra failure, node fault), the fault is fixed and the same arm is continued with arms.py --resume-from (skips its cases that finished without infra faults; reruns the others with the same seeds) and documented as an amendment. Server tokens, wall and energy of an arm are then the sums over its segments (wasted work of the stopped segment included and reported separately). Never a silent restart; no case is dropped.",
+ "exclusions": "None. All 96 cases of each arm count.",
+ "concurrent_policy_cases": 20,
+ "concurrency_note": "G: at most 4 agents in flight per case. W: a case that already had a failure may run up to 8 in flight, but only while no case of the arm waits for admission (work-conserving; widened agents and their judges admitted atomically, 2 judge permits reserved, re-check on release or every 2 s). Both: 20 cases at once, per-endpoint cap 20 (agents and judges) <= 25 per node. Each arm runs alone.",
+ "status": "FROZEN",
+ "split": "evaluation",
+ "tasks": 48,
+ "seeds": [
+  1,
+  2
+ ],
+ "study_group": "swarm-aot-hard21-v1",
+ "dataset": "datasets/arithmetic-hard-v21/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v21",
+ "policies": [
+  "roll12wide"
+ ],
+ "seed_offsets": {
+  "roll12wide": 21400
+ },
+ "source_revision": "f149f05814b8bbcb54d0e0f18cd52638d8d6fe95",
+ "source_path": ".runtime/xl-aot-source",
+ "code_sha256": {
+  "run_variants.py": "a4712f5320f9a6776ceed142bfdad3065f4b2ca75af298dd02ec65018c7db005",
+  "run_judge.py": "dadc67dba63432c095794dff9c04d81ac7952eecc0215488b3f6d7c28ca21956",
+  "inkling/arms.py": "da2eb8eaa79f127313c5c9e761738ac44336872692dce5066981f4249c26e22e",
+  "inkling/admit.py": "8f6ed916d36798130f0e209b2c4121ee59def652fb7b897f2826204401518304",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "inkling/report_aot.py": "6d120e47526a2c6a652fd3d58343edb65ad692d4aa9e0b65714b5b9988187727",
+  ".runtime/xl-aot-source/forced72.py": "73d0063a6bd810360d3e94284bc726243f4b444dc3c96fd1a9b749df3f62d75f",
+  ".runtime/xl-aot-source/forced72_worker.py": "4bef7013775ab5fc362e624529a8fa2bb80454e86043cb56cb5f03e39d5958e9",
+  ".runtime/xl-aot-source/aot.py": "a4f6ad16259cfe1304d7b7a5020c3811bb4a05067a55a1a7b9cd6efff0409c94"
+ },
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@ed40e7da625f594fc9c4990f5f66be24873c22d7",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "Inkling-2-Mini-1x-DGX-Spark v2.9.2 (a29380b; scripts/launch.sh sha 9428eb69...) `scripts/launch.sh up` with release defaults (SPEC=dflash2, drafter incoai/Inkling-2-Mini-DFlash2@4f9088ea, MEM_FRACTION 0.88, CTX 262144, memguard 3.5 GiB) and only the swarm wiring env NAME=swarm-recipe PORT=30000 HOST=127.0.0.1 SERVED=inkling; the swarm serving default since 2026-11-25 (coding-v29-r2-v1: -20 % wall, -20 % Wh at equal quality)",
+  "container": "swarm-recipe",
+  "shim_container": "swarm-inkling-shim",
+  "adapter": "inkling/shim.py (unchanged; upstream 127.0.0.1:30000)",
+  "temperature": "0.8 (harness constant)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "mem_fraction": "0.88"
+ },
+ "credit": "Atom of Thoughts (Teng et al. 2025, arXiv 2502.12018, github.com/qixucen/atom); taskgraph idea credited to alkimiadev.",
+ "generator": "make_arithmetic_hard.py --seed 2026112521 --protocol arithmetic-hard-v21 --output datasets/arithmetic-hard-v21 (after both plans are committed and pushed)",
+ "question": "Owner-approved generic decomposition (AoT): every agent runs decompose (DAG of <= 4 atomic subquestions) -> solve independent ones -> contract into one self-contained simpler question, <= 2 rounds, then answers the ORIGINAL task prompt with the facts and the simpler question as a note; protocol-only prompts; same 32,768-token budget and agent count as plain agents. P = plain (xl_forced_original), A = AoT (xl_aot), both under the default roll12wide.",
+ "pairing": "Same tasks, seeds, agent base seeds (1000*seed + 21400 + slot), nodes, judge seeds, worker revision; the arms differ only in the agent variant.",
+ "decision_rule": "AoT is adopted if A has 0 wrong over all attempts, A solved >= P solved + 3, and A server generation tokens <= 1.10 x P (exact, complete pairing).",
+ "report": "inkling/report_aot.py -> results/swarm-aot-hard21-v1/",
+ "disclosures": [
+  "A lost attempt's streamed tokens are a lower bound of server work (charged in AoT agents); plain retries are charged only to the accounting."
+ ],
+ "study": "swarm-aot-hard21-v1-p",
+ "agent_variant": "xl_forced_original"
+}
