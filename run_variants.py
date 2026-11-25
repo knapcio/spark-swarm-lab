@@ -35,6 +35,19 @@ Policies, each with 4 deep agents (long_forced_original, 16K) per case:
                 every permit release, agent end, case admission or cancel (or every WIDE_POLL_SECONDS); never
                 time-triggered. Runs alone with WideSlots (exact occupancy); every other policy keeps plain Slots.
                 Per case: max_in_flight, widened_agents, widened_at_s.
+  roll12fair    water-filling admission (Fable round 5, idea 2): no admission queue; every case of the arm is open from
+                the start (all case controllers run at once) and agents are started by one arm-wide scheduler
+                (FairSlots): a free agent permit (a node below its cap minus WIDE_JUDGE_RESERVE permits kept for judges,
+                least-loaded node first, the slot's own node (case + slot) % 4 on a tie) goes to the open case with the
+                FEWEST agents in flight (ties: the fewest agents started so far, so with more cases than slots every
+                case first gets one agent; then the earlier case in the plan's order), which may have at most
+                FAIR_FIRST (4) agents in flight before its first failed agent and FAIR_AFTER_FAILURE (8) after it,
+                never beyond cap 12 agents in total. Cancel on accept, judges as everywhere, no hints, no time
+                trigger. Same agents, prompts and seeds as roll12cancel / roll12wide (slot s of a case has seed
+                1000*seed + offset + s; slots pair exactly; an agent may run on another node). Re-checked on every
+                permit release, agent end, case registration or cancel (or every WIDE_POLL_SECONDS). Runs alone with
+                FairSlots; the arm's case concurrency is the number of its cases. Per case: max_in_flight,
+                first_failure_s; every case row of every policy carries case_start_s (seconds from the segment start).
   roll12idle    roll12cancel plus generic idle-capacity escalation: once a case's slots 0-11 have all ended without an
                 accepted plan, extra agents (slots 12-19, no hints) start one at a time on the least-loaded node, only
                 while that node has fewer than IDLE_THRESHOLD requests in flight in the shared slots (permits held by
@@ -104,7 +117,7 @@ MAX_REQUESTS_PER_NODE = 25  # fleet rule: never more than 25 concurrent requests
 # rolling policies: slots that may launch per case (cap - first slot); unstarted_agents counts the ones that never did
 IDLE_FIRST, IDLE_CAP, IDLE_THRESHOLD, IDLE_MAX_INFLIGHT, IDLE_POLL_SECONDS = 12, 20, 12, 8, 2.0
 ELIGIBLE_SLOTS = dict(roll8cancel=8, roll8repair=8, roll8strategy=8, roll3to8=8, roll3strategy=8, roll12strategy=12,
-                      roll12cancel=12, roll12idle=12, roll12relay=12, roll12wide=12,  # roll12idle: extra slots 12-19 are opportunistic, not eligible
+                      roll12cancel=12, roll12idle=12, roll12relay=12, roll12wide=12, roll12fair=12,  # roll12idle: extra slots 12-19 are opportunistic, not eligible
                       roll12burst=12, **{p: ESC_SHAPE.get(p, ESC_DEFAULT_SHAPE)[2] - ESC_SHAPE.get(p, ESC_DEFAULT_SHAPE)[0]
                                          for p in ESC_HINTS})
 JUDGE_TAIL = 'Return only a JSON object {"valid": true} if every move is legal and the target appears, otherwise {"valid": false}.'
@@ -664,6 +677,138 @@ class WideSlots(TrackedSlots):
             self.cond.notify_all()
 
 
+FAIR_FIRST, FAIR_AFTER_FAILURE, FAIR_CAP = 4, 8, 12
+
+
+class FairSlots(TrackedSlots):
+    """roll12fair's arm-wide scheduler (water-filling admission). Every case registers its controller at once
+    (run_case); one dispatcher thread, under the condition lock, gives each free agent permit to the open case with the
+    fewest agents in flight (ties: fewest agents started so far, then the earlier case), within that case's in-flight limit (FAIR_FIRST before its first
+    failed agent, FAIR_AFTER_FAILURE after) and cap. A permit is free on a node below cap - reserve (judges keep
+    `reserve` permits; they acquire normally). Nothing starts while `pending` > 0 (cases still registering), so the
+    first slots are spread over all cases. halt() stops every further start (an infrastructure stop); a case cut
+    short by it raises in run_case, so it is never recorded as a clean abstention."""
+    def __init__(self, per_endpoint, endpoints=None, reserve=WIDE_JUDGE_RESERVE, poll=WIDE_POLL_SECONDS,
+                 first=FAIR_FIRST, after_failure=FAIR_AFTER_FAILURE, cap=FAIR_CAP):
+        super().__init__(per_endpoint, endpoints)
+        self.reserve, self.poll, self.first, self.after_failure, self.case_cap = reserve, poll, first, after_failure, cap
+        self.pending, self.cases, self.halted, self.closed = 0, {}, False, False
+        self.dispatcher = None
+
+    def set_pending(self, n):
+        with self.cond:
+            self.pending = n
+            self._ensure_dispatcher()
+            self.cond.notify_all()
+
+    def halt(self):
+        with self.cond:
+            self.halted = True
+            self.cond.notify_all()
+
+    def close(self):
+        with self.cond:
+            self.closed = True
+            self.cond.notify_all()
+        if self.dispatcher is not None:
+            self.dispatcher.join()
+
+    def _ensure_dispatcher(self):  # caller holds cond
+        if self.dispatcher is None:
+            self.dispatcher = threading.Thread(target=self._dispatch_loop, daemon=True)
+            self.dispatcher.start()
+
+    def _open(self, c):  # caller holds cond: may the case still start agents at all?
+        race = c['race']
+        return not (self.halted or race['winner'] is not None or race['cancel'].is_set() or c['failed']
+                    or c['next'] >= self.case_cap)
+
+    def _eligible(self, c):
+        return self._open(c) and c['running'] < (self.after_failure if c['failures'] else self.first)
+
+    def _dispatch_loop(self):
+        with self.cond:
+            while not self.closed:
+                self._dispatch_locked()
+                self.cond.wait(self.poll)
+
+    def _dispatch_locked(self):
+        launched = False
+        while self.pending == 0 and not self.halted:
+            live = [c for c in self.cases.values() if self._eligible(c)]
+            if not live:
+                break
+            c = min(live, key=lambda c: (c['running'], c['next'], c['order']))
+            slot = c['next']
+            natural = (c['case_index'] + slot) % len(self.endpoints)
+            order = sorted(range(len(self.endpoints)), key=lambda i: (self.in_flight[self.endpoints[i]], i != natural, i))
+            node = next((i for i in order if self.try_acquire(self.endpoints[i], below=self.cap - self.reserve)), None)
+            if node is None:
+                break
+            c['next'] += 1
+            self._launch(c, slot, node)
+            launched = True
+        if launched:
+            self.cond.notify_all()
+
+    def _launch(self, c, slot, node):  # caller holds cond and a permit on node for this slot
+        held = IdleSlots(self, self.endpoints[node], None, self.poll, c['race']['cancel'])
+        c['running'] += 1
+        c['max_running'] = max(c['max_running'], c['running'])
+        t = threading.Thread(target=self._run, args=(c, slot, node, held))
+        try:
+            t.start()
+        except Exception as exc:  # the slot becomes a fault record; the permit is released; nothing to join
+            c['running'] -= 1
+            c['failed'] = True
+            held.drop_unused()
+            info = fault_record(slot, None, exc)
+            info.update(started=False, launch_failed=True)
+            c['results'].append(info)
+            return
+        c['threads'].append(t)
+
+    def _run(self, c, slot, node, held):
+        try:
+            info = c['agent'](slot, node, held)
+        except Exception as exc:  # never lose a slot
+            info = fault_record(slot, None, exc)
+        held.drop_unused()
+        with self.cond:
+            c['results'].append(info)
+            c['running'] -= 1
+            if info.get('verdict') is not True and not info.get('cancelled') and info.get('started', True):
+                c['failures'] += 1
+                if c['first_failure_s'] is None:
+                    c['first_failure_s'] = round(time.monotonic() - c['t0'], 3)
+            if 'agent_error' in info:
+                c['failed'] = True
+            self.cond.notify_all()
+
+    def run_case(self, key, case_index, race, agent):
+        """Register a case, wait until it is finished (closed and no agent running) and return its agent records in
+        slot order. race['fair'] gets max_in_flight and first_failure_s."""
+        race.setdefault('on_cancel', []).append(self.wake)
+        with self.cond:
+            self._ensure_dispatcher()
+            c = dict(order=case_index, case_index=case_index, agent=agent, race=race, next=0, running=0, failures=0,
+                     failed=False, results=[], threads=[], max_running=0, first_failure_s=None, t0=time.monotonic())
+            self.cases[key] = c
+            self.pending = max(0, self.pending - 1)
+            self.cond.notify_all()
+            while self._open(c) or c['running']:
+                self.cond.wait(self.poll)
+            del self.cases[key]
+            cut_short = self.halted and race['winner'] is None and not c['failed'] and c['next'] < self.case_cap
+            self.cond.notify_all()
+        for t in c['threads']:
+            t.join()
+        if cut_short:
+            raise RuntimeError(f'roll12fair arm halted after an infrastructure stop; case {key} unfinished')
+        race['fair'] = dict(max_in_flight=c['max_running'], first_failure_s=c['first_failure_s'])
+        return sorted(c['results'], key=lambda a: a['slot'])
+
+
 class IdleSlots:
     """The slots of one extra roll12idle agent: its worker permit was taken atomically at admission (held from the
     start); every later permit (its judge) is idle-gated the same way: taken only while the node has fewer than
@@ -813,7 +958,7 @@ def new_race(t0):
 def run_policy(plan, source, out, task, seed, case_index, policy, slots):
     off = plan['seed_offsets'][policy]
     t0 = time.monotonic()
-    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll3to8', 'roll3strategy', 'roll8repair', 'roll8strategy', 'roll12strategy', 'roll12cancel', 'roll12idle', 'roll12relay', 'roll12wide', 'roll12burst') or policy in ESC_HINTS else None
+    race = new_race(t0) if policy in ('deep4cancel', 'waves2cancel', 'roll8cancel', 'roll3to8', 'roll3strategy', 'roll8repair', 'roll8strategy', 'roll12strategy', 'roll12cancel', 'roll12idle', 'roll12relay', 'roll12wide', 'roll12fair', 'roll12burst') or policy in ESC_HINTS else None
     agent = lambda slot, extra='': run_agent_safe(plan, source, out, task, seed, case_index, policy, slot, extra, slots, off, t0, race)
     if policy == 'deep4':
         agents = parallel([lambda s=s: agent(s) for s in range(4)])
@@ -880,6 +1025,10 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
                              race, case_index, cap=12, widen=dict(slots=slots, key=key))
         finally:
             slots.case_ended(key)
+    elif policy == 'roll12fair':
+        require(isinstance(slots, FairSlots), 'roll12fair needs FairSlots (it runs alone)')
+        agents = slots.run_case((task['id'], seed), case_index, race, lambda slot, node, held: run_agent_safe(
+            plan, source, out, task, seed, case_index, policy, slot, '', held, off, t0, race, node))
     elif policy == 'roll12relay':
         relayed, extra_for = relay_feedback(plan, out, task, seed, policy)
         agents = rolling(lambda slot, node, extra='': run_agent_safe(plan, source, out, task, seed, case_index, policy, slot,
@@ -912,6 +1061,7 @@ def run_policy(plan, source, out, task, seed, case_index, policy, slots):
                      burst=bool(race.get('burst_at')),
                      **({'max_in_flight': race['wide']['max_in_flight'], 'widened_agents': race['wide']['widened_agents'],
                          'widened_at_s': race['wide']['widened_at_s']} if policy == 'roll12wide' else {}),
+                     **(race['fair'] if policy == 'roll12fair' else {}),
                      **({'extra_agents': sum(a['slot'] >= IDLE_FIRST and a['started'] for a in agents),
                          'idle_phase': bool(race.get('idle_ran'))}
                         if policy == 'roll12idle' else {}),
@@ -1116,6 +1266,15 @@ def main(argv=None):
         offsets = plan.get('seed_offsets', {})
         require(offsets.get('roll12wide') == offsets.get('roll12cancel'),
                 'roll12wide and roll12cancel must share the seed offset (slots pair exactly)')
+    if 'roll12fair' in plan.get('policies', []) and 'roll12wide' in plan.get('policies', []):
+        offsets = plan.get('seed_offsets', {})
+        require(offsets.get('roll12fair') == offsets.get('roll12wide'),
+                'roll12fair and roll12wide must share the seed offset (slots pair exactly)')
+    if 'roll12fair' in policies:  # agents leave WIDE_JUDGE_RESERVE permits per node for judges; cap <= 20
+        require(WIDE_JUDGE_RESERVE < plan.get('concurrent_requests_per_endpoint', 0) <= 20,
+                f'roll12fair needs {WIDE_JUDGE_RESERVE} < concurrent_requests_per_endpoint <= 20')
+        require(policies == ['roll12fair'] or not a.run, 'roll12fair runs alone (--policy roll12fair)')
+        concurrent = max(1, len(jobs))  # no admission queue: every case of the arm is open from the start
     if 'roll12wide' in policies:  # widened agents leave WIDE_JUDGE_RESERVE permits per node for judges; cap <= 20
         require(WIDE_JUDGE_RESERVE < plan.get('concurrent_requests_per_endpoint', 0) <= 20,
                 f'roll12wide needs {WIDE_JUDGE_RESERVE} < concurrent_requests_per_endpoint <= 20')
@@ -1137,34 +1296,50 @@ def main(argv=None):
                                       seed_offsets={pol: plan['seed_offsets'][pol] for pol in policies},
                                       concurrent_policy_cases=concurrent, started_utc=datetime.now(timezone.utc).isoformat(), admission=adm))
     # TrackedSlots (exact occupancy, one condition lock) only for a roll12idle arm; every other policy keeps plain Slots
-    slot_class = TrackedSlots if policies == ['roll12idle'] else WideSlots if policies == ['roll12wide'] else Slots
+    slot_class = (TrackedSlots if policies == ['roll12idle'] else WideSlots if policies == ['roll12wide']
+                  else FairSlots if policies == ['roll12fair'] else Slots)
     slots, lock, stop, rows = slot_class(plan['concurrent_requests_per_endpoint']), threading.Lock(), threading.Event(), []
 
     def work(job):
         task, seed, index, pol = job
         if stop.is_set():
             return
+        case_start = time.monotonic()
         try:
             rec = run_policy(plan, source, out, task, seed, index, pol, slots)
         except Exception as exc:
             with lock:
                 stop.set()
+                if isinstance(slots, FairSlots):
+                    slots.halt()
                 rows.append(dict(task_id=task['id'], seed=seed, policy=pol, error=f'{type(exc).__name__}: {exc}'))
             return
-        rec.update(task_id=task['id'], seed=seed)
+        rec.update(task_id=task['id'], seed=seed, case_start_s=round(case_start - start, 3))
         with lock:
             rows.append(rec)
             if rec['infra']:
                 stop.set()
+                if isinstance(slots, FairSlots):  # no further starts in any open case (they rerun on resume)
+                    slots.halt()
             with (out / 'cases.jsonl').open('a') as stream:
                 stream.write(json.dumps(rec) + '\n')
             print(json.dumps(dict(done=len(rows), total=len(jobs), policy=pol, task=task['id'], seed=seed, solved=rec['solved'], wrong=rec['wrong'])), flush=True)
 
     start = time.monotonic()
-    if isinstance(slots, WideSlots):  # cases waiting for admission (each case decrements it when it starts)
+    if isinstance(slots, (WideSlots, FairSlots)):  # cases waiting for admission (each case decrements it when it starts)
         slots.set_pending(len(jobs))
     with ThreadPoolExecutor(concurrent) as pool:
-        list(pool.map(work, jobs))
+        try:
+            list(pool.map(work, jobs))
+        except BaseException as exc:  # e.g. a controller thread that cannot start: the pool raises at submission
+            with lock:
+                stop.set()
+                rows.append(dict(task_id=None, seed=None, policy=policies[0] if len(policies) == 1 else None,
+                                 error=f'controller start failed: {type(exc).__name__}: {exc}'[:300]))
+            if isinstance(slots, FairSlots):  # BEFORE the pool waits: registered cases stop waiting for the others
+                slots.halt()
+    if isinstance(slots, FairSlots):
+        slots.close()
     meta = read(out / 'metadata.json')
     meta.update(completed_utc=datetime.now(timezone.utc).isoformat(), wall_seconds=time.monotonic() - start, stopped=stop.is_set(),
                 errors=[r for r in rows if 'error' in r],
