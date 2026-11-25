@@ -1,0 +1,35 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@6e7c8248f75265bdd4fbab5273304243b5d8c2cb",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "inkling/serve.sh, MEM=0.75 since 2026-11-21 16:25 Europe/Warsaw (KV ~1.08M tokens per node)",
+  "adapter": "inkling/shim.py (vLLM dialect; client disconnects close the upstream stream and count as shim:client_cancels)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "temperature": "0.8 (harness constant)",
+  "mem_fraction": "0.75"
+ },
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_requests_per_endpoint": 20,
+ "status": "FROZEN",
+ "study": "judge-replay-v1",
+ "study_group": "judge-replay-v1",
+ "source_revision": "553307333e81db4961b75687a6ed815f9e410a0d",
+ "source_path": ".runtime/xl-night-source",
+ "code_sha256": {
+  "judge_replay.py": "238dcb6861463dee47df92703fbbcac085bc5f624f6900d028bc746c44158345",
+  "judges.py": "519c30211b80e9dd614c6c358c21399f75e6c5492fb108aa44a4ef2988fa3318",
+  "inkling/report_judge_replay.py": "416a52cd1d2b79b34c526379a69bd2906c64bcab2caf09e4393bc2275ba5945e",
+  "run_variants.py": "a4712f5320f9a6776ceed142bfdad3065f4b2ca75af298dd02ec65018c7db005",
+  "run_judge.py": "dadc67dba63432c095794dff9c04d81ac7952eecc0215488b3f6d7c28ca21956",
+  "inkling/account_cmd.py": "aaaa8e4fb449a0f437f51087a69f2634b3e2d3449eb9dc97b5a429a0298aafaa"
+ },
+ "parts": {
+  "coding": "generic protocol judge (task statement + candidate program, domain-free system prompt, JSON verdict) on every recorded winner of the finished coding arms (715; 31 fail the hidden tests)",
+  "arith": "second independent call of the unchanged arithmetic judge on every accepted forced plan (49) + equal seeded control of accepted self-closed plans (49) + every rejected forced plan (2,451, --include-rejected-forced)"
+ },
+ "question": "Generic wrong-answer avoidance (owner rule: generic only; Fable round 4 ideas 3 and 4): would a judge acting as a second acceptance key catch wrong coding winners (public tests pass, hidden fail), and would a second judge on forced arithmetic answers change outcomes, at what cost?",
+ "decision_rule": "Screen only (recorded candidates). A live study of the coding judge as a second key is planned only if it rejects at least half of the wrong winners while rejecting at most 5 % of the correct winners; a live second judge on forced answers only if it would turn at least 1 false accept into a reject per 1,000 forced plans without rejecting more than 1 % of valid accepted plans. Cost reported.",
+ "report": "inkling/report_judge_replay.py -> results/judge-replay-v1/"
+}
