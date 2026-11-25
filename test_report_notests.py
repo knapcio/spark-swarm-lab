@@ -40,7 +40,8 @@ def make_arm(root, name, acceptance, outcomes, wh=10.0, server=1000, plan_extra=
                 records.append(dict(type='puzzle_end', parsed=True, accepted=accepted, feedback_pass=feedback,
                                     holdout_pass=holdout, **extra))
             (d / Path(events).name).write_text('\n'.join(json.dumps(r) for r in records) + '\n')
-            rows.append(dict(events=events, cancelled=bool(extra.get('_cancelled')), task_id=task, seed=1, agent=i))
+            rows.append(dict(events=events, cancelled=bool(extra.get('_cancelled')), task_id=task, seed=1, agent=i,
+                             late_decision=bool(extra.get('_late'))))
     (d / 'cases.json').write_text(json.dumps(cases))
     (d / 'summary.json').write_text(json.dumps(rows))
     (d / 'arm_accounting.json').write_text(json.dumps(dict(server=dict(total=dict(generation_tokens=server)),
@@ -118,6 +119,20 @@ class ReportNoTestsTests(unittest.TestCase):
         self.assertEqual(jud['judge_tokens_per_case'], 50)  # 5 judge calls x 30 tokens / 3 cases
         self.assertEqual(jud['solver_tokens_per_case'], 50)  # client 100 per case minus judge
         self.assertEqual(jud['acceptance_quality']['finished'], 4)  # the cancelled agent is not a finished agent
+
+    def test_late_decisions_excluded_from_acceptance_quality(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            make_arm(root, 'pub', None, {'a': (True, True, [(True, True, True, {})]), 'b': (False, False, []),
+                                         'c': (False, False, [])})
+            make_arm(root, 'self', 'self_tests', {'a': (True, True, [(True, True, True, {})]),
+                                                  'b': (False, False, [(True, True, True, dict(_late=True))]),
+                                                  'c': (False, False, [])})
+            make_arm(root, 'jud', 'judge', {'a': (False, False, []), 'b': (False, False, []), 'c': (False, False, [])})
+            res, md = self.run_report(root)
+        q = res['arms']['self_tests']['acceptance_quality']
+        self.assertEqual((q['finished'], q['accepted'], q['accepted_correct'], q['late_decisions']), (1, 1, 1, 1))
+        self.assertIn('Late decisions (excluded)', md)
 
     def test_decision_timing_disclosed(self):
         with tempfile.TemporaryDirectory() as d:

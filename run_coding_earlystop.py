@@ -15,7 +15,8 @@ as an 'acceptance' trace event (decided_monotonic: this host's monotonic clock, 
 hidden grading. The winner is the accepted proposal with the EARLIEST recorded decision: whenever an executor observes an
 accepted decision, the case Arbiter collects every decision already recorded by the case's agents and picks the earliest
 (not the poll order). A decision recorded after its agent's deadline is not an acceptance (the agent counts as a
-deadline). The hidden feedback and holdout grading after a decision is scoring only (bounded by SCORING_GRACE_SECONDS) and
+deadline; when the deadline timer fires, the trace is read once more and a decision recorded at or before the deadline
+still counts). The hidden feedback and holdout grading after a decision is scoring only (bounded by SCORING_GRACE_SECONDS) and
 can neither change the winner nor move the decision. A case is solved if the winner passes ALL hidden cases (feedback and
 holdout). Without the field everything is exactly as before (the public-tests path: the first feedback pass observed when a
 worker exits, after its in-worker hidden grading, as in every earlier coding study). Plan-only by default.
@@ -151,6 +152,10 @@ def execute_accepting(case, deadline_seconds, arbiter, grace_seconds=SCORING_GRA
                     cancelled, returncode = True, terminate(process)
                     break
                 now = time.monotonic()
+                if decision is None and not late and now - start >= deadline_seconds:
+                    observe()  # once more: a decision recorded in time may have landed after this iteration's read
+                    if decision:
+                        continue
                 if late or (decision is None and now - start >= deadline_seconds):
                     deadline, returncode = True, terminate(process)
                     break

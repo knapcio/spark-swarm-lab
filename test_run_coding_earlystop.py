@@ -245,6 +245,24 @@ class ExecuteAcceptingTests(unittest.TestCase):
         self.assertFalse(row['accepted'] or row['won'])
         self.assertIsNone(arbiter.winner(KEY))
 
+    def test_in_time_decision_landing_after_the_last_read_still_counts(self):
+        """The race: the decision is recorded in time (0.1 s, deadline 0.6 s) but every regular poll read misses it
+        (a tail that only sees the file on an immediate second read, as when the write lands between the read and the
+        timeout check). The re-read when the deadline fires must accept it."""
+        class LaggingTail(r.TraceTail):
+            last = 0.0
+
+            def find(self, kind):
+                now, previous = time.monotonic(), LaggingTail.last
+                LaggingTail.last = now
+                return super().find(kind) if now - previous < .005 else None
+        arbiter = self.arbiter()
+        with tempfile.TemporaryDirectory() as d, patch.object(r, 'TraceTail', LaggingTail):
+            row = r.execute_accepting(self.job(Path(d), 0, .1, True, 1.0), .6, arbiter, poll=.05)
+        self.assertTrue(row['accepted'] and row['won'], row)
+        self.assertFalse(row['deadline'] or row['late_decision'])
+        self.assertEqual(arbiter.winner(KEY), 0)
+
     def test_rejected_decision_never_wins(self):
         arbiter = self.arbiter()
         with tempfile.TemporaryDirectory() as d:

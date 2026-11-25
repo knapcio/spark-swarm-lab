@@ -97,12 +97,15 @@ def arm(run_dir, mode):
     acct = read(run_dir / 'arm_accounting.json') if (run_dir / 'arm_accounting.json').exists() else None
     n = len(cases)
     quality = dict(finished=0, parsed=0, accepted=0, accepted_correct=0, accepted_wrong=0, rejected_correct=0,
-                   self_tests_invalid=0, judge_unparsed=0, traces_missing=0)
+                   self_tests_invalid=0, judge_unparsed=0, traces_missing=0, late_decisions=0)
     judge_tokens = 0
     for row in rows:
         end, judge = trace(run_dir, row['events'])
         judge_tokens += judge  # every completed judge call, cancelled agents included: judge tokens, never solver tokens
         if row.get('cancelled'):
+            continue
+        if row.get('late_decision'):  # recorded after the agent deadline: not an acceptance, not in the quality table
+            quality['late_decisions'] += 1
             continue
         quality['finished'] += 1
         if end is None:
@@ -223,12 +226,14 @@ def tables(res):
                      f"{fmt(a['judge_tokens_per_case'])} | {wall} | {fmt(a['gpu_wh'])} | {fmt(a['wh_per_solved'], '.2f')} | "
                      f"{fmt(a['stop_median'])} / {fmt(a['stop_p90'])} s | {fmt(a['started_per_case'])} |")
     lines += ['', '| Arm | Finished agents | Parsed | Accepted | Accepted, correct | Accepted, wrong | Rejected, correct | '
-                  'Invalid own tests | Judge unparsed |', '|---|---:|---:|---:|---:|---:|---:|---:|---:|']
+                  'Invalid own tests | Judge unparsed | Late decisions (excluded) |',
+              '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
     for name, _ in ARMS:
         if name in res['arms']:
             q = res['arms'][name]['acceptance_quality']
             lines.append(f"| {labels[name]} | {q['finished']} | {q['parsed']} | {q['accepted']} | {q['accepted_correct']} | "
-                         f"{q['accepted_wrong']} | {q['rejected_correct']} | {q['self_tests_invalid']} | {q['judge_unparsed']} |")
+                         f"{q['accepted_wrong']} | {q['rejected_correct']} | {q['self_tests_invalid']} | {q['judge_unparsed']} | "
+                         f"{q['late_decisions']} |")
     lines += ['', DISCLOSURE, '', DECISION_TIMING, '']
     for name, p in res['paired'].items():
         lines.append(f"{labels[name]} vs public tests, paired on {p['cases']} cases: solved +{p['wins']} / -{p['losses']} "
