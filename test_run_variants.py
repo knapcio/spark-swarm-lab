@@ -1194,6 +1194,183 @@ class WidePolicyTests(unittest.TestCase):
                             run()
 
 
+class FairPolicyTests(unittest.TestCase):
+    """roll12fair water-filling admission with a fake worker (no model) and FairSlots."""
+    def run_cases(self, n, per_endpoint=20, duration=lambda task, slot: .3, accept=lambda task, slot: False,
+                  during=None, slots=None):
+        import threading, time
+        lock, log, state = threading.Lock(), [], dict(now={}, peak={})
+
+        def execute(job, deadline_seconds, cancel=None):
+            stem = Path(job['events']).name
+            task, slot = stem.split('-s1-')[0], int(stem.rsplit('-a', 1)[1].split('.')[0])
+            c = job['command']
+            with lock:
+                log.append(dict(task=task, slot=slot, endpoint=job['endpoint'], seed=int(c[c.index('--seed') + 1]),
+                                t=time.monotonic()))
+                state['now'][job['endpoint']] = state['now'].get(job['endpoint'], 0) + 1
+                state['peak'][job['endpoint']] = max(state['peak'].get(job['endpoint'], 0), state['now'][job['endpoint']])
+            try:
+                end = time.monotonic() + duration(task, slot)
+                while time.monotonic() < end:
+                    if cancel is not None and cancel.is_set():
+                        return dict(deadline=False, cancelled=True, returncode=-15)
+                    time.sleep(.005)
+                return dict(deadline=False, cancelled=False, returncode=0)
+            finally:
+                with lock:
+                    state['now'][job['endpoint']] -= 1
+
+        def judge(cand, endpoint, events_path, seed):
+            stem = Path(events_path).name
+            task, slot = stem.split('-s1-')[0], int(stem.rsplit('-a', 1)[1].split('.')[0])
+            return dict(verdict=accept(task, slot), reason='', infra=0, tokens=1)
+        plan = dict(PLAN, seed_offsets=dict(roll12wide=1400, roll12fair=1400))
+        slots = slots or v.FairSlots(per_endpoint, poll=.05)
+        slots.set_pending(n)
+        recs, errors = {}, {}
+        with tempfile.TemporaryDirectory() as d, patch.object(v, 'execute_cancellable', execute), \
+                patch.object(v, 'plan_of', lambda p: dict(plan={'moves': [1]}, verifier_solved=True, tokens=5, infra=0)), \
+                patch.object(v, 'judge_with_reason', judge):
+            out = Path(d)
+            (out / 'agents').mkdir(); (out / 'extra').mkdir(); (out / 'judges').mkdir()
+
+            def case(i):
+                try:
+                    recs[i] = v.run_policy(plan, Path('/src'), out, dict(TASK, id=f'c{i}'), 1, i, 'roll12fair', slots)
+                except Exception as exc:
+                    errors[i] = exc
+            threads = [threading.Thread(target=case, args=(i,)) for i in range(n)]
+            for t in threads:
+                t.start()
+            if during:
+                during(slots, log)
+            for t in threads:
+                t.join()
+            slots.close()
+        return recs, errors, sorted(log, key=lambda e: e['t']), state, slots
+
+    def test_every_case_gets_one_agent_before_any_case_gets_a_second(self):
+        # 10 cases, 4 nodes x (4 - 2 judge permits) = 8 agent slots; every agent fails fast
+        recs, errors, log, state, slots = self.run_cases(10, per_endpoint=4, duration=lambda t, s: .05,
+                                                         accept=lambda t, s: s == 1)
+        self.assertEqual(errors, {})
+        self.assertEqual([e['task'] for e in log[:8]], [f'c{i}' for i in range(8)])  # earlier cases first
+        self.assertEqual(len({e['task'] for e in log[:10]}), 10)  # c8, c9 start before any second agent
+        self.assertLessEqual(max(state['peak'].values()), 4 - v.WIDE_JUDGE_RESERVE)  # judges keep their permits
+        self.assertTrue(all(r['selected_slot'] == 1 and r['solved'] for r in recs.values()))
+        self.assertEqual(set(slots.in_flight.values()), {0})
+
+    def test_four_in_flight_before_the_first_failure_eight_after_cap_twelve(self):
+        recs, errors, log, _, _ = self.run_cases(1, duration=lambda t, s: 0 if s == 0 else .4)
+        rec = recs[0]
+        self.assertEqual((rec['max_in_flight'], rec['calls']), (8, 12))
+        self.assertIsNotNone(rec['first_failure_s'])
+        first_fail = log[0]['t'] + rec['first_failure_s'] - 0.05
+        self.assertLessEqual(sum(e['t'] < first_fail for e in log), 4)
+        self.assertEqual(sorted(e['seed'] for e in log), [1000 + 1400 + s for s in range(12)])  # = roll12wide seeds
+        self.assertEqual(sorted(e['slot'] for e in log), list(range(12)))
+
+    def test_no_failure_keeps_four_and_accept_cancels(self):
+        recs, _, log, _, _ = self.run_cases(1, duration=lambda t, s: .15 if s == 2 else 1.0, accept=lambda t, s: s == 2)
+        rec = recs[0]
+        self.assertEqual((rec['max_in_flight'], rec['selected_slot'], rec['cancelled_agents']), (4, 2, 3))
+        self.assertLess(rec['case_seconds'], .9)
+        self.assertEqual(len(log), 4)
+
+    def test_fewest_in_flight_gets_the_free_slot(self):
+        # 4 agent slots (one per node), 2 cases: the slots alternate between the cases (fewest in flight, then fewest
+        # started, then the earlier case); a failing case may then use what the other leaves free
+        recs, _, log, _, _ = self.run_cases(2, per_endpoint=1 + v.WIDE_JUDGE_RESERVE,
+                                            duration=lambda t, s: .05 if t == 'c0' else .4, accept=lambda t, s: t == 'c1')
+        self.assertEqual([e['task'] for e in log[:4]], ['c0', 'c1', 'c0', 'c1'])
+        self.assertIn(recs[1]['selected_slot'], (0, 1))
+        self.assertGreaterEqual(sum(e['task'] == 'c0' for e in log if e['t'] < log[0]['t'] + .35), 4)
+
+    def test_halt_cuts_open_cases_short_and_raises(self):
+        def during(slots, log):
+            import time
+            time.sleep(.2)
+            slots.halt()
+        recs, errors, log, _, slots = self.run_cases(2, duration=lambda t, s: .3, during=during)
+        self.assertEqual(set(errors), {0, 1})
+        self.assertIn('halted', str(errors[0]))
+        self.assertEqual(set(slots.in_flight.values()), {0})
+
+    def test_thread_start_failure_releases_its_permit(self):
+        import threading
+        real = threading.Thread
+
+        class Fail(real):
+            def start(self):
+                if self._args and len(self._args) == 4 and self._args[1] == 1:  # FairSlots._run of slot 1
+                    raise RuntimeError("can't start new thread")
+                return super().start()
+        slots = v.FairSlots(20, poll=.05)
+        with patch.object(v.threading, 'Thread', Fail):
+            recs, errors, _, _, _ = self.run_cases(1, duration=lambda t, s: .1, slots=slots)
+        rec = recs[0]
+        self.assertEqual(len([a for a in rec['agents'] if a.get('launch_failed')]), 1)
+        self.assertGreaterEqual(rec['infra'], 1)
+        self.assertEqual(set(slots.in_flight.values()), {0})
+        self.assertEqual({e: slots.sem[e]._value for e in slots.endpoints}, {e: 20 for e in slots.endpoints})
+
+    def test_plan_checks(self):
+        import contextlib, io, json
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            tasks = [dict(id=f't{i}', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7) for i in range(3)]
+            (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=tasks)))
+            base = dict(protocol='swarm-variants-screen-v1', source_revision='x', dataset=str(root / 'data.json'),
+                        dataset_protocol='p', split='evaluation', tasks=3, seeds=[1], policies=['roll12wide', 'roll12fair'],
+                        seed_offsets=dict(roll12wide=22400, roll12fair=22400), concurrent_policy_cases=20)
+            run = lambda: v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d,
+                                  '--policy', 'roll12fair'])
+            with patch.object(v, 'validate_source', lambda *a: None):
+                for cap, ok in ((20, True), (21, False), (2, False)):
+                    (root / 'plan.json').write_text(json.dumps(dict(base, concurrent_requests_per_endpoint=cap)))
+                    if ok:
+                        with contextlib.redirect_stdout(io.StringIO()):
+                            self.assertEqual(run(), 0)
+                    else:
+                        with self.assertRaisesRegex(Exception, 'roll12fair needs'):
+                            run()
+                (root / 'plan.json').write_text(json.dumps(dict(base, concurrent_requests_per_endpoint=20,
+                                                                seed_offsets=dict(roll12wide=22400, roll12fair=22500))))
+                with self.assertRaisesRegex(Exception, 'share the seed offset'):
+                    run()
+
+    def test_runner_runs_every_case_at_once_and_records_case_start(self):
+        import contextlib, io, json
+        seen = []
+
+        def fake_policy(plan, source, out, task, seed, index, pol, slots):
+            seen.append((task['id'], isinstance(slots, v.FairSlots)))
+            with slots.cond:
+                slots.pending = max(0, slots.pending - 1)
+            return dict(policy=pol, agents=[], answered=False, solved=False, wrong=False, oracle=False, calls=0, tokens=0,
+                        infra=0, deadlines=0, case_seconds=0)
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            tasks = [dict(id=f't{i}', split='evaluation', numbers=[1, 2, 3, 4, 5, 6], target=7) for i in range(5)]
+            (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=tasks)))
+            plan = dict(protocol='swarm-variants-screen-v1', status='FROZEN', source_revision='x', dataset=str(root / 'data.json'),
+                        dataset_protocol='p', split='evaluation', tasks=5, seeds=[1], policies=['roll12fair'],
+                        seed_offsets=dict(roll12fair=22400), concurrent_policy_cases=2, concurrent_requests_per_endpoint=20,
+                        agent_variant='x')
+            (root / 'plan.json').write_text(json.dumps(plan))
+            (root / 'adm.json').write_text(json.dumps(dict(verified=True, verified_utc=v.datetime.now(v.timezone.utc).isoformat())))
+            with patch.object(v, 'validate_source', lambda *a: None), patch.object(v, 'run_policy', fake_policy), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                v.main(['--plan', str(root / 'plan.json'), '--output', str(root / 'out'), '--source', d,
+                        '--admission', str(root / 'adm.json'), '--run'])
+            meta = json.loads((root / 'out' / 'metadata.json').read_text())
+            rows = [json.loads(l) for l in (root / 'out' / 'cases.jsonl').read_text().splitlines()]
+        self.assertEqual(meta['concurrent_policy_cases'], 5)
+        self.assertTrue(all(fair for _, fair in seen) and len(seen) == 5)
+        self.assertTrue(all(isinstance(r['case_start_s'], float) for r in rows))
+
+
 class StrictHardCasesTests(unittest.TestCase):
     from inkling import strict_hard_cases as shc
     EXPECTED = {('a', 1), ('a', 2), ('b', 1), ('b', 2)}
