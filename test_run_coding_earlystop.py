@@ -19,7 +19,9 @@ def sha(path):
 
 
 class EarlyStopTests(unittest.TestCase):
-    def run_main(self, fast_pass, holdout, stagger=None, rolling=None):
+    def run_main(self, fast_pass, holdout, stagger=None, rolling=None, acceptance=None, feedback=None, plan_extra=None):
+        """acceptance: no-provided-tests mode; fast_pass then means 'accepted', feedback = agents passing the hidden
+        feedback cases (default: every agent)."""
         """fast_pass: agents that end at once with feedback pass; every other agent runs until cancelled."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -36,14 +38,18 @@ class EarlyStopTests(unittest.TestCase):
                 plan['stagger'] = stagger
             if rolling:
                 plan['rolling'] = rolling
+            if acceptance:
+                plan.update(acceptance=acceptance, early_stop='first_accepted_in_time')
+            plan.update(plan_extra or {})
             plan_path = root / 'plan.json'
             plan_path.write_text(json.dumps(plan))
             adm = root / 'adm.json'
             adm.write_text(json.dumps(dict(verified=True, verified_utc=datetime.now(timezone.utc).isoformat())))
-            started = []
+            started, self.commands = [], []
 
             def execute(job, deadline, cancel):
                 started.append((job['task_id'], job['agent']))
+                self.commands.append(job['command'])
                 if job['agent'] in fast_pass:
                     return dict(cancelled=False, deadline=False, controller_error=None, returncode=0, controller_stop=False,
                                 status='complete', calls=1, unfinished_calls=0, infrastructure_failures=0, completion_tokens=10)
@@ -56,10 +62,18 @@ class EarlyStopTests(unittest.TestCase):
                 return dict(cancelled=False, deadline=False, controller_error=None, returncode=0, controller_stop=False,
                             status='complete', calls=1, unfinished_calls=0, infrastructure_failures=0, completion_tokens=10)
 
+            def agent_of(events):
+                return int(Path(events).name.split('-a')[1].split('-')[0])
+
             def outcome(events):
-                agent = int(Path(events).name.split('-a')[1].split('-')[0])
-                return dict(parsed=True, feedback_pass=agent in fast_pass, holdout_pass=agent in holdout, budget_forced=False)
+                agent = agent_of(events)
+                fb = agent in fast_pass if not acceptance else (feedback is None or agent in feedback)
+                return dict(parsed=True, feedback_pass=fb, holdout_pass=agent in holdout, budget_forced=False)
+
+            def accepted(events):
+                return dict(accepted=agent_of(events) in fast_pass)
             with patch.object(r, 'execute_cancellable', execute), patch.object(r, 'agent_outcome', outcome), \
+                    patch.object(r, 'accepted_outcome', accepted), \
                     patch.object(r, 'validate_source', lambda *a: None), patch.object(r, 'hashes', lambda s: {}), \
                     patch.object(r, 'server_metrics', lambda *a, **k: {}), contextlib.redirect_stdout(io.StringIO()):
                 code = r.main(['--plan', str(plan_path), '--output', str(root / 'out'), '--source', str(root),
@@ -109,6 +123,37 @@ class EarlyStopTests(unittest.TestCase):
         code, cases, started = self.run_main(fast_pass={0}, holdout={0}, rolling=dict(width=2))
         self.assertTrue(all(agent < 2 for _, agent in started))
         self.assertTrue(all(c['never_started'] >= 2 for c in cases))
+
+    def test_default_commands_have_no_acceptance_flag(self):
+        self.run_main(fast_pass={0}, holdout={0}, rolling=dict(width=2))
+        self.assertTrue(self.commands and all('--acceptance' not in c for c in self.commands))
+
+    def test_acceptance_stops_on_first_accepted_not_on_feedback(self):
+        # every agent passes the hidden feedback cases, but only agent 3 is accepted (own tests / judge)
+        for mode in ('self_tests', 'judge'):
+            code, cases, started = self.run_main(fast_pass={3}, holdout={3}, rolling=dict(width=2), acceptance=mode)
+            self.assertEqual(code, 0)
+            self.assertTrue(all(c['answered'] and c['solved'] and c['winner_agent'] == 3 for c in cases))
+            self.assertTrue(all(c[-2:] == ['--acceptance', mode] for c in self.commands))
+
+    def test_acceptance_solved_needs_every_hidden_case(self):
+        # accepted agent 0 passes the holdout but not the hidden feedback cases: answered, wrong
+        code, cases, _ = self.run_main(fast_pass={0}, holdout={0}, rolling=dict(width=2), acceptance='judge',
+                                       feedback={1, 2, 3})
+        self.assertTrue(all(c['answered'] and not c['solved'] for c in cases))
+
+    def test_acceptance_no_accept_leaves_case_unanswered(self):
+        code, cases, started = self.run_main(fast_pass=set(), holdout={0, 1, 2, 3}, rolling=dict(width=2),
+                                             acceptance='self_tests')
+        self.assertEqual(code, 0)
+        self.assertEqual(len(started), 8)
+        self.assertTrue(all(not c['answered'] and not c['solved'] for c in cases))
+
+    def test_acceptance_plan_checks(self):
+        for bad in (dict(acceptance='self_tests'), dict(acceptance='feedback', early_stop='first_accepted_in_time'),
+                    dict(early_stop='first_accepted_in_time')):
+            with self.assertRaises(ValueError):
+                self.run_main(fast_pass={0}, holdout={0}, plan_extra=bad)
 
     def test_cancelled_row_is_not_an_operational_fault(self):
         row = dict(cancelled=True, controller_error=None, malformed_lines=0)

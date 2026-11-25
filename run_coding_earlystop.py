@@ -7,7 +7,12 @@ controller). Same jobs, seeds, endpoints, grading and fault rules as run_coding_
 controller decision, not an operational fault. Optional plan field stagger = {"first": k, "after_seconds": T}: agents
 k.. of a case start only if the case has no passing proposal T seconds after its first agent started. Optional plan field
 rolling = {"width": W} (failure-driven replacement, exclusive with stagger): W agents start; agent k >= W of a case
-starts only after k - W + 1 agents of that case have ended without a passing proposal. Plan-only by default.
+starts only after k - W + 1 agents of that case have ended without a passing proposal. Optional plan field
+acceptance = "self_tests" | "judge" (no provided tests; early_stop must then be "first_accepted_in_time"): the workers get
+--acceptance, see the statement without the public examples, and a proposal passes when the agent's own tests pass in the
+sandbox (self_tests) or the judge accepts it (judge) instead of on the feedback cases; a case is solved if the winner
+passes ALL hidden cases (feedback and holdout), graded by the worker for scoring only. Without the field everything is as
+before. Plan-only by default.
 """
 import argparse
 import json
@@ -22,6 +27,20 @@ from run_benchmark import read_trace, server_metrics
 from run_coding_agents import ENDPOINTS, HERE, PROTOCOL, agent_outcome, hashes, make_jobs
 from run_variants import execute_cancellable
 
+ACCEPTANCE = ('self_tests', 'judge')
+EARLY_STOP = {None: 'first_feedback_pass_in_time', 'self_tests': 'first_accepted_in_time', 'judge': 'first_accepted_in_time'}
+
+
+def accepted_outcome(events_path):
+    """The worker's acceptance (no-provided-tests modes): puzzle_end.accepted."""
+    records, _ = read_trace(Path(events_path))
+    end = next((r for r in reversed(records) if r.get('type') == 'puzzle_end'), {})
+    return dict(accepted=bool(end.get('accepted')))
+
+
+def passed(row, acceptance):
+    return row['accepted'] if acceptance else row['feedback_pass']
+
 
 def fault(row):
     if row.get('cancelled'):
@@ -29,15 +48,16 @@ def fault(row):
     return operational_fault(row)
 
 
-def cases_summary(rows, jobs):
+def cases_summary(rows, jobs, acceptance=None):
     cases = {}
     for job in jobs:
         cases.setdefault((job['task_id'], job['seed']), dict(agents=0))['agents'] += 1
     for (task, seed), case in cases.items():
         mine = [r for r in rows if (r['task_id'], r['seed']) == (task, seed)]
         winner = next((r for r in mine if r.get('winner')), None)
+        solved = bool(winner and winner['holdout_pass'] and (not acceptance or winner['feedback_pass']))
         case.update(task_id=task, seed=seed, answered=winner is not None,
-                    solved=bool(winner and winner['holdout_pass']), winner_agent=winner['agent'] if winner else None,
+                    solved=solved, winner_agent=winner['agent'] if winner else None,
                     started=len(mine), cancelled=sum(bool(r.get('cancelled')) for r in mine),
                     never_started=case['agents'] - len(mine),
                     completion_tokens=sum(r['completion_tokens'] or 0 for r in mine),
@@ -54,7 +74,9 @@ def main(argv=None):
     p.add_argument('--run', action='store_true')
     a = p.parse_args(argv)
     plan = read(a.plan)
-    require(plan['protocol'] == PROTOCOL and plan.get('early_stop') == 'first_feedback_pass_in_time', 'Wrong protocol')
+    acceptance = plan.get('acceptance')
+    require(acceptance is None or acceptance in ACCEPTANCE, 'Unknown acceptance')
+    require(plan['protocol'] == PROTOCOL and plan.get('early_stop') == EARLY_STOP[acceptance], 'Wrong protocol')
     source, output = a.source.expanduser().resolve(), a.output.resolve()
     validate_source(source, plan['source_revision'])
     before = hashes(source)
@@ -66,6 +88,9 @@ def main(argv=None):
         tasks = [t for t in tasks if t['id'] in plan['matrix']['task_ids']]
     require(len(tasks) == plan['matrix']['tasks_count'], 'Wrong task count')
     jobs = make_jobs(tasks, output, source, plan, tasks_path, tests_path)
+    if acceptance:
+        for job in jobs:
+            job['command'] = job['command'] + ['--acceptance', acceptance]
     per_node, deadline = plan['scheduling']['concurrent_agents_per_node'], plan['limits']['agent_wall_deadline_seconds']
     meta = dict(protocol=plan, plan_sha256=sha(a.plan), jobs=len(jobs), source_sha256=before, output=str(output),
                 runner_sha256=sha(Path(__file__)))
@@ -138,8 +163,12 @@ def main(argv=None):
                 row.update({k: job[k] for k in ('task_id', 'split', 'arm', 'seed', 'endpoint', 'events')},
                            agent=job['agent'], case_index=job['case_index'], malformed_lines=read_trace(Path(job['events']))[1],
                            **agent_outcome(job['events']))
+                if acceptance:
+                    row.update(accepted_outcome(job['events']))
                 if row['cancelled']:
                     row.update(feedback_pass=False, holdout_pass=False)  # a terminated agent has no answer
+                    if acceptance:
+                        row['accepted'] = False
             except Exception as exc:
                 with lock:
                     stop.set()
@@ -148,10 +177,10 @@ def main(argv=None):
             with lock:
                 if job['agent'] < first_k:
                     first_done[key] = first_done.get(key, 0) + 1
-                if not row['feedback_pass'] and not row['cancelled']:
+                if not passed(row, acceptance) and not row['cancelled']:
                     failed[key] = failed.get(key, 0) + 1
                 row['winner'] = False
-                if row['feedback_pass'] and not cancel[key].is_set():
+                if passed(row, acceptance) and not cancel[key].is_set():
                     row.update(winner=True, stop_seconds=round(time.monotonic() - first_start[key], 1))
                     cancel[key].set()
                 rows.append(row)
@@ -160,14 +189,17 @@ def main(argv=None):
                     stop.set()
                     errors.append(dict(reason=reason, events=job['events']))
                 write(output / 'summary.json', rows)
-                print(json.dumps(dict(done=len(rows), total=len(jobs), task_id=row['task_id'], agent=row['agent'],
-                                      feedback=row['feedback_pass'], cancelled=row['cancelled'], winner=row['winner'],
-                                      status=row['status'])), flush=True)
+                line = dict(done=len(rows), total=len(jobs), task_id=row['task_id'], agent=row['agent'],
+                            feedback=row['feedback_pass'], cancelled=row['cancelled'], winner=row['winner'],
+                            status=row['status'])
+                if acceptance:
+                    line['accepted'] = row['accepted']
+                print(json.dumps(line), flush=True)
 
     with ThreadPoolExecutor(max_workers=per_node * 4) as pool:
         for future in [pool.submit(worker, e) for e in ENDPOINTS for _ in range(per_node)]:
             future.result()
-    cases = cases_summary(rows, jobs)
+    cases = cases_summary(rows, jobs, acceptance)
     write(output / 'cases.json', cases)
     meta.update(completed_utc=datetime.now(timezone.utc).isoformat(), batch_wall_seconds=time.monotonic() - start,
                 started_jobs=len(rows), errors=errors, server_after={e: server_metrics(e, timeout=3) for e in ENDPOINTS},
