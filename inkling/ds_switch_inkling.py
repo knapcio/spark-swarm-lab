@@ -16,10 +16,18 @@ stop-deepseek = exactly the first half of to-inkling (guards, native `service.sh
 GPU apps on all four nodes) WITHOUT starting swarm-inkling / swarm-inkling-shim; its final receipt lists every node's
 GPU apps (empty) and container states (stopped) and guards_ok.
 
-Usage: inkling/ds_switch_inkling.py precheck | to-deepseek | to-inkling | stop-deepseek   (a JSON receipt per step)
+start-deepseek = exactly to-deepseek's native start (pinned script, sha check) and health wait WITHOUT stopping any
+swarm container: it runs only on a fleet whose swarm is already stopped. Its preflight (nothing started on any
+failure) requires the head guards, a successful GPU query with no compute apps on all four nodes, and none of
+swarm-inkling, swarm-recipe, swarm-inkling-shim running on any node (a container counts as absent only on docker's
+exact "No such object/container" error; any other inspection failure fails the preflight).
+
+Usage: inkling/ds_switch_inkling.py precheck | to-deepseek | to-inkling | stop-deepseek | start-deepseek
+       (a JSON receipt per step)
 """
 import hashlib
 import json
+import re
 import shlex
 import subprocess
 import sys
@@ -239,6 +247,84 @@ def stop_deepseek():
     return receipt
 
 
+SWARM_CONTAINERS = ('swarm-inkling', 'swarm-recipe', 'swarm-inkling-shim')
+
+
+def _docker_absent(name, out):
+    """True only for docker's exact not-found error for this name (exit 1, nothing usable on stdout)."""
+    return (out.returncode == 1 and not out.stdout.strip()
+            and re.fullmatch(r'(?i:error: no such (?:object|container)): ' + re.escape(name), out.stderr.strip()) is not None)
+
+
+def swarm_containers(node):
+    """(ok, {name: True running | False stopped | None absent}); ok only if every container was inspected or is
+    absent by docker's exact error text (start-deepseek only)."""
+    state = {}
+    for name in SWARM_CONTAINERS:
+        try:
+            out = ssh(node, f'docker inspect --format "{{{{.State.Running}}}}" {name}')
+        except Exception as exc:  # ssh timeout or launch failure
+            return False, {name: f'{type(exc).__name__}: {exc}'[:120]}
+        value = out.stdout.strip()
+        if out.returncode == 0 and value in ('true', 'false'):
+            state[name] = value == 'true'
+        elif _docker_absent(name, out):
+            state[name] = None
+        else:
+            return False, {name: f'inspect exit {out.returncode}: {(out.stderr.strip() or value)[:120]}'}
+    return True, state
+
+
+def start_preflight():
+    """(problems, observed): head guards, start script hash, GPUs idle (a failed or unparsable query is not idle)
+    and no swarm container running, on all four nodes."""
+    problems, observed = [], dict(guards=guards_ok(), nodes={})
+    if not observed['guards']:
+        problems.append('head guards changed')
+    try:
+        sha = hashlib.sha256(START_SCRIPT.read_bytes()).hexdigest()
+    except OSError as exc:
+        sha = f'unreadable: {exc}'
+    if sha != START_SHA:
+        problems.append('start script hash differs')
+    for n, (ok, apps) in gpu_idle_everywhere().items():
+        ok_c, containers = swarm_containers(n)
+        observed['nodes'][n] = dict(gpu_query_ok=ok, gpu=apps, containers_ok=ok_c, containers=containers)
+        if not ok:
+            problems.append(f'{n}: GPU query failed')
+        elif apps:
+            problems.append(f'{n}: GPU compute apps present')
+        if not ok_c:
+            problems.append(f'{n}: container inspection failed')
+        elif any(containers.values()):
+            problems.append(f'{n}: swarm container running: ' + ','.join(k for k, v in containers.items() if v))
+    return problems, observed
+
+
+def start_deepseek():
+    """to_deepseek's native start and health wait, without stopping anything: the swarm must already be stopped."""
+    try:
+        LOG.parent.mkdir(parents=True, exist_ok=True)
+        record('start-deepseek-start')
+    except OSError as exc:
+        raise SystemExit(f'start-deepseek: receipt log {LOG} cannot be written ({exc}); nothing was started')
+    problems, observed = start_preflight()
+    record('start-preflight', ok=not problems, problems=problems, **observed)
+    if problems:
+        fail('start-deepseek', 'preflight failed; nothing was started: ' + '; '.join(problems))
+    script = START_SCRIPT.read_text()
+    out = ssh('Spark_01', 'bash -c ' + shlex.quote(script), timeout=900)
+    record('native-start', rc=out.returncode, stdout_tail=out.stdout[-400:], stderr_tail=out.stderr[-400:])
+    if out.returncode != 0:
+        fail('start-deepseek', 'native start returned nonzero')
+    for _ in range(90):
+        state = native_state()
+        if state.endswith('200'):
+            return record('native-healthy', ok=True, state=state, guards=guards_ok())
+        time.sleep(10)
+    fail('start-deepseek', 'native did not become healthy within 15 minutes', state=native_state())
+
+
 if __name__ == '__main__':
     {'precheck': precheck, 'to-deepseek': to_deepseek, 'to-inkling': to_inkling,
-     'stop-deepseek': stop_deepseek}[sys.argv[1]]()
+     'stop-deepseek': stop_deepseek, 'start-deepseek': start_deepseek}[sys.argv[1]]()
