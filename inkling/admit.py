@@ -5,7 +5,8 @@ Same receipt contract as admit_known72.py (``verified``, ``verified_utc``), for 
 on each of the four Sparks an SGLang ``swarm-inkling`` container plus the vLLM-dialect adapter
 ``swarm-inkling-shim`` (inkling/shim.py) must run from the same image digest, with the same launch
 arguments, no OOM, no restarts, the expected shim source hash (the plan's ``serving.shim_sha256`` when given), the plan's ``serving.mem_fraction`` when given, health 200 through the local tunnel and
-(unless --allow-busy) zero running/waiting requests.
+(unless --allow-busy) zero running/waiting requests. The container names come from the plan's ``serving.container``
+(default ``swarm-inkling``) and ``serving.shim_container`` (default ``swarm-inkling-shim``); all checks are unchanged.
 """
 import argparse
 import hashlib
@@ -21,6 +22,21 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 import run_agents72 as runner  # noqa: E402
+
+DEFAULT_CONTAINER, DEFAULT_SHIM_CONTAINER = 'swarm-inkling', 'swarm-inkling-shim'
+CONTAINER_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_.-]*$')  # docker names; also keeps the remote shell command safe
+
+
+def container_names(serving):
+    """(server, shim) container names from the plan's serving block, validated."""
+    names = (serving.get('container', DEFAULT_CONTAINER), serving.get('shim_container', DEFAULT_SHIM_CONTAINER))
+    for name in names:
+        if not (isinstance(name, str) and CONTAINER_NAME.match(name)):
+            raise SystemExit(f'invalid container name in plan serving: {name!r}')
+    if names[0] == names[1]:
+        raise SystemExit('serving.container and serving.shim_container must differ')
+    return names
+
 
 def metric(text, name):
     m = re.search(rf'^vllm:{name}{{[^}}]*}} (\S+)', text, re.M)
@@ -56,9 +72,10 @@ def main(argv=None):
     runner.validate_source(a.source.resolve(), plan['source_revision'])
     shim_sha = hashlib.sha256((HERE / 'shim.py').read_bytes()).hexdigest()
     expected = plan.get('serving', {})
+    server_name, shim_name = container_names(expected)
     nodes, ok_all, reference = [], True, None
     for i, n in enumerate(['01', '02', '03', '04']):
-        server, shim = inspect(n, 'swarm-inkling'), inspect(n, 'swarm-inkling-shim')
+        server, shim = inspect(n, server_name), inspect(n, shim_name)
         remote_sha = subprocess.check_output(['ssh', '-o', 'BatchMode=yes', 'Spark_' + n,
                                               'sha256sum ~/swarm-lab/inkling/shim.py'], text=True).split()[0]
         base = f'http://127.0.0.1:{18081 + i}'
@@ -83,7 +100,8 @@ def main(argv=None):
     receipt = dict(protocol='inkling-agent-run-admission', verified=ok_all, allow_busy=a.allow_busy,
                    verified_utc=datetime.now(timezone.utc).isoformat(), plan=str(a.plan),
                    plan_status=plan['status'], source_revision=plan['source_revision'], shim_sha256=shim_sha,
-                   serving_signature=reference, nodes=nodes, note=a.note)
+                   serving_signature=reference, containers=dict(server=server_name, shim=shim_name), nodes=nodes,
+                   note=a.note)
     a.output.write_text(json.dumps(receipt, indent=1) + '\n')
     print(json.dumps(dict(verified=ok_all, nodes=[(x['node'], x['ok']) for x in nodes])))
     return 0 if ok_all else 1
