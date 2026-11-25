@@ -23,12 +23,14 @@ def row(task, slot=None, solved=True, wrong=False):
                 wrong=answered and wrong, infra=0, selected_slot=slot, agents=[agent])
 
 
-def study(root, a_rows=None, p_tokens=1000, a_tokens=1100):
+def study(root, a_rows=None, p_tokens=1000, a_tokens=1100, a_tasks=5):
     (root / 'data.json').write_text(json.dumps(dict(protocol='p', tasks=TASKS)))
+    (root / 'data_a.json').write_text(json.dumps(dict(protocol='p', tasks=TASKS[:a_tasks])))
     plans = {}
     for k, variant in (('P', 'xl_forced_original'), ('A', 'xl_aot')):
-        plans[k] = dict(study=f'{STUDY}-{k.lower()}', dataset=str(root / 'data.json'), dataset_protocol='p',
-                        split='evaluation', tasks=5, seeds=[1], policies=['roll12wide'], agent_variant=variant,
+        data = 'data_a.json' if k == 'A' and a_tasks != 5 else 'data.json'
+        plans[k] = dict(study=f'{STUDY}-{k.lower()}', dataset=str(root / data), dataset_protocol='p',
+                        split='evaluation', tasks=a_tasks if k == 'A' else 5, seeds=[1], policies=['roll12wide'], agent_variant=variant,
                         seed_offsets=dict(roll12wide=21400), decision_rule='AoT adopted if ...')
         (root / rep.ARMS[k]['plan']).write_text(json.dumps(plans[k]))
     write_run(root / rep.ARMS['P']['dir'], plans['P'], 'roll12wide',
@@ -78,6 +80,37 @@ class AotReportTests(unittest.TestCase):
             root = Path(d)
             study(root, a_rows=[row('t0', 0), row('t1', 2), row('t2', 1), row('t3', 5), row('t4', 3, solved=False, wrong=True)])
             self.assertFalse(self.build(root)['decision']['AoT_adopted'])
+
+    def test_pairing_must_be_complete(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)  # A ran a smaller corpus to completion: both arms complete, pairing is not
+            study(root, a_tasks=4, a_rows=[row('t0', 0), row('t1', 2), row('t2', 1), row('t3', 5)])
+            s = self.build(root)
+        self.assertEqual((s['arms']['P']['status'], s['arms']['A']['status']), ('complete', 'complete'))
+        self.assertTrue(s['decision'].startswith('incomplete'), s['decision'])
+        self.assertIn('pairing: frozen plans differ', s['decision'])
+        self.assertIn('case sets differ', s['decision'])
+        empty = dict(rows={}, arm=dict(latest={}))
+        self.assertIn('no paired cases', rep.pairing(Path('/nonexistent'), dict(P=empty, A=empty)))
+        self.assertTrue(rep.decision(dict(P=dict(status='complete'), A=dict(status='complete')),
+                                     ['no paired cases']).startswith('incomplete'))
+
+    def test_transport_retries_are_listed_per_arm(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            study(root)
+            trace = root / rep.ARMS['A']['dir'] / 'agents' / 't3-s1-roll12wide-a5.jsonl'
+            trace.write_text(''.join(json.dumps(e) + '\n' for e in (
+                dict(type='request_retry', lost_completion_tokens=40), dict(type='request_retry_aborted'),
+                dict(type='request_retry', lost_completion_tokens=2))))
+            s = self.build(root)
+            with contextlib.redirect_stdout(io.StringIO()):
+                rep.main(['--root', d])
+            md = (root / 'results' / STUDY / 'REPORT.md').read_text()
+        self.assertEqual(s['arms']['A']['transport_retries'], dict(retries=2, lost_completion_tokens=42, retries_not_sent=1))
+        self.assertEqual(s['arms']['P']['transport_retries'], dict(retries=0, lost_completion_tokens=0, retries_not_sent=0))
+        self.assertIn('Transport retries per arm', md)
+        self.assertIn('Asymmetry', md)
 
     def test_each_arm_must_embed_its_own_plan(self):
         with tempfile.TemporaryDirectory() as d:

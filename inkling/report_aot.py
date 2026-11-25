@@ -9,10 +9,17 @@ github.com/qixucen/atom); the task-graph framing follows alkimiadev's taskgraph 
 
 Validation is shared with report_round3_hard17 / report_wide (frozen resume rule, accounting validity for every segment
 directory incl. input-work counters and Wh, each arm's embedded plan equal to its frozen plan file, wrong answers over
-ALL attempts, wasted work, exact UTC window). Decision (complete inputs only, unrounded): AoT is adopted if A has 0
+ALL attempts, wasted work, exact UTC window). Pairing must be complete: both frozen plans name the same corpus (dataset,
+dataset_protocol, split, tasks, seeds) and both arms finished the same non-empty case set; otherwise the decision is
+incomplete. Decision (complete inputs only, unrounded): AoT is adopted if A has 0
 wrong answers over all attempts, A solved >= P solved + 3, and A server generation tokens <= 1.10 x P (compared as
 100 x A <= 110 x P); otherwise not. Mechanism (A): agents whose decomposition parsed, that contracted, the facts
 handed to the final call (from each agent's puzzle_end 'aot' summary).
+
+Transport retries (listed per arm from every agent trace of every segment): the worker retries a lost request once.
+In A (xl_aot) a retry is a dispatch and its lost streamed tokens are charged to the agent's own 32,768 budget; in P
+(xl_forced_original) the reviewed behaviour is kept and a retry is charged in the accounting only, not in the agent's
+budget. Both arms' server generation tokens include every retry.
 
 usage: report_aot.py [--root DIR] [--out DIR] [--p DIR] [--a DIR]
 """
@@ -33,6 +40,47 @@ POLICY = 'roll12wide'
 ARMS = dict(P=dict(plan='SWARM_AOT_HARD21_P_PLAN.json', dir=f'runs/{STUDY}-p-{POLICY}'),
             A=dict(plan='SWARM_AOT_HARD21_A_PLAN.json', dir=f'runs/{STUDY}-a-{POLICY}'))
 MIN_GAIN, TOKEN_NUM, TOKEN_DEN = 3, 110, 100
+CORPUS = ('dataset', 'dataset_protocol', 'split', 'tasks', 'seeds')
+
+
+def pairing(root, loaded):
+    """Complete pairing: the same corpus in both frozen plans and the same non-empty finished case set."""
+    problems = []
+    plans = {k: root / ARMS[k]['plan'] for k in ARMS}
+    if all(p.exists() for p in plans.values()):
+        P, A = (json.loads(plans[k].read_text()) for k in ('P', 'A'))
+        diff = [f for f in CORPUS if P.get(f) != A.get(f)]
+        if diff:
+            problems.append(f"frozen plans differ in corpus fields {diff}")
+    rows = {k: set(loaded[k].get('rows') or {}) for k in ARMS}
+    latest = {k: set(loaded[k]['arm']['latest']) if 'arm' in loaded[k] else set() for k in ARMS}
+    if rows['P'] != rows['A'] or latest['P'] != latest['A']:
+        problems.append(f"case sets differ: P {len(rows['P'])} clean / {len(latest['P'])}, "
+                        f"A {len(rows['A'])} clean / {len(latest['A'])}")
+    if not rows['P'] & rows['A']:
+        problems.append('no paired cases')
+    return problems
+
+
+def retries(a):
+    """Transport retries in every agent trace of every segment of an arm."""
+    out = Counter()
+    if 'segments' not in a:
+        return None
+    for seg in a['segments']:
+        for trace in sorted((Path(a['dir']).parent / seg / 'agents').glob('*.jsonl')):
+            for line in trace.read_text().splitlines():
+                try:
+                    event = json.loads(line)
+                except ValueError:
+                    continue
+                if event.get('type') == 'request_retry':
+                    out['retries'] += 1
+                    out['lost_completion_tokens'] += event.get('lost_completion_tokens') or 0
+                elif event.get('type') == 'request_retry_aborted':
+                    out['retries_not_sent'] += 1
+    return dict(retries=out['retries'], lost_completion_tokens=out['lost_completion_tokens'],
+                retries_not_sent=out['retries_not_sent'])
 
 
 def load(path, root, plan):
@@ -83,10 +131,11 @@ def trace_end(path):
     return end
 
 
-def decision(arms):
+def decision(arms, pairing_problems=()):
     P, A = arms['P'], arms['A']
     why = [f"{k}: {a['status']}" + (f" ({'; '.join(a.get('reasons') or [])})" if a.get('reasons') else '')
            for k, a in arms.items() if a.get('status') != 'complete']
+    why += [f'pairing: {p}' for p in pairing_problems]
     if why:
         return f"incomplete - {' | '.join(why)}"
     rule = dict(zero_wrong=A['wrong_all_attempts'] == 0, solved_at_least_plain_plus_3=A['solved'] >= P['solved'] + MIN_GAIN,
@@ -99,7 +148,10 @@ def decision(arms):
 def build(root, dirs):
     loaded = {k: load(dirs[k], root, ARMS[k]['plan']) for k in ARMS}
     s = dict(study=STUDY, arms={k: rw.summarize(a) for k, a in loaded.items()})
+    for k, a in loaded.items():
+        s['arms'][k]['transport_retries'] = retries(a)
     P, A = loaded['P'], loaded['A']
+    s['pairing_problems'] = pairing(root, loaded)
     if 'rows' in P and 'rows' in A:
         common = sorted(set(P['rows']) & set(A['rows']))
         wins = sum(bool(A['rows'][k]['solved']) and not P['rows'][k]['solved'] for k in common)
@@ -107,7 +159,7 @@ def build(root, dirs):
         s['paired'] = dict(cases=len(common), aot_only=wins, plain_only=losses, sign_test_p=r3.sign_test(wins, losses))
     if 'arm' in A:
         s['mechanism'] = aot_mechanism(A)
-    s['decision'] = decision(s['arms'])
+    s['decision'] = decision(s['arms'], s['pairing_problems'])
     s['frozen_rules'] = {k: (json.loads((root / v['plan']).read_text()).get('decision_rule')
                              if (root / v['plan']).exists() else 'plan not written') for k, v in ARMS.items()}
     s['disclosure'] = r3.disclosure()
@@ -127,6 +179,10 @@ def markdown(s):
     for k in ARMS:
         if s['arms'][k].get('reasons'):
             out.append(f"\n{k} incomplete: {'; '.join(s['arms'][k]['reasons'])}")
+    out += ['', 'Transport retries per arm (A: charged to the agent budget; P: accounting only): '
+                + ', '.join(f"{k} {json.dumps(s['arms'][k].get('transport_retries'))}" for k in ARMS)]
+    if s['pairing_problems']:
+        out += ['', f"Pairing incomplete: {'; '.join(s['pairing_problems'])}"]
     if 'paired' in s:
         p = s['paired']
         out += ['', f"Paired: AoT-only solved {p['aot_only']}, plain-only {p['plain_only']}, exact sign test p = "
@@ -137,7 +193,9 @@ def markdown(s):
             f"Evaluation: {json.dumps(s['decision'])}", '', '## Disclosures', '', s['disclosure'], '',
             'Atom of Thoughts: Teng et al. 2025 (arXiv 2502.12018, github.com/qixucen/atom); the task-graph framing follows '
             "alkimiadev's taskgraph idea. Both arms run the same worker source revision; the AoT agent uses the plain "
-            "agent's per-agent completion-token budget (32,768) and the same agent count, so the compute cap is equal.", '']
+            "agent's per-agent completion-token budget (32,768) and the same agent count, so the compute cap is equal. "
+            "Asymmetry: an AoT agent's transport retry is charged to its own budget and counts toward its call cap; a "
+            "plain agent's (rare) retry is not charged to its budget (reviewed behaviour kept), only to the accounting.", '']
     return '\n'.join(out)
 
 
