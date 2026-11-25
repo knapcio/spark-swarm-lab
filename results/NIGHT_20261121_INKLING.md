@@ -257,6 +257,17 @@ input). Gate passed; a replication on 29 unhinted esc_none abstentions of hard-v
 RELAY 9 vs REPLACE 2 of 43, 0 wrong: the pre-registered gate for the in-swarm study passed; swarm-relay-hard19-v1
 (roll12cancel vs roll12relay, plan 7ee58f6, corpus 61ca1bf) started 18:40Z.
 
+## 2026-11-24/25 night (22-25): generic mechanisms
+
+- **Relay in the swarm** ([swarm-relay-hard19-v1](swarm-relay-hard19-v1/REPORT.md)): roll12cancel 84 vs roll12relay 83 of 96, 0 wrong,
+  +12 % total compute: **not adopted** (the screen rescues did not turn into extra solves inside the swarm); to astra review.
+- **Work-conserving widening** ([swarm-wide-hard20-v1](swarm-wide-hard20-v1/REPORT.md)): roll12cancel 87 vs roll12wide 87, 0 wrong,
+  wall 0.90x, GPU Wh 0.91x, tokens +1 %: **roll12wide is the new arithmetic default** (generic; same answers, less wall and energy).
+- **Dense relay window** ([relay-window-v1](relay-window-v1/REPORT.md)): dense 1 vs tail 1 of 38: tail stays (moot without relay).
+- **Judge replays** ([judge-replay-v1](judge-replay-v1/REPORT.md)): a generic coding judge as a second key would reject 20/31 wrong
+  winners but also 61/684 correct (8.9 % > 5 % cap): not pursued; a second arithmetic judge on forced answers found 0 false
+  accepts in 2,787 invalid forced plans and rejected 0 of 54 valid ones: nothing to gain. Rejections to astra review.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
