@@ -3,6 +3,7 @@ import contextlib
 import hashlib
 import inspect
 import io
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -200,6 +201,8 @@ class StartDeepseekTests(unittest.TestCase):
         self.assertIn(f'"launcher_sha": "{sha}"', log.split('"step": "native-start"')[1].split('\n')[0])
 
         class Flipping:  # preflight sees the pinned bytes, the start would see others
+            name = 'flipping.sh'
+
             def __init__(self):
                 self.n = 0
 
@@ -223,6 +226,38 @@ class StartDeepseekTests(unittest.TestCase):
         fleet = FakeFleet(healthy_state='lent 1795 x\n200')
         result, _ = self.run_start(fleet)
         self.assertIn('did not become healthy', str(result))
+
+    def test_official_flag_runs_the_official_launcher_with_its_own_pin(self):
+        official = 'echo official\n'
+        with tempfile.TemporaryDirectory() as d:
+            ablit, off = Path(d) / 'a.sh', Path(d) / 'o.sh'
+            ablit.write_text(SCRIPT)
+            off.write_text(official)
+            sha_a, sha_o = (hashlib.sha256(x.encode()).hexdigest() for x in (SCRIPT, official))
+            for flag, want, pin_ok in ((True, official, True), (False, SCRIPT, True), (True, official, False)):
+                fleet = FakeFleet()
+                with patch.object(ds, 'ssh', fleet), patch.object(ds, 'START_SCRIPT', ablit), \
+                        patch.object(ds, 'START_SHA', sha_a), patch.object(ds, 'START_SCRIPT_OFFICIAL', off), \
+                        patch.object(ds, 'START_SHA_OFFICIAL', sha_o if pin_ok else sha_a), \
+                        patch.object(ds, 'LOG', Path(d) / f'l{flag}{pin_ok}.jsonl'), \
+                        patch.object(ds.time, 'sleep', lambda s: None), contextlib.redirect_stdout(io.StringIO()):
+                    try:
+                        result = ds.start_deepseek(official=flag)
+                    except SystemExit as exc:
+                        result = exc
+                if pin_ok:
+                    self.assertEqual(self.started(fleet), [('Spark_01', 'bash -c ' + shlex.quote(want))])
+                    self.assertEqual(result['launcher'], (off if flag else ablit).name)
+                    self.assertEqual(result['launcher_sha'], sha_o if flag else sha_a)
+                else:  # the official launcher against the ablit pin: refused, nothing started
+                    self.assertIsInstance(result, SystemExit)
+                    self.assertEqual(self.started(fleet), [])
+
+    def test_cli_accepts_only_known_forms(self):
+        import runpy
+        for argv in (['x', 'start-deepseek', '--ablit'], ['x', 'stop-native', '--official'], ['x']):
+            with patch.object(sys, 'argv', argv), self.assertRaises((SystemExit, KeyError, IndexError)):
+                runpy.run_path(str(Path(ds.__file__)), run_name='__main__')
 
     def test_existing_steps_unchanged(self):
         self.assertIn("docker stop -t 60 swarm-inkling-shim swarm-inkling", inspect.getsource(ds.to_deepseek))

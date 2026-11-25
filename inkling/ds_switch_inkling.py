@@ -28,7 +28,12 @@ stop-native = the native stop for start-deepseek: service.sh stop, then confirme
 /health not 200, no dsgb10_rank/dsfront process on any node by a /proc scan) and a successful idle GPU query on all
 four nodes; it touches no container and needs no container manifest.
 
-Usage: inkling/ds_switch_inkling.py precheck | to-deepseek | to-inkling | stop-deepseek | start-deepseek | stop-native
+start-deepseek --official runs .runtime/start-native-official-v1.sh instead (pinned START_SHA_OFFICIAL: the same
+bytes as the ablit launcher except the front-end tokenizer path, which is the official 1017 checkpoint's); without
+the flag the ablit launcher (START_SHA) runs, as before.
+
+Usage: inkling/ds_switch_inkling.py precheck | to-deepseek | to-inkling | stop-deepseek | start-deepseek [--official]
+       | stop-native
        (a JSON receipt per step)
 """
 import hashlib
@@ -48,6 +53,9 @@ _CONTAINERS = HERE / '.runtime/INKLING_CONTAINERS.json'  # recorded before the f
 CONTAINERS = json.loads(_CONTAINERS.read_text()) if _CONTAINERS.exists() else None  # None only outside the fleet tree
 START_SCRIPT = HERE / '.runtime/start-native-reference-exact-v1.sh'
 START_SHA = '4ac017501254e826406ea97232ff5d5b99591159102f985a481bd48fd3048f36'
+# start-deepseek --official: the same bytes except the front-end tokenizer path (the official 1017 checkpoint's)
+START_SCRIPT_OFFICIAL = HERE / '.runtime/start-native-official-v1.sh'
+START_SHA_OFFICIAL = '524e8376bfed84e6fea0dee86bc1c3a38fc32547dc3208998f76dc913a91f92f'
 SERVICE = '/home/knapcio/dsgb10/pico-dgx-ds4/ds41f-4xgx10-switchless/engine/server/service.sh'
 OWNER = 'swarm-lab-20261115'
 LOG = HERE / '.runtime/ds-switch-inkling-20261121.jsonl'
@@ -281,17 +289,23 @@ def swarm_containers(node):
     return True, state
 
 
-def start_preflight():
+def launcher(official=False):
+    """(path, pinned sha) of the native start script: the ablit-tokenizer one (default) or the official one."""
+    return (START_SCRIPT_OFFICIAL, START_SHA_OFFICIAL) if official else (START_SCRIPT, START_SHA)
+
+
+def start_preflight(official=False):
     """(problems, observed): head guards, start script hash, GPUs idle (a failed or unparsable query is not idle)
     and no swarm container running, on all four nodes."""
-    problems, observed = [], dict(guards=guards_ok(), nodes={})
+    script_path, pinned = launcher(official)
+    problems, observed = [], dict(guards=guards_ok(), nodes={}, launcher=str(script_path.name))
     if not observed['guards']:
         problems.append('head guards changed')
     try:
-        sha = hashlib.sha256(START_SCRIPT.read_bytes()).hexdigest()
+        sha = hashlib.sha256(script_path.read_bytes()).hexdigest()
     except OSError as exc:
         sha = f'unreadable: {exc}'
-    if sha != START_SHA:
+    if sha != pinned:
         problems.append('start script hash differs')
     for n, (ok, apps) in gpu_idle_everywhere().items():
         ok_c, containers = swarm_containers(n)
@@ -313,30 +327,32 @@ def start_preflight():
     return problems, observed
 
 
-def start_deepseek():
+def start_deepseek(official=False):
     """to_deepseek's native start and health wait, without stopping anything: the swarm must already be stopped."""
     try:
         LOG.parent.mkdir(parents=True, exist_ok=True)
         record('start-deepseek-start')
     except OSError as exc:
         raise SystemExit(f'start-deepseek: receipt log {LOG} cannot be written ({exc}); nothing was started')
-    problems, observed = start_preflight()
+    script_path, pinned = launcher(official)
+    problems, observed = start_preflight(official)
     record('start-preflight', ok=not problems, problems=problems, **observed)
     if problems:
         fail('start-deepseek', 'preflight failed; nothing was started: ' + '; '.join(problems))
-    data = START_SCRIPT.read_bytes()  # the exact bytes executed below, hashed once more right before the start
+    data = script_path.read_bytes()  # the exact bytes executed below, hashed once more right before the start
     launcher_sha = hashlib.sha256(data).hexdigest()
-    if launcher_sha != START_SHA:
+    if launcher_sha != pinned:
         fail('start-deepseek', 'start script hash differs; nothing was started', launcher_sha=launcher_sha)
     out = ssh('Spark_01', 'bash -c ' + shlex.quote(data.decode()), timeout=900)
-    record('native-start', rc=out.returncode, launcher_sha=launcher_sha, stdout_tail=out.stdout[-400:],
+    record('native-start', rc=out.returncode, launcher=script_path.name, launcher_sha=launcher_sha, stdout_tail=out.stdout[-400:],
            stderr_tail=out.stderr[-400:])
     if out.returncode != 0:
         fail('start-deepseek', 'native start returned nonzero')
     for _ in range(90):
         state = native_state()
         if native_healthy(state):
-            return record('native-healthy', ok=True, state=state, launcher_sha=launcher_sha, guards=guards_ok())
+            return record('native-healthy', ok=True, state=state, launcher=script_path.name, launcher_sha=launcher_sha,
+                          guards=guards_ok())
         time.sleep(10)
     fail('start-deepseek', 'native did not become healthy within 15 minutes', state=native_state())
 
@@ -403,5 +419,11 @@ def stop_native():
     fail('stop-native', 'native shutdown not confirmed (state, processes or GPUs)', **observed)
 
 if __name__ == '__main__':
-    {'precheck': precheck, 'to-deepseek': to_deepseek, 'to-inkling': to_inkling,
-     'stop-deepseek': stop_deepseek, 'start-deepseek': start_deepseek, 'stop-native': stop_native}[sys.argv[1]]()
+    if sys.argv[1:] == ['start-deepseek', '--official']:
+        start_deepseek(official=True)
+    elif len(sys.argv) == 2:
+        {'precheck': precheck, 'to-deepseek': to_deepseek, 'to-inkling': to_inkling,
+         'stop-deepseek': stop_deepseek, 'start-deepseek': start_deepseek, 'stop-native': stop_native}[sys.argv[1]]()
+    else:
+        raise SystemExit('usage: ds_switch_inkling.py precheck | to-deepseek | to-inkling | stop-deepseek | '
+                         'start-deepseek [--official] | stop-native')
