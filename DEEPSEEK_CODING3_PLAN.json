@@ -22,12 +22,20 @@
  "code_sha256": {
   "run_ds_coding.py": "4c92a45f4216b927644f4b71bb70e77403921037621da4f39b9c1409f272bb9a",
   "ds_coding_worker.py": "dedbfe9ece7ba4ce8c592ef13285b68ac21d949913f1d7c10d14449e8d0500b8",
-  "inkling/ds_switch_inkling.py": "347050398d3e7616b186bac223e4f4466177a97779ab43a4ba3f8827d042a7e5"
+  "inkling/ds_switch_inkling.py": "6919560fa96bd303668f9bf3f7452292c6f48f887cfcfb743490c94e994646c5",
+  "inkling/report_ds_coding3.py": "c275033a126de483a413727431479cf04603c97f43acad7fb7701cbb14cd12d6"
  },
  "question": "One DeepSeek V4.1 (native TP4 on Spark_01-04, one thinking call per case, same task context, parser and CPU sandbox) on exactly the 72 coding-hard-v1 cases of coding-roll3-v1 (24 tasks x seeds 19-21): solved and wrong vs the Inkling swarm R2 (67/72, default) and R1 (66/72) on the same cases; paired wins/losses; hybrid (DeepSeek only where the swarm did not answer).",
  "hybrid_score": "solved = swarm solved OR (swarm unanswered AND DeepSeek solved); wrong counted for both parts",
  "cost": "DeepSeek: client completion tokens per case, run wall from UTC timestamps, GPU Wh from the node power logs over the run window (inkling/energy.py), Wh per solved; swarm figures from the coding-roll3-v1 arm accounting.",
  "switch": "inkling/ds_switch_inkling.py precheck + to-deepseek after the night swarm queue; owned tunnel 127.0.0.1:18889 -> Spark_01:8888; afterwards native stop only (stop-deepseek), leaving Spark_01-04 free for the Inkling TP4 bring-up (owner 20:25 Warsaw). Never fleet.sh restore / window.sh prod; head guards on Spark_01 kept.",
  "report": "inkling/report_ds_coding3.py -> results/deepseek-coding3-v1/REPORT.md + report.json",
- "limits": "Bundled differences (model, engine, one call vs a swarm); no causal model-size claim."
+ "limits": "Bundled differences (model, engine, one call vs a swarm); no causal model-size claim.",
+ "amendments": [
+  {
+   "date": "2026-11-25",
+   "before_any_deepseek_call": true,
+   "text": "inkling/ds_switch_inkling.py gained the reviewed stop-deepseek subcommand (native stop only, existing steps unchanged; pin 347050398d3e -> new); report_ds_coding3.py pinned. Method, cases and seeds unchanged."
+  }
+ ]
 }
