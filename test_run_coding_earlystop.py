@@ -3,6 +3,7 @@ import contextlib
 import hashlib
 import io
 import json
+import sys
 import tempfile
 import threading
 import time
@@ -70,10 +71,23 @@ class EarlyStopTests(unittest.TestCase):
                 fb = agent in fast_pass if not acceptance else (feedback is None or agent in feedback)
                 return dict(parsed=True, feedback_pass=fb, holdout_pass=agent in holdout, budget_forced=False)
 
-            def accepted(events):
-                return dict(accepted=agent_of(events) in fast_pass)
+            def execute_accepting(job, deadline, cancel, claim):
+                """Fast agents decide 'accepted' at once and claim the case; the rest wait until cancelled."""
+                started.append((job['task_id'], job['agent']))
+                self.commands.append(job['command'])
+                base = dict(deadline=False, controller_error=None, controller_stop=False, calls=1, unfinished_calls=0,
+                            infrastructure_failures=0, completion_tokens=10, scoring_timeout=False)
+                if job['agent'] in fast_pass:
+                    return dict(base, cancelled=False, returncode=0, status='complete', accepted=True, won=claim())
+                for _ in range(300):
+                    if cancel.is_set():
+                        return dict(base, cancelled=True, returncode=-15, controller_stop=True, status='cancelled',
+                                    unfinished_calls=1, infrastructure_failures=None, completion_tokens=0,
+                                    accepted=False, won=False)
+                    time.sleep(.01)
+                return dict(base, cancelled=False, returncode=0, status='complete', accepted=False, won=False)
             with patch.object(r, 'execute_cancellable', execute), patch.object(r, 'agent_outcome', outcome), \
-                    patch.object(r, 'accepted_outcome', accepted), \
+                    patch.object(r, 'execute_accepting', execute_accepting), \
                     patch.object(r, 'validate_source', lambda *a: None), patch.object(r, 'hashes', lambda s: {}), \
                     patch.object(r, 'server_metrics', lambda *a, **k: {}), contextlib.redirect_stdout(io.StringIO()):
                 code = r.main(['--plan', str(plan_path), '--output', str(root / 'out'), '--source', str(root),
@@ -158,6 +172,77 @@ class EarlyStopTests(unittest.TestCase):
     def test_cancelled_row_is_not_an_operational_fault(self):
         row = dict(cancelled=True, controller_error=None, malformed_lines=0)
         self.assertIsNone(r.fault(row))
+
+
+SCRIPT = r"""
+import json, sys, time
+path, decide_after, accepted, score_seconds = sys.argv[1], float(sys.argv[2]), sys.argv[3] == '1', float(sys.argv[4])
+def emit(kind, **f):
+    with open(path, 'a') as s:
+        s.write(json.dumps(dict(type=kind, **f)) + chr(10))
+emit('request_start')
+time.sleep(decide_after)
+emit('request_end', usage=dict(completion_tokens=5))
+emit('acceptance', accepted=accepted)
+time.sleep(score_seconds)  # hidden grading, scoring only
+emit('puzzle_end', accepted=accepted, feedback_pass=True, holdout_pass=True)
+emit('run_end', status='complete', infrastructure_failures=0)
+"""
+
+
+class ExecuteAcceptingTests(unittest.TestCase):
+    """execute_accepting against real worker processes (a tiny script writing the trace protocol)."""
+    def job(self, root, name, decide_after, accepted, score_seconds):
+        events = root / (name + '.jsonl')
+        return dict(command=[sys.executable, '-c', SCRIPT, str(events), str(decide_after), '1' if accepted else '0',
+                             str(score_seconds)], events=str(events), stdout=str(root / (name + '.out')),
+                    stderr=str(root / (name + '.err')), arm='code_xl')
+
+    def test_winner_claimed_at_decision_and_scoring_not_cut_by_deadline_or_cancel(self):
+        with tempfile.TemporaryDirectory() as d:
+            cancel, claims = threading.Event(), []
+
+            def claim():
+                claims.append(time.monotonic())
+                cancel.set()  # as the controller does for the other agents of the case
+                return True
+            t0 = time.monotonic()
+            row = r.execute_accepting(self.job(Path(d), 'a', .2, True, 1.5), 1.0, cancel, claim, poll=.02)
+        self.assertTrue(row['accepted'] and row['won'])
+        self.assertFalse(row['cancelled'] or row['deadline'] or row['scoring_timeout'])
+        self.assertLess(claims[0] - t0, 1.0)  # claimed at the decision, before the 1.5 s of scoring
+        self.assertGreater(row['wall_seconds'], 1.5)  # scoring ran past the 1 s agent deadline
+        self.assertEqual(row['status'], 'complete')
+
+    def test_case_already_claimed_terminates_a_later_accept(self):
+        with tempfile.TemporaryDirectory() as d:
+            cancel = threading.Event()
+
+            def claim():  # another agent of the case was accepted first: the case is closed
+                cancel.set()
+                return False
+            row = r.execute_accepting(self.job(Path(d), 'b', .1, True, 5), 30, cancel, claim, poll=.02)
+        self.assertTrue(row['cancelled'])
+        self.assertFalse(row['accepted'] or row['won'])
+
+    def test_rejected_decision_never_claims(self):
+        with tempfile.TemporaryDirectory() as d:
+            row = r.execute_accepting(self.job(Path(d), 'c', .1, False, .1), 30, threading.Event(),
+                                      lambda: self.fail('claimed a rejected proposal'), poll=.02)
+        self.assertFalse(row['accepted'] or row['won'] or row['cancelled'])
+
+    def test_deadline_applies_until_the_decision(self):
+        with tempfile.TemporaryDirectory() as d:
+            row = r.execute_accepting(self.job(Path(d), 'e', 5, True, 0), .5, threading.Event(),
+                                      lambda: self.fail('decided after the deadline'), poll=.02)
+        self.assertTrue(row['deadline'])
+        self.assertFalse(row['accepted'] or row['scoring_timeout'])
+
+    def test_scoring_grace_bounds_hidden_grading(self):
+        with tempfile.TemporaryDirectory() as d:
+            row = r.execute_accepting(self.job(Path(d), 'f', .1, True, 10), 30, threading.Event(), lambda: True,
+                                      grace_seconds=.5, poll=.02)
+        self.assertTrue(row['won'] and row['scoring_timeout'] and row['deadline'])
 
 
 if __name__ == '__main__':

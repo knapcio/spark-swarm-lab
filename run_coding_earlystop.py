@@ -10,12 +10,16 @@ rolling = {"width": W} (failure-driven replacement, exclusive with stagger): W a
 starts only after k - W + 1 agents of that case have ended without a passing proposal. Optional plan field
 acceptance = "self_tests" | "judge" (no provided tests; early_stop must then be "first_accepted_in_time"): the workers get
 --acceptance, see the statement without the public examples, and a proposal passes when the agent's own tests pass in the
-sandbox (self_tests) or the judge accepts it (judge) instead of on the feedback cases; a case is solved if the winner
-passes ALL hidden cases (feedback and holdout), graded by the worker for scoring only. Without the field everything is as
-before. Plan-only by default.
+sandbox (self_tests) or the judge accepts it (judge) instead of on the feedback cases. The winner is the first proposal
+ACCEPTED in time: the worker records its decision as an 'acceptance' trace event before any hidden grading, and the
+controller claims the case the moment it observes that event (execute_accepting); the agent's agent deadline applies only
+until its decision, the hidden feedback and holdout grading that follows is for scoring only (bounded by
+SCORING_GRACE_SECONDS) and can neither change the winner nor be cut by the deadline. A case is solved if the winner passes
+ALL hidden cases (feedback and holdout). Without the field everything is as before. Plan-only by default.
 """
 import argparse
 import json
+import subprocess
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -23,19 +27,94 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from run_agents72 import operational_fault, read, require, sha, validate_source, write
-from run_benchmark import read_trace, server_metrics
+from run_benchmark import append_controller_stop, metrics, read_trace, server_metrics, terminate
 from run_coding_agents import ENDPOINTS, HERE, PROTOCOL, agent_outcome, hashes, make_jobs
 from run_variants import execute_cancellable
 
 ACCEPTANCE = ('self_tests', 'judge')
 EARLY_STOP = {None: 'first_feedback_pass_in_time', 'self_tests': 'first_accepted_in_time', 'judge': 'first_accepted_in_time'}
+SCORING_GRACE_SECONDS = 600  # hidden grading after a decision: two sandbox grades, normally well under a minute
 
 
-def accepted_outcome(events_path):
-    """The worker's acceptance (no-provided-tests modes): puzzle_end.accepted."""
-    records, _ = read_trace(Path(events_path))
-    end = next((r for r in reversed(records) if r.get('type') == 'puzzle_end'), {})
-    return dict(accepted=bool(end.get('accepted')))
+class TraceTail:
+    """Complete JSON lines appended to a worker trace since the last read (a partial last line waits)."""
+    def __init__(self, path):
+        self.path, self.offset = Path(path), 0
+
+    def find(self, kind):
+        if not self.path.exists():
+            return None
+        with self.path.open('rb') as stream:
+            stream.seek(self.offset)
+            data = stream.read()
+        end = data.rfind(b'\n') + 1
+        self.offset += end
+        for line in data[:end].splitlines():
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            if record.get('type') == kind:
+                return record
+        return None
+
+
+def execute_accepting(case, deadline_seconds, cancel, claim, grace_seconds=SCORING_GRACE_SECONDS, poll=.1):
+    """execute_cancellable for the no-provided-tests modes. The worker's 'acceptance' event is the decision: when it is
+    accepted, claim() (under the controller lock) makes this agent the case winner if the case is still open, which also
+    sets the case's cancel event for the OTHER agents; the winner itself is never terminated by it. The agent deadline
+    applies only until the decision; after it the hidden scoring may take up to grace_seconds (then terminated and
+    flagged scoring_timeout). Returns the run_benchmark row plus accepted, won, decision_seconds, scoring_timeout."""
+    start = time.monotonic()
+    deadline = cancelled = scoring_timeout = won = False
+    error = returncode = decision = decided = None
+    tail = TraceTail(case['events'])
+
+    def observe():
+        nonlocal decision, decided, won
+        if decision is None:
+            event = tail.find('acceptance')
+            if event is not None:
+                decision, decided = bool(event.get('accepted')), time.monotonic()
+                won = bool(decision and claim())
+
+    with Path(case['stdout']).open('x') as stdout, Path(case['stderr']).open('x') as stderr:
+        try:
+            process = subprocess.Popen(case['command'], cwd=HERE, stdout=stdout, stderr=stderr, start_new_session=True)
+            while True:
+                observe()  # before poll(): a decision written just before exit is still seen in time order
+                if process.poll() is not None:
+                    returncode = process.returncode
+                    break
+                if cancel.is_set() and not won:
+                    cancelled, returncode = True, terminate(process)
+                    break
+                now = time.monotonic()
+                if decision is None and now - start >= deadline_seconds:
+                    deadline, returncode = True, terminate(process)
+                    break
+                if decision is not None and now - decided >= grace_seconds:
+                    deadline = scoring_timeout = True
+                    returncode = terminate(process)
+                    break
+                time.sleep(poll)
+        except OSError as exc:
+            error = f'{type(exc).__name__}: {exc}'
+    if not (cancelled or deadline):
+        observe()
+    trace = Path(case['events'])
+    records, _ = read_trace(trace)
+    row = dict(metrics(records, deadline), returncode=returncode, controller_error=error, deadline=deadline,
+               cancelled=cancelled, wall_seconds=round(time.monotonic() - start, 6), controller_stop=cancelled or deadline,
+               server_cost_known=False, server_cost_reason='shared_endpoint', server_prompt_tokens=None,
+               server_completion_tokens=None, server_idle_after=None, time_to_verified_solution_seconds=None,
+               accepted=bool(decision) and not cancelled, won=won, scoring_timeout=scoring_timeout,
+               decision_seconds=round(decided - start, 3) if decided is not None else None)
+    if cancelled:
+        row.update(status='cancelled', solved=False)
+    if row['controller_stop']:
+        append_controller_stop(trace, records, row, case)
+    return row
 
 
 def passed(row, acceptance):
@@ -134,6 +213,17 @@ def main(argv=None):
             job = next(queues[endpoint], None)  # case already answered: this agent never starts
         return job, bool(pending)
 
+    claimed = {}
+
+    def claim(key):
+        """First accepted decision of an open case wins it (time order of observation); later ones do not."""
+        with lock:
+            if cancel[key].is_set():
+                return False
+            claimed[key] = time.monotonic()
+            cancel[key].set()
+            return True
+
     def worker(endpoint):
         while True:
             with lock:
@@ -159,16 +249,15 @@ def main(argv=None):
                 key = (job['task_id'], job['seed'])
                 first_start.setdefault(key, time.monotonic())
             try:
-                row = execute_cancellable(job, deadline, cancel[key])
+                if acceptance:
+                    row = execute_accepting(job, deadline, cancel[key], lambda key=key: claim(key))
+                else:
+                    row = execute_cancellable(job, deadline, cancel[key])
                 row.update({k: job[k] for k in ('task_id', 'split', 'arm', 'seed', 'endpoint', 'events')},
                            agent=job['agent'], case_index=job['case_index'], malformed_lines=read_trace(Path(job['events']))[1],
                            **agent_outcome(job['events']))
-                if acceptance:
-                    row.update(accepted_outcome(job['events']))
                 if row['cancelled']:
                     row.update(feedback_pass=False, holdout_pass=False)  # a terminated agent has no answer
-                    if acceptance:
-                        row['accepted'] = False
             except Exception as exc:
                 with lock:
                     stop.set()
@@ -180,11 +269,16 @@ def main(argv=None):
                 if not passed(row, acceptance) and not row['cancelled']:
                     failed[key] = failed.get(key, 0) + 1
                 row['winner'] = False
-                if passed(row, acceptance) and not cancel[key].is_set():
+                if acceptance:  # the winner was claimed at its decision time (execute_accepting)
+                    if row.pop('won'):
+                        row.update(winner=True, stop_seconds=round(claimed[key] - first_start[key], 1))
+                elif passed(row, acceptance) and not cancel[key].is_set():
                     row.update(winner=True, stop_seconds=round(time.monotonic() - first_start[key], 1))
                     cancel[key].set()
                 rows.append(row)
                 reason = fault(row)
+                if acceptance and row.get('scoring_timeout'):
+                    reason = reason or 'scoring_timeout'
                 if reason:
                     stop.set()
                     errors.append(dict(reason=reason, events=job['events']))

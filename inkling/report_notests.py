@@ -12,10 +12,20 @@ fails the hidden tests) / unanswered, server and client tokens per case, judge t
 stop time, agents started, and the acceptance quality over every finished agent (accepted and correct, accepted and wrong,
 rejected but correct). Paired solved and answered counts against the public arm on the same cases, exact sign test.
 
+Cost disclosure: the solver budget is the same in every arm; the judge arm adds, per parsed proposal, up to 2 judge calls
+and 8,192 completion tokens. Those tokens are inside the judge arm's server tokens, client tokens and GPU Wh and are also
+reported separately (judge tokens per case; solver tokens per case = client minus judge).
+
+Completeness: the comparison is made only when all three arms are present, every run finished cleanly (arm accounting
+present, runner exit 0, no recorded errors, completed) and every arm's task/seed set equals the frozen set of its plan
+(tasks file at the plan hash, split, task subset, seeds). Otherwise report.json says status "incomplete" with the reasons,
+no paired comparison is made (never over an intersection) and the exit code is 1.
+
 usage: inkling/report_notests.py [--public RUN] [--self-tests RUN] [--judge RUN] [--runs-dir runs] [--out DIR]
 Writes OUT/report.json and OUT/tables.md and prints the tables.
 """
 import argparse
+import hashlib
 import json
 import statistics
 import sys
@@ -34,6 +44,10 @@ SAME_FIELDS = (('matrix',), ('agent_variants',), ('agent_seed_offset',), ('rolli
                ('limits',), ('scheduling', 'concurrent_agents_per_node'), ('serving', 'container'),
                ('serving', 'image_id'), ('serving', 'mem_fraction'))
 JUDGE_STAGES = ('judge', 'judge_forced')
+JUDGE_MAX_CALLS, JUDGE_MAX_TOKENS = 2, 8192  # coding_forced.JUDGE_TOTAL (6,144 thinking + forced answer)
+DISCLOSURE = (f'Budgets: the solver budget is identical in all arms. The judge arm adds, per parsed proposal, up to '
+              f'{JUDGE_MAX_CALLS} judge calls and {JUDGE_MAX_TOKENS:,} completion tokens on the same server; they are '
+              'included in its server and client tokens and GPU Wh and shown separately as judge tokens per case.')
 
 
 def read(path):
@@ -107,14 +121,46 @@ def arm(run_dir, mode):
         server_tokens_per_case=round(server / n) if server is not None and n else None,
         client_tokens_per_case=round(sum(c.get('completion_tokens') or 0 for c in cases.values()) / n) if n else None,
         judge_tokens_per_case=round(judge_tokens / n) if n else None,
+        solver_tokens_per_case=round((sum(c.get('completion_tokens') or 0 for c in cases.values()) - judge_tokens) / n)
+        if n else None,
         wall_seconds=acct['runner_wall_seconds'] if acct else meta.get('batch_wall_seconds'),
         gpu_wh=wh, wh_per_solved=round(wh / solved, 3) if wh and solved else None,
         stop_median=round(statistics.median(stops)) if stops else None,
         stop_p90=round(stops[min(len(stops) - 1, int(.9 * len(stops)))]) if stops else None,
         started_per_case=round(sum(c['started'] for c in cases.values()) / n, 2) if n else None,
         never_started=sum(c['never_started'] for c in cases.values()), acceptance_quality=quality,
-        runner_exit=acct.get('runner_exit') if acct else None, errors=len(meta.get('errors') or []))
+        runner_exit=acct.get('runner_exit') if acct else None, errors=len(meta.get('errors') or []),
+        accounting=acct is not None, completed=bool(meta.get('completed_utc')))
     return cases, summary, plan
+
+
+def run_problems(mode, summary):
+    problems = []
+    if not summary['accounting']:
+        problems.append(f'{mode}: no arm_accounting.json')
+    elif summary['runner_exit'] != 0:
+        problems.append(f'{mode}: runner exit {summary["runner_exit"]}')
+    if summary['errors']:
+        problems.append(f'{mode}: {summary["errors"]} runner errors recorded')
+    if not summary['completed']:
+        problems.append(f'{mode}: run not completed')
+    return problems
+
+
+def frozen_cases(plan, root):
+    """(task, seed) set of the plan's frozen matrix, or (None, reason)."""
+    matrix = plan.get('matrix') or {}
+    path = Path(root) / str(matrix.get('tasks'))
+    if not path.exists():
+        return None, f'tasks file {matrix.get("tasks")} not found'
+    if hashlib.sha256(path.read_bytes()).hexdigest() != matrix.get('tasks_sha256'):
+        return None, f'tasks file {matrix.get("tasks")} does not match the plan hash'
+    tasks = [t['id'] for t in read(path)['tasks'] if t.get('split') == matrix.get('split')]
+    if matrix.get('task_ids'):
+        tasks = [t for t in tasks if t in matrix['task_ids']]
+    if len(tasks) != matrix.get('tasks_count'):
+        return None, f'{len(tasks)} tasks in the frozen split, plan says {matrix.get("tasks_count")}'
+    return {(t, s) for t in tasks for s in matrix.get('seeds') or []}, None
 
 
 def consistency(plans):
@@ -133,7 +179,10 @@ def consistency(plans):
 
 
 def paired(base, other):
-    keys = sorted(set(base) & set(other))
+    """Only for complete studies: both arms hold exactly the frozen case set (never an intersection)."""
+    if set(base) != set(other):
+        raise ValueError('paired comparison needs identical case sets')
+    keys = sorted(base)
     wins = sum(other[k]['solved'] and not base[k]['solved'] for k in keys)
     losses = sum(base[k]['solved'] and not other[k]['solved'] for k in keys)
     answered_wins = sum(other[k]['answered'] and not base[k]['answered'] for k in keys)
@@ -149,16 +198,19 @@ def fmt(value, spec=','):
 
 def tables(res):
     labels = dict(ARMS)
-    lines = ['| Arm | Solved | Wrong | No answer | Server tokens/case | Client tokens/case | Judge tokens/case | Wall | '
-             'GPU Wh | Wh per solved | Stop median / p90 | Agents started/case |',
-             '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
+    lines = []
+    if res['status'] != 'complete':
+        lines += ['**INCOMPLETE: no comparison is made.**', ''] + [f'- {x}' for x in res['problems']] + ['']
+    lines += ['| Arm | Solved | Wrong | No answer | Server tokens/case | Solver tokens/case | Judge tokens/case | Wall | '
+              'GPU Wh | Wh per solved | Stop median / p90 | Agents started/case |',
+              '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
     for name, _ in ARMS:
         if name not in res['arms']:
             continue
         a = res['arms'][name]
         wall = f"{a['wall_seconds']:,.0f} s" if a['wall_seconds'] is not None else '-'
         lines.append(f"| {labels[name]} | **{a['solved']}**/{a['cases']} | {a['wrong']} | {a['unanswered']} | "
-                     f"{fmt(a['server_tokens_per_case'])} | {fmt(a['client_tokens_per_case'])} | "
+                     f"{fmt(a['server_tokens_per_case'])} | {fmt(a['solver_tokens_per_case'])} | "
                      f"{fmt(a['judge_tokens_per_case'])} | {wall} | {fmt(a['gpu_wh'])} | {fmt(a['wh_per_solved'], '.2f')} | "
                      f"{fmt(a['stop_median'])} / {fmt(a['stop_p90'])} s | {fmt(a['started_per_case'])} |")
     lines += ['', '| Arm | Finished agents | Parsed | Accepted | Accepted, correct | Accepted, wrong | Rejected, correct | '
@@ -168,14 +220,11 @@ def tables(res):
             q = res['arms'][name]['acceptance_quality']
             lines.append(f"| {labels[name]} | {q['finished']} | {q['parsed']} | {q['accepted']} | {q['accepted_correct']} | "
                          f"{q['accepted_wrong']} | {q['rejected_correct']} | {q['self_tests_invalid']} | {q['judge_unparsed']} |")
-    lines.append('')
+    lines += ['', DISCLOSURE, '']
     for name, p in res['paired'].items():
         lines.append(f"{labels[name]} vs public tests, paired on {p['cases']} cases: solved +{p['wins']} / -{p['losses']} "
                      f"(p = {p['p']:.2g}); answered +{p['answered_wins']} / -{p['answered_losses']} "
                      f"(p = {p['answered_p']:.2g}).")
-    if res['consistency']:
-        lines += ['', 'Plan differences between the arms (the comparison assumes none):']
-        lines += [f'- {x}' for x in res['consistency']]
     return '\n'.join(lines) + '\n'
 
 
@@ -186,28 +235,34 @@ def main(argv=None):
     p.add_argument('--judge', default=DEFAULT_RUNS['judge'])
     p.add_argument('--runs-dir', type=Path, default=ROOT / 'runs')
     p.add_argument('--out', type=Path, default=ROOT / 'results' / 'coding-notests-v1')
+    p.add_argument('--root', type=Path, default=ROOT, help='tree the plans\' matrix paths are relative to')
     a = p.parse_args(argv)
     names = dict(public=a.public, self_tests=a.self_tests, judge=a.judge)
-    data = {}
+    data, problems = {}, []
     for mode, run in names.items():
         run_dir = Path(run) if Path(run).is_absolute() else a.runs_dir / run
-        if (run_dir / 'cases.json').exists():
-            data[mode] = arm(run_dir, mode)
-    if 'public' not in data:
-        raise SystemExit(f'public-tests arm {names["public"]} has no cases.json')
-    base = data['public'][0]
-    res = dict(arms={m: d[1] for m, d in data.items()},
-               paired={m: paired(base, d[0]) for m, d in data.items() if m != 'public'},
-               consistency=consistency({m: d[2] for m, d in data.items()}))
-    for mode, (cases, _, _) in data.items():
-        if set(cases) != set(base):
-            res['consistency'].append(f'{mode}: case set differs from the public arm ({len(cases)} vs {len(base)})')
+        if not all((run_dir / f).exists() for f in ('cases.json', 'metadata.json')):
+            problems.append(f'{mode}: arm {run} missing (no cases.json / metadata.json)')
+            continue
+        data[mode] = arm(run_dir, mode)
+        problems += run_problems(mode, data[mode][1])
+        expected, reason = frozen_cases(data[mode][2], a.root)
+        if expected is None:
+            problems.append(f'{mode}: {reason}')
+        elif set(data[mode][0]) != expected:
+            missing, extra = len(expected - set(data[mode][0])), len(set(data[mode][0]) - expected)
+            problems.append(f'{mode}: task/seed set is not the frozen {len(expected)} ({missing} missing, {extra} extra)')
+    problems += consistency({m: d[2] for m, d in data.items()}) if len(data) > 1 else []
+    complete = not problems and len(data) == len(names)
+    res = dict(status='complete' if complete else 'incomplete', problems=problems, disclosure=DISCLOSURE,
+               arms={m: d[1] for m, d in data.items()},
+               paired={m: paired(data['public'][0], d[0]) for m, d in data.items() if m != 'public'} if complete else {})
     md = tables(res)
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / 'report.json').write_text(json.dumps(res, indent=1) + '\n')
     (a.out / 'tables.md').write_text(md)
     print(md)
-    return 0
+    return 0 if complete else 1
 
 
 if __name__ == '__main__':
