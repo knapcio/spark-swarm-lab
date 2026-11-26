@@ -24,6 +24,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 import energy  # noqa: E402
+import fleet_lease  # noqa: E402
 
 NODES = ['01', '02', '03', '04']
 COUNTERS = {  # name in output -> (metric, label filter)
@@ -102,6 +103,11 @@ def main(argv=None):
     out = a.output.resolve()
     if out.exists():
         raise SystemExit('output exists')
+    with fleet_lease.lease(ROOT, f"arms.py {plan['study']} {a.arm} -> {out}"):  # the fleet is this arm's until it has drained
+        return run_arm(a, plan, out)
+
+
+def run_arm(a, plan, out):
     admission = ROOT / '.runtime' / f"{plan['study']}-{a.arm}-ADMISSION.json".upper().replace('-', '_')
     adm = subprocess.run([sys.executable, str(HERE / 'admit.py'), '--plan', str(a.plan), '--source', str(a.source),
                           '--output', str(admission), '--note', f'arm {a.arm} of {plan["study"]}'],

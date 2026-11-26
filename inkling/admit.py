@@ -5,7 +5,8 @@ Same receipt contract as admit_known72.py (``verified``, ``verified_utc``), for 
 on each of the four Sparks an SGLang ``swarm-inkling`` container plus the vLLM-dialect adapter
 ``swarm-inkling-shim`` (inkling/shim.py) must run from the same image digest, with the same launch
 arguments, no OOM, no restarts, the expected shim source hash (the plan's ``serving.shim_sha256`` when given), the plan's ``serving.mem_fraction`` when given, health 200 through the local tunnel and
-(unless --allow-busy) zero running/waiting requests. The container names come from the plan's ``serving.container``
+(unless --allow-busy) zero running/waiting requests. The receipt also binds the run to the plan file's sha256
+(plan_sha256) and the canonical endpoints it checked (endpoints, one tunnel per node). The container names come from the plan's ``serving.container``
 (default ``swarm-inkling``) and ``serving.shim_container`` (default ``swarm-inkling-shim``); all checks are unchanged.
 """
 import argparse
@@ -99,6 +100,8 @@ def main(argv=None):
         nodes.append(node)
     receipt = dict(protocol='inkling-agent-run-admission', verified=ok_all, allow_busy=a.allow_busy,
                    verified_utc=datetime.now(timezone.utc).isoformat(), plan=str(a.plan),
+                   plan_sha256=hashlib.sha256(a.plan.read_bytes()).hexdigest(),
+                   endpoints=[f'http://127.0.0.1:{18081 + i}/v1' for i in range(4)],
                    plan_status=plan['status'], source_revision=plan['source_revision'], shim_sha256=shim_sha,
                    serving_signature=reference, containers=dict(server=server_name, shim=shim_name), nodes=nodes,
                    note=a.note)
