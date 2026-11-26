@@ -297,6 +297,24 @@ agents' own tests 68/72, 1 wrong, 3 unanswered. **No measurable accuracy loss** 
 2x wall and 2.2x energy per solved case (0.77 -> 1.65-1.72 Wh). Even at 16,384 thinking tokens 51 % of judge verdicts
 were forced after the cap.
 
+## 2026-11-26 (30): water-filling admission ([swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md))
+
+roll12fair (every case open from the start; a free agent slot goes to the case with the fewest agents in flight, at
+most 4 before a case's first failure and 8 after, cap 12) vs roll12wide on 96 fresh hard-v22 cases: 82 vs 80 solved,
+0 wrong in both, F-only 5 / W-only 3 (p = 0.73); arm wall 0.91x, server tokens 0.90x, energy 0.91x (2.06 vs 2.32 Wh
+per solved). Frozen rule met: **roll12fair replaces roll12wide**. Cost: the time to an answer per case rises (median
+475 s vs 218 s from case start), because cases share the slots instead of being served one batch at a time; the gain
+is batch throughput, not single-case latency. Idea: IDEAS-swarm-round5-fable.md idea 2.
+
+## 2026-11-26 (31): elastic answer reserve in coding ([coding-reserve-v1](coding-reserve-v1/REPORT.md))
+
+Replay screen of 116 recorded cut-off coding agents (19 N rows rerun after the multi-token end-of-thinking fix,
+merged under the same frozen gate): E 89 / N 85 feedback passes, both qualify, N preferred (>= 90 % of E) ->
+code_reserve (an answer cut by length continues in the same sequence in 2,048-token steps, at most 10,240 answer
+tokens; thinking cap 26,624 of the 32,768 budget). Study on seeds 28-30 (72 cases): R2 + reserve 71/72, 1 wrong vs R2
+70/72, 2 wrong (reserve-only 1, plain-only 0, p = 1); 0 cut-off answers vs 5; tokens 0.82x, wall 0.67x, 0.52 vs 0.74 Wh
+per solved. Frozen rule met: **code_reserve joins the coding default**. Idea: IDEAS-swarm-round5-fable.md idea 1.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -309,4 +327,4 @@ were forced after the cap.
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md)

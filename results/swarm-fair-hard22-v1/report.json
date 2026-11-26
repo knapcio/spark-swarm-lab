@@ -1,0 +1,135 @@
+{
+ "study": "swarm-fair-hard22-v1",
+ "policies": {
+  "W": "roll12wide",
+  "F": "roll12fair"
+ },
+ "arms": {
+  "W": {
+   "status": "complete",
+   "reasons": [],
+   "segments": [
+    "swarm-fair-hard22-v1-roll12wide"
+   ],
+   "cases": 96,
+   "solved": 80,
+   "wrong": 0,
+   "wrong_all_attempts": 0,
+   "wrong_attempts": [],
+   "wasted_work": [],
+   "abstain": 16,
+   "unresolved": 0,
+   "generated_tokens": 9107768.0,
+   "prompt_tokens": 7381421.0,
+   "prefill_compute_tokens": 223661.0,
+   "total_compute_tokens": 9331429.0,
+   "generated_per_case": 94872.58333333333,
+   "wall_seconds": 5217.938633,
+   "wall_us": 5217938633,
+   "wh": 185.75,
+   "wh_per_solved": 2.321875,
+   "judge_latency_median": 28.347999999999992,
+   "judge_latency_p90": 44.45399999999995,
+   "max_in_flight_histogram": {
+    "4": 86,
+    "5": 3,
+    "8": 7
+   },
+   "widened_cases": 10,
+   "widened_agents": 42,
+   "widened_at_s_median": 1766.2865000000002,
+   "plan_sha256": "ec071b29a8e2f56802f13d6293f1b13d822eb1a23343c5f772fe6e15e8755f4e",
+   "answer_time_s": {
+    "from_case_start": {
+     "n": 80,
+     "mean": 393.3863125,
+     "median": 218.042,
+     "p90": 561.579
+    },
+    "from_segment_start": {
+     "n": 80,
+     "mean": 1261.6787749999999,
+     "median": 825.7505,
+     "p90": 3103.665
+    }
+   },
+   "first_failure_s_median": null
+  },
+  "F": {
+   "status": "complete",
+   "reasons": [],
+   "segments": [
+    "swarm-fair-hard22-v1-roll12fair"
+   ],
+   "cases": 96,
+   "solved": 82,
+   "wrong": 0,
+   "wrong_all_attempts": 0,
+   "wrong_attempts": [],
+   "wasted_work": [],
+   "abstain": 14,
+   "unresolved": 0,
+   "generated_tokens": 8194997.0,
+   "prompt_tokens": 6714669.0,
+   "prefill_compute_tokens": 171309.0,
+   "total_compute_tokens": 8366306.0,
+   "generated_per_case": 85364.55208333333,
+   "wall_seconds": 4734.156955,
+   "wall_us": 4734156955,
+   "wh": 168.72,
+   "wh_per_solved": 2.057560975609756,
+   "judge_latency_median": 26.30000000000001,
+   "judge_latency_p90": 40.95100000000002,
+   "max_in_flight_histogram": {
+    "1": 49,
+    "2": 18,
+    "3": 7,
+    "4": 5,
+    "5": 15,
+    "6": 2
+   },
+   "widened_cases": 0,
+   "widened_agents": 0,
+   "widened_at_s_median": null,
+   "plan_sha256": "ec071b29a8e2f56802f13d6293f1b13d822eb1a23343c5f772fe6e15e8755f4e",
+   "answer_time_s": {
+    "from_case_start": {
+     "n": 82,
+     "mean": 749.9024878048781,
+     "median": 474.9355,
+     "p90": 1660.267
+    },
+    "from_segment_start": {
+     "n": 82,
+     "mean": 749.9092317073171,
+     "median": 474.938,
+     "p90": 1660.2730000000001
+    }
+   },
+   "first_failure_s_median": 1181.8319999999999
+  }
+ },
+ "pairing_problems": [],
+ "paired": {
+  "cases": 96,
+  "f_only": 5,
+  "w_only": 3,
+  "sign_test_p": 0.7265625
+ },
+ "facts": {
+  "wall_ratio_f_over_w": 0.9072849046287356,
+  "generated_tokens_ratio": 0.8997810440494312,
+  "total_compute_ratio": 0.8965728614556249,
+  "wh_ratio": 0.9083176312247645
+ },
+ "decision": {
+  "zero_wrong": true,
+  "solved_within_noise": true,
+  "wall_at_most_95pct_of_W": true,
+  "tokens_at_most_100pct_of_W": true,
+  "F_replaces_W": true
+ },
+ "frozen_rule": "F (roll12fair) replaces W (roll12wide) if F has 0 wrong, F solved >= W - 2, F arm wall <= 0.95 x W and F server tokens <= 1.00 x W (exact).",
+ "disclosure": "Weaknesses that remain in arms.py-driven arms (arms.py is pinned; disclose in reports): flush_caches ignores the ssh exit status and the HTTP status (only the response text is recorded), delta() accepts negative deltas after a counter reset, parse() counts a missing counter as 0 and accepts non-finite values, wait_idle() returns a busy snapshot after its limit without failing, and an energy failure does not change the exit code.",
+ "design_disclosure": "Design notes: (1) W and F run the same agents with the same prompts and seeds (slot s of a case has the same seed in both arms); F only changes which case gets a free agent slot and when: every case is open from the start, a free slot (a node below its cap minus 2 permits kept for judges) goes to the case with the fewest agents in flight (ties: fewest started, then the earlier case), at most 4 in flight before the case's first failed agent and 8 after, never beyond 12 agents; an F agent may run on another node than in W; (2) the rule reads slot counts and failure counts only, never elapsed time or task content; (3) time to answer from the segment start is comparable between arms only within one segment (a resumed segment restarts its clock)."
+}
