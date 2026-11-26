@@ -189,8 +189,8 @@ FLEET_SCREEN = dict(
         'DFLASH verify step draws its accept and final-sampling coins with torch.rand inside the server '
         '(speculative/dflash_utils.py ~982-990); no request field carries per-position uniforms',
         'per-request seed (the shim maps seed -> sampling_seed) is only used when deterministic inference is enabled '
-        '(sampling/sampling_batch_info.py ~157-171); otherwise sampling is global torch randomness, so sibling coupling '
-        'through request seeds is impossible on this launch',
+        '(sampling/sampling_batch_info.py ~157-171); otherwise sampling is global torch randomness, so sibling '
+        'coupling through request seeds is impossible on this launch',
         'a custom logit processor could force each position to the coupled inverse-CDF choice (one-hot target, exact '
         'under rejection sampling) but needs --enable-custom-logit-processor (a relaunch) and a per-position processor '
         'over the full vocabulary inside the verify block (DFLASH fast paths disabled): a server change',
