@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Idea #1 CONFIRMATION plan generator (prepared 2026-11-27; NOT frozen): if the idea #1 screen (EXTEND_SCREEN_PLAN.json,
-runs/extend-screen-v1) passes, confirm it on 12 FRESH failures of a NEW corpus run with the screen's frozen rule.
+"""Idea #1 CONFIRMATION plan generator (prepared 2026-11-27; NOT frozen): if the idea #1 screen
+(EXTEND_SCREEN_PLAN.json, runs/extend-screen-v1) passes, confirm it on 12 FRESH failures of a NEW corpus run with the
+screen's frozen rule.
 
 Selection: inkling/extend_plans.py's rule unchanged (failure = a length-forced agent at the 30,720 cap with its thinking
 open, whose forced answer the judge rejected, in a case the run never solved; first failure per distinct puzzle in the
