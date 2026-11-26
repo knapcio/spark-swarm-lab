@@ -1,0 +1,347 @@
+{
+ "protocol": "fork-screen-v1",
+ "study": "fork-screen-v1",
+ "status": "FROZEN",
+ "screen": "idea-4",
+ "source_revision": "841d4058e9bc72b386f34b0aa4e6d8f927ced241",
+ "source_path": ".runtime/idea4-source",
+ "driver": "fork_replay.py",
+ "idea": "astra IDEAS 2026-11-26 #4: fork unfinished private prefixes to amortize repeated reasoning",
+ "runs": [
+  "swarm-fair-hard22-v1-roll12fair",
+  "swarm-fair-hard23-v1-roll12fair",
+  "swarm-baseline-hard26-v1-roll12fair"
+ ],
+ "selection_rule": "  runs       the default-policy arithmetic runs RUNS (roll12fair, hard-v22 / v23 / v26), cases.jsonl of each run;\n  judged     a recorded agent with a judge verdict (true or false; cancelled and unstarted agents have none);\n  win        a judged agent accepted by the judge and solved by the exact verifier;\n  contested  a puzzle (corpus, task_id) with >= MIN_JUDGED judged agents over the run's seeds and a win rate\n             0 < wins / judged <= MAX_WIN_RATE (four fresh attempts neither surely fail nor surely succeed);\n  pins       the puzzle text and prompt_ids_sha256 of its first judged agent (order seed, slot; variant\n             xl_forced_original), so the driver can prove it sends the recorded prompt;\n  order      the contested puzzles sorted by sha256(SELECTION_SEED + ':' + corpus + ':' + task_id); the first\n             N_PUZZLES (12) are frozen; fresh worker seeds seed_base = SEED_OFFSET + sha256(SELECTION_SEED + ':' +\n             puzzle_key) mod 10^7 (never a recorded seed).\nThe driver (fork_replay.py on research/idea4-fork-v1) runs per puzzle four fresh attempts and two stems with two\ncontinuations each; every candidate is judged on the original task (fresh j and leaf j share a judge pair label).\nSeeds: pairing labels attempts only; draws are independent on this server (seeds not honoured; probe 2026-11-26\n21:06Z: identical requests with the same seed gave different outputs), so there are no common random numbers.",
+ "selection_seed": "2026112704",
+ "min_judged": 4,
+ "max_win_rate": 0.5,
+ "eligible_puzzles": 21,
+ "items": [
+  {
+   "run": "swarm-fair-hard22-v1-roll12fair",
+   "corpus": "arithmetic-hard-v22",
+   "task_id": "eva-hc3e7ca584be",
+   "judged": 8,
+   "wins": 2,
+   "pin_trace": "runs/swarm-fair-hard22-v1-roll12fair/agents/eva-hc3e7ca584be-s1-roll12fair-a0.jsonl",
+   "puzzle": "3,4,4,100,25,9:785",
+   "numbers": [
+    3,
+    4,
+    4,
+    100,
+    25,
+    9
+   ],
+   "target": 785,
+   "prompt_ids_sha256": "32b9067db2c924e800f834c07e3f9e887709f2507dcc63a4c2324aec4c237370",
+   "puzzle_key": "arithmetic-hard-v22:eva-hc3e7ca584be",
+   "item_id": "y00",
+   "seed_base": 66154183
+  },
+  {
+   "run": "swarm-fair-hard22-v1-roll12fair",
+   "corpus": "arithmetic-hard-v22",
+   "task_id": "eva-ha39a99c2b9f",
+   "judged": 6,
+   "wins": 1,
+   "pin_trace": "runs/swarm-fair-hard22-v1-roll12fair/agents/eva-ha39a99c2b9f-s1-roll12fair-a0.jsonl",
+   "puzzle": "100,3,4,3,2,25:913",
+   "numbers": [
+    100,
+    3,
+    4,
+    3,
+    2,
+    25
+   ],
+   "target": 913,
+   "prompt_ids_sha256": "5bd2574bd5b036a182690fadb591b0cf6215c639128466952d4bd8920a73ed44",
+   "puzzle_key": "arithmetic-hard-v22:eva-ha39a99c2b9f",
+   "item_id": "y01",
+   "seed_base": 69516130
+  },
+  {
+   "run": "swarm-baseline-hard26-v1-roll12fair",
+   "corpus": "arithmetic-hard-v26",
+   "task_id": "eva-h4d3dc3714fc",
+   "judged": 10,
+   "wins": 1,
+   "pin_trace": "runs/swarm-baseline-hard26-v1-roll12fair/agents/eva-h4d3dc3714fc-s1-roll12fair-a0.jsonl",
+   "puzzle": "75,4,25,6,2,6:982",
+   "numbers": [
+    75,
+    4,
+    25,
+    6,
+    2,
+    6
+   ],
+   "target": 982,
+   "prompt_ids_sha256": "33f474b664424dd4270a12a205f94f5dbd9720620489a613b3e1b04ab05ffb54",
+   "puzzle_key": "arithmetic-hard-v26:eva-h4d3dc3714fc",
+   "item_id": "y02",
+   "seed_base": 65500499
+  },
+  {
+   "run": "swarm-fair-hard23-v1-roll12fair",
+   "corpus": "arithmetic-hard-v23",
+   "task_id": "eva-he6cab92150f",
+   "judged": 8,
+   "wins": 2,
+   "pin_trace": "runs/swarm-fair-hard23-v1-roll12fair/agents/eva-he6cab92150f-s1-roll12fair-a0.jsonl",
+   "puzzle": "8,100,1,5,25,5:183",
+   "numbers": [
+    8,
+    100,
+    1,
+    5,
+    25,
+    5
+   ],
+   "target": 183,
+   "prompt_ids_sha256": "6df5ab4db114bd44504b30a7104e4fd6c8a0d54969099fc7576112b17b70afad",
+   "puzzle_key": "arithmetic-hard-v23:eva-he6cab92150f",
+   "item_id": "y03",
+   "seed_base": 63687203
+  },
+  {
+   "run": "swarm-fair-hard23-v1-roll12fair",
+   "corpus": "arithmetic-hard-v23",
+   "task_id": "eva-hea139b24cac",
+   "judged": 6,
+   "wins": 2,
+   "pin_trace": "runs/swarm-fair-hard23-v1-roll12fair/agents/eva-hea139b24cac-s1-roll12fair-a0.jsonl",
+   "puzzle": "7,2,25,3,100,4:933",
+   "numbers": [
+    7,
+    2,
+    25,
+    3,
+    100,
+    4
+   ],
+   "target": 933,
+   "prompt_ids_sha256": "f8a825bbd88aba3ddd98dccbcd347322d85f91ce9b5470457726515de6ec9741",
+   "puzzle_key": "arithmetic-hard-v23:eva-hea139b24cac",
+   "item_id": "y04",
+   "seed_base": 64508211
+  },
+  {
+   "run": "swarm-fair-hard23-v1-roll12fair",
+   "corpus": "arithmetic-hard-v23",
+   "task_id": "eva-h49f6ac1fdc1",
+   "judged": 7,
+   "wins": 1,
+   "pin_trace": "runs/swarm-fair-hard23-v1-roll12fair/agents/eva-h49f6ac1fdc1-s1-roll12fair-a0.jsonl",
+   "puzzle": "3,25,2,75,1,8:929",
+   "numbers": [
+    3,
+    25,
+    2,
+    75,
+    1,
+    8
+   ],
+   "target": 929,
+   "prompt_ids_sha256": "1fc94cda76a147384c7ff97bc57901be2279209e3a39543bdbc29fd1c8ac368d",
+   "puzzle_key": "arithmetic-hard-v23:eva-h49f6ac1fdc1",
+   "item_id": "y05",
+   "seed_base": 67653059
+  },
+  {
+   "run": "swarm-fair-hard23-v1-roll12fair",
+   "corpus": "arithmetic-hard-v23",
+   "task_id": "eva-h0a5713c1890",
+   "judged": 4,
+   "wins": 2,
+   "pin_trace": "runs/swarm-fair-hard23-v1-roll12fair/agents/eva-h0a5713c1890-s1-roll12fair-a0.jsonl",
+   "puzzle": "4,75,4,7,10,100:687",
+   "numbers": [
+    4,
+    75,
+    4,
+    7,
+    10,
+    100
+   ],
+   "target": 687,
+   "prompt_ids_sha256": "57b1aac8d787ed04ba4139e6b150c8d337a6a568e15ed29afe5e7e9f1be53dea",
+   "puzzle_key": "arithmetic-hard-v23:eva-h0a5713c1890",
+   "item_id": "y06",
+   "seed_base": 68664891
+  },
+  {
+   "run": "swarm-fair-hard23-v1-roll12fair",
+   "corpus": "arithmetic-hard-v23",
+   "task_id": "eva-h0585a447519",
+   "judged": 6,
+   "wins": 2,
+   "pin_trace": "runs/swarm-fair-hard23-v1-roll12fair/agents/eva-h0585a447519-s1-roll12fair-a1.jsonl",
+   "puzzle": "3,4,1,9,25,50:823",
+   "numbers": [
+    3,
+    4,
+    1,
+    9,
+    25,
+    50
+   ],
+   "target": 823,
+   "prompt_ids_sha256": "1de1e1f6e26ef8e081632fc76729c509f99ba2b39e241429520bcfb58470aa2c",
+   "puzzle_key": "arithmetic-hard-v23:eva-h0585a447519",
+   "item_id": "y07",
+   "seed_base": 69386657
+  },
+  {
+   "run": "swarm-fair-hard23-v1-roll12fair",
+   "corpus": "arithmetic-hard-v23",
+   "task_id": "eva-h24b65e824d6",
+   "judged": 7,
+   "wins": 2,
+   "pin_trace": "runs/swarm-fair-hard23-v1-roll12fair/agents/eva-h24b65e824d6-s1-roll12fair-a0.jsonl",
+   "puzzle": "8,6,50,4,100,6:651",
+   "numbers": [
+    8,
+    6,
+    50,
+    4,
+    100,
+    6
+   ],
+   "target": 651,
+   "prompt_ids_sha256": "a806373e89476cf0b3fe9fd1d992b83bc43db7c9088396a239c06e2d535678f1",
+   "puzzle_key": "arithmetic-hard-v23:eva-h24b65e824d6",
+   "item_id": "y08",
+   "seed_base": 62470349
+  },
+  {
+   "run": "swarm-fair-hard22-v1-roll12fair",
+   "corpus": "arithmetic-hard-v22",
+   "task_id": "eva-h3e80f1c7944",
+   "judged": 9,
+   "wins": 1,
+   "pin_trace": "runs/swarm-fair-hard22-v1-roll12fair/agents/eva-h3e80f1c7944-s1-roll12fair-a0.jsonl",
+   "puzzle": "6,50,100,5,9,1:726",
+   "numbers": [
+    6,
+    50,
+    100,
+    5,
+    9,
+    1
+   ],
+   "target": 726,
+   "prompt_ids_sha256": "813b7169979f3768d2551b52780fc556f8021590d40f6c9755891a2bce524aa0",
+   "puzzle_key": "arithmetic-hard-v22:eva-h3e80f1c7944",
+   "item_id": "y09",
+   "seed_base": 67004408
+  },
+  {
+   "run": "swarm-fair-hard23-v1-roll12fair",
+   "corpus": "arithmetic-hard-v23",
+   "task_id": "eva-h1dbafa4f40e",
+   "judged": 5,
+   "wins": 2,
+   "pin_trace": "runs/swarm-fair-hard23-v1-roll12fair/agents/eva-h1dbafa4f40e-s1-roll12fair-a1.jsonl",
+   "puzzle": "7,8,2,5,75,25:961",
+   "numbers": [
+    7,
+    8,
+    2,
+    5,
+    75,
+    25
+   ],
+   "target": 961,
+   "prompt_ids_sha256": "89577e45687989308375b2fa0cec853f12cb328e146847addb0d5acfa2782dcb",
+   "puzzle_key": "arithmetic-hard-v23:eva-h1dbafa4f40e",
+   "item_id": "y10",
+   "seed_base": 66022279
+  },
+  {
+   "run": "swarm-fair-hard22-v1-roll12fair",
+   "corpus": "arithmetic-hard-v22",
+   "task_id": "eva-h44861a375a8",
+   "judged": 7,
+   "wins": 1,
+   "pin_trace": "runs/swarm-fair-hard22-v1-roll12fair/agents/eva-h44861a375a8-s1-roll12fair-a1.jsonl",
+   "puzzle": "100,6,4,6,50,8:875",
+   "numbers": [
+    100,
+    6,
+    4,
+    6,
+    50,
+    8
+   ],
+   "target": 875,
+   "prompt_ids_sha256": "e7d24ec4e9603716531c16554aa6dca4e471ebc9dad23b6ad1f53f1d3558b4a7",
+   "puzzle_key": "arithmetic-hard-v22:eva-h44861a375a8",
+   "item_id": "y11",
+   "seed_base": 64321543
+  }
+ ],
+ "stem_think": 8192,
+ "cont_think": 22528,
+ "arms": {
+  "fresh": "four fresh attempts j = 0..3 (worker seed seed_base + j): thinking 30,720 + answer 2,048, forced72 xl_forced_original's own path; <= 131,072 generated tokens per puzzle",
+  "fork": "two stems s = 0, 1 (worker seed seed_base + 2 s, a label only) of 8,192 thinking tokens; each unfinished stem forks into two continuations (own seeds) of 22,528 thinking tokens + the forced answer within 2,048 (lineage 32,768); a stem that closes its thinking is a finished attempt (leaf 2 s; leaf 2 s + 1 not run); <= 114,688 per puzzle"
+ },
+ "judge": "run_variants.judge_once (one attempt, no judge-level retry), unchanged prompt, on the original task; the seed sent is derived from the pair (fresh j <-> leaf j) and the judge stage only; transport retries off",
+ "decision_rule": {
+  "cover": "an arm covers a puzzle if any of its candidates is accepted by the judge and solved by the strict exact verifier (every submitted move legal, target appeared)",
+  "compute": "G(arm) = agent completion tokens of every call (stems once) + judge tokens",
+  "stop": "STOP if C(fork) < C(fresh) (lower coverage) or G(fork) >= G(fresh) (no net saving)",
+  "pass_": "PASS AS A SCREEN ONLY otherwise; adoption needs a fresh confirmation",
+  "report": "wrong acceptances per arm, exact sign test over discordant puzzles, G per puzzle"
+ },
+ "seeds": "pairing labels attempts only; draws are independent on this server (per-request seeds not honoured: no deterministic inference on the launch; live probe 2026-11-26 21:06Z, identical requests with the same seed at temperature 0.8 gave different outputs)",
+ "fleet": {
+  "endpoints": [
+   "http://127.0.0.1:18081/v1",
+   "http://127.0.0.1:18082/v1",
+   "http://127.0.0.1:18083/v1",
+   "http://127.0.0.1:18084/v1"
+  ],
+  "hosts": [
+   "Spark_01",
+   "Spark_02",
+   "Spark_03",
+   "Spark_04"
+  ]
+ },
+ "per_node": 20,
+ "nodes": 4,
+ "judge_code_sha256": {
+  "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+  "inkling/admit.py": "d6ff34d23f80919eddce2b0866b86350a7ed1a9382aa52575a121e88bbb0858b",
+  "inkling/fleet_lease.py": "911b0ee5570bfe164f8afd923445b098ac1c957c09432b70942a70223dbfdeeb",
+  "run_agents72.py": "d9fd620bc3b0a93e9238e32170b6a876415ce043ddf70f239077884f5f62e068",
+  "run_arbiterfree.py": "af165c85b32c335345923ece29d1c1d6f0883cea99d4a5fcdc290ca95fd360f8",
+  "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+  "run_judge.py": "dadc67dba63432c095794dff9c04d81ac7952eecc0215488b3f6d7c28ca21956",
+  "run_nemotron72_known.py": "635cd512b176389ebf6e7572ec912a6ccf0e33c7c33d714869dcebb02711276f",
+  "run_variants.py": "29a7fd2102da8029ad1edae8b3d7cfe14e430b9078d93e16f66ce605ead0355b"
+ },
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@ed40e7da625f594fc9c4990f5f66be24873c22d7",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "Inkling-2-Mini-1x-DGX-Spark v2.9.2 (a29380b; scripts/launch.sh sha 9428eb69...) `scripts/launch.sh up` with release defaults (SPEC=dflash2, drafter incoai/Inkling-2-Mini-DFlash2@4f9088ea, MEM_FRACTION 0.88, CTX 262144, memguard 3.5 GiB) and only the swarm wiring env NAME=swarm-recipe PORT=30000 HOST=127.0.0.1 SERVED=inkling; the swarm serving default since 2026-11-25 (coding-v29-r2-v1: -20 % wall, -20 % Wh at equal quality)",
+  "container": "swarm-recipe",
+  "shim_container": "swarm-inkling-shim",
+  "adapter": "inkling/shim.py (unchanged; upstream 127.0.0.1:30000)",
+  "temperature": "0.8 (harness constant)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "mem_fraction": "0.88",
+  "identity_from": "SWARM_FAIR_HARD23_PLAN.json",
+  "chat_template_sha256": "53a9035f3255945704b5857657cfb00c1165090c0641c4f782a0cbf268cc16dc",
+  "chat_template": "thinkingmachines/Inkling-2-Mini snapshot ed40e7da chat_template.jinja"
+ },
+ "execution": "fork_replay.py --plan PLAN --run --output runs/fork-screen-v1 from a clean worktree of the source revision: fleet lease, admission, <= per_node per node, fenced drain",
+ "estimate": "12 puzzles: 48 fresh attempts, 24 stems, 48 continuations (<= 2.95M generated agent tokens; judge tokens not included) on 4 nodes at <= 20 in flight per node: 60-90 fleet min",
+ "prompt_rule": "the owner's generic-only prompt rule applies to mechanisms this screen adds; forking adds no prompt (a continuation is the same agent's own token ids). The production solver and judge prompts (forced72 system prompt and task text, run_judge prompts) are the task harness and stay unchanged in both arms (coordinator decision 2026-11-27)",
+ "report": "inkling/report_fork_screen.py"
+}
