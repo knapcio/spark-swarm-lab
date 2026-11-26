@@ -427,9 +427,10 @@ S1_AMENDMENTS = [
     '(1) the terminal answer is an explicit answer-only user turn, thinking off, inside the 2,048-token answer reserve, '
     'in BOTH arms (D\' too, parity): in v1 the protocol solvers wrote "Paused." in 247 of 275 forced calls '
     '(contamination, not a valid negative); (2) the tried/checked parser accepts the variants the model writes with '
-    'every labelled part (an unlabelled approach before "observed:", text before "input:", commas): on the v1 / S0 v3 '
-    'drops it recovers 202 of 655 malformed tried and 1 of 653 malformed checked statements, a measurement fix that '
-    'changes no gate; (3) arms D\' and C\'div only: plain C\' is dropped (herding; the division sentence is now the '
+    'every labelled part (an unlabelled approach before "observed:", text before "input:", commas), each field with a '
+    'payload (a letter or digit; an empty label or a punctuation-only value is malformed, sol review): on the v1 / '
+    'S0 v3 drops it recovers 202 of 655 malformed tried and 1 of 653 malformed checked statements, a measurement fix '
+    'that changes no gate; the preflight renders the real terminal turn; unknown --jobs selectors are refused; (3) arms D\' and C\'div only: plain C\' is dropped (herding; the division sentence is now the '
     'protocol). Every gate and margin unchanged (+7 primary lead, grey 5-6 -> extension, pooled +9, novelty floor '
     'D\' - 0.02, accepted agents, 0 wrong; margins as calibrated for v1, now conservative for one protocol arm); same '
     '41-case primary and 29-case extension cohorts; extension only if the frozen rule says so',
