@@ -23,3 +23,7 @@ Evaluation: {"unanswered_at_most_plain": true, "solved_at_least_plain_minus_1": 
 
 The reserve is one transport rule on finish_reason (no task content, no prompt change): an answer cut by length is continued in the same sequence in 2,048-token steps, at most 10,240 answer tokens, every step charged and reported. code_reserve keeps the 32,768-token agent budget (thinking cap 26,624).
 Neither worker has a transport retry. Acceptance is the public feedback cases; the hidden holdout cases only score. Tokens are server counters over each arm's window. Idea: IDEAS-swarm-round5-fable.md, idea 1.
+
+## Superseded
+
+The replication [coding-reserve-v2](../coding-reserve-v2/REPORT.md) (seeds 31-33) failed the same rule (A 66 / 6 wrong vs P 71 / 1). The adoption above is **reverted**: the coding default is plain R2 again.
