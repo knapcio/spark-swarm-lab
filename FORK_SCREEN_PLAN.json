@@ -3,7 +3,7 @@
  "study": "fork-screen-v1",
  "status": "FROZEN",
  "screen": "idea-4",
- "source_revision": "c30e6d6b88378a71a034a6c498facd07c539a67b",
+ "source_revision": "dff075c14bbf0862b0d2ab8737463da5bb27f0c9",
  "source_path": ".runtime/idea4-source",
  "driver": "fork_replay.py",
  "idea": "astra IDEAS 2026-11-26 #4: fork unfinished private prefixes to amortize repeated reasoning",
@@ -12,7 +12,7 @@
   "swarm-fair-hard23-v1-roll12fair",
   "swarm-baseline-hard26-v1-roll12fair"
  ],
- "selection_rule": "  runs       the default-policy arithmetic runs RUNS (roll12fair, hard-v22 / v23 / v26), cases.jsonl of each run;\n  judged     a recorded agent with a judge verdict (true or false; cancelled and unstarted agents have none);\n  win        a judged agent accepted by the judge and solved by the exact verifier;\n  contested  a puzzle (corpus, task_id) with >= MIN_JUDGED judged agents over the run's seeds and a win rate\n             0 < wins / judged <= MAX_WIN_RATE (four fresh attempts neither surely fail nor surely succeed);\n  pins       the puzzle text and prompt_ids_sha256 of its first judged agent (order seed, slot; variant\n             xl_forced_original), so the driver can prove it sends the recorded prompt;\n  order      the contested puzzles sorted by sha256(SELECTION_SEED + ':' + corpus + ':' + task_id); the first\n             N_PUZZLES (12) are frozen; fresh worker seeds seed_base = SEED_OFFSET + sha256(SELECTION_SEED + ':' +\n             puzzle_key) mod 10^7 (never a recorded seed).\nThe driver (fork_replay.py on research/idea4-fork-v1) runs per puzzle four fresh attempts and two stems with two\ncontinuations each; every candidate is judged on the original task (judge pair seeds fresh j <-> leaf j).",
+ "selection_rule": "  runs       the default-policy arithmetic runs RUNS (roll12fair, hard-v22 / v23 / v26), cases.jsonl of each run;\n  judged     a recorded agent with a judge verdict (true or false; cancelled and unstarted agents have none);\n  win        a judged agent accepted by the judge and solved by the exact verifier;\n  contested  a puzzle (corpus, task_id) with >= MIN_JUDGED judged agents over the run's seeds and a win rate\n             0 < wins / judged <= MAX_WIN_RATE (four fresh attempts neither surely fail nor surely succeed);\n  pins       the puzzle text and prompt_ids_sha256 of its first judged agent (order seed, slot; variant\n             xl_forced_original), so the driver can prove it sends the recorded prompt;\n  order      the contested puzzles sorted by sha256(SELECTION_SEED + ':' + corpus + ':' + task_id); the first\n             N_PUZZLES (12) are frozen; fresh worker seeds seed_base = SEED_OFFSET + sha256(SELECTION_SEED + ':' +\n             puzzle_key) mod 10^7 (never a recorded seed).\nThe driver (fork_replay.py on research/idea4-fork-v1) runs per puzzle four fresh attempts and two stems with two\ncontinuations each; every candidate is judged on the original task (fresh j and leaf j share a judge pair label).\nSeeds: pairing labels attempts only; draws are independent on this server (seeds not honoured; probe 2026-11-26\n21:06Z: identical requests with the same seed gave different outputs), so there are no common random numbers.",
  "selection_seed": "2026112704",
  "min_judged": 4,
  "max_win_rate": 0.5,
@@ -287,9 +287,9 @@
  "cont_think": 22528,
  "arms": {
   "fresh": "four fresh attempts j = 0..3 (worker seed seed_base + j): thinking 30,720 + answer 2,048, forced72 xl_forced_original's own path; <= 131,072 generated tokens per puzzle",
-  "fork": "two stems s = 0, 1 (worker seed seed_base + 2 s: the wire seed of fresh attempt 2 s) of 8,192 thinking tokens; each unfinished stem forks into two continuations (own seeds) of 22,528 thinking tokens + the forced answer within 2,048 (lineage 32,768); a stem that closes its thinking is a finished attempt (leaf 2 s; leaf 2 s + 1 not run); <= 114,688 per puzzle"
+  "fork": "two stems s = 0, 1 (worker seed seed_base + 2 s, a label only) of 8,192 thinking tokens; each unfinished stem forks into two continuations (own seeds) of 22,528 thinking tokens + the forced answer within 2,048 (lineage 32,768); a stem that closes its thinking is a finished attempt (leaf 2 s; leaf 2 s + 1 not run); <= 114,688 per puzzle"
  },
- "judge": "run_variants.judge_once (one attempt, no judge-level retry), unchanged prompt, on the original task; the dispatched seed is derived from the pair (fresh j <-> leaf j) and the judge stage only; transport retries off",
+ "judge": "run_variants.judge_once (one attempt, no judge-level retry), unchanged prompt, on the original task; the seed sent is derived from the pair (fresh j <-> leaf j) and the judge stage only; transport retries off",
  "decision_rule": {
   "cover": "an arm covers a puzzle if any of its candidates is accepted by the judge and solved by the strict exact verifier (every submitted move legal, target appeared)",
   "compute": "G(arm) = agent completion tokens of every call (stems once) + judge tokens",
@@ -297,6 +297,7 @@
   "pass_": "PASS AS A SCREEN ONLY otherwise; adoption needs a fresh confirmation",
   "report": "wrong acceptances per arm, exact sign test over discordant puzzles, G per puzzle"
  },
+ "seeds": "pairing labels attempts only; draws are independent on this server (per-request seeds not honoured: no deterministic inference on the launch; live probe 2026-11-26 21:06Z, identical requests with the same seed at temperature 0.8 gave different outputs)",
  "fleet": {
   "endpoints": [
    "http://127.0.0.1:18081/v1",

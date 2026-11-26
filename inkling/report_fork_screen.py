@@ -21,6 +21,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import strict_verify as sv  # noqa: E402
 from report_extend_screen import sign_test  # noqa: E402
 
+SEED_NOTE = ('pairing labels attempts only; draws are independent on this server (per-request seeds not honoured: '
+             'no deterministic inference on the launch; live probe 2026-11-26 21:06Z, identical requests with the same '
+             'seed at temperature 0.8 gave different outputs)')
+
 ROOTS, STEMS, LEAVES = 4, 2, 4
 
 
@@ -67,7 +71,7 @@ def build(plan, run_dir):
             problems.append(f'unit {key} missing')
         elif faulted(r):
             problems.append(f'unit {key} faulted: {faulted(r)}')
-    out = dict(study=plan['study'], run=str(run_dir), items=len(plan['items']))
+    out = dict(study=plan['study'], run=str(run_dir), items=len(plan['items']), seeds=SEED_NOTE)
     if problems:
         return dict(out, status='incomplete', problems=problems[:20], decision='INCOMPLETE (no decision)')
     items = {i['item_id']: i for i in plan['items']}

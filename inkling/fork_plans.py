@@ -14,7 +14,9 @@ Selection rule (mechanical, frozen here; reads recorded runs only, no model call
              N_PUZZLES (12) are frozen; fresh worker seeds seed_base = SEED_OFFSET + sha256(SELECTION_SEED + ':' +
              puzzle_key) mod 10^7 (never a recorded seed).
 The driver (fork_replay.py on research/idea4-fork-v1) runs per puzzle four fresh attempts and two stems with two
-continuations each; every candidate is judged on the original task (judge pair seeds fresh j <-> leaf j).
+continuations each; every candidate is judged on the original task (fresh j and leaf j share a judge pair label).
+Seeds: pairing labels attempts only; draws are independent on this server (seeds not honoured; probe 2026-11-26
+21:06Z: identical requests with the same seed gave different outputs), so there are no common random numbers.
 
 Pre-registered rule (report: inkling/report_fork_screen.py): an arm COVERS a puzzle if any of its candidates is
 accepted by the judge AND solved by the strict exact verifier. G(arm) = the arm's generated tokens (agent completion
@@ -43,6 +45,9 @@ SEED_OFFSET = 60_000_000
 STEM_THINK, CONT_THINK, THINK, TOTAL = 8192, 22528, 30720, 32768
 PER_NODE = 20
 SOURCE_PATH = '.runtime/idea4-source'
+SEED_NOTE = ('pairing labels attempts only; draws are independent on this server (per-request seeds not honoured: '
+             'no deterministic inference on the launch; live probe 2026-11-26 21:06Z, identical requests with the same '
+             'seed at temperature 0.8 gave different outputs)')
 
 
 def contested(root, runs=RUNS):
@@ -103,12 +108,12 @@ def make(root, revision):
         eligible_puzzles=eligible, items=items, stem_think=STEM_THINK, cont_think=CONT_THINK,
         arms=dict(fresh='four fresh attempts j = 0..3 (worker seed seed_base + j): thinking 30,720 + answer 2,048, '
                         'forced72 xl_forced_original\'s own path; <= 131,072 generated tokens per puzzle',
-                  fork='two stems s = 0, 1 (worker seed seed_base + 2 s: the wire seed of fresh attempt 2 s) of 8,192 '
+                  fork='two stems s = 0, 1 (worker seed seed_base + 2 s, a label only) of 8,192 '
                        'thinking tokens; each unfinished stem forks into two continuations (own seeds) of 22,528 '
                        'thinking tokens + the forced answer within 2,048 (lineage 32,768); a stem that closes its '
                        'thinking is a finished attempt (leaf 2 s; leaf 2 s + 1 not run); <= 114,688 per puzzle'),
         judge=('run_variants.judge_once (one attempt, no judge-level retry), unchanged prompt, on the original task; '
-               'the dispatched seed is derived from the pair (fresh j <-> leaf j) and the judge stage only; transport '
+               'the seed sent is derived from the pair (fresh j <-> leaf j) and the judge stage only; transport '
                'retries off'),
         decision_rule=dict(cover='an arm covers a puzzle if any of its candidates is accepted by the judge and solved '
                                  'by the strict exact verifier (every submitted move legal, target appeared)',
@@ -116,7 +121,7 @@ def make(root, revision):
                            stop='STOP if C(fork) < C(fresh) (lower coverage) or G(fork) >= G(fresh) (no net saving)',
                            pass_='PASS AS A SCREEN ONLY otherwise; adoption needs a fresh confirmation',
                            report='wrong acceptances per arm, exact sign test over discordant puzzles, G per puzzle'),
-        fleet=collab_plans.FLEET, per_node=PER_NODE, nodes=4,
+        seeds=SEED_NOTE, fleet=collab_plans.FLEET, per_node=PER_NODE, nodes=4,
         judge_code_sha256=collab_plans.judge_hashes(ROOT), serving=collab_plans.serving(ROOT),
         execution='fork_replay.py --plan PLAN --run --output runs/fork-screen-v1 from a clean worktree of the source '
                   'revision: fleet lease, admission, <= per_node per node, fenced drain',

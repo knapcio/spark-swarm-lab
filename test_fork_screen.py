@@ -109,6 +109,7 @@ class ReportTests(unittest.TestCase):
             r = rep.build(self.PLAN, self.run_dir(d / 'b', both, tokens=dict(fresh=100, stem=40, fork=60)))
             self.assertTrue(r['decision'].startswith('PASS'))  # equal coverage, 400 < 440 per item
             self.assertEqual(r['arms']['fork']['stems_forked'], 4)
+            self.assertIn('pairing labels attempts only', r['seeds'])  # disclosed in every report
             lower = {('y0', 'fresh', 1): (True, GOOD), ('y1', 'fresh', 0): (True, GOOD),
                      ('y0', 'fork', 0): (True, GOOD)}
             r = rep.build(self.PLAN, self.run_dir(d / 'c', lower, tokens=dict(fresh=100, stem=40, fork=60)))
