@@ -19,7 +19,7 @@
   ]
  },
  "per_node": 20,
- "source_revision": "718340d2f674b064b79a69d27801bc83cd4197a7",
+ "source_revision": "5b0742fa4d214d8f8c5e6af81f92b66602f61854",
  "source_path": ".runtime/collab-source",
  "driver": "collab_replay.py",
  "judge_code_sha256": {
@@ -59,17 +59,21 @@
    16384,
    24576
   ],
-  "note_max_tokens": 2048,
+  "note_max_tokens": 200,
   "min_resume_think": 4096,
   "max_submissions": 4,
   "board_limit_chars": 1800,
   "field_limit_chars": 160,
-  "max_items": 3,
+  "max_items": 1,
   "max_peers": 8,
+  "board_share": 0.03,
   "full_rejected_answer_chars": 6000,
   "thinking_cap": 30720,
   "total": 32768,
-  "note_prompts": "collab.NOTE_FIRST / collab.NOTE_LATER (design 1.10 verbatim)",
+  "note_format": "facts only: {\"focus\", \"computed\", \"tried\", \"checked\"}, at most one statement per kind, <= 60 words; no reviews (opinions about other entries are not observations)",
+  "verifier": "before posting: exact_claims.py (a false equation drops the statement; a true \"computed\" one is VERIFIED; an arithmetic-looking one that does not parse is UNVERIFIED); \"checked\" statements against the family's known cases (coding: the task examples and public cases; match VERIFIED, contradiction dropped); otherwise one checker call (temperature 0, max_tokens 8, the last 6000 characters of the solver's own thinking): SUPPORTED -> agent-checked, else dropped; a checker fault is an infrastructure fault; checker tokens are accounted apart (verifier_* fields) and count toward compute",
+  "board_priority": "rejections by the acceptance check (newest first, <= 3), VERIFIED, agent-checked, UNVERIFIED statements (each newest first), focus lines, end lines, old-format entries; the longest prefix within the budget is shown",
+  "note_prompts": "collab.NOTE_FIRST / collab.NOTE_LATER (facts-only, S0 amendment)",
   "board_prompt": "collab.BOARD_PROMPT; the division-of-work rule only in arms with division_of_work true (owner decision 2026-11-26)",
   "evidence": "arithmetic: the judge reason (none if the judge thinking was cut); coding: pass count and exactly one failing public case (owner decision 2026-11-26)"
  },
@@ -102,6 +106,8 @@
    "protocol": true,
    "division_of_work": false,
    "board": "live",
+   "note_max_tokens": 200,
+   "board_share": 0.03,
    "note": "protocol, default form (no division-of-work rule)"
   },
   "C'div": {
@@ -109,6 +115,8 @@
    "protocol": true,
    "division_of_work": true,
    "board": "live",
+   "note_max_tokens": 200,
+   "board_share": 0.03,
    "note": "protocol + division-of-work rule (owner decision 2: a separate arm)"
   }
  },

@@ -22,8 +22,15 @@ code_propose request is longer than 16K tokens and still thinking at the coding 
 with more such streams first (at most 4 streams per case, lowest agent index first), then run order, task, seed, until
 20 streams (100 checkpoints in all).
 
+S0 v2 (collab-s0-v2, the amended rerun after collab-s0-v1 STOP; S0_AMENDMENTS): same sample, same checks and limits,
+same 20 requests per node; facts-only notes with a pre-posting verifier, the note call capped at NOTE_MAX_TOKENS, the
+appended board turn budgeted to BOARD_SHARE of the retained context, and each stream's warm-up and note back to back
+under one permit in waves of WAVE_GROUPS groups. --dev writes a 2-node development plan (study suffix -dev, plan.dev)
+that the report never uses for a decision.
+
 usage: collab_plans.py s1 --source-revision REV --output COLLAB_S1_PLAN.json [--root DIR]
        collab_plans.py s0 --s1-plan COLLAB_S1_PLAN.json --source-revision REV --output COLLAB_S0_PLAN.json [--root DIR]
+                       [--dev]
 """
 import argparse
 import functools
@@ -67,10 +74,26 @@ POWER_GAIN = 6  # power reported for a true gain of 6 rescued puzzles in one pro
 CREDIT = ('Blackboard architectures (Erman, Hayes-Roth, Lesser, Reddy, Hearsay-II, 1980; Nii, 1986) and multi-agent '
           'debate (Du, Li, Torralba, Tenenbaum, Mordatch, 2023); design by Fable (DESIGN-live-collab-fable.md, '
           '2026-11-25); replay pattern of tail_replay.py and reserve_replay.py.')
-PROTOCOL = dict(marks=[8192, 16384, 24576], note_max_tokens=2048, min_resume_think=4096, max_submissions=4,
-                board_limit_chars=1800, field_limit_chars=160, max_items=3, max_peers=8,
+NOTE_MAX_TOKENS = 200   # hard cap of the note call: every note is <= 256 tokens by construction
+BOARD_SHARE = 0.03      # the appended board turn <= 3 % of the retained context (astra, S0 review)
+WAVE_GROUPS = 20        # S0 v2: groups per wave (one stream per node per group: <= 20 streams per node)
+VERIFY_EXCERPT_CHARS, VERIFY_MAX_TOKENS = 6000, 8
+PROTOCOL = dict(marks=[8192, 16384, 24576], note_max_tokens=NOTE_MAX_TOKENS, min_resume_think=4096, max_submissions=4,
+                board_limit_chars=1800, field_limit_chars=160, max_items=1, max_peers=8, board_share=BOARD_SHARE,
                 full_rejected_answer_chars=6000, thinking_cap=30720, total=32768,
-                note_prompts='collab.NOTE_FIRST / collab.NOTE_LATER (design 1.10 verbatim)',
+                note_format='facts only: {"focus", "computed", "tried", "checked"}, at most one statement per kind, '
+                            '<= 60 words; no reviews (opinions about other entries are not observations)',
+                verifier=f'before posting: exact_claims.py (a false equation drops the statement; a true "computed" '
+                         f'one is VERIFIED; an arithmetic-looking one that does not parse is UNVERIFIED); "checked" '
+                         f'statements against the family\'s known cases (coding: the task examples and public cases; '
+                         f'match VERIFIED, contradiction dropped); otherwise one checker call (temperature 0, '
+                         f'max_tokens {VERIFY_MAX_TOKENS}, the last {VERIFY_EXCERPT_CHARS} characters of the solver\'s '
+                         f'own thinking): SUPPORTED -> agent-checked, else dropped; a checker fault is an infrastructure '
+                         f'fault; checker tokens are accounted apart (verifier_* fields) and count toward compute',
+                board_priority='rejections by the acceptance check (newest first, <= 3), VERIFIED, agent-checked, '
+                               'UNVERIFIED statements (each newest first), focus lines, end lines, old-format entries; '
+                               'the longest prefix within the budget is shown',
+                note_prompts='collab.NOTE_FIRST / collab.NOTE_LATER (facts-only, S0 amendment)',
                 board_prompt='collab.BOARD_PROMPT; the division-of-work rule only in arms with division_of_work true '
                              '(owner decision 2026-11-26)',
                 evidence='arithmetic: the judge reason (none if the judge thinking was cut); coding: pass count and '
@@ -304,9 +327,13 @@ S0_CHECKS = [
          limit='>= 0.90', on_fail='fix the note prompt once, then fallback B'),
     dict(id='note_within_256', metric='share of parsed notes with at most 256 reply tokens', limit='>= 0.90',
          on_fail='fix the note prompt once, then fallback B'),
-    dict(id='arith_results_correct', metric='share of arithmetic note result sentences WITH at least one checkable '
-         'a op b = c equation whose equations are all correct (offline regex); sentences without one are reported, '
-         'not counted; no checkable sentence = not met', limit='>= 0.90', on_fail='stop'),
+    dict(id='arith_results_correct', metric='share of the POSTED statements of arithmetic checkpoints (facts-only '
+         'notes; old-format notes: result sentences) WITH at least one evaluable equation (exact_claims.find_equations: '
+         'maximal arithmetic runs, identifiers break a run) whose equations all hold (exact_claims.check_statement: '
+         'whole expressions with precedence, parentheses and powers, chained equalities, exact rationals; the '
+         'implementation the pre-posting verifier uses); statements with an arithmetic-looking but unparseable '
+         'equation and statements without one are reported, not counted; none evaluable = not met', limit='>= 0.90',
+         on_fail='stop'),
     dict(id='focus_distinct', metric='share of focus-line pairs of a group (same case and cut, groups of >= 2 notes) '
          'with word-set Jaccard < 0.6', limit='>= 0.75', on_fail='stop: nothing to divide'),
     dict(id='answer_at_once', metric='share of continuations whose thinking closes within the first 512 tokens (token '
@@ -379,8 +406,10 @@ def make_s1(root, revision):
                 arms={"D'": dict(tag='dp', protocol=False, note='plain continuation, the worker logic: thinking to '
                                  '30,720, forced answer within 32,768'),
                       "C'": dict(tag='cp', protocol=True, division_of_work=False, board='live',
+                                 note_max_tokens=NOTE_MAX_TOKENS, board_share=BOARD_SHARE,
                                  note='protocol, default form (no division-of-work rule)'),
                       "C'div": dict(tag='cdiv', protocol=True, division_of_work=True, board='live',
+                                    note_max_tokens=NOTE_MAX_TOKENS, board_share=BOARD_SHARE,
                                     note='protocol + division-of-work rule (owner decision 2: a separate arm)')},
                 cohort_rule=__doc__.split('S1 cohort (design 4.2, Fable\'s A6): ')[1].split('\n\n')[0],
                 cohort_counts=dict(primary=sum(k['cohort'] == 'primary' for k in cases),
@@ -415,7 +444,27 @@ def coding_streams(root, runs=CODING_RUNS, cut=CODING_CUT, min_tokens=16384):
     return groups
 
 
-def make_s0(root, revision, s1_plan):
+S0_AMENDMENTS = [
+    'notes: facts only (focus + at most one computed / tried / checked statement), every statement checked before '
+    'posting (protocol_constants.verifier); owner 2026-11-26 after collab-s0-v1 STOP',
+    f'note call max_tokens {NOTE_MAX_TOKENS} (note_within_256 holds by construction; a note cut by the cap is '
+    'unparseable and counts against reply_parse)',
+    f'board turn budget: the whole appended turn <= {BOARD_SHARE} x the retained context, lowest-priority entries '
+    'dropped first (astra: new board suffixes alone capped cached_share at 94.2-94.5 %)',
+    'warm-up: per stream on prompt + prefix WITHOUT its last token (no discarded token inside the reused prefix), its '
+    'note at once under the same permit; no global warm phase (collab-s0-v1: 1.03M of 1.20M note prompt tokens '
+    'recomputed after a 1.17M-token warm phase)',
+    f'waves of {WAVE_GROUPS} whole groups (each group on distinct nodes: <= {WAVE_GROUPS} streams per node), note and '
+    'board phases per wave, board-phase barrier per wave; per_node stays 20',
+    'arith_results_correct: over the POSTED statements (exact_claims.py, the verifier\'s implementation; whole '
+    'expressions and chains), unparseable ones reported apart; collab-s0-v1\'s regex substring check was a checker '
+    'artifact (astra review: 12 flagged equations correct, one real error missed)',
+    'reported, not gated: statements made / dropped / UNVERIFIED / agent-checked / VERIFIED, checker tokens and latency, '
+    'board-phase prefill split into new text and eviction per node',
+]
+
+
+def make_s0(root, revision, s1_plan, dev=False):
     primary = [k for k in s1_plan['cases'] if k['cohort'] == 'primary']
     picked = sorted(random.Random(S0_SEED).sample(range(len(primary)), S0_CASES))
     groups = []
@@ -447,17 +496,24 @@ def make_s0(root, revision, s1_plan):
         members = [dict(s, slot=i, agent_seed=s['worker_seed']) for i, s in enumerate(streams)]
         groups.append(dict(group_id=f"{'v29' if 'v29' in run else 'aot'}-{task}-s{seed}-c{CODING_CUT}",
                            family='coding', cut=CODING_CUT, run=run, members=members))
-    plan = base_plan('s0', 'collab-s0-v1', revision, root)
+    plan = base_plan('s0', 'collab-s0-v2-dev' if dev else 'collab-s0-v2', revision, root)
     plan.update(s1_plan_cases=[primary[i]['case_id'] for i in picked], s0_seed=S0_SEED,
                 note_prompt='the note prompt of a solver\'s first checkpoint ("Checkpoint 1 of 3") at both cuts: '
                             'each replay is the stream\'s first checkpoint',
-                continuation_tokens=2048, answer_at_once_tokens=512, phases=['warm', 'note', 'board'],
+                continuation_tokens=2048, answer_at_once_tokens=512, phases=['note', 'board'], wave_groups=WAVE_GROUPS,
+                amends='collab-s0-v1 (STOP; results/collab-s0-v1 kept as is)', amendments=S0_AMENDMENTS,
+                exact_claims_sha256=hashlib.sha256((HERE / 'exact_claims.py').read_bytes()).hexdigest(),
                 selection=__doc__.split('S0 sample (design 4.1): ')[1].split('\n\n')[0],
                 checkpoints=sum(len(g['members']) for g in groups), checks=S0_CHECKS,
                 decision_rule='PASS if every check meets its limit; otherwise the failed checks\' actions apply (any '
                               '"stop" action stops the idea, else fix and rerun S0). Incomplete (no decision) if any '
                               'checkpoint has an infrastructure fault or the embedded plan differs from the plan file.',
                 groups=groups)
+    if dev:
+        plan.update(dev=True, nodes=2, fleet=dict(dev=True, endpoints='given at launch (--dev --endpoint/--host)'),
+                    execution='DEV ONLY: collab_replay.py --run --dev on a 2-node development fleet (never the decision '
+                              'fleet endpoints); no lease, no admission; the report computes the checks but never '
+                              'decides')
     return plan
 
 
@@ -468,6 +524,7 @@ def main(argv=None):
     p.add_argument('--source-revision', required=True)
     p.add_argument('--s1-plan', type=Path)
     p.add_argument('--output', type=Path, required=True)
+    p.add_argument('--dev', action='store_true', help='s0: a 2-node development plan (never for decisions)')
     a = p.parse_args(argv)
     if not re.fullmatch(r'[0-9a-f]{40}', a.source_revision):
         p.error('--source-revision must be a full commit hash')
@@ -478,7 +535,7 @@ def main(argv=None):
     else:
         if not a.s1_plan:
             p.error('s0 needs --s1-plan')
-        plan = make_s0(a.root, a.source_revision, json.loads(a.s1_plan.read_text()))
+        plan = make_s0(a.root, a.source_revision, json.loads(a.s1_plan.read_text()), dev=a.dev)
     a.output.write_text(json.dumps(plan, indent=1) + '\n')
     summary = {k: plan[k] for k in ('study', 'screen') if k in plan}
     summary.update(plan.get('cohort_counts') or dict(checkpoints=plan.get('checkpoints'), groups=len(plan['groups'])))

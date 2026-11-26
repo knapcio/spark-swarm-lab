@@ -1,7 +1,7 @@
 {
  "protocol": "collab-replay-screen-v3",
  "screen": "s0",
- "study": "collab-s0-v1",
+ "study": "collab-s0-v2",
  "status": "FROZEN",
  "nodes": 4,
  "fleet": {
@@ -19,7 +19,7 @@
   ]
  },
  "per_node": 20,
- "source_revision": "718340d2f674b064b79a69d27801bc83cd4197a7",
+ "source_revision": "5b0742fa4d214d8f8c5e6af81f92b66602f61854",
  "source_path": ".runtime/collab-source",
  "driver": "collab_replay.py",
  "judge_code_sha256": {
@@ -59,17 +59,21 @@
    16384,
    24576
   ],
-  "note_max_tokens": 2048,
+  "note_max_tokens": 200,
   "min_resume_think": 4096,
   "max_submissions": 4,
   "board_limit_chars": 1800,
   "field_limit_chars": 160,
-  "max_items": 3,
+  "max_items": 1,
   "max_peers": 8,
+  "board_share": 0.03,
   "full_rejected_answer_chars": 6000,
   "thinking_cap": 30720,
   "total": 32768,
-  "note_prompts": "collab.NOTE_FIRST / collab.NOTE_LATER (design 1.10 verbatim)",
+  "note_format": "facts only: {\"focus\", \"computed\", \"tried\", \"checked\"}, at most one statement per kind, <= 60 words; no reviews (opinions about other entries are not observations)",
+  "verifier": "before posting: exact_claims.py (a false equation drops the statement; a true \"computed\" one is VERIFIED; an arithmetic-looking one that does not parse is UNVERIFIED); \"checked\" statements against the family's known cases (coding: the task examples and public cases; match VERIFIED, contradiction dropped); otherwise one checker call (temperature 0, max_tokens 8, the last 6000 characters of the solver's own thinking): SUPPORTED -> agent-checked, else dropped; a checker fault is an infrastructure fault; checker tokens are accounted apart (verifier_* fields) and count toward compute",
+  "board_priority": "rejections by the acceptance check (newest first, <= 3), VERIFIED, agent-checked, UNVERIFIED statements (each newest first), focus lines, end lines, old-format entries; the longest prefix within the budget is shown",
+  "note_prompts": "collab.NOTE_FIRST / collab.NOTE_LATER (facts-only, S0 amendment)",
   "board_prompt": "collab.BOARD_PROMPT; the division-of-work rule only in arms with division_of_work true (owner decision 2026-11-26)",
   "evidence": "arithmetic: the judge reason (none if the judge thinking was cut); coding: pass count and exactly one failing public case (owner decision 2026-11-26)"
  },
@@ -92,10 +96,21 @@
  "continuation_tokens": 2048,
  "answer_at_once_tokens": 512,
  "phases": [
-  "warm",
   "note",
   "board"
  ],
+ "wave_groups": 20,
+ "amends": "collab-s0-v1 (STOP; results/collab-s0-v1 kept as is)",
+ "amendments": [
+  "notes: facts only (focus + at most one computed / tried / checked statement), every statement checked before posting (protocol_constants.verifier); owner 2026-11-26 after collab-s0-v1 STOP",
+  "note call max_tokens 200 (note_within_256 holds by construction; a note cut by the cap is unparseable and counts against reply_parse)",
+  "board turn budget: the whole appended turn <= 0.03 x the retained context, lowest-priority entries dropped first (astra: new board suffixes alone capped cached_share at 94.2-94.5 %)",
+  "warm-up: per stream on prompt + prefix WITHOUT its last token (no discarded token inside the reused prefix), its note at once under the same permit; no global warm phase (collab-s0-v1: 1.03M of 1.20M note prompt tokens recomputed after a 1.17M-token warm phase)",
+  "waves of 20 whole groups (each group on distinct nodes: <= 20 streams per node), note and board phases per wave, board-phase barrier per wave; per_node stays 20",
+  "arith_results_correct: over the POSTED statements (exact_claims.py, the verifier's implementation; whole expressions and chains), unparseable ones reported apart; collab-s0-v1's regex substring check was a checker artifact (astra review: 12 flagged equations correct, one real error missed)",
+  "reported, not gated: statements made / dropped / UNVERIFIED / agent-checked / VERIFIED, checker tokens and latency, board-phase prefill split into new text and eviction per node"
+ ],
+ "exact_claims_sha256": "1183d6f92bdb34cc600d2d4494d55c70092f77ca3322c6b2456fc93c00c50634",
  "selection": "S0_CASES primary S1 cases drawn with random.Random(S0_SEED) (their four first-wave streams cut\nat 8,192 and again at 16,384: 80 checkpoints) and 20 coding streams of coding-v29-r2-v1 and coding-aot-v1-p whose\ncode_propose request is longer than 16K tokens and still thinking at the coding cut, grouped by recorded case: cases\nwith more such streams first (at most 4 streams per case, lowest agent index first), then run order, task, seed, until\n20 streams (100 checkpoints in all).",
  "checkpoints": 100,
  "checks": [
@@ -137,7 +152,7 @@
   },
   {
    "id": "arith_results_correct",
-   "metric": "share of arithmetic note result sentences WITH at least one checkable a op b = c equation whose equations are all correct (offline regex); sentences without one are reported, not counted; no checkable sentence = not met",
+   "metric": "share of the POSTED statements of arithmetic checkpoints (facts-only notes; old-format notes: result sentences) WITH at least one evaluable equation (exact_claims.find_equations: maximal arithmetic runs, identifiers break a run) whose equations all hold (exact_claims.check_statement: whole expressions with precedence, parentheses and powers, chained equalities, exact rationals; the implementation the pre-posting verifier uses); statements with an arithmetic-looking but unparseable equation and statements without one are reported, not counted; none evaluable = not met",
    "limit": ">= 0.90",
    "on_fail": "stop"
   },
