@@ -413,6 +413,15 @@ What failed:
 No further screen is justified by the recorded evidence. The A/B was not run; the stage-2 code (live arms, controls,
 concurrency smoke, which passed clean on the fleet) stays on its branches, unmerged.
 
+## 2026-11-26 (40): baseline of today's defaults (descriptive, not a decision)
+
+Pre-registered as a baseline for later screens (plans 17fcc96, frozen before the corpus and any call; no adoption rule).
+- Arithmetic, roll12fair on fresh hard-v26 (96 cases, seed offset 26400): **85 solved, 0 wrong, 11 abstentions**;
+  7.09M generated tokens, 4,362 s wall, 145.2 Wh (1.71 Wh per solved case).
+- Coding, R2 + code_elastic on fresh seeds 43-45 (72 cases, offset 15700): **70 solved, 2 wrong, 0 unanswered**;
+  1.58M generated tokens, 1,450 s wall, 43.5 Wh (0.62 Wh per solved case).
+Runs: runs/swarm-baseline-hard26-v1-roll12fair, runs/coding-baseline-v1 (arm_accounting.json, cases).
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
