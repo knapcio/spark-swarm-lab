@@ -488,6 +488,10 @@ S0_AMENDMENTS = [
     'reported, not gated: statements made / dropped / UNVERIFIED / agent-checked / VERIFIED and drop rate by family, '
     'drops by reason (checker without a verdict apart), prefilter accuracy, schema violations, checker tokens (new and '
     'cached), latency, board-phase prefill split into new text and eviction per node',
+    'collab-s0-v3 (after collab-s0-v2 FIX, checkpoint_latency 23.5 s, every other gate met): warm-ups of a wave '
+    'complete before its notes: the latency proxy measures cached-prefix notes, not replay prefill queueing (v2: note '
+    'first-token median 21.0 s behind the other streams\' warm-up prefill on the node, continuation 2.5 s); thresholds, '
+    'on_fail actions, waves, per_node and protocol unchanged',
     'review round (sol + collab-s0-v2-dev): the checker is a turn on the solver\'s own cached note sequence (dev: '
     '603K fresh excerpt prompt tokens evicted the streams\' prefixes, cached_share 0.385), its verdict the first word '
     '(dev: 32 "SUPPORTEDThe..." replies lost); a new gate arith_coverage >= 0.75 (stricter; no limit loosened); the '
@@ -527,12 +531,14 @@ def make_s0(root, revision, s1_plan, dev=False):
         members = [dict(s, slot=i, agent_seed=s['worker_seed']) for i, s in enumerate(streams)]
         groups.append(dict(group_id=f"{'v29' if 'v29' in run else 'aot'}-{task}-s{seed}-c{CODING_CUT}",
                            family='coding', cut=CODING_CUT, run=run, members=members))
-    plan = base_plan('s0', 'collab-s0-v2-dev' if dev else 'collab-s0-v2', revision, root)
+    plan = base_plan('s0', 'collab-s0-v3-dev' if dev else 'collab-s0-v3', revision, root)
     plan.update(s1_plan_cases=[primary[i]['case_id'] for i in picked], s0_seed=S0_SEED,
                 note_prompt='the note prompt of a solver\'s first checkpoint ("Checkpoint 1 of 3") at both cuts: '
                             'each replay is the stream\'s first checkpoint',
-                continuation_tokens=2048, answer_at_once_tokens=512, phases=['note', 'board'], wave_groups=WAVE_GROUPS,
-                amends='collab-s0-v1 (STOP; results/collab-s0-v1 kept as is)', amendments=S0_AMENDMENTS,
+                continuation_tokens=2048, answer_at_once_tokens=512, phases=['warm', 'note', 'board'],
+                wave_groups=WAVE_GROUPS, warm_barrier=True,
+                amends='collab-s0-v2 (FIX on checkpoint_latency only; results/collab-s0-v2 kept as is), which amended '
+                       'collab-s0-v1 (STOP; results/collab-s0-v1 kept as is)', amendments=S0_AMENDMENTS,
                 exact_claims_sha256=hashlib.sha256((HERE / 'exact_claims.py').read_bytes()).hexdigest(),
                 selection=__doc__.split('S0 sample (design 4.1): ')[1].split('\n\n')[0],
                 checkpoints=sum(len(g['members']) for g in groups), checks=S0_CHECKS,
