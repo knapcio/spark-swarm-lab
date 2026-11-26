@@ -416,6 +416,16 @@ def base_plan(screen, study, revision, root=ROOT):
                       'hidden cases only score, after the agent\'s last model call')
 
 
+S1_AMENDMENTS = [
+    'S1 abort confirmation (driver 35d0e71, after the stage-2 review r2 finding): a cancelled agent\'s permit units are '
+    'released only when the node\'s running + queued requests are at most the OTHER generation streams the driver '
+    'actually has open there (agents, async checkers, judges; never the permit units held, so an idle unit cannot '
+    'mask an aborted request), on two consecutive polls >= 0.25 s apart; not confirmed within the wait, the node is '
+    'fenced (no admission there) until both gauges show 0; units are never released on a timeout. Cohort, margins, '
+    'arms and protocol constants unchanged',
+]
+
+
 def make_s1(root, revision):
     cases, skipped = s1_cohort(root)
     plan = base_plan('s1', 'collab-s1-v1', revision, root)
@@ -442,7 +452,7 @@ def make_s1(root, revision):
                                    extension=sum(k['cohort'] == 'extension' for k in cases),
                                    recorded_answered_primary=sum(k['recorded_answered'] for k in cases
                                                                  if k['cohort'] == 'primary')),
-                cohort_exclusions=skipped, decision_rule=rule,
+                cohort_exclusions=skipped, decision_rule=rule, amendments=S1_AMENDMENTS,
                 pairing='arms share prefixes, agent seeds (1000 * seed + 27100 + slot), judge seed bases and nodes '
                         '((job index + slot) % 4); same-seed requests do not reproduce on this serving, so the arms '
                         'are independent samples per case',

@@ -19,7 +19,7 @@
   ]
  },
  "per_node": 20,
- "source_revision": "e0576ea71704b6394fae7f054cd08a0c458506f4",
+ "source_revision": "35d0e71bbf6de911d418977681d284d4d4ffee36",
  "source_path": ".runtime/collab-source",
  "driver": "collab_replay.py",
  "judge_code_sha256": {
@@ -179,6 +179,9 @@
   },
   "null_model": "all arms identical; each of the 41 primary puzzles rescued independently with probability k/41 (k in 5..10, the design expects 6-9 for D'); 29 puzzles have an extension case; the two protocol arms independent given the shared control; rules 1, 3 and 4 ignored (a conservative bound); exact enumeration (collab_plans.familywise)"
  },
+ "amendments": [
+  "S1 abort confirmation (driver 35d0e71, after the stage-2 review r2 finding): a cancelled agent's permit units are released only when the node's running + queued requests are at most the OTHER generation streams the driver actually has open there (agents, async checkers, judges; never the permit units held, so an idle unit cannot mask an aborted request), on two consecutive polls >= 0.25 s apart; not confirmed within the wait, the node is fenced (no admission there) until both gauges show 0; units are never released on a timeout. Cohort, margins, arms and protocol constants unchanged"
+ ],
  "pairing": "arms share prefixes, agent seeds (1000 * seed + 27100 + slot), judge seed bases and nodes ((job index + slot) % 4); same-seed requests do not reproduce on this serving, so the arms are independent samples per case",
  "cost": "worst case 41 x 4 x 22.5K x 3 arms = 11.1M generated tokens; about 1.8 fleet hours (extension: 29 more cases)",
  "cases": [
