@@ -9,7 +9,9 @@ S1 cohort (design 4.2, Fable's A6): recorded cases of the default-type arms swar
 swarm-relay-hard19-v1-roll12cancel (G), swarm-wide-hard20-v1-roll12cancel and -roll12wide, swarm-aot-hard21-v1-p-roll12wide
 (P) in which all four first-wave agents (slots 0-3) finished their plan request with more than CUT (8,192) tokens, none
 was cancelled and none was accepted. Per puzzle (corpus, task) the case with the lowest seed (ties: the arm listed
-first) is 'primary' (41 cases); every other cohort case is 'extension' (the grey-zone rerun: 81 pooled cases). Every
+first) is 'primary' (41 cases); per puzzle the case with the lowest OTHER seed (ties: the arm listed first) is
+'extension' (one distinct second seed per eligible puzzle: 29 cases; a puzzle whose other cases share the primary seed
+in another policy has none); the remaining cohort cases are not planned. Every
 planned stream is checked here: plan stage request_end present, token ids consistent with usage, still thinking at the
 cut (no Inkling content-text token, id INKLING_CONTENT_TEXT from inkling/shim.py, in the first CUT ids), variant
 xl_forced_original, no extra prompt text.
@@ -24,8 +26,10 @@ usage: collab_plans.py s1 --source-revision REV --output COLLAB_S1_PLAN.json [--
        collab_plans.py s0 --s1-plan COLLAB_S1_PLAN.json --source-revision REV --output COLLAB_S0_PLAN.json [--root DIR]
 """
 import argparse
+import functools
 import hashlib
 import json
+import math
 import random
 import re
 import sys
@@ -49,6 +53,13 @@ VARIANT, CODING_VARIANT = 'xl_forced_original', 'code_xl'
 S1_SEED_OFFSET = 27100  # agent seed 1000 * case seed + offset + slot (the same in every arm)
 JUDGE_SEED_BASE = 90000
 SOURCE_PATH = '.runtime/collab-source'
+JUDGE_FILES = ('run_variants.py', 'run_judge.py', 'run_agents72.py', 'run_arbiterfree.py', 'run_benchmark.py')
+SERVING_FROM = 'SWARM_FAIR_HARD23_PLAN.json'  # the current serving identity (v2.9.2 recipe), checked by admit.py
+TEMPLATE = (Path.home() / '.cache/huggingface/hub/models--thinkingmachines--Inkling-2-Mini/snapshots/'
+            'ed40e7da625f594fc9c4990f5f66be24873c22d7/chat_template.jinja')
+ALPHA = 0.10  # familywise false-pass bound of the S1 gate (two protocol arms, two looks)
+NULL_RESCUES = range(5, 11)  # null: every arm rescues each primary puzzle with p = k / 41 (design: 6-9 in D', +-1)
+POWER_GAIN = 6  # power reported for a true gain of 6 rescued puzzles in one protocol arm
 CREDIT = ('Blackboard architectures (Erman, Hayes-Roth, Lesser, Reddy, Hearsay-II, 1980; Nii, 1986) and multi-agent '
           'debate (Du, Li, Torralba, Tenenbaum, Mordatch, 2023); design by Fable (DESIGN-live-collab-fable.md, '
           '2026-11-25); replay pattern of tail_replay.py and reserve_replay.py.')
@@ -169,14 +180,20 @@ def s1_cohort(root, arms=S1_ARMS, cut=CUT):
                               numbers=[int(n) for n in numbers.split(',')], target=int(target),
                               recorded_answered=bool(row.get('answered')), recorded_solved=bool(row.get('solved')),
                               agents=[{k: v for k, v in x.items() if k != 'puzzle'} for x in agents]))
-    primary = {}
+    primary, second = {}, {}
     for i, case in enumerate(cases):
         key = case['puzzle_key']
         if key not in primary or case['seed'] < cases[primary[key]]['seed']:
             primary[key] = i
-    chosen = set(primary.values())
     for i, case in enumerate(cases):
-        case['cohort'] = 'primary' if i in chosen else 'extension'
+        key = case['puzzle_key']
+        if case['seed'] != cases[primary[key]]['seed'] and (key not in second or case['seed'] < cases[second[key]]['seed']):
+            second[key] = i
+    roles = {i: 'primary' for i in primary.values()}
+    roles.update({i: 'extension' for i in second.values()})
+    if len(cases) > len(roles):
+        skipped['same seed as the puzzle\'s primary or extension case (not planned)'] = len(cases) - len(roles)
+    cases = [dict(case, cohort=roles[i]) for i, case in enumerate(cases) if i in roles]
     cases.sort(key=lambda k: (k['cohort'] != 'primary', k['puzzle_key'], k['seed'], k['run']))
     for n, case in enumerate(cases):
         case['case_id'] = f"{ARM_TAG.get(case['run'], 'x')}-{case['task_id']}-s{case['seed']}"
@@ -186,18 +203,80 @@ def s1_cohort(root, arms=S1_ARMS, cut=CUT):
     return cases, skipped
 
 
+def _binom(n, p):
+    return [math.comb(n, k) * p ** k * (1 - p) ** (n - k) for k in range(n + 1)]
+
+
+@functools.lru_cache(maxsize=None)
+def arm_distribution(n, e, p):
+    """{(primary rescues X, pooled rescues B): probability} of one arm under the null: every puzzle rescued with
+    probability p independently; e of the n puzzles have an extension case (a puzzle counts as rescued in the pooled
+    look if its primary or its extension case is)."""
+    out = {}
+    for a0, pa0 in enumerate(_binom(n - e, p)):
+        for a1, pa1 in enumerate(_binom(e, p)):
+            for y, py in enumerate(_binom(e - a1, p)):
+                key = (a0 + a1, a0 + a1 + y)
+                out[key] = out.get(key, 0.0) + pa0 * pa1 * py
+    return out
+
+
+def pass_probability(control, arm, m1, m2):
+    """P(the arm passes) given the control's (X, B): primary lead >= m1, or a primary lead of m1-2 or m1-1 (GREY)
+    and a pooled lead >= m2."""
+    x_d, b_d = control
+    return sum(q for (x, b), q in arm.items() if x - x_d >= m1 or (m1 - 2 <= x - x_d <= m1 - 1 and b - b_d >= m2))
+
+
+def familywise(n, e, p, m1, m2, arms=2, p_arm=None):
+    """P(at least one of `arms` protocol arms passes) against a shared control; arms independent given the control.
+    p_arm: the first protocol arm's rescue probability (power), default p (null)."""
+    control = arm_distribution(n, e, p)
+    null_arm = control
+    first = arm_distribution(n, e, p_arm) if p_arm is not None else null_arm
+    total = 0.0
+    for d, pd in control.items():
+        q_first, q_null = pass_probability(d, first, m1, m2), pass_probability(d, null_arm, m1, m2)
+        total += pd * (1 - (1 - q_first) * (1 - q_null) ** (arms - 1))
+    return total
+
+
+def calibrate(n, e, alpha=ALPHA, rescues=NULL_RESCUES, arms=2):
+    """The smallest primary margin m1 (then the smallest pooled margin m2 >= m1) whose familywise false-pass
+    probability is <= alpha for every null rescue rate k/n in `rescues`. Exact enumeration of binomials."""
+    for m1 in range(2, n):
+        if max(familywise(n, e, k / n, m1, n + 1, arms) for k in rescues) > alpha:
+            continue  # the primary look alone already exceeds alpha
+        for m2 in range(m1, n + 2):
+            worst = max(familywise(n, e, k / n, m1, m2, arms) for k in rescues)
+            if worst <= alpha:
+                table = {str(k): round(familywise(n, e, k / n, m1, m2, arms), 6) for k in rescues}
+                single = {str(k): round(familywise(n, e, k / n, m1, m2, 1), 6) for k in rescues}
+                power = {str(k): round(familywise(n, e, k / n, m1, m2, arms, p_arm=min(1.0, (k + POWER_GAIN) / n)), 6)
+                         for k in rescues}
+                return dict(primary_margin=m1, grey_band=[m1 - 2, m1 - 1], pooled_margin=m2,
+                            familywise_false_pass_max=round(worst, 6), familywise_false_pass_by_null_rescues=table,
+                            single_arm_false_pass_by_null_rescues=single,
+                            power_one_arm_true_gain_6_by_null_rescues=power)
+    raise ValueError('no calibration found')
+
+
 S1_RULE = dict(
     gate_all_of=['wrong(C) == 0 over all attempts (an accepted answer the exact verifier rejects is wrong)',
-                 'rescued puzzles(C) >= rescued puzzles(D\') + 4',
+                 'rescued puzzles(C) >= rescued puzzles(D\') + primary_margin (calibration below)',
                  'accepted agents(C) >= accepted agents(D\')',
-                 'novelty(C) >= novelty(D\') - 0.02 (share of a segment\'s word 5-grams absent from every text another '
-                 'agent of the case wrote before the segment started; mean over post-cut thinking segments)'],
-    applies_to='each protocol arm C in {C\', C\'div} separately against D\'; the idea continues if any protocol arm '
-               'passes (two protocol arms: the chance pass rate is up to about twice the single-arm 8 %)',
-    grey_zone='C ahead by 2 or 3 rescued puzzles with rules 1, 3 and 4 met: run the extension cohort (40 cases, '
-              'collab_replay.py --cohort extension) and pass if C rescues at least 6 more puzzles than D\' on the '
-              'pooled 81 cases, a puzzle counting as rescued by an arm if any of its cases is rescued; rules 1, 3, 4 '
-              'again on the pooled cases',
+                 'novelty(C) >= novelty(D\') - 0.02 (share of a piece\'s distinct word 5-grams absent from every text '
+                 'another agent of the case had written when the piece started; pieces = post-cut thinking split at the '
+                 'common thinking-token boundaries 8,192 / 16,384 / 24,576 / 30,720 via streamed progress samples; '
+                 'cancelled partial streams count with their streamed text; a piece counts if it has >= 20 distinct '
+                 '5-grams; arm novelty = mean over counted pieces)'],
+    applies_to='each protocol arm C in {C\', C\'div} separately against the shared control D\'; the idea continues if '
+               'any protocol arm passes, and every passing arm goes to the A/B',
+    grey_zone='a primary lead inside grey_band with rules 1, 3 and 4 met: run the extension cohort (one distinct second '
+              'seed per eligible puzzle; collab_replay.py --cohort extension) and pass if C leads D\' by at least '
+              'pooled_margin rescued puzzles on the pooled cases, a puzzle counting as rescued by an arm if any of its '
+              'cases is; rules 1, 3, 4 again on the pooled cases; only arms that were GREY at the primary look can '
+              'pass at the pooled look',
     stop='anything else ends the idea; the rejection goes to review (lab rule)',
     incomplete='any job with an infrastructure fault, a missing job, a prompt or prefix mismatch, or an embedded plan '
                'that differs from the plan file: no decision (rerun the incomplete jobs with --jobs and pass both '
@@ -205,32 +284,54 @@ S1_RULE = dict(
 
 S0_CHECKS = [
     dict(id='prefix_identical', metric='share of checkpoints whose composed sequence starts with the recorded prompt '
-         'and prefix ids and whose continuation starts with the note call prompt + reply ids', limit='== 1.0',
-         on_fail='fix'),
-    dict(id='cached_share', metric='1 - prefill_compute / prompt tokens on all nodes during the board phase '
-         '(continuation calls only; server counters)', limit='>= 0.95', on_fail='fix or fallback B'),
-    dict(id='checkpoint_latency', metric='median over checkpoints of note-call time to first token + continuation '
-         'time to first token, at --per-node 20', limit='<= 5.0 s', on_fail='fix or fallback B'),
+         'and prefix ids and (if continued) whose continuation starts with the note call prompt + reply ids',
+         limit='== 1.0', on_fail='fix'),
+    dict(id='turn_boundaries', metric='preflight ok on every family (collab.preflight against the live template) and '
+         'share of joins of finished replies (finish_reason stop) that kept exactly the template terminator',
+         limit='== 1.0', on_fail='fix'),
+    dict(id='cached_share', metric='per node: 1 - prefill_compute / prompt tokens during the board phase (continuation '
+         'requests only; server counters, every node must report both counters); the check uses the LOWEST node',
+         limit='>= 0.95', on_fail='fix or fallback B'),
+    dict(id='checkpoint_latency', metric='PROXY: median over checkpoints of (note call first-token time - send time) + '
+         '(continuation first-token time - send time), raw seconds, phases run at --per-node 20',
+         limit='<= 5.0 s', on_fail='fix or fallback B'),
     dict(id='reply_parse', metric='share of note turns returning a parseable note or a parseable answer',
          limit='>= 0.90', on_fail='fix the note prompt once, then fallback B'),
     dict(id='note_within_256', metric='share of parsed notes with at most 256 reply tokens', limit='>= 0.90',
          on_fail='fix the note prompt once, then fallback B'),
-    dict(id='arith_results_correct', metric='share of arithmetic note result sentences whose a op b = c equations '
-         'are all correct (offline regex; sentences without an equation count as correct and are also reported)',
-         limit='>= 0.90', on_fail='stop'),
-    dict(id='focus_distinct', metric='share of focus-line pairs of a group (same case and cut) with word-set '
-         'Jaccard < 0.6', limit='>= 0.75', on_fail='stop: nothing to divide'),
-    dict(id='answer_at_once', metric='share of continuations that close their thinking within the first 512 '
-         'tokens', limit='<= 0.20', on_fail='stop, or fallback B'),
-    dict(id='own_repeat', metric='mean share of a continuation\'s word 5-grams already in its own recorded prefix, '
-         'minus the same share for the recorded continuation (same streams; recorded texts split by character share)',
-         limit='<= +0.10', on_fail='stop, or fallback B'),
+    dict(id='arith_results_correct', metric='share of arithmetic note result sentences WITH at least one checkable '
+         'a op b = c equation whose equations are all correct (offline regex); sentences without one are reported, '
+         'not counted; no checkable sentence = not met', limit='>= 0.90', on_fail='stop'),
+    dict(id='focus_distinct', metric='share of focus-line pairs of a group (same case and cut, groups of >= 2 notes) '
+         'with word-set Jaccard < 0.6', limit='>= 0.75', on_fail='stop: nothing to divide'),
+    dict(id='answer_at_once', metric='share of continuations whose thinking closes within the first 512 tokens (token '
+         'position of the end-of-thinking ids); needs every continuation present and >= 90 % of closes located, '
+         'else not met', limit='<= 0.20', on_fail='stop, or fallback B'),
+    dict(id='own_repeat', metric='PROXY: mean share of a continuation\'s word 5-grams already in its own recorded '
+         'prefix, minus the same share for the recorded continuation (recorded texts split by character share: the '
+         'shim has no /detokenize)', limit='<= +0.10', on_fail='stop, or fallback B'),
 ]
 
 
-def base_plan(screen, study, revision):
-    return dict(protocol='collab-replay-screen-v1', screen=screen, study=study, status='FROZEN',
+def judge_hashes(root):
+    return {name: hashlib.sha256((Path(root) / name).read_bytes()).hexdigest() for name in JUDGE_FILES}
+
+
+def serving(root):
+    out = dict(json.loads((Path(root) / SERVING_FROM).read_text())['serving'], identity_from=SERVING_FROM)
+    if TEMPLATE.exists():
+        out['chat_template_sha256'] = hashlib.sha256(TEMPLATE.read_bytes()).hexdigest()
+        out['chat_template'] = 'thinkingmachines/Inkling-2-Mini snapshot ed40e7da chat_template.jinja'
+    return out
+
+
+def base_plan(screen, study, revision, root=ROOT):
+    return dict(protocol='collab-replay-screen-v2', screen=screen, study=study, status='FROZEN', nodes=4,
                 source_revision=revision, source_path=SOURCE_PATH, driver='collab_replay.py',
+                judge_code_sha256=judge_hashes(root), serving=serving(root),
+                execution='each screen alone on the fleet after inkling/admit.py (fresh receipt, --admission); '
+                          'collab_replay.py --run with four --endpoint/--host pairs (distinct physical nodes); the '
+                          'judge files of --judge-source must equal judge_code_sha256',
                 report='inkling/report_collab_screen.py', design='DESIGN-live-collab-fable.md', credit=CREDIT,
                 generator=f'inkling/collab_plans.py {screen}', protocol_constants=PROTOCOL,
                 concurrency='<= 20 requests per node by default (--per-node, hard cap 25); one permit per agent for '
@@ -241,7 +342,15 @@ def base_plan(screen, study, revision):
 
 def make_s1(root, revision):
     cases, skipped = s1_cohort(root)
-    plan = base_plan('s1', 'collab-s1-v1', revision)
+    plan = base_plan('s1', 'collab-s1-v1', revision, root)
+    n = sum(k['cohort'] == 'primary' for k in cases)
+    e = sum(k['cohort'] == 'extension' for k in cases)
+    rule = dict(S1_RULE, margins=calibrate(n, e),
+                null_model=f'all arms identical; each of the {n} primary puzzles rescued independently with '
+                           f'probability k/{n} (k in {NULL_RESCUES.start}..{NULL_RESCUES.stop - 1}, the design expects '
+                           f'6-9 for D\'); {e} puzzles have an extension case; the two protocol arms independent given '
+                           f'the shared control; rules 1, 3 and 4 ignored (a conservative bound); exact enumeration '
+                           f'(collab_plans.familywise)')
     plan.update(cut=CUT, agent_variant=VARIANT, seed_offset=S1_SEED_OFFSET, judge_seed_base=JUDGE_SEED_BASE,
                 source_runs=S1_ARMS, arm_order=["D'", "C'", "C'div"],
                 arms={"D'": dict(tag='dp', protocol=False, note='plain continuation, the worker logic: thinking to '
@@ -255,11 +364,12 @@ def make_s1(root, revision):
                                    extension=sum(k['cohort'] == 'extension' for k in cases),
                                    recorded_answered_primary=sum(k['recorded_answered'] for k in cases
                                                                  if k['cohort'] == 'primary')),
-                cohort_exclusions=skipped, decision_rule=S1_RULE,
+                cohort_exclusions=skipped, decision_rule=rule,
                 pairing='arms share prefixes, agent seeds (1000 * seed + 27100 + slot), judge seed bases and nodes '
                         '((job index + slot) % 4); same-seed requests do not reproduce on this serving, so the arms '
                         'are independent samples per case',
-                cost='worst case 41 x 4 x 22.5K x 3 arms = 11.1M generated tokens; about 1.8 fleet hours',
+                cost='worst case 41 x 4 x 22.5K x 3 arms = 11.1M generated tokens; about 1.8 fleet hours (extension: '
+                     '29 more cases)',
                 cases=cases)
     return plan
 
@@ -314,7 +424,7 @@ def make_s0(root, revision, s1_plan):
         members = [dict(s, slot=i, agent_seed=s['worker_seed']) for i, s in enumerate(streams)]
         groups.append(dict(group_id=f"{'v29' if 'v29' in run else 'aot'}-{task}-s{seed}-c{CODING_CUT}",
                            family='coding', cut=CODING_CUT, run=run, members=members))
-    plan = base_plan('s0', 'collab-s0-v1', revision)
+    plan = base_plan('s0', 'collab-s0-v1', revision, root)
     plan.update(s1_plan_cases=[primary[i]['case_id'] for i in picked], s0_seed=S0_SEED,
                 note_prompt='the note prompt of a solver\'s first checkpoint ("Checkpoint 1 of 3") at both cuts: '
                             'each replay is the stream\'s first checkpoint',

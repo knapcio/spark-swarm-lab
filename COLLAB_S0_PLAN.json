@@ -1,11 +1,35 @@
 {
- "protocol": "collab-replay-screen-v1",
+ "protocol": "collab-replay-screen-v2",
  "screen": "s0",
  "study": "collab-s0-v1",
  "status": "FROZEN",
- "source_revision": "848443016606b149297c8310c23358e9dd875e47",
+ "nodes": 4,
+ "source_revision": "69c68fc827b3f24430ba2af6d189faf3da27c50f",
  "source_path": ".runtime/collab-source",
  "driver": "collab_replay.py",
+ "judge_code_sha256": {
+  "run_variants.py": "29a7fd2102da8029ad1edae8b3d7cfe14e430b9078d93e16f66ce605ead0355b",
+  "run_judge.py": "dadc67dba63432c095794dff9c04d81ac7952eecc0215488b3f6d7c28ca21956",
+  "run_agents72.py": "d9fd620bc3b0a93e9238e32170b6a876415ce043ddf70f239077884f5f62e068",
+  "run_arbiterfree.py": "af165c85b32c335345923ece29d1c1d6f0883cea99d4a5fcdc290ca95fd360f8",
+  "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a"
+ },
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@ed40e7da625f594fc9c4990f5f66be24873c22d7",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "Inkling-2-Mini-1x-DGX-Spark v2.9.2 (a29380b; scripts/launch.sh sha 9428eb69...) `scripts/launch.sh up` with release defaults (SPEC=dflash2, drafter incoai/Inkling-2-Mini-DFlash2@4f9088ea, MEM_FRACTION 0.88, CTX 262144, memguard 3.5 GiB) and only the swarm wiring env NAME=swarm-recipe PORT=30000 HOST=127.0.0.1 SERVED=inkling; the swarm serving default since 2026-11-25 (coding-v29-r2-v1: -20 % wall, -20 % Wh at equal quality)",
+  "container": "swarm-recipe",
+  "shim_container": "swarm-inkling-shim",
+  "adapter": "inkling/shim.py (unchanged; upstream 127.0.0.1:30000)",
+  "temperature": "0.8 (harness constant)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "mem_fraction": "0.88",
+  "identity_from": "SWARM_FAIR_HARD23_PLAN.json",
+  "chat_template_sha256": "53a9035f3255945704b5857657cfb00c1165090c0641c4f782a0cbf268cc16dc",
+  "chat_template": "thinkingmachines/Inkling-2-Mini snapshot ed40e7da chat_template.jinja"
+ },
+ "execution": "each screen alone on the fleet after inkling/admit.py (fresh receipt, --admission); collab_replay.py --run with four --endpoint/--host pairs (distinct physical nodes); the judge files of --judge-source must equal judge_code_sha256",
  "report": "inkling/report_collab_screen.py",
  "design": "DESIGN-live-collab-fable.md",
  "credit": "Blackboard architectures (Erman, Hayes-Roth, Lesser, Reddy, Hearsay-II, 1980; Nii, 1986) and multi-agent debate (Du, Li, Torralba, Tenenbaum, Mordatch, 2023); design by Fable (DESIGN-live-collab-fable.md, 2026-11-25); replay pattern of tail_replay.py and reserve_replay.py.",
@@ -58,19 +82,25 @@
  "checks": [
   {
    "id": "prefix_identical",
-   "metric": "share of checkpoints whose composed sequence starts with the recorded prompt and prefix ids and whose continuation starts with the note call prompt + reply ids",
+   "metric": "share of checkpoints whose composed sequence starts with the recorded prompt and prefix ids and (if continued) whose continuation starts with the note call prompt + reply ids",
+   "limit": "== 1.0",
+   "on_fail": "fix"
+  },
+  {
+   "id": "turn_boundaries",
+   "metric": "preflight ok on every family (collab.preflight against the live template) and share of joins of finished replies (finish_reason stop) that kept exactly the template terminator",
    "limit": "== 1.0",
    "on_fail": "fix"
   },
   {
    "id": "cached_share",
-   "metric": "1 - prefill_compute / prompt tokens on all nodes during the board phase (continuation calls only; server counters)",
+   "metric": "per node: 1 - prefill_compute / prompt tokens during the board phase (continuation requests only; server counters, every node must report both counters); the check uses the LOWEST node",
    "limit": ">= 0.95",
    "on_fail": "fix or fallback B"
   },
   {
    "id": "checkpoint_latency",
-   "metric": "median over checkpoints of note-call time to first token + continuation time to first token, at --per-node 20",
+   "metric": "PROXY: median over checkpoints of (note call first-token time - send time) + (continuation first-token time - send time), raw seconds, phases run at --per-node 20",
    "limit": "<= 5.0 s",
    "on_fail": "fix or fallback B"
   },
@@ -88,25 +118,25 @@
   },
   {
    "id": "arith_results_correct",
-   "metric": "share of arithmetic note result sentences whose a op b = c equations are all correct (offline regex; sentences without an equation count as correct and are also reported)",
+   "metric": "share of arithmetic note result sentences WITH at least one checkable a op b = c equation whose equations are all correct (offline regex); sentences without one are reported, not counted; no checkable sentence = not met",
    "limit": ">= 0.90",
    "on_fail": "stop"
   },
   {
    "id": "focus_distinct",
-   "metric": "share of focus-line pairs of a group (same case and cut) with word-set Jaccard < 0.6",
+   "metric": "share of focus-line pairs of a group (same case and cut, groups of >= 2 notes) with word-set Jaccard < 0.6",
    "limit": ">= 0.75",
    "on_fail": "stop: nothing to divide"
   },
   {
    "id": "answer_at_once",
-   "metric": "share of continuations that close their thinking within the first 512 tokens",
+   "metric": "share of continuations whose thinking closes within the first 512 tokens (token position of the end-of-thinking ids); needs every continuation present and >= 90 % of closes located, else not met",
    "limit": "<= 0.20",
    "on_fail": "stop, or fallback B"
   },
   {
    "id": "own_repeat",
-   "metric": "mean share of a continuation's word 5-grams already in its own recorded prefix, minus the same share for the recorded continuation (same streams; recorded texts split by character share)",
+   "metric": "PROXY: mean share of a continuation's word 5-grams already in its own recorded prefix, minus the same share for the recorded continuation (recorded texts split by character share: the shim has no /detokenize)",
    "limit": "<= +0.10",
    "on_fail": "stop, or fallback B"
   }
