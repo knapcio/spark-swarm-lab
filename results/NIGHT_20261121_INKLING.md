@@ -374,6 +374,17 @@ below the allowed drop), C'div 9 (lead +3; protocol-only 7, plain-only 4, p = 0.
 division sentence is the only signal (+3, not significant); sharing notes alone slightly lowered novelty, the herding
 risk the design named. Peak load 20 per node, drain confirmed. Reviews of the rejection follow (astra).
 
+## 2026-11-26 (38): live collaboration, S1 retest ([collab-s1-v2](collab-s1-v2/REPORT.md))
+
+astra found a protocol defect in S1 v1: 247 of 275 forced answer calls of the protocol arms returned "Paused." instead of
+an answer. v2 fixes it (an explicit answer-only user turn at the end, in both arms for parity, thinking off, inside the
+2,048-token reserve; 0 of 264 forced calls now return "Paused."), accepts the tried-statements that only lack their label
+(lossless), and runs D' against C'div only (plain C' dropped). Gates and margins unchanged. Result, 0 wrong in both arms:
+**D' 11 rescued, C'div 8 of 41 (lead -3; protocol-only 6, plain-only 9, p = 0.61): STOP.** The answer-turn fix raised the
+plain control from 6 to 11 and left the protocol at 8 to 9, so v1's +3 was mostly the control's missing answer turn. With a fair terminal turn, sharing facts on a board does not rescue more all-fail
+puzzles than independent continuation; novelty is again lower (0.938 vs 0.957). The A/B does not run. Peak load 20 per
+node (driver), 17 measured, drain confirmed.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -386,4 +397,4 @@ risk the design named. Peak load 20 per node, drain confirmed. Reviews of the re
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md) · [coding-reserve-v2](coding-reserve-v2/REPORT.md) · [swarm-fair-hard23-v1](swarm-fair-hard23-v1/REPORT.md) · [coding-elastic-v1](coding-elastic-v1/REPORT.md) · [coding-elastic-v2](coding-elastic-v2/REPORT.md) · [collab-s0-v1](collab-s0-v1/REPORT.md) · [collab-s0-v2](collab-s0-v2/REPORT.md) · [collab-s0-v3](collab-s0-v3/REPORT.md) · [collab-s1-v1](collab-s1-v1/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md) · [coding-reserve-v2](coding-reserve-v2/REPORT.md) · [swarm-fair-hard23-v1](swarm-fair-hard23-v1/REPORT.md) · [coding-elastic-v1](coding-elastic-v1/REPORT.md) · [coding-elastic-v2](coding-elastic-v2/REPORT.md) · [collab-s0-v1](collab-s0-v1/REPORT.md) · [collab-s0-v2](collab-s0-v2/REPORT.md) · [collab-s0-v3](collab-s0-v3/REPORT.md) · [collab-s1-v1](collab-s1-v1/REPORT.md) · [collab-s1-v2](collab-s1-v2/REPORT.md)
