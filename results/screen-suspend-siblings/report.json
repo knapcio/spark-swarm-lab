@@ -1,0 +1,147 @@
+{
+ "rule": "REJECT if even the optimistic bound saves < 2% (per family, pooled)",
+ "prefill_weight": 1.0,
+ "families": {
+  "arithmetic": {
+   "runs": [
+    "swarm-fair-hard22-v1-roll12fair",
+    "swarm-fair-hard23-v1-roll12fair",
+    "swarm-baseline-hard26-v1-roll12fair"
+   ],
+   "optimistic_share": 0.0067,
+   "pessimistic_share": -0.5319,
+   "optimistic_wh": 2.99,
+   "pessimistic_wh": -239.05,
+   "resume_delay_s": 26813.5,
+   "accepted_windows": 255,
+   "rejected_windows": 267,
+   "verdict": "REJECT"
+  },
+  "coding_judge_only": {
+   "runs": [
+    "coding-notests-v1-judge"
+   ],
+   "optimistic_share": 0.2215,
+   "pessimistic_share": 0.1391,
+   "optimistic_wh": 26.63,
+   "pessimistic_wh": 16.73,
+   "resume_delay_s": 4130.5,
+   "accepted_windows": 72,
+   "rejected_windows": 16,
+   "verdict": "SURVIVES (live validation needed)"
+  },
+  "coding_r2": {
+   "runs": [
+    "coding-elastic-v2-a",
+    "coding-elastic-v2-p"
+   ],
+   "optimistic_share": 0.005,
+   "pessimistic_share": -0.1601,
+   "optimistic_wh": 0.62,
+   "pessimistic_wh": -19.87,
+   "resume_delay_s": 80.9,
+   "accepted_windows": 144,
+   "rejected_windows": 35,
+   "verdict": "REJECT"
+  }
+ },
+ "runs": {
+  "swarm-fair-hard22-v1-roll12fair": {
+   "saved": 37894.6806,
+   "recompute": 3849604.1086,
+   "delay_s": 8654.544,
+   "accepted_windows": 82,
+   "rejected_windows": 104,
+   "median_stream_rate": 25.8166,
+   "generation_tokens": 8194997.0,
+   "wh": 168.72,
+   "optimistic_saved_tokens": 37895,
+   "pessimistic_saved_tokens": -3811709,
+   "optimistic_share": 0.0046,
+   "pessimistic_share": -0.4651,
+   "optimistic_wh": 0.7802,
+   "pessimistic_wh": -78.4761
+  },
+  "swarm-fair-hard23-v1-roll12fair": {
+   "saved": 60445.5146,
+   "recompute": 4033320.0523,
+   "delay_s": 9892.416,
+   "accepted_windows": 88,
+   "rejected_windows": 80,
+   "median_stream_rate": 25.6346,
+   "generation_tokens": 6421734.0,
+   "wh": 135.51,
+   "optimistic_saved_tokens": 60446,
+   "pessimistic_saved_tokens": -3972875,
+   "optimistic_share": 0.0094,
+   "pessimistic_share": -0.6187,
+   "optimistic_wh": 1.2755,
+   "pessimistic_wh": -83.8347
+  },
+  "swarm-baseline-hard26-v1-roll12fair": {
+   "saved": 46095.9476,
+   "recompute": 3806855.6214,
+   "delay_s": 8266.5,
+   "accepted_windows": 85,
+   "rejected_windows": 83,
+   "median_stream_rate": 25.4888,
+   "generation_tokens": 7090674.0,
+   "wh": 145.22,
+   "optimistic_saved_tokens": 46096,
+   "pessimistic_saved_tokens": -3760760,
+   "optimistic_share": 0.0065,
+   "pessimistic_share": -0.5304,
+   "optimistic_wh": 0.9441,
+   "pessimistic_wh": -77.0219
+  },
+  "coding-notests-v1-judge": {
+   "saved": 872165.2645,
+   "recompute": 324164.5447,
+   "delay_s": 4130.4789,
+   "accepted_windows": 72,
+   "rejected_windows": 16,
+   "median_stream_rate": 22.3858,
+   "generation_tokens": 3938332.0,
+   "wh": 120.24,
+   "optimistic_saved_tokens": 872165,
+   "pessimistic_saved_tokens": 548001,
+   "optimistic_share": 0.2215,
+   "pessimistic_share": 0.1391,
+   "optimistic_wh": 26.6278,
+   "pessimistic_wh": 16.7308
+  },
+  "coding-elastic-v2-a": {
+   "saved": 8185.0233,
+   "recompute": 216146.7637,
+   "delay_s": 32.5309,
+   "accepted_windows": 72,
+   "rejected_windows": 13,
+   "median_stream_rate": 25.2792,
+   "generation_tokens": 1681568.0,
+   "wh": 58.22,
+   "optimistic_saved_tokens": 8185,
+   "pessimistic_saved_tokens": -207962,
+   "optimistic_share": 0.0049,
+   "pessimistic_share": -0.1237,
+   "optimistic_wh": 0.2834,
+   "pessimistic_wh": -7.2001
+  },
+  "coding-elastic-v2-p": {
+   "saved": 9651.5799,
+   "recompute": 369818.4793,
+   "delay_s": 48.4101,
+   "accepted_windows": 72,
+   "rejected_windows": 22,
+   "median_stream_rate": 25.429,
+   "generation_tokens": 1867590.0,
+   "wh": 65.91,
+   "optimistic_saved_tokens": 9652,
+   "pessimistic_saved_tokens": -360167,
+   "optimistic_share": 0.0052,
+   "pessimistic_share": -0.1929,
+   "optimistic_wh": 0.3406,
+   "pessimistic_wh": -12.7108
+  }
+ },
+ "verdict": "SURVIVES in coding_judge_only"
+}
