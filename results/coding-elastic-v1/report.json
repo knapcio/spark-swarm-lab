@@ -1,0 +1,109 @@
+{
+ "study": "coding-elastic-v1",
+ "variant": "code_elastic",
+ "arms": {
+  "P": {
+   "status": "complete",
+   "reasons": [],
+   "dir": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/coding-elastic-v1-p",
+   "plan_sha256": "231cd9cb9d3f456c5435de5e7244fa5c9c139c1cce06487898d76fd50a26b3fc",
+   "transport_retries": {
+    "retries": 0,
+    "retries_not_sent": 0
+   },
+   "cases": 72,
+   "solved": 71,
+   "wrong": 1,
+   "unanswered": 0,
+   "generated_tokens": 1718895.0,
+   "generated_tokens_per_case": 23873.541666666668,
+   "wall_seconds": 2087.7,
+   "window_seconds": 2088.581721,
+   "wh": 55.7,
+   "wh_per_solved": 0.7845070422535212,
+   "agents_started": 153,
+   "answers": {
+    "finished": 82,
+    "self_closed": 75,
+    "answer_cut": 5,
+    "answer_cut_failed": 5,
+    "forced": 7
+   },
+   "wrong_paths": [
+    {
+     "task_id": "eva-json_select",
+     "seed": 39,
+     "agent": 0,
+     "path": "self_closed",
+     "answer_steps": 0,
+     "answer_cut": false
+    }
+   ]
+  },
+  "A": {
+   "status": "complete",
+   "reasons": [],
+   "dir": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/coding-elastic-v1-a",
+   "plan_sha256": "b9a0f82ce892c6ab111fac955ed441d337cda6bc734347fb4e68ecaeaf16dce3",
+   "transport_retries": {
+    "retries": 0,
+    "retries_not_sent": 0
+   },
+   "cases": 72,
+   "solved": 70,
+   "wrong": 2,
+   "unanswered": 0,
+   "generated_tokens": 1595361.0,
+   "generated_tokens_per_case": 22157.791666666668,
+   "wall_seconds": 1445.8,
+   "window_seconds": 1446.050394,
+   "wh": 43.75,
+   "wh_per_solved": 0.625,
+   "agents_started": 152,
+   "answers": {
+    "finished": 80,
+    "self_closed": 75,
+    "answer_cut": 0,
+    "answer_cut_failed": 0,
+    "forced": 4,
+    "continued": 1
+   },
+   "wrong_paths": [
+    {
+     "task_id": "eva-shell_words",
+     "seed": 38,
+     "agent": 0,
+     "path": "self_closed",
+     "answer_steps": 0,
+     "answer_cut": false
+    },
+    {
+     "task_id": "eva-shell_words",
+     "seed": 39,
+     "agent": 1,
+     "path": "self_closed",
+     "answer_steps": 0,
+     "answer_cut": false
+    }
+   ]
+  }
+ },
+ "pairing_problems": [],
+ "paired": {
+  "cases": 72,
+  "reserve_only": 1,
+  "plain_only": 2,
+  "sign_test_p": 1.0
+ },
+ "decision": {
+  "unanswered_at_most_plain": true,
+  "solved_at_least_plain_minus_1": true,
+  "wrong_at_most_plain_plus_1": true,
+  "tokens_at_most_100pct": true,
+  "reserve_adopted": true
+ },
+ "frozen_rules": {
+  "P": "A adopted if A unanswered <= P, A solved >= P - 1, A wrong <= P + 1, A server tokens <= 1.00 x P (report_reserve_coding.py).",
+  "A": "A adopted if A unanswered <= P, A solved >= P - 1, A wrong <= P + 1, A server tokens <= 1.00 x P (report_reserve_coding.py)."
+ }
+}
