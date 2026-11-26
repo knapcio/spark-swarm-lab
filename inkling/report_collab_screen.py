@@ -96,8 +96,11 @@ def read_dir(plan, d, problems, torn):
     if meta.get('bypass'):
         problems.append(f"{d}: run bypassed the freeze checks ({', '.join(meta['bypass'])})")
         return None
+    summary = json.loads((d / 'summary.json').read_text()) if (d / 'summary.json').exists() else None
+    if not summary or summary.get('drain_confirmed') is not True:
+        problems.append(f'{d}: the end-of-run drain was not confirmed (drain_confirmed is not true)')
     return dict(meta=meta, records=read_jsonl(d / 'records.jsonl', torn), rows=read_jsonl(d / 'cases.jsonl', torn),
-                summary=json.loads((d / 'summary.json').read_text()) if (d / 'summary.json').exists() else None)
+                summary=summary)
 
 
 def s1_unit(plan, case, arm, row, records):
@@ -113,27 +116,46 @@ def s1_unit(plan, case, arm, row, records):
     return None
 
 
+def wrong_acceptances(d, row, records):
+    """Identities of the wrong acceptances one attempt recorded: every accepted submission the exact verifier rejects in
+    its surviving agent records, and, if the attempt's case row counts more (records lost), the row's surplus."""
+    ids = {(str(d), r.get('slot'), i) for r in records for i, sub in enumerate(r.get('submissions') or [])
+           if sub.get('accepted') is True and not sub.get('verifier_solved')}
+    counted = int((row or {}).get('wrong') or 0)
+    ids |= {(str(d), 'row', i) for i in range(len(ids), counted)}
+    return ids
+
+
 def load_s1(plan, run_dirs, cohorts):
-    problems, torn, jobs, records, replaced_wrong = [], [], {}, {}, {}
+    """Jobs complete as units (any directory order; a job complete twice is a problem) and, independently, the wrong
+    acceptances of EVERY attempt: all directories' rows and surviving agent records count, whichever attempt is
+    selected and whether or not the attempt has a case row."""
+    problems, torn, attempts, wrongs = [], [], {}, {}
     cases = {k['case_id']: k for k in plan['cases']}
     for d in run_dirs:
         got = read_dir(plan, d, problems, torn)
         if got is None:
             continue
-        for row in got['rows']:
-            key = (row.get('case_id'), row.get('arm'))
+        by_job = {}
+        for r in got['records']:
+            by_job.setdefault((r.get('case_id'), r.get('arm')), []).append(r)
+        rows = {(row.get('case_id'), row.get('arm')): row for row in got['rows']}
+        for key in set(rows) | set(by_job):
             if key[0] not in cases:
                 problems.append(f'{d}: unplanned job {key}')
                 continue
-            why = s1_unit(plan, cases[key[0]], key[1], row, got['records'])
-            if key in jobs and jobs[key][0] is None:
-                if why is None:
-                    problems.append(f'job {key} complete in two output directories')
-                continue
-            if key in jobs:  # an incomplete attempt is replaced: its wrong acceptances still count (all attempts)
-                replaced_wrong[key] = replaced_wrong.get(key, 0) + int(jobs[key][1].get('wrong') or 0)
-            jobs[key] = (why, row)
-            records[key] = [r for r in got['records'] if (r.get('case_id'), r.get('arm')) == key]
+            wrongs.setdefault(key, set()).update(wrong_acceptances(d, rows.get(key), by_job.get(key, [])))
+            if key in rows:
+                why = s1_unit(plan, cases[key[0]], key[1], rows[key], got['records'])
+                attempts.setdefault(key, []).append((why, rows[key], by_job.get(key, [])))
+    jobs, records = {}, {}
+    for key, tries in attempts.items():
+        complete = [t for t in tries if t[0] is None]
+        if len(complete) > 1:
+            problems.append(f'job {key} complete in two output directories')
+        chosen = complete[0] if complete else tries[-1]
+        jobs[key] = chosen
+        records[key] = chosen[2]
     want = {(k['case_id'], arm) for k in plan['cases'] if k['cohort'] in cohorts for arm in plan['arm_order']}
     missing = sorted(want - set(jobs))
     bad = sorted((k, jobs[k][0]) for k in want & set(jobs) if jobs[k][0] is not None)
@@ -144,8 +166,9 @@ def load_s1(plan, run_dirs, cohorts):
     final = {}
     for k, v in jobs.items():
         if k in want:
-            final[k] = dict(v[1], wrong=int(v[1].get('wrong') or 0) + replaced_wrong.get(k, 0),
-                            wrong_in_replaced_attempts=replaced_wrong.get(k, 0))
+            mine = wrong_acceptances('selected', v[1], v[2])
+            total = len(wrongs.get(k, set()))
+            final[k] = dict(v[1], wrong=total, wrong_in_other_attempts=total - len(mine))
     return final, records, problems, torn
 
 
@@ -563,6 +586,10 @@ def markdown(r):
     for arm, v in r['verdicts'].items():
         lines.append(f"- {arm}: {v['verdict']} (lead {v['rescued_lead']}, needed {v['required_lead']}; rules "
                      f"{v['rules']}; paired puzzles {v['paired_puzzles']})")
+    if r.get('final_verdicts'):
+        lines += ['', 'Final verdicts (a primary PASS stays a PASS):'] + [
+            f'- {arm}: **{v}**' + (f" (primary look: {r['primary']['verdicts'][arm]['verdict']})"
+                                   if r.get('pooled') else '') for arm, v in r['final_verdicts'].items()]
     return '\n'.join(lines) + '\n'
 
 

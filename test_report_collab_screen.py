@@ -35,9 +35,10 @@ def agent(text, t0=0.0, t1=10.0, prefix='', notes=(), submissions=()):
                 submissions=list(submissions))
 
 
-def write_s1(d, plan, rows, records=None, cohort='primary', bypass=None):
+def write_s1(d, plan, rows, records=None, cohort='primary', bypass=None, drained=True):
     d.mkdir(parents=True)
     (d / 'metadata.json').write_text(json.dumps(dict(plan=plan, cohort=cohort, bypass=bypass or [], per_node=20)))
+    (d / 'summary.json').write_text(json.dumps(dict(screen='s1', drain_confirmed=drained)))
     (d / 'cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
     recs = records if records is not None else [
         dict(agent(PROSE + f' {r["case_id"]} {r["arm"]} {i}'), case_id=r['case_id'], arm=r['arm'], slot=i,
@@ -141,17 +142,37 @@ class S1ReportTests(unittest.TestCase):
         self.assertEqual(r['final_verdicts']["C'"], 'PASS (pooled)')  # GREY at primary, pooled lead 5
         self.assertTrue(r['pooled_look']['verdicts']["C'div"]['verdict'].startswith('NOT ELIGIBLE'))
 
-    def test_wrong_acceptances_of_replaced_attempts_still_count(self):
+    def test_wrong_acceptances_count_from_every_attempt_in_any_order(self):
         plan = s1_plan()
+        wrong_sub = [dict(where='segment', accepted=True, verifier_solved=False)]
         rows = self.rows(5, 1)
         bad = next(x for x in rows if (x['case_id'], x['arm']) == ('k2', "C'"))
         bad.update(status='infrastructure', wrong=1)
-        write_s1(self.root / 'a', plan, rows)
+        recs = [dict(agent(PROSE + f' {r["case_id"]} {r["arm"]} {i}'), case_id=r['case_id'], arm=r['arm'], slot=i,
+                     status='complete', submissions=wrong_sub if (r is bad and i == 0) else [])
+                for r in rows for i in range(4)]
+        write_s1(self.root / 'a', plan, rows, records=recs)
         write_s1(self.root / 'b', plan, [row('k2', "C'", rescued=True)])
-        r = rep.build(plan, [self.root / 'a', self.root / 'b'])
+        for order in ([self.root / 'a', self.root / 'b'], [self.root / 'b', self.root / 'a']):
+            r = rep.build(plan, order)
+            self.assertEqual(r['arms']["C'"]['wrong'], 1, order)  # the rerun listed first erases nothing
+            self.assertEqual(r['decision'], 'STOP')
+        # the faulted attempt left its agent record but no case row: the wrong acceptance still counts
+        rows_no_row = [x for x in rows if x is not bad]
+        write_s1(self.root / 'c', plan, rows_no_row, records=recs)
+        r = rep.build(plan, [self.root / 'c', self.root / 'b'])
         self.assertEqual(r['arms']["C'"]['wrong'], 1)
-        self.assertEqual(r['decision'], 'STOP')
-        self.assertFalse(r['verdicts']["C'"]['rules']['zero_wrong'])
+
+    def test_runs_without_confirmed_drain_are_rejected(self):
+        plan = s1_plan()
+        write_s1(self.root / 'nd', plan, self.rows(5, 1), drained=False)
+        self.assertIn('drain was not confirmed', rep.build(plan, [self.root / 'nd'])['decision'])
+
+    def test_markdown_shows_final_verdicts(self):
+        plan = s1_plan()
+        write_s1(self.root / 'md', plan, self.rows(5, 1))
+        text = rep.markdown(rep.build(plan, [self.root / 'md']))
+        self.assertIn("- C': **PASS**", text)
 
     def test_non_utf8_torn_line_is_skipped_and_listed(self):
         plan = s1_plan()
@@ -242,7 +263,8 @@ class S0ReportTests(unittest.TestCase):
                                 self.EPS[1]: dict(prompt_tokens=1000, prefill_compute_tokens=40, generation_tokens=1,
                                                   requests=1)}
         pre = {e: dict(arith=dict(ok=preflight_ok)) for e in self.EPS}
-        (d / 'summary.json').write_text(json.dumps(dict(preflight=pre, phases=dict(board=dict(per_node=per_node)))))
+        (d / 'summary.json').write_text(json.dumps(dict(preflight=pre, phases=dict(board=dict(per_node=per_node)),
+                                                        drain_confirmed=True)))
         return d
 
     def good(self):

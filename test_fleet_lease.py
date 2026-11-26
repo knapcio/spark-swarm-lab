@@ -1,6 +1,7 @@
 """The shared fleet lease (inkling/fleet_lease.py), held by arms.py, coding_arms.py and collab_replay.py."""
 import json
 import multiprocessing
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -17,12 +18,49 @@ def hold(root, ready, release):
         release.wait(10)
 
 
+def repo_with_worktree(d):
+    """A git repository at d/main with a second worktree at d/wt."""
+    main = Path(d) / 'main'
+    main.mkdir()
+    git = lambda *a: subprocess.run(['git', '-C', str(main), *a], check=True, capture_output=True)
+    git('init', '-q')
+    git('config', 'user.email', 't@t')
+    git('config', 'user.name', 't')
+    (main / 'f').write_text('x')
+    git('add', 'f')
+    git('commit', '-q', '-m', 'f')
+    git('worktree', 'add', '-q', str(Path(d) / 'wt'))
+    return main, Path(d) / 'wt'
+
+
 class LeaseTests(unittest.TestCase):
-    def test_second_holder_fails_with_the_first_holders_description(self):
+    def test_runners_in_different_worktrees_contend_for_one_lock(self):
         with tempfile.TemporaryDirectory() as d:
+            main, wt = repo_with_worktree(d)
+            self.assertEqual(fleet_lease.lease_path(main), fleet_lease.lease_path(wt))
             ctx = multiprocessing.get_context('spawn')
             ready, release = ctx.Event(), ctx.Event()
-            proc = ctx.Process(target=hold, args=(d, ready, release))
+            proc = ctx.Process(target=hold, args=(str(main), ready, release))
+            proc.start()
+            try:
+                self.assertTrue(ready.wait(20))
+                with self.assertRaises(fleet_lease.LeaseBusy):
+                    with fleet_lease.lease(wt, 'runner in another worktree'):
+                        pass
+            finally:
+                release.set()
+                proc.join(20)
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(RuntimeError):  # never a per-directory fallback lock
+                with fleet_lease.lease(d, 'outside any repository'):
+                    pass
+
+    def test_second_holder_fails_with_the_first_holders_description(self):
+        with tempfile.TemporaryDirectory() as d:
+            d, _ = repo_with_worktree(d)
+            ctx = multiprocessing.get_context('spawn')
+            ready, release = ctx.Event(), ctx.Event()
+            proc = ctx.Process(target=hold, args=(str(d), ready, release))
             proc.start()
             try:
                 self.assertTrue(ready.wait(20))
