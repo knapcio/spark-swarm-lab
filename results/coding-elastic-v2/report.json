@@ -1,0 +1,117 @@
+{
+ "study": "coding-elastic-v2",
+ "variant": "code_elastic",
+ "arms": {
+  "P": {
+   "status": "complete",
+   "reasons": [],
+   "dir": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/coding-elastic-v2-p",
+   "plan_sha256": "7898293031f8f4a2bff465ad5e8c0d770c1ec1b016a58c9488a382087f1bfafe",
+   "transport_retries": {
+    "retries": 0,
+    "retries_not_sent": 0
+   },
+   "cases": 72,
+   "solved": 70,
+   "wrong": 2,
+   "unanswered": 0,
+   "generated_tokens": 1867590.0,
+   "generated_tokens_per_case": 25938.75,
+   "wall_seconds": 2374.6,
+   "window_seconds": 2374.764749,
+   "wh": 65.91,
+   "wh_per_solved": 0.9415714285714285,
+   "agents_started": 164,
+   "answers": {
+    "finished": 92,
+    "self_closed": 81,
+    "answer_cut": 12,
+    "answer_cut_failed": 12,
+    "forced": 11
+   },
+   "wrong_paths": [
+    {
+     "task_id": "eva-json_select",
+     "seed": 41,
+     "agent": 2,
+     "path": "self_closed",
+     "answer_steps": 0,
+     "answer_cut": false
+    },
+    {
+     "task_id": "eva-spreadsheet_eval",
+     "seed": 40,
+     "agent": 4,
+     "path": "forced",
+     "answer_steps": 1,
+     "answer_cut": false
+    }
+   ]
+  },
+  "A": {
+   "status": "complete",
+   "reasons": [],
+   "dir": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/coding-elastic-v2-a",
+   "plan_sha256": "502601afdef9ae84ef26f44231dc160bf96257b6231e4cf99d1ba0f176e4bd4b",
+   "transport_retries": {
+    "retries": 0,
+    "retries_not_sent": 0
+   },
+   "cases": 72,
+   "solved": 70,
+   "wrong": 2,
+   "unanswered": 0,
+   "generated_tokens": 1681568.0,
+   "generated_tokens_per_case": 23355.11111111111,
+   "wall_seconds": 2153.5,
+   "window_seconds": 2154.533069,
+   "wh": 58.22,
+   "wh_per_solved": 0.8317142857142857,
+   "agents_started": 157,
+   "answers": {
+    "finished": 85,
+    "self_closed": 72,
+    "answer_cut": 0,
+    "answer_cut_failed": 0,
+    "forced": 12,
+    "continued": 1
+   },
+   "wrong_paths": [
+    {
+     "task_id": "eva-shell_words",
+     "seed": 40,
+     "agent": 1,
+     "path": "self_closed",
+     "answer_steps": 0,
+     "answer_cut": false
+    },
+    {
+     "task_id": "eva-shell_words",
+     "seed": 42,
+     "agent": 1,
+     "path": "self_closed",
+     "answer_steps": 0,
+     "answer_cut": false
+    }
+   ]
+  }
+ },
+ "pairing_problems": [],
+ "paired": {
+  "cases": 72,
+  "reserve_only": 2,
+  "plain_only": 2,
+  "sign_test_p": 1.0
+ },
+ "decision": {
+  "unanswered_at_most_plain": true,
+  "solved_at_least_plain_minus_1": true,
+  "wrong_at_most_plain_plus_1": true,
+  "tokens_at_most_100pct": true,
+  "reserve_adopted": true
+ },
+ "frozen_rules": {
+  "P": "A adopted if A unanswered <= P, A solved >= P - 1, A wrong <= P + 1, A server tokens <= 1.00 x P (report_reserve_coding.py).",
+  "A": "A adopted if A unanswered <= P, A solved >= P - 1, A wrong <= P + 1, A server tokens <= 1.00 x P (report_reserve_coding.py)."
+ }
+}

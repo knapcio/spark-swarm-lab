@@ -342,6 +342,12 @@ continues length-cut answers (total <= 40,960, all charged). Seeds 37-39: 70/72,
 margins; **not the default until a replication passes** (queued behind the collaboration screens). One infrastructure
 stop of arm P (a single server disconnect, no retry in this worker) was rerun in full and is disclosed in the report.
 
+## 2026-11-26 (35): elastic answer reserve replicated ([coding-elastic-v2](coding-elastic-v2/REPORT.md))
+
+Same plans and rule on fresh seeds 40-42: 70/72, 2 wrong in both arms (p = 1); 0 cut-off answers vs 12; tokens 0.90x,
+wall 0.91x, 0.83 vs 0.94 Wh per solved. Pooled v1+v2: 140 / 4 wrong vs 141 / 3 of 144. Passed twice:
+**code_elastic becomes the coding default** (25 % higher per-agent cap, every token charged; disclosed).
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -354,4 +360,4 @@ stop of arm P (a single server disconnect, no retry in this worker) was rerun in
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md) · [coding-reserve-v2](coding-reserve-v2/REPORT.md) · [swarm-fair-hard23-v1](swarm-fair-hard23-v1/REPORT.md) · [coding-elastic-v1](coding-elastic-v1/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md) · [coding-reserve-v2](coding-reserve-v2/REPORT.md) · [swarm-fair-hard23-v1](swarm-fair-hard23-v1/REPORT.md) · [coding-elastic-v1](coding-elastic-v1/REPORT.md) · [coding-elastic-v2](coding-elastic-v2/REPORT.md)
