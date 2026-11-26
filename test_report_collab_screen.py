@@ -581,11 +581,21 @@ class S0V2PlanTests(unittest.TestCase):
         self.assertEqual(s0['protocol_constants']['board_share'], 0.03)
         self.assertEqual(s0['exact_claims_sha256'], rep.exact_claims_sha256())
         self.assertEqual(s0['source_revision'], 'e0576ea71704b6394fae7f054cd08a0c458506f4')  # S0 v3 as frozen
-        self.assertEqual(rep.worker_exact_claims_sha256(s0['source_revision']), s0['exact_claims_sha256'])
+        # the worker revision is a research-branch commit: public CI clones only origin's refs, so this check runs
+        # only where the commit exists (no test needs a local-only revision)
+        if rep.worker_exact_claims_sha256(s0['source_revision']) is not None:
+            self.assertEqual(rep.worker_exact_claims_sha256(s0['source_revision']), s0['exact_claims_sha256'])
         self.assertEqual(s0['s1_plan_cases'], sorted(s0['s1_plan_cases']) and s0['s1_plan_cases'])
-        for arm in ("C'", "C'div"):
+        self.assertEqual((s1['study'], s1['arm_order']), ('collab-s1-v2', ["D'", "C'div"]))  # plain C' dropped
+        self.assertIn('collab-s1-v2 RETEST', ' '.join(s1['amendments']))
+        for arm in ("C'div",):
             self.assertEqual((s1['arms'][arm]['note_max_tokens'], s1['arms'][arm]['board_share'],
                               s1['arms'][arm]['verify_async']), (200, 0.03, True))
+        s1dev = json.loads((self.ROOT / 'COLLAB_S1_DEV_PLAN.json').read_text())
+        self.assertEqual((s1dev['study'], s1dev['dev'], s1dev['dev_fleet_mode']), ('collab-s1-v2-dev', True,
+                                                                                    'decision-nodes'))
+        self.assertEqual({k: v for k, v in s1dev.items() if k not in ('study', 'dev', 'dev_fleet_mode', 'execution')},
+                         {k: v for k, v in s1.items() if k not in ('study', 'execution')})
         self.assertEqual((s1['cohort_counts']['primary'], s1['cohort_counts']['extension']), (41, 29))
         self.assertIn('S1 abort confirmation', ' '.join(s1['amendments']))
         self.assertEqual(s1['decision_rule']['margins']['primary_margin'], 7)

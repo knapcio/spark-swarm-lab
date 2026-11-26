@@ -423,12 +423,22 @@ S1_AMENDMENTS = [
     'mask an aborted request), on two consecutive polls >= 0.25 s apart; not confirmed within the wait, the node is '
     'fenced (no admission there) until both gauges show 0; units are never released on a timeout. Cohort, margins, '
     'arms and protocol constants unchanged',
+    'collab-s1-v2 RETEST after collab-s1-v1 STOP (astra review; coordinator GO; results/collab-s1-v1 kept as is): '
+    '(1) the terminal answer is an explicit answer-only user turn, thinking off, inside the 2,048-token answer reserve, '
+    'in BOTH arms (D\' too, parity): in v1 the protocol solvers wrote "Paused." in 247 of 275 forced calls '
+    '(contamination, not a valid negative); (2) the tried/checked parser accepts the variants the model writes with '
+    'every labelled part (an unlabelled approach before "observed:", text before "input:", commas): on the v1 / S0 v3 '
+    'drops it recovers 202 of 655 malformed tried and 1 of 653 malformed checked statements, a measurement fix that '
+    'changes no gate; (3) arms D\' and C\'div only: plain C\' is dropped (herding; the division sentence is now the '
+    'protocol). Every gate and margin unchanged (+7 primary lead, grey 5-6 -> extension, pooled +9, novelty floor '
+    'D\' - 0.02, accepted agents, 0 wrong; margins as calibrated for v1, now conservative for one protocol arm); same '
+    '41-case primary and 29-case extension cohorts; extension only if the frozen rule says so',
 ]
 
 
-def make_s1(root, revision):
+def make_s1(root, revision, dev=False):
     cases, skipped = s1_cohort(root)
-    plan = base_plan('s1', 'collab-s1-v1', revision, root)
+    plan = base_plan('s1', 'collab-s1-v2-dev' if dev else 'collab-s1-v2', revision, root)
     n = sum(k['cohort'] == 'primary' for k in cases)
     e = sum(k['cohort'] == 'extension' for k in cases)
     rule = dict(S1_RULE, margins=calibrate(n, e),
@@ -438,12 +448,9 @@ def make_s1(root, revision):
                            f'the shared control; rules 1, 3 and 4 ignored (a conservative bound); exact enumeration '
                            f'(collab_plans.familywise)')
     plan.update(cut=CUT, agent_variant=VARIANT, seed_offset=S1_SEED_OFFSET, judge_seed_base=JUDGE_SEED_BASE,
-                source_runs=S1_ARMS, arm_order=["D'", "C'", "C'div"],
+                source_runs=S1_ARMS, arm_order=["D'", "C'div"],
                 arms={"D'": dict(tag='dp', protocol=False, note='plain continuation, the worker logic: thinking to '
-                                 '30,720, forced answer within 32,768'),
-                      "C'": dict(tag='cp', protocol=True, division_of_work=False, board='live',
-                                 note_max_tokens=NOTE_MAX_TOKENS, board_share=BOARD_SHARE, verify_async=True,
-                                 note='protocol, default form (no division-of-work rule)'),
+                                 '30,720, then the answer-only terminal turn within 32,768'),
                       "C'div": dict(tag='cdiv', protocol=True, division_of_work=True, board='live',
                                     note_max_tokens=NOTE_MAX_TOKENS, board_share=BOARD_SHARE, verify_async=True,
                                     note='protocol + division-of-work rule (owner decision 2: a separate arm)')},
@@ -459,6 +466,11 @@ def make_s1(root, revision):
                 cost='worst case 41 x 4 x 22.5K x 3 arms = 11.1M generated tokens; about 1.8 fleet hours (extension: '
                      '29 more cases)',
                 cases=cases)
+    if dev:
+        plan.update(dev=True, dev_fleet_mode='decision-nodes',
+                    execution='DEV CHECK ONLY: collab_replay.py --run --dev --dev-fleet decision-nodes --jobs <2-3 '
+                              'jobs> on the four decision nodes (fleet lease, idle start, fenced drain); never '
+                              'reportable')
     return plan
 
 
@@ -571,14 +583,15 @@ def main(argv=None):
     p.add_argument('--source-revision', required=True)
     p.add_argument('--s1-plan', type=Path)
     p.add_argument('--output', type=Path, required=True)
-    p.add_argument('--dev', action='store_true', help='s0: a 2-node development plan (never for decisions)')
+    p.add_argument('--dev', action='store_true', help='s0: a 2-node development plan; s1: a decision-nodes dev-check '
+                                                      'plan (never for decisions)')
     a = p.parse_args(argv)
     if not re.fullmatch(r'[0-9a-f]{40}', a.source_revision):
         p.error('--source-revision must be a full commit hash')
     if a.output.exists():
         p.error('output exists')
     if a.screen == 's1':
-        plan = make_s1(a.root, a.source_revision)
+        plan = make_s1(a.root, a.source_revision, dev=a.dev)
     else:
         if not a.s1_plan:
             p.error('s0 needs --s1-plan')
