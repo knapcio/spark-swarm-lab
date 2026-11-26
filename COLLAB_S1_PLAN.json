@@ -1,7 +1,7 @@
 {
  "protocol": "collab-replay-screen-v3",
  "screen": "s1",
- "study": "collab-s1-v1",
+ "study": "collab-s1-v2",
  "status": "FROZEN",
  "nodes": 4,
  "fleet": {
@@ -19,7 +19,7 @@
   ]
  },
  "per_node": 20,
- "source_revision": "35d0e71bbf6de911d418977681d284d4d4ffee36",
+ "source_revision": "2da0cf03388540680c37d6bddc45a3340a16ae0f",
  "source_path": ".runtime/collab-source",
  "driver": "collab_replay.py",
  "judge_code_sha256": {
@@ -94,24 +94,13 @@
  ],
  "arm_order": [
   "D'",
-  "C'",
   "C'div"
  ],
  "arms": {
   "D'": {
    "tag": "dp",
    "protocol": false,
-   "note": "plain continuation, the worker logic: thinking to 30,720, forced answer within 32,768"
-  },
-  "C'": {
-   "tag": "cp",
-   "protocol": true,
-   "division_of_work": false,
-   "board": "live",
-   "note_max_tokens": 200,
-   "board_share": 0.03,
-   "verify_async": true,
-   "note": "protocol, default form (no division-of-work rule)"
+   "note": "plain continuation, the worker logic: thinking to 30,720, then the answer-only terminal turn within 32,768"
   },
   "C'div": {
    "tag": "cdiv",
@@ -180,7 +169,8 @@
   "null_model": "all arms identical; each of the 41 primary puzzles rescued independently with probability k/41 (k in 5..10, the design expects 6-9 for D'); 29 puzzles have an extension case; the two protocol arms independent given the shared control; rules 1, 3 and 4 ignored (a conservative bound); exact enumeration (collab_plans.familywise)"
  },
  "amendments": [
-  "S1 abort confirmation (driver 35d0e71, after the stage-2 review r2 finding): a cancelled agent's permit units are released only when the node's running + queued requests are at most the OTHER generation streams the driver actually has open there (agents, async checkers, judges; never the permit units held, so an idle unit cannot mask an aborted request), on two consecutive polls >= 0.25 s apart; not confirmed within the wait, the node is fenced (no admission there) until both gauges show 0; units are never released on a timeout. Cohort, margins, arms and protocol constants unchanged"
+  "S1 abort confirmation (driver 35d0e71, after the stage-2 review r2 finding): a cancelled agent's permit units are released only when the node's running + queued requests are at most the OTHER generation streams the driver actually has open there (agents, async checkers, judges; never the permit units held, so an idle unit cannot mask an aborted request), on two consecutive polls >= 0.25 s apart; not confirmed within the wait, the node is fenced (no admission there) until both gauges show 0; units are never released on a timeout. Cohort, margins, arms and protocol constants unchanged",
+  "collab-s1-v2 RETEST after collab-s1-v1 STOP (astra review; coordinator GO; results/collab-s1-v1 kept as is): (1) the terminal answer is an explicit answer-only user turn, thinking off, inside the 2,048-token answer reserve, in BOTH arms (D' too, parity): in v1 the protocol solvers wrote \"Paused.\" in 247 of 275 forced calls (contamination, not a valid negative); (2) the tried/checked parser accepts the variants the model writes with every labelled part (an unlabelled approach before \"observed:\", text before \"input:\", commas), each field with a payload (a letter or digit; an empty label or a punctuation-only value is malformed, sol review): on the v1 / S0 v3 drops it recovers 202 of 655 malformed tried and 1 of 653 malformed checked statements, a measurement fix that changes no gate; the preflight renders the real terminal turn; unknown --jobs selectors are refused; (3) arms D' and C'div only: plain C' is dropped (herding; the division sentence is now the protocol). Every gate and margin unchanged (+7 primary lead, grey 5-6 -> extension, pooled +9, novelty floor D' - 0.02, accepted agents, 0 wrong; margins as calibrated for v1, now conservative for one protocol arm); same 41-case primary and 29-case extension cohorts; extension only if the frozen rule says so"
  ],
  "pairing": "arms share prefixes, agent seeds (1000 * seed + 27100 + slot), judge seed bases and nodes ((job index + slot) % 4); same-seed requests do not reproduce on this serving, so the arms are independent samples per case",
  "cost": "worst case 41 x 4 x 22.5K x 3 arms = 11.1M generated tokens; about 1.8 fleet hours (extension: 29 more cases)",

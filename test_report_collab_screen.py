@@ -585,9 +585,16 @@ class S0V2PlanTests(unittest.TestCase):
         if worker_sha is not None:  # the worker revision lives on a local research branch; absent in a CI clone
             self.assertEqual(worker_sha, s0['exact_claims_sha256'])
         self.assertEqual(s0['s1_plan_cases'], sorted(s0['s1_plan_cases']) and s0['s1_plan_cases'])
-        for arm in ("C'", "C'div"):
+        self.assertEqual((s1['study'], s1['arm_order']), ('collab-s1-v2', ["D'", "C'div"]))  # plain C' dropped
+        self.assertIn('collab-s1-v2 RETEST', ' '.join(s1['amendments']))
+        for arm in ("C'div",):
             self.assertEqual((s1['arms'][arm]['note_max_tokens'], s1['arms'][arm]['board_share'],
                               s1['arms'][arm]['verify_async']), (200, 0.03, True))
+        s1dev = json.loads((self.ROOT / 'COLLAB_S1_DEV_PLAN.json').read_text())
+        self.assertEqual((s1dev['study'], s1dev['dev'], s1dev['dev_fleet_mode']), ('collab-s1-v2-dev', True,
+                                                                                    'decision-nodes'))
+        self.assertEqual({k: v for k, v in s1dev.items() if k not in ('study', 'dev', 'dev_fleet_mode', 'execution')},
+                         {k: v for k, v in s1.items() if k not in ('study', 'execution')})
         self.assertEqual((s1['cohort_counts']['primary'], s1['cohort_counts']['extension']), (41, 29))
         self.assertIn('S1 abort confirmation', ' '.join(s1['amendments']))
         self.assertEqual(s1['decision_rule']['margins']['primary_margin'], 7)
