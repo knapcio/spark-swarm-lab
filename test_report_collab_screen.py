@@ -20,7 +20,7 @@ MARGINS = dict(primary_margin=4, grey_band=[2, 3], pooled_margin=6)
 def s1_plan(n=6):
     cases = [dict(case_id=f'k{i}', cohort='primary' if i < n else 'extension', puzzle_key=f'p{i % n}',
                   agents=[dict(slot=s) for s in range(4)]) for i in range(n + 2)]
-    return dict(screen='s1', study='collab-s1-test', arm_order=ARMS,
+    return dict(screen='s1', study='collab-s1-test', arm_order=ARMS, per_node=20,
                 arms={"D'": dict(protocol=False), "C'": dict(protocol=True), "C'div": dict(protocol=True)},
                 decision_rule=dict(margins=MARGINS), cases=cases)
 
@@ -37,7 +37,7 @@ def agent(text, t0=0.0, t1=10.0, prefix='', notes=(), submissions=()):
 
 def write_s1(d, plan, rows, records=None, cohort='primary', bypass=None):
     d.mkdir(parents=True)
-    (d / 'metadata.json').write_text(json.dumps(dict(plan=plan, cohort=cohort, bypass=bypass or [])))
+    (d / 'metadata.json').write_text(json.dumps(dict(plan=plan, cohort=cohort, bypass=bypass or [], per_node=20)))
     (d / 'cases.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
     recs = records if records is not None else [
         dict(agent(PROSE + f' {r["case_id"]} {r["arm"]} {i}'), case_id=r['case_id'], arm=r['arm'], slot=i,
@@ -115,20 +115,59 @@ class S1ReportTests(unittest.TestCase):
         self.assertEqual(r['decision'], 'PASS')
         self.assertEqual(len(r['torn_lines']), 1)
 
-    def test_pooled_look_only_for_primary_grey_arms(self):
+    def test_pooled_look_only_for_primary_grey_arms_and_primary_pass_is_kept(self):
         plan = s1_plan(n=6)
+        # primary: C' leads by 2 (GREY), C'div leads by 4 (PASS)
         write_s1(self.root / 'p', plan, self.rows(3, 1, div_rescued=5))
         ext = [row('k6', a, rescued=a in ("C'", "C'div"), puzzle='p4') for a in ARMS]
         ext += [row('k7', a, rescued=a in ("C'", "C'div"), puzzle='p5') for a in ARMS]
         write_s1(self.root / 'e', plan, ext, cohort='extension')
         r = rep.build(plan, [self.root / 'p', self.root / 'e'])
-        self.assertIn('--primary-verdicts', r['decision'])
-        r = rep.build(plan, [self.root / 'p', self.root / 'e'], {"C'": 'GREY: run', "C'div": 'PASS'})
         self.assertTrue(r['pooled'])
-        self.assertEqual(r['verdicts']["C'"]['required_lead'], 6)
-        self.assertEqual(r['arms']["C'"]['rescued_puzzles'], 5)  # p4, p5 rescued by their extension cases
-        self.assertEqual(r['verdicts']["C'"]['verdict'], 'STOP')
-        self.assertTrue(r['verdicts']["C'div"]['verdict'].startswith('NOT ELIGIBLE'))
+        self.assertEqual(r['primary']['verdicts']["C'div"]['verdict'], 'PASS')
+        self.assertTrue(r['primary']['verdicts']["C'"]['verdict'].startswith('GREY'))
+        self.assertEqual(r['pooled_look']['arms']["C'"]['rescued_puzzles'], 5)  # p4, p5 rescued by their extensions
+        self.assertEqual(r['final_verdicts'], {"C'": 'STOP', "C'div": 'PASS'})  # lead 4 < pooled 6; PASS kept
+        self.assertEqual((r['decision'], r['passing_arms']), ('PASS', ["C'div"]))
+        plan8 = s1_plan(n=6)
+        plan8['decision_rule'] = dict(margins=dict(MARGINS, pooled_margin=5))
+        plan8['cases'] = [k for k in plan8['cases'] if k['cohort'] == 'primary'] + [
+            dict(case_id=f'k{i}', cohort='extension', puzzle_key=f'p{i - 6}', agents=[dict(slot=x) for x in range(4)])
+            for i in (9, 10, 11)]
+        write_s1(self.root / 'p8', plan8, self.rows(3, 1))
+        ext2 = [row(f'k{i}', a, rescued=a == "C'", puzzle=f'p{i - 6}') for i in (9, 10, 11) for a in ARMS]
+        write_s1(self.root / 'e8', plan8, ext2, cohort='extension')
+        r = rep.build(plan8, [self.root / 'p8', self.root / 'e8'])
+        self.assertEqual(r['final_verdicts']["C'"], 'PASS (pooled)')  # GREY at primary, pooled lead 5
+        self.assertTrue(r['pooled_look']['verdicts']["C'div"]['verdict'].startswith('NOT ELIGIBLE'))
+
+    def test_wrong_acceptances_of_replaced_attempts_still_count(self):
+        plan = s1_plan()
+        rows = self.rows(5, 1)
+        bad = next(x for x in rows if (x['case_id'], x['arm']) == ('k2', "C'"))
+        bad.update(status='infrastructure', wrong=1)
+        write_s1(self.root / 'a', plan, rows)
+        write_s1(self.root / 'b', plan, [row('k2', "C'", rescued=True)])
+        r = rep.build(plan, [self.root / 'a', self.root / 'b'])
+        self.assertEqual(r['arms']["C'"]['wrong'], 1)
+        self.assertEqual(r['decision'], 'STOP')
+        self.assertFalse(r['verdicts']["C'"]['rules']['zero_wrong'])
+
+    def test_non_utf8_torn_line_is_skipped_and_listed(self):
+        plan = s1_plan()
+        write_s1(self.root / 'u', plan, self.rows(5, 1))
+        with (self.root / 'u' / 'records.jsonl').open('ab') as f:
+            f.write(b'{"slot": "\xff\xfe torn')
+        r = rep.build(plan, [self.root / 'u'])
+        self.assertEqual(r['decision'], 'PASS')
+        self.assertEqual(len(r['torn_lines']), 1)
+
+    def test_other_load_settings_are_rejected(self):
+        plan = s1_plan()
+        write_s1(self.root / 'l', plan, self.rows(5, 1))
+        meta = json.loads((self.root / 'l' / 'metadata.json').read_text())
+        (self.root / 'l' / 'metadata.json').write_text(json.dumps(dict(meta, per_node=24)))
+        self.assertIn('per_node 24', rep.build(plan, [self.root / 'l'])['decision'])
 
     def test_novelty_by_time_progress_and_peer_texts(self):
         a = agent(PROSE, t0=0, t1=10)
@@ -144,6 +183,18 @@ class S1ReportTests(unittest.TestCase):
         short = agent('a b c d e f')  # fewer than MIN_GRAMS distinct 5-grams: not counted
         self.assertEqual(rep.novelty([short, c]), [(Fraction(1), 8192)])
 
+    def test_novelty_combines_pieces_of_one_bin_across_request_breaks(self):
+        first = seg(' '.join(f'a{i}' for i in range(30)), 0.0, 5.0, think_before=8192, tokens=3000)
+        second = seg(' '.join(f'b{i}' for i in range(30)), 20.0, 25.0, think_before=11192, tokens=3000)
+        broken = dict(prefix_text='', segments=[first, second], notes=[], reads=[], submissions=[])
+        peer = agent(' '.join(f'b{i}' for i in range(30)), t0=6.0, t1=7.0)  # wrote the b-words between the parts
+        values = rep.novelty([broken, peer])
+        own = values[0]
+        self.assertEqual(own[1], 6000)  # one combined bin, not two pieces
+        self.assertEqual(own[0], Fraction(26, 52))  # the a-grams are new, the b-grams were written by the peer first
+        cancelled = dict(seg('x y z w v u t s r q p o n m l k j i h g f e d c b a', 0, 1), thinking_tokens=None)
+        self.assertEqual(len(rep.pieces(cancelled)), 1)  # unlocated end of thinking: its streamed thinking, one piece
+
     def test_pieces_at_common_thinking_token_boundaries(self):
         text = 'a' * 100 + 'b' * 300
         s = seg(text, 0.0, 20.0, think_before=8192, tokens=16384,
@@ -156,6 +207,8 @@ class S1ReportTests(unittest.TestCase):
 
 
 class S0ReportTests(unittest.TestCase):
+    EPS = ['http://n0/v1', 'http://n1/v1']
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
@@ -164,31 +217,32 @@ class S0ReportTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def plan(self):
-        return dict(screen='s0', study='collab-s0-test', checks=cp.S0_CHECKS, answer_at_once_tokens=512,
-                    groups=[dict(group_id='g', members=[dict(slot=0), dict(slot=1)])])
+        return dict(screen='s0', study='collab-s0-test', checks=cp.S0_CHECKS, answer_at_once_tokens=512, nodes=2,
+                    per_node=20, groups=[dict(group_id='g', members=[dict(slot=0), dict(slot=1)])])
 
-    def rec(self, slot, focus, result, cont_text, closed_at=None, kind='note', tokens=100, located=True):
+    def rec(self, slot, focus, result, cont_text, closed_at=None, kind='note', tokens=100, closed=None):
         return dict(group_id='g', slot=slot, family='arith', status='complete', prefix_identical=True,
-                    continuation_prefix_identical=True, accepted=False, group_size=2,
+                    continuation_prefix_identical=True, accepted=False, group_size=2, endpoint=self.EPS[slot],
                     note=dict(kind=kind, tokens=tokens, t0=10.0, t_first=10.5, t=14.0, finish_reason='stop',
                               note=dict(focus=focus, results=[result], dead_ends=[], reviews=[]) if kind == 'note' else None),
                     joins=[dict(terminated=True, terminator_overlap=2)],
-                    continuation=dict(t0=20.0, t_first=20.4, closed=closed_at is not None or not located,
-                                      closed_at_token=closed_at, close_located=located, thinking_text=cont_text),
+                    continuation=dict(t0=20.0, t_first=20.4, attempts=1,
+                                      closed=closed if closed is not None else closed_at is not None,
+                                      closed_at_token=closed_at, thinking_text=cont_text),
                     prefix_text=PROSE, recorded_continuation_text='new words here only for the record now ok',
                     submissions=[])
 
-    def write(self, plan, recs, per_node=None, preflight_ok=True, name='run'):
+    def write(self, plan, recs, per_node=None, preflight_ok=True, name='run', used=20):
         d = self.root / name
         d.mkdir()
-        (d / 'metadata.json').write_text(json.dumps(dict(plan=plan, bypass=[])))
+        (d / 'metadata.json').write_text(json.dumps(dict(plan=plan, bypass=[], per_node=used)))
         (d / 'records.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in recs))
-        per_node = per_node or {'n0': dict(prompt_tokens=1000, prefill_compute_tokens=20, generation_tokens=1,
-                                           requests=1),
-                                'n1': dict(prompt_tokens=1000, prefill_compute_tokens=40, generation_tokens=1,
-                                           requests=1)}
-        (d / 'summary.json').write_text(json.dumps(dict(preflight=dict(arith=dict(ok=preflight_ok)),
-                                                        phases=dict(board=dict(per_node=per_node)))))
+        per_node = per_node or {self.EPS[0]: dict(prompt_tokens=1000, prefill_compute_tokens=20, generation_tokens=1,
+                                                  requests=1),
+                                self.EPS[1]: dict(prompt_tokens=1000, prefill_compute_tokens=40, generation_tokens=1,
+                                                  requests=1)}
+        pre = {e: dict(arith=dict(ok=preflight_ok)) for e in self.EPS}
+        (d / 'summary.json').write_text(json.dumps(dict(preflight=pre, phases=dict(board=dict(per_node=per_node)))))
         return d
 
     def good(self):
@@ -197,21 +251,42 @@ class S0ReportTests(unittest.TestCase):
                 self.rec(1, 'try products of large numbers first', '12+30=42', 'other fresh words entirely new to '
                          'this stream and unseen')]
 
+    def checks(self, report):
+        return {c['id']: c for c in report['checks']}
+
     def test_pass_with_raw_timing_and_lowest_node_cache(self):
         plan = self.plan()
         r = rep.build(plan, [self.write(plan, self.good())])
         self.assertEqual(r['decision'], 'PASS', r)
-        checks = {c['id']: c for c in r['checks']}
-        self.assertEqual(checks['cached_share']['exact'], '24/25')  # the lowest node, not the pool
-        self.assertAlmostEqual(checks['checkpoint_latency']['value'], 0.9)
+        self.assertEqual(self.checks(r)['cached_share']['exact'], '24/25')  # the lowest node, not the pool
+        self.assertAlmostEqual(self.checks(r)['checkpoint_latency']['value'], 0.9)
 
-    def test_missing_counters_and_failed_preflight_are_not_met(self):
+    def test_counters_must_reconcile_and_never_reset(self):
         plan = self.plan()
-        d = self.write(plan, self.good(), per_node={'n0': dict(error='missing counters: [prefill]')},
-                       preflight_ok=False)
-        r = rep.build(plan, [d])
+        extra = {self.EPS[0]: dict(prompt_tokens=1000, prefill_compute_tokens=20, generation_tokens=1, requests=3),
+                 self.EPS[1]: dict(prompt_tokens=1000, prefill_compute_tokens=40, generation_tokens=1, requests=1)}
+        r = rep.build(plan, [self.write(plan, self.good(), per_node=extra, name='more')])
+        self.assertIn('cached_share', r['failed'])  # 3 requests on n0 but 1 continuation sent there
+        reset = dict(extra, **{self.EPS[0]: dict(prompt_tokens=-5, prefill_compute_tokens=0, generation_tokens=1,
+                                                 requests=1)})
+        r = rep.build(plan, [self.write(plan, self.good(), per_node=reset, name='reset')])
+        self.assertIn('cached_share', r['failed'])
+        missing = {self.EPS[0]: dict(error='missing counters')}
+        r = rep.build(plan, [self.write(plan, self.good(), per_node=missing, name='missing', preflight_ok=False)])
         self.assertIn('cached_share', r['failed'])
         self.assertIn('turn_boundaries', r['failed'])
+
+    def test_timing_coverage_and_close_coverage_among_closes(self):
+        plan = self.plan()
+        recs = self.good()
+        recs[0]['continuation']['t_first'] = None
+        r = rep.build(plan, [self.write(plan, recs, name='timing')])
+        self.assertIn('checkpoint_latency', r['failed'])  # one continued checkpoint has no first-token time
+        recs = self.good()
+        recs[0]['continuation'].update(closed=True, closed_at_token=None)  # the only close is not located
+        r = rep.build(plan, [self.write(plan, recs, name='close')])
+        self.assertIn('answer_at_once', r['failed'])  # open streams do not make up the 90 %
+        self.assertEqual((r['closes'], r['closes_located']), (1, 0))
 
     def test_stop_on_wrong_checkable_results_and_same_focus(self):
         plan = self.plan()
@@ -219,26 +294,19 @@ class S0ReportTests(unittest.TestCase):
                 self.rec(1, 'same focus line', 'a sentence with no equation', 'x y z w v u')]
         r = rep.build(plan, [self.write(plan, recs)])
         self.assertEqual(r['decision'], 'STOP')
-        checks = {c['id']: c for c in r['checks']}
-        self.assertEqual(checks['arith_results_correct']['exact'], '0')  # only the checkable sentence counts
+        self.assertEqual(self.checks(r)['arith_results_correct']['exact'], '0')  # only the checkable sentence counts
         self.assertEqual(r['result_sentences_checkable'], 1)
         self.assertIn('focus_distinct', r['failed'])
 
-    def test_unlocated_closes_need_coverage(self):
-        plan = self.plan()
-        recs = self.good()
-        recs[0]['continuation'].update(closed=True, close_located=False, closed_at_token=None)
-        r = rep.build(plan, [self.write(plan, recs)])
-        self.assertIn('answer_at_once', r['failed'])  # 1 of 2 closes located < 90 %
-
-    def test_one_intact_attempt_and_complete_checkpoints(self):
+    def test_one_intact_attempt_unique_rows_and_frozen_load(self):
         plan = self.plan()
         recs = self.good()
         d = self.write(plan, recs)
         self.assertIn('exactly one', rep.build(plan, [d, d])['decision'])
+        self.assertIn('more than once', rep.build(plan, [self.write(plan, recs + [recs[0]], name='dup')])['decision'])
+        self.assertIn('per_node 25', rep.build(plan, [self.write(plan, recs, name='load', used=25)])['decision'])
         recs[0]['status'] = 'infrastructure'
-        d2 = self.write(plan, recs, name='run2')
-        self.assertEqual(rep.build(plan, [d2])['status'], 'incomplete')
+        self.assertEqual(rep.build(plan, [self.write(plan, recs, name='run2')])['status'], 'incomplete')
 
 
 class PlanTests(unittest.TestCase):
@@ -293,6 +361,16 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(k['agents'][0]['prefix_ids_sha256'],
                          hashlib.sha256(json.dumps([1] * cp.CUT).encode()).hexdigest())
         self.assertEqual(k['agents'][0]['trace'], f'runs/{a}/agents/t1-s1-roll12cancel-a0.jsonl')
+
+    def test_judge_pins_cover_every_module_the_judge_loads(self):
+        files = cp.judge_files(cp.ROOT)
+        for name in ('run_variants.py', 'run_judge.py', 'run_agents72.py', 'run_nemotron72_known.py',
+                     'run_benchmark.py', 'inkling/admit.py', 'inkling/fleet_lease.py'):
+            self.assertIn(name, files)
+        plan = cp.base_plan('s0', 'x', '0' * 40)
+        self.assertEqual(set(plan['judge_code_sha256']), set(files))
+        self.assertEqual((plan['fleet'], plan['per_node']), (cp.FLEET, 20))
+        self.assertEqual(plan['fleet']['endpoints'][0], 'http://127.0.0.1:18081/v1')
 
     def test_calibration_bounds_the_familywise_false_pass(self):
         m = cp.calibrate(41, 29)

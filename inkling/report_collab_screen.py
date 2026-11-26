@@ -13,11 +13,16 @@ Validation (complete inputs only; anything else is "incomplete", no decision):
 - torn JSONL lines are skipped and listed; they leave their job incomplete.
 All gate quantities are unrounded (exact fractions where they are ratios).
 
+Also: JSONL is decoded line by line (a torn or non-UTF-8 line is skipped and listed); every run must have used the
+plan's per_node; S0 rows must be unique per checkpoint; wrong acceptances recorded in a replaced (incomplete) S1 attempt
+still count for its job.
+
 S1 (frozen in the plan, per protocol arm C against the shared control D'): 1. wrong(C) == 0 over all attempts;
 2. rescued puzzles(C) >= rescued(D') + primary_margin; 3. accepted agents(C) >= accepted agents(D'); 4. novelty(C) >=
 novelty(D') - 0.02. PASS if all hold; GREY (run the extension cohort) if the lead is inside grey_band with 1, 3, 4 met;
-else STOP. With the extension cohort present only arms that were GREY at the primary look can pass: per puzzle
-(rescued if any of its cases is), lead >= pooled_margin, rules 1, 3, 4 on the pooled cases. Margins and their
+else STOP. The primary look always comes from the validated primary jobs; with the extension cohort present the
+pooled look applies only to arms that were GREY at the primary look (per puzzle, rescued if any of its cases is;
+lead >= pooled_margin; rules 1, 3, 4 on the pooled cases); a primary PASS stays a PASS. Margins and their
 calibration (familywise false pass <= 10 % for two arms and both looks) are the plan's decision_rule.margins.
 Novelty: pieces of post-cut thinking at the common thinking-token boundaries (8,192 / 16,384 / 24,576 / 30,720),
 mapped to text and time with the streamed progress samples (time, tokens, characters every 128 tokens); cancelled
@@ -28,11 +33,12 @@ reported).
 
 S0: the plan's checks; PASS if all hold, else the failed checks' actions (STOP if any says stop, else FIX).
 
-usage: report_collab_screen.py --plan PLAN --runs DIR [DIR ...] [--out DIR] [--primary-verdicts FILE]
+usage: report_collab_screen.py --plan PLAN --runs DIR [DIR ...] [--out DIR]
 """
 import argparse
 import bisect
 import json
+import math
 import re
 import statistics
 import sys
@@ -54,17 +60,18 @@ EQUATION = re.compile(r'(-?\d+(?:\.\d+)?)\s*([+\-*/x×÷])\s*(-?\d+(?:\.\d+)?)\s
 
 
 def read_jsonl(path, torn):
-    """Rows of a JSONL file; a line that does not parse is skipped and listed in `torn`."""
+    """Rows of a JSONL file, decoded line by line: a line that is not valid UTF-8 or not JSON is skipped and listed
+    in `torn` (it never aborts the load)."""
     path = Path(path)
     rows = []
     if not path.exists():
         return rows
-    for i, line in enumerate(path.read_text(encoding='utf-8').splitlines()):
-        if not line.strip():
+    for i, raw in enumerate(path.read_bytes().split(b'\n')):
+        if not raw.strip():
             continue
         try:
-            rows.append(json.loads(line))
-        except ValueError:
+            rows.append(json.loads(raw.decode('utf-8')))
+        except (UnicodeDecodeError, ValueError):
             torn.append(f'{path}:{i + 1}')
     return rows
 
@@ -107,7 +114,7 @@ def s1_unit(plan, case, arm, row, records):
 
 
 def load_s1(plan, run_dirs, cohorts):
-    problems, torn, jobs, records = [], [], {}, {}
+    problems, torn, jobs, records, replaced_wrong = [], [], {}, {}, {}
     cases = {k['case_id']: k for k in plan['cases']}
     for d in run_dirs:
         got = read_dir(plan, d, problems, torn)
@@ -123,6 +130,8 @@ def load_s1(plan, run_dirs, cohorts):
                 if why is None:
                     problems.append(f'job {key} complete in two output directories')
                 continue
+            if key in jobs:  # an incomplete attempt is replaced: its wrong acceptances still count (all attempts)
+                replaced_wrong[key] = replaced_wrong.get(key, 0) + int(jobs[key][1].get('wrong') or 0)
             jobs[key] = (why, row)
             records[key] = [r for r in got['records'] if (r.get('case_id'), r.get('arm')) == key]
     want = {(k['case_id'], arm) for k in plan['cases'] if k['cohort'] in cohorts for arm in plan['arm_order']}
@@ -132,7 +141,12 @@ def load_s1(plan, run_dirs, cohorts):
         problems.append(f'{len(missing)} planned jobs missing, e.g. {missing[0]}')
     if bad:
         problems.append(f'{len(bad)} jobs not complete as a unit, e.g. {bad[0]}')
-    return {k: v[1] for k, v in jobs.items() if k in want}, records, problems, torn
+    final = {}
+    for k, v in jobs.items():
+        if k in want:
+            final[k] = dict(v[1], wrong=int(v[1].get('wrong') or 0) + replaced_wrong.get(k, 0),
+                            wrong_in_replaced_attempts=replaced_wrong.get(k, 0))
+    return final, records, problems, torn
 
 
 # ---------------------------------------------------------------- novelty (s1)
@@ -163,15 +177,23 @@ def time_at(seg, token):
 
 
 def pieces(seg):
-    """The thinking of a segment split at the common thinking-token boundaries; text and start time per piece."""
+    """The thinking of a segment split at the common thinking-token boundaries: (bin, text, start time, tokens) per
+    piece. Only thinking counts (thinking_tokens; a cancelled or closed segment without a located end of thinking
+    keeps its streamed thinking text as one piece)."""
     start = seg['think_before']
     think = seg.get('thinking_tokens')
-    n = seg['tokens'] if think is None else think
-    cuts = [b - start for b in BOUNDARIES if start < b < start + n]
-    bounds = [0] + cuts + [n]
     text = seg.get('text') or ''
-    return [dict(text=text[char_at(seg, a):char_at(seg, b)], t_start=time_at(seg, a), tokens=b - a)
-            for a, b in zip(bounds, bounds[1:]) if b > a]
+    if think is None:
+        return [dict(bin=bin_of(start), text=text, t_start=seg.get('t_first') or seg['t0'], tokens=0)]
+    cuts = [b - start for b in BOUNDARIES if start < b < start + think]
+    bounds = [0] + cuts + [think]
+    return [dict(bin=bin_of(start + a), text=text[char_at(seg, a):char_at(seg, b)], t_start=time_at(seg, a),
+                 tokens=b - a) for a, b in zip(bounds, bounds[1:]) if b > a]
+
+
+def bin_of(token):
+    """Index of the common thinking-token bin [BOUNDARIES[i], BOUNDARIES[i + 1]) holding `token`."""
+    return max(0, bisect.bisect_right(BOUNDARIES, token) - 1)
 
 
 def chars_by(seg, t):
@@ -198,23 +220,33 @@ def written_before(agent, t):
 
 
 def novelty(agents):
-    """(value, tokens) per counted piece of one case-arm."""
+    """(value, tokens) per counted bin of one case-arm. All thinking pieces of an agent in one common bin (split by
+    rejection-driven request breaks) are combined before scoring: a distinct 5-gram of the bin is novel if, at the
+    start of the piece where it first appears, no other agent of the case had written it; a bin counts if it has
+    >= MIN_GRAMS distinct 5-grams."""
     out = []
     for a in agents:
+        bins = defaultdict(list)
         for seg in a.get('segments') or []:
             for piece in pieces(seg):
-                mine = grams(piece['text'])
-                if len(mine) < MIN_GRAMS:
+                bins[piece['bin']].append(piece)
+        for parts in bins.values():
+            seen, novel, tokens = set(), 0, 0
+            for piece in sorted(parts, key=lambda q: q['t_start']):
+                tokens += piece['tokens']
+                new = grams(piece['text']) - seen
+                if not new:
                     continue
                 others = set()
                 for b in agents:
                     if b is not a:
                         others |= grams(written_before(b, piece['t_start']))
-                out.append((Fraction(len(mine - others), len(mine)), piece['tokens']))
+                novel += len(new - others)
+                seen |= new
+            if len(seen) >= MIN_GRAMS:
+                out.append((Fraction(novel, len(seen)), tokens))
     return out
 
-
-# ---------------------------------------------------------------- s1
 
 def arm_summary(plan, jobs, records, arm):
     rows = [r for (cid, a), r in jobs.items() if a == arm]
@@ -254,7 +286,9 @@ def arm_summary(plan, jobs, records, arm):
                 winners_who_had_read_an_entry=read_and_won, **stats), dict(puzzles)
 
 
-def s1_decision(plan, jobs, records, pooled, primary_verdicts=None):
+def look(plan, jobs, records, pooled, eligible=None):
+    """One look of the S1 gate. pooled: per-puzzle rescue over primary + extension cases, pooled_margin, and only arms
+    in `eligible` (GREY at the primary look) can pass."""
     base = "D'"
     margins = plan['decision_rule']['margins']
     protocol_arms = [a for a in plan['arm_order'] if plan['arms'][a].get('protocol')]
@@ -275,8 +309,7 @@ def s1_decision(plan, jobs, records, pooled, primary_verdicts=None):
         common = sorted(set(puzzle_sets[arm]) & set(puzzle_sets[base]))
         wins = sum(puzzle_sets[arm][p] and not puzzle_sets[base][p] for p in common)
         losses = sum(puzzle_sets[base][p] and not puzzle_sets[arm][p] for p in common)
-        eligible = not pooled or (primary_verdicts or {}).get(arm, '').startswith('GREY')
-        if pooled and not eligible:
+        if pooled and arm not in eligible:
             verdict = 'NOT ELIGIBLE at the pooled look (was not GREY at the primary look)'
         elif all(rules.values()):
             verdict = 'PASS'
@@ -288,10 +321,30 @@ def s1_decision(plan, jobs, records, pooled, primary_verdicts=None):
         verdicts[arm] = dict(rules=rules, rescued_lead=diff, required_lead=need, verdict=verdict,
                              paired_puzzles=dict(protocol_only=wins, plain_only=losses,
                                                  sign_test_p=sign_test(wins, losses)))
-    overall = ('PASS' if any(v['verdict'] == 'PASS' for v in verdicts.values()) else
-               'GREY' if any(v['verdict'].startswith('GREY') for v in verdicts.values()) else 'STOP')
-    return dict(arms=out, verdicts=verdicts, overall=overall, pooled=pooled, margins=margins,
-                passing_arms=[a for a, v in verdicts.items() if v['verdict'] == 'PASS'])
+    return dict(arms=out, verdicts=verdicts, margins=margins)
+
+
+def s1_decision(plan, jobs, records, pooled):
+    """The primary look on the validated primary jobs; with the extension present, the pooled look for the arms that
+    were GREY at the primary look. A primary PASS stays a PASS whatever the pooled look says."""
+    primary_ids = {k['case_id'] for k in plan['cases'] if k['cohort'] == 'primary'}
+    primary_jobs = {k: v for k, v in jobs.items() if k[0] in primary_ids}
+    first = look(plan, primary_jobs, records, False)
+    out = dict(primary=first, pooled=pooled)
+    final = {arm: v['verdict'] for arm, v in first['verdicts'].items()}
+    if pooled:
+        grey = {arm for arm, v in first['verdicts'].items() if v['verdict'].startswith('GREY')}
+        second = look(plan, jobs, records, True, grey)
+        out['pooled_look'] = second
+        for arm in grey:
+            final[arm] = 'PASS (pooled)' if second['verdicts'][arm]['verdict'] == 'PASS' else 'STOP'
+    passing = [arm for arm, v in final.items() if v.startswith('PASS')]
+    out.update(final_verdicts=final, passing_arms=passing,
+               overall='PASS' if passing else 'GREY' if any(v.startswith('GREY') for v in final.values()) else 'STOP')
+    # flat views for the markdown and older readers
+    shown = out.get('pooled_look') or first
+    out.update(arms=shown['arms'], verdicts=shown['verdicts'], margins=first['margins'])
+    return out
 
 
 # ---------------------------------------------------------------- s0
@@ -318,19 +371,31 @@ def s0_checks(plan, recs, summary):
     # the board-turn join of each continued checkpoint closes its note reply; finished replies keep their terminator
     stop_replies = [r['joins'][0] for r in recs if r.get('joins') and r.get('note')
                     and r['note'].get('finish_reason') == 'stop']
-    pre_ok = bool(summary and summary.get('preflight')) and all(p.get('ok') for p in summary['preflight'].values())
+    pre = (summary or {}).get('preflight') or {}
+    pre_ok = (len(pre) == plan.get('nodes', 4) and all(
+        isinstance(fams, dict) and fams and all(r.get('ok') for r in fams.values()) for fams in pre.values()))
     values['turn_boundaries'] = (ratio(sum(j['terminated'] for j in stop_replies), len(stop_replies))
                                  if pre_ok and stop_replies else (Fraction(0) if not pre_ok else None))
     board = ((summary or {}).get('phases') or {}).get('board') or {}
-    shares = {}
+    sent = Counter()
+    for r in recs:
+        if r.get('continuation'):
+            sent[r.get('endpoint')] += int(r['continuation'].get('attempts') or 1)
+    shares, reconciled = {}, {}
     for node, v in (board.get('per_node') or {}).items():
+        ok = ('error' not in v and all(isinstance(v.get(k), (int, float)) and math.isfinite(v[k]) and v[k] >= 0
+                                       for k in ('prompt_tokens', 'prefill_compute_tokens', 'requests'))
+              and v['prompt_tokens'] > 0 and v['prefill_compute_tokens'] <= v['prompt_tokens'])
+        reconciled[node] = bool(ok) and round(v['requests']) == sent.get(node, 0)
         shares[node] = (1 - Fraction(round(v['prefill_compute_tokens']), round(v['prompt_tokens']))
-                        if 'error' not in v and v.get('prompt_tokens') else None)
-    values['cached_share'] = (min(shares.values()) if shares and all(s is not None for s in shares.values()) else None)
+                        if reconciled[node] else None)
+    values['cached_share'] = (min(shares.values()) if len(shares) == plan.get('nodes', 4)
+                              and all(x is not None for x in shares.values()) else None)
+    continued = [r for r in recs if r.get('continuation')]
     lat = [(r['note']['t_first'] - r['note']['t0']) + (r['continuation']['t_first'] - r['continuation']['t0'])
-           for r in recs if r.get('note') and r.get('continuation') and r['note'].get('t_first') is not None
+           for r in continued if r.get('note') and r['note'].get('t_first') is not None
            and r['continuation'].get('t_first') is not None]
-    values['checkpoint_latency'] = statistics.median(lat) if lat else None
+    values['checkpoint_latency'] = statistics.median(lat) if lat and len(lat) == len(continued) else None
     parsed = [n for n in notes if n['kind'] in ('note', 'answer')]
     values['reply_parse'] = ratio(len(parsed), len(notes))
     real = [n for n in notes if n['kind'] == 'note']
@@ -352,11 +417,14 @@ def s0_checks(plan, recs, summary):
     values['focus_distinct'] = ratio(sum(pairs), len(pairs))
     conts = [r['continuation'] for r in recs if r.get('continuation')]
     expected_conts = len(recs) - len(accepted)
-    located = [cn for cn in conts if cn.get('close_located', True)]
+    closes = [cn for cn in conts if cn['closed']]
+    located = [cn for cn in closes if cn.get('closed_at_token') is not None]
+    measured = [cn for cn in conts if not cn['closed']] + located
     at_once = plan.get('answer_at_once_tokens', 512)
-    coverage_ok = len(conts) == expected_conts and len(conts) > 0 and len(located) >= Fraction(9, 10) * len(conts)
-    values['answer_at_once'] = (ratio(sum(cn['closed'] and cn['closed_at_token'] < at_once for cn in located),
-                                      len(located)) if coverage_ok else None)
+    coverage_ok = (len(conts) == expected_conts and len(conts) > 0
+                   and (not closes or len(located) >= Fraction(9, 10) * len(closes)))
+    values['answer_at_once'] = (ratio(sum(cn['closed'] and cn['closed_at_token'] < at_once for cn in measured),
+                                      len(measured)) if coverage_ok else None)
     reps, recorded = [], []
     for r in recs:
         cn = r.get('continuation')
@@ -388,7 +456,8 @@ def s0_checks(plan, recs, summary):
                               note_tokens_median=statistics.median([n['tokens'] for n in fn]) if fn else None)
     extra = dict(note_turns=len(notes), reply_kinds=dict(Counter(n['kind'] for n in notes)), by_family=by_family,
                  accepted_at_checkpoint_no_continuation=len(accepted), continuations=len(conts),
-                 continuations_expected=expected_conts, closes_located=len(located),
+                 continuations_expected=expected_conts, closes=len(closes), closes_located=len(located),
+                 board_requests_sent=dict(sent), board_counters_reconciled=reconciled,
                  result_sentences=len(sentences), result_sentences_checkable=len(checkable), focus_pairs=len(pairs),
                  cached_share_by_node={k: (float(v) if v is not None else None) for k, v in shares.items()},
                  board_phase_peak_per_node=board.get('peak_per_node'), joins=len(joins),
@@ -409,7 +478,7 @@ def s0_checks(plan, recs, summary):
 
 # ---------------------------------------------------------------- build and write
 
-def build(plan, run_dirs, primary_verdicts=None):
+def build(plan, run_dirs):
     out = dict(study=plan['study'], screen=plan['screen'], runs=[str(d) for d in run_dirs])
     if plan['screen'] == 's1':
         extension_ids = {c['case_id'] for c in plan['cases'] if c['cohort'] == 'extension'}
@@ -421,12 +490,11 @@ def build(plan, run_dirs, primary_verdicts=None):
         cohorts = {'primary'} | present
         jobs, records, problems, torn = load_s1(plan, run_dirs, cohorts)
         out.update(cohorts=sorted(cohorts), torn_lines=torn)
-        if 'extension' in cohorts and primary_verdicts is None:
-            problems.append('the pooled look needs --primary-verdicts (the primary report.json)')
+        problems += load_problems(plan, run_dirs)
         if problems:
             out.update(status='incomplete', problems=problems, decision=f"incomplete - {' | '.join(problems)}")
             return out
-        out.update(status='complete', **s1_decision(plan, jobs, records, 'extension' in cohorts, primary_verdicts))
+        out.update(status='complete', **s1_decision(plan, jobs, records, 'extension' in cohorts))
         out['decision'] = out['overall']
         return out
     problems, torn = [], []
@@ -435,7 +503,12 @@ def build(plan, run_dirs, primary_verdicts=None):
     got = read_dir(plan, run_dirs[0], problems, torn) if run_dirs else None
     recs = got['records'] if got else []
     want = {(g['group_id'], m['slot']) for g in plan['groups'] for m in plan_members(g)}
+    keys = Counter((r.get('group_id'), r.get('slot')) for r in recs)
+    dup = sorted(k for k, n in keys.items() if n > 1)
+    if dup:
+        problems.append(f'{len(dup)} checkpoints recorded more than once, e.g. {dup[0]}')
     have = {(r.get('group_id'), r.get('slot')): r for r in recs}
+    problems += load_problems(plan, run_dirs[:1])
     if got is not None:
         if set(have) != want:
             problems.append(f'{len(want - set(have))} planned checkpoints missing')
@@ -451,6 +524,18 @@ def build(plan, run_dirs, primary_verdicts=None):
         return out
     out.update(status='complete', **s0_checks(plan, recs, got['summary']))
     out['decision'] = out['verdict']
+    return out
+
+
+def load_problems(plan, run_dirs):
+    """The frozen load: every run used the plan's per_node."""
+    out = []
+    for d in run_dirs:
+        meta = Path(d) / 'metadata.json'
+        if meta.exists():
+            used = json.loads(meta.read_text()).get('per_node')
+            if used != plan.get('per_node'):
+                out.append(f'{d}: per_node {used} != frozen {plan.get("per_node")}')
     return out
 
 
@@ -486,13 +571,9 @@ def main(argv=None):
     p.add_argument('--plan', type=Path, required=True)
     p.add_argument('--runs', type=Path, nargs='+', required=True)
     p.add_argument('--out', type=Path)
-    p.add_argument('--primary-verdicts', type=Path, help='S1 pooled look: report.json of the primary look')
     a = p.parse_args(argv)
     plan = json.loads(a.plan.read_text())
-    primary = None
-    if a.primary_verdicts:
-        primary = {arm: v['verdict'] for arm, v in json.loads(a.primary_verdicts.read_text())['verdicts'].items()}
-    report = build(plan, a.runs, primary)
+    report = build(plan, a.runs)
     out = a.out or ROOT / 'results' / plan['study']
     out.mkdir(parents=True, exist_ok=True)
     (out / 'report.json').write_text(json.dumps(report, indent=1, default=str) + '\n')

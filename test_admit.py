@@ -45,6 +45,7 @@ class AdmitContainerTests(unittest.TestCase):
                     contextlib.redirect_stdout(io.StringIO()):
                 code = admit.main(['--plan', str(plan), '--source', d, '--output', str(out)])
             receipt = json.loads(out.read_text())
+            self.plan_sha = admit.hashlib.sha256(plan.read_bytes()).hexdigest()
         return code, receipt, inspected
 
     def test_default_names(self):
@@ -64,6 +65,12 @@ class AdmitContainerTests(unittest.TestCase):
         self.assertEqual((code, receipt['verified']), (1, False))
         code, receipt, _ = self.run_admit(dict(serving, mem_fraction='0.80'))
         self.assertFalse(receipt['verified'])
+
+    def test_receipt_binds_plan_sha_and_canonical_endpoints(self):
+        code, receipt, _ = self.run_admit({})
+        self.assertEqual(receipt['plan_sha256'], self.plan_sha)
+        self.assertEqual(receipt['endpoints'], [f'http://127.0.0.1:{p}/v1' for p in range(18081, 18085)])
+        self.assertFalse(receipt['allow_busy'])
 
     def test_invalid_names_are_refused(self):
         for serving in (dict(container='x; rm -rf ~'), dict(container='a', shim_container='a'), dict(shim_container='')):

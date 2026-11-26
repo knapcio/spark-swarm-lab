@@ -53,7 +53,11 @@ VARIANT, CODING_VARIANT = 'xl_forced_original', 'code_xl'
 S1_SEED_OFFSET = 27100  # agent seed 1000 * case seed + offset + slot (the same in every arm)
 JUDGE_SEED_BASE = 90000
 SOURCE_PATH = '.runtime/collab-source'
-JUDGE_FILES = ('run_variants.py', 'run_judge.py', 'run_agents72.py', 'run_arbiterfree.py', 'run_benchmark.py')
+JUDGE_ENTRY = ('run_variants', 'run_judge')  # what collab_replay.load_judge imports from the judge tree
+JUDGE_EXTRA = ('inkling/admit.py', 'inkling/fleet_lease.py')  # run (admission) and loaded (lease) by the driver
+FLEET = dict(endpoints=[f'http://127.0.0.1:{p}/v1' for p in range(18081, 18085)],
+             hosts=['Spark_01', 'Spark_02', 'Spark_03', 'Spark_04'])  # canonical pairs (run_coding_agents, admit.py)
+PER_NODE = 20
 SERVING_FROM = 'SWARM_FAIR_HARD23_PLAN.json'  # the current serving identity (v2.9.2 recipe), checked by admit.py
 TEMPLATE = (Path.home() / '.cache/huggingface/hub/models--thinkingmachines--Inkling-2-Mini/snapshots/'
             'ed40e7da625f594fc9c4990f5f66be24873c22d7/chat_template.jinja')
@@ -286,15 +290,16 @@ S0_CHECKS = [
     dict(id='prefix_identical', metric='share of checkpoints whose composed sequence starts with the recorded prompt '
          'and prefix ids and (if continued) whose continuation starts with the note call prompt + reply ids',
          limit='== 1.0', on_fail='fix'),
-    dict(id='turn_boundaries', metric='preflight ok on every family (collab.preflight against the live template) and '
-         'share of joins of finished replies (finish_reason stop) that kept exactly the template terminator',
-         limit='== 1.0', on_fail='fix'),
-    dict(id='cached_share', metric='per node: 1 - prefill_compute / prompt tokens during the board phase (continuation '
-         'requests only; server counters, every node must report both counters); the check uses the LOWEST node',
-         limit='>= 0.95', on_fail='fix or fallback B'),
-    dict(id='checkpoint_latency', metric='PROXY: median over checkpoints of (note call first-token time - send time) + '
-         '(continuation first-token time - send time), raw seconds, phases run at --per-node 20',
-         limit='<= 5.0 s', on_fail='fix or fallback B'),
+    dict(id='turn_boundaries', metric='the rendered-fixture preflight passed on every endpoint (full note, board and '
+         'own-rejection sequences equal to the template rendering) and every join of a finished reply kept exactly '
+         'the template terminator', limit='== 1.0', on_fail='fix'),
+    dict(id='cached_share', metric='per node: 1 - prefill_compute / prompt tokens during the board phase; valid only '
+         'with finite nonnegative deltas on every node whose request delta equals the continuation requests (attempts) '
+         'the driver sent to that node in the phase; the check uses the LOWEST node', limit='>= 0.95',
+         on_fail='fix or fallback B'),
+    dict(id='checkpoint_latency', metric='PROXY: median over ALL continued checkpoints (every one must have both '
+         'first-token times) of (note call first-token time - send time) + (continuation first-token time - send '
+         'time), raw seconds, at the frozen per_node', limit='<= 5.0 s', on_fail='fix or fallback B'),
     dict(id='reply_parse', metric='share of note turns returning a parseable note or a parseable answer',
          limit='>= 0.90', on_fail='fix the note prompt once, then fallback B'),
     dict(id='note_within_256', metric='share of parsed notes with at most 256 reply tokens', limit='>= 0.90',
@@ -305,16 +310,29 @@ S0_CHECKS = [
     dict(id='focus_distinct', metric='share of focus-line pairs of a group (same case and cut, groups of >= 2 notes) '
          'with word-set Jaccard < 0.6', limit='>= 0.75', on_fail='stop: nothing to divide'),
     dict(id='answer_at_once', metric='share of continuations whose thinking closes within the first 512 tokens (token '
-         'position of the end-of-thinking ids); needs every continuation present and >= 90 % of closes located, '
-         'else not met', limit='<= 0.20', on_fail='stop, or fallback B'),
+         'position of the end-of-thinking ids) among continuations that stayed open or have a located close; needs '
+         'every continuation present and the close located in >= 90 % of the continuations that closed',
+         limit='<= 0.20', on_fail='stop, or fallback B'),
     dict(id='own_repeat', metric='PROXY: mean share of a continuation\'s word 5-grams already in its own recorded '
          'prefix, minus the same share for the recorded continuation (recorded texts split by character share: the '
          'shim has no /detokenize)', limit='<= +0.10', on_fail='stop, or fallback B'),
 ]
 
 
+def judge_files(root):
+    """Every module of `root` that importing the judge entry modules loads (a superset of what the driver loads:
+    its own tree shadows harness etc.), plus the admission script and the lease."""
+    import subprocess
+    code = ('import sys; from pathlib import Path; root = Path(sys.argv[1]).resolve(); sys.path.insert(0, str(root))\n'
+            f'import {", ".join(JUDGE_ENTRY)}\n'
+            'print("\\n".join(sorted(str(Path(m.__file__).resolve().relative_to(root)) for m in list(sys.modules.values())'
+            ' if getattr(m, "__file__", None) and root in Path(m.__file__).resolve().parents)))')
+    out = subprocess.run([sys.executable, '-B', '-c', code, str(root)], capture_output=True, text=True, check=True)
+    return sorted(set(out.stdout.split()) | set(JUDGE_EXTRA))
+
+
 def judge_hashes(root):
-    return {name: hashlib.sha256((Path(root) / name).read_bytes()).hexdigest() for name in JUDGE_FILES}
+    return {name: hashlib.sha256((Path(root) / name).read_bytes()).hexdigest() for name in judge_files(root)}
 
 
 def serving(root):
@@ -326,12 +344,17 @@ def serving(root):
 
 
 def base_plan(screen, study, revision, root=ROOT):
-    return dict(protocol='collab-replay-screen-v2', screen=screen, study=study, status='FROZEN', nodes=4,
+    """root: the repository whose recorded runs are read; judge pins and serving identity come from THIS generator's
+    tree (the main tree the plan is committed to and the driver's --judge-source)."""
+    return dict(protocol='collab-replay-screen-v3', screen=screen, study=study, status='FROZEN', nodes=4,
+                fleet=FLEET, per_node=PER_NODE,
                 source_revision=revision, source_path=SOURCE_PATH, driver='collab_replay.py',
-                judge_code_sha256=judge_hashes(root), serving=serving(root),
-                execution='each screen alone on the fleet after inkling/admit.py (fresh receipt, --admission); '
-                          'collab_replay.py --run with four --endpoint/--host pairs (distinct physical nodes); the '
-                          'judge files of --judge-source must equal judge_code_sha256',
+                judge_code_sha256=judge_hashes(ROOT), serving=serving(ROOT),
+                execution='each screen alone on the fleet: collab_replay.py --run with plan.fleet\'s four --endpoint/'
+                          '--host pairs holds the fleet lease (inkling/fleet_lease.py), runs inkling/admit.py (idle '
+                          'fleet, receipt bound to this plan\'s sha256), checks every module it loads from '
+                          '--judge-source against judge_code_sha256, runs the rendered-fixture preflight on every '
+                          'endpoint, keeps <= per_node requests per node and drains the fleet before exiting',
                 report='inkling/report_collab_screen.py', design='DESIGN-live-collab-fable.md', credit=CREDIT,
                 generator=f'inkling/collab_plans.py {screen}', protocol_constants=PROTOCOL,
                 concurrency='<= 20 requests per node by default (--per-node, hard cap 25); one permit per agent for '

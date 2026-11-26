@@ -18,6 +18,7 @@ ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 import arms  # noqa: E402  (helpers only; arms.py itself is unchanged)
 import energy  # noqa: E402
+import fleet_lease  # noqa: E402
 
 
 def main(argv=None):
@@ -29,6 +30,11 @@ def main(argv=None):
     out = a.output.resolve()
     if out.exists():
         raise SystemExit('output exists')
+    with fleet_lease.lease(ROOT, f"coding_arms.py {plan['study']} -> {out}"):  # the fleet is this arm's until it has drained
+        return run_arm(a, plan, out)
+
+
+def run_arm(a, plan, out):
     source = ROOT / plan['source_path']
     runner = 'run_coding_earlystop.py' if plan.get('early_stop') else 'run_coding_agents.py'
     admission = ROOT / '.runtime' / (plan['study'].upper().replace('-', '_') + '_ADMISSION.json')

@@ -1,18 +1,37 @@
 {
- "protocol": "collab-replay-screen-v2",
+ "protocol": "collab-replay-screen-v3",
  "screen": "s1",
  "study": "collab-s1-v1",
  "status": "FROZEN",
  "nodes": 4,
- "source_revision": "69c68fc827b3f24430ba2af6d189faf3da27c50f",
+ "fleet": {
+  "endpoints": [
+   "http://127.0.0.1:18081/v1",
+   "http://127.0.0.1:18082/v1",
+   "http://127.0.0.1:18083/v1",
+   "http://127.0.0.1:18084/v1"
+  ],
+  "hosts": [
+   "Spark_01",
+   "Spark_02",
+   "Spark_03",
+   "Spark_04"
+  ]
+ },
+ "per_node": 20,
+ "source_revision": "bc376e9b557545491839521261bf094325d3a357",
  "source_path": ".runtime/collab-source",
  "driver": "collab_replay.py",
  "judge_code_sha256": {
-  "run_variants.py": "29a7fd2102da8029ad1edae8b3d7cfe14e430b9078d93e16f66ce605ead0355b",
-  "run_judge.py": "dadc67dba63432c095794dff9c04d81ac7952eecc0215488b3f6d7c28ca21956",
+  "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+  "inkling/admit.py": "d6ff34d23f80919eddce2b0866b86350a7ed1a9382aa52575a121e88bbb0858b",
+  "inkling/fleet_lease.py": "b2512878d399dc4538bb1559dc9d842c18bcd4e29906d31340b31e57f388a447",
   "run_agents72.py": "d9fd620bc3b0a93e9238e32170b6a876415ce043ddf70f239077884f5f62e068",
   "run_arbiterfree.py": "af165c85b32c335345923ece29d1c1d6f0883cea99d4a5fcdc290ca95fd360f8",
-  "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a"
+  "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+  "run_judge.py": "dadc67dba63432c095794dff9c04d81ac7952eecc0215488b3f6d7c28ca21956",
+  "run_nemotron72_known.py": "635cd512b176389ebf6e7572ec912a6ccf0e33c7c33d714869dcebb02711276f",
+  "run_variants.py": "29a7fd2102da8029ad1edae8b3d7cfe14e430b9078d93e16f66ce605ead0355b"
  },
  "serving": {
   "model": "thinkingmachines/Inkling-2-Mini@ed40e7da625f594fc9c4990f5f66be24873c22d7",
@@ -29,7 +48,7 @@
   "chat_template_sha256": "53a9035f3255945704b5857657cfb00c1165090c0641c4f782a0cbf268cc16dc",
   "chat_template": "thinkingmachines/Inkling-2-Mini snapshot ed40e7da chat_template.jinja"
  },
- "execution": "each screen alone on the fleet after inkling/admit.py (fresh receipt, --admission); collab_replay.py --run with four --endpoint/--host pairs (distinct physical nodes); the judge files of --judge-source must equal judge_code_sha256",
+ "execution": "each screen alone on the fleet: collab_replay.py --run with plan.fleet's four --endpoint/--host pairs holds the fleet lease (inkling/fleet_lease.py), runs inkling/admit.py (idle fleet, receipt bound to this plan's sha256), checks every module it loads from --judge-source against judge_code_sha256, runs the rendered-fixture preflight on every endpoint, keeps <= per_node requests per node and drains the fleet before exiting",
  "report": "inkling/report_collab_screen.py",
  "design": "DESIGN-live-collab-fable.md",
  "credit": "Blackboard architectures (Erman, Hayes-Roth, Lesser, Reddy, Hearsay-II, 1980; Nii, 1986) and multi-agent debate (Du, Li, Torralba, Tenenbaum, Mordatch, 2023); design by Fable (DESIGN-live-collab-fable.md, 2026-11-25); replay pattern of tail_replay.py and reserve_replay.py.",
