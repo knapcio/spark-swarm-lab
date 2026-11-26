@@ -363,6 +363,17 @@ unchanged): **PASS** on every gate ([collab-s0-v3](collab-s0-v3/REPORT.md)): che
 posted arithmetic 89 evaluable / 0 false, coverage 0.95, focus 0.98. Weak spot: 137 of 300 statements were dropped as
 malformed tried/checked lines (not a gate). Next: S1, the decisive replay screen.
 
+## 2026-11-26 (37): live collaboration, decisive replay screen S1 ([collab-s1-v1](collab-s1-v1/REPORT.md))
+
+41 recorded all-fail puzzles (every agent past 8,192 tokens, none accepted), continued from their recorded prefixes in
+three arms: D' plain continuation, C' the frozen protocol (facts-only notes, statements checked before posting, a
+budgeted board read at each checkpoint), C'div the same plus the separate division-of-work sentence (owner decision).
+Frozen gate per protocol arm: 0 wrong, rescued puzzles >= D' + 7 (familywise false pass <= 0.095), accepted agents
+>= D', novelty >= D' - 0.02. Result, 0 wrong in every arm: D' 6 rescued, C' 5 (lead -1; novelty 0.945 vs 0.966, i.e.
+below the allowed drop), C'div 9 (lead +3; protocol-only 7, plain-only 4, p = 0.55). **Both STOP; no A/B.** The
+division sentence is the only signal (+3, not significant); sharing notes alone slightly lowered novelty, the herding
+risk the design named. Peak load 20 per node, drain confirmed. Reviews of the rejection follow (astra).
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -375,4 +386,4 @@ malformed tried/checked lines (not a gate). Next: S1, the decisive replay screen
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md) · [coding-reserve-v2](coding-reserve-v2/REPORT.md) · [swarm-fair-hard23-v1](swarm-fair-hard23-v1/REPORT.md) · [coding-elastic-v1](coding-elastic-v1/REPORT.md) · [coding-elastic-v2](coding-elastic-v2/REPORT.md) · [collab-s0-v1](collab-s0-v1/REPORT.md) · [collab-s0-v2](collab-s0-v2/REPORT.md) · [collab-s0-v3](collab-s0-v3/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md) · [coding-reserve-v2](coding-reserve-v2/REPORT.md) · [swarm-fair-hard23-v1](swarm-fair-hard23-v1/REPORT.md) · [coding-elastic-v1](coding-elastic-v1/REPORT.md) · [coding-elastic-v2](coding-elastic-v2/REPORT.md) · [collab-s0-v1](collab-s0-v1/REPORT.md) · [collab-s0-v2](collab-s0-v2/REPORT.md) · [collab-s0-v3](collab-s0-v3/REPORT.md) · [collab-s1-v1](collab-s1-v1/REPORT.md)
