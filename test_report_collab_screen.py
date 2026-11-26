@@ -76,6 +76,15 @@ class S1ReportTests(unittest.TestCase):
         self.assertEqual((r['verdicts']["C'"]['verdict'], r['verdicts']["C'div"]['verdict']), ('PASS', 'STOP'))
         self.assertEqual(r['passing_arms'], ["C'"])
         self.assertEqual(r['verdicts']["C'"]['paired_puzzles']['protocol_only'], 4)
+        self.assertEqual(r['arms']["C'"]['verifier_prompt_tokens'], 0)  # checker compute is an arm total
+        rows = self.rows(5, 1)
+        for x in rows:
+            if x['arm'] == "C'":
+                x.update(verifier_calls=2, verifier_prompt_tokens=50, verifier_completion_tokens=3)
+        write_s1(self.root / 'checker', plan, rows)
+        arms = rep.build(plan, [self.root / 'checker'])['arms']
+        self.assertEqual((arms["C'"]['verifier_calls'], arms["C'"]['verifier_prompt_tokens']),
+                         (2 * sum(x['arm'] == "C'" for x in rows), 50 * sum(x['arm'] == "C'" for x in rows)))
         write_s1(self.root / 'grey', plan, self.rows(3, 1))
         self.assertEqual(rep.build(plan, [self.root / 'grey'])['decision'], 'GREY')
         write_s1(self.root / 'wrong', plan, self.rows(5, 1, c_wrong=1))
@@ -373,6 +382,36 @@ class S0ReportTests(unittest.TestCase):
                           c['claims_verified']), (4, 1, 1, 1, 1))
         self.assertEqual((c['verifier_prompt_tokens'], c['verifier_latency_median_s']), (1500, 1.5))
 
+    def test_review_blocker_4_coverage_gate(self):
+        # one true post and every other statement dropped: arith_results_correct alone would be 100 %
+        plan = self.plan()
+        plan['groups'][0]['members'] = [dict(slot=i) for i in range(5)]
+        recs = []
+        for i in range(5):
+            r = self.rec(0, f'distinct focus {i} ' + 'abcde'[i], 'x', 'x y z w v u')
+            r.update(slot=i)
+            r['note']['claims'] = ([dict(kind='computed', text='6*7=42', tag='VERIFIED')] if i == 0 else
+                                   [dict(kind='computed', text='6*7=43', tag='drop', mechanical='false equation')])
+            recs.append(r)
+        r = rep.build(plan, [self.write(plan, recs)])
+        self.assertEqual(self.checks(r)['arith_results_correct']['exact'], '1')
+        self.assertEqual(self.checks(r)['arith_coverage']['exact'], '1/5')
+        self.assertIn('arith_coverage', r['failed'])
+        c = r['claims']['by_family']['arith']
+        self.assertEqual((c['claims_made'], c['claims_dropped'], c['drop_rate'], c['prefilter_accuracy']),
+                         (5, 4, 0.8, 0.2))
+
+    def test_review_blocker_7_dev_is_refused_before_any_screen_branch(self):
+        s1 = dict(screen='s1', study='x', dev=True, cases=[], arms={}, per_node=20)
+        self.assertIn('dev plans are S0 only', rep.build(s1, [])['decision'])
+        plan = self.plan()
+        d = self.write(plan, self.good(), name='devrun')
+        meta = json.loads((d / 'metadata.json').read_text())
+        (d / 'metadata.json').write_text(json.dumps(dict(meta, bypass=['dev'])))
+        r = rep.build(plan, [d])
+        self.assertIn('under a non-dev plan', r['decision'])
+        self.assertEqual(r['status'], 'incomplete')
+
     def test_dev_plans_never_decide_and_the_checker_is_pinned(self):
         plan = dict(self.plan(), dev=True)
         d = self.write(plan, self.good())
@@ -526,7 +565,9 @@ class S0V2PlanTests(unittest.TestCase):
                  ('answer_at_once', '<= 0.20', 'stop, or fallback B'), ('own_repeat', '<= +0.10', 'stop, or fallback B')]
 
     def test_thresholds_are_not_loosened(self):
-        self.assertEqual([(c['id'], c['limit'], c['on_fail']) for c in cp.S0_CHECKS], self.V1_LIMITS)
+        got = [(c['id'], c['limit'], c['on_fail']) for c in cp.S0_CHECKS]
+        self.assertEqual([x for x in got if x[0] != 'arith_coverage'], self.V1_LIMITS)  # v1 gates unchanged
+        self.assertIn(('arith_coverage', '>= 0.75', 'fix the note prompt once, then fallback B'), got)  # one added
 
     def test_committed_plans(self):
         s0 = json.loads((self.ROOT / 'COLLAB_S0_PLAN.json').read_text())
@@ -541,7 +582,8 @@ class S0V2PlanTests(unittest.TestCase):
         self.assertEqual(rep.worker_exact_claims_sha256(s0['source_revision']), s0['exact_claims_sha256'])
         self.assertEqual(s0['s1_plan_cases'], sorted(s0['s1_plan_cases']) and s0['s1_plan_cases'])
         for arm in ("C'", "C'div"):
-            self.assertEqual((s1['arms'][arm]['note_max_tokens'], s1['arms'][arm]['board_share']), (200, 0.03))
+            self.assertEqual((s1['arms'][arm]['note_max_tokens'], s1['arms'][arm]['board_share'],
+                              s1['arms'][arm]['verify_async']), (200, 0.03, True))
         self.assertEqual((s1['cohort_counts']['primary'], s1['cohort_counts']['extension']), (41, 29))
         self.assertEqual(s1['decision_rule']['margins']['primary_margin'], 7)
         self.assertTrue(dev['dev'] and dev['nodes'] == 2 and dev['study'].endswith('-dev'))

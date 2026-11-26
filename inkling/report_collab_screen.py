@@ -307,6 +307,9 @@ def arm_summary(plan, jobs, records, arm):
                 generated_tokens=sum(r['generated_tokens'] for r in rows),
                 retry_tokens=sum(r.get('retry_tokens') or 0 for r in rows),
                 cancelled_tokens=sum(r.get('cancelled_tokens') or 0 for r in rows),
+                verifier_calls=sum(r.get('verifier_calls') or 0 for r in rows),  # checker compute, cancelled included
+                verifier_prompt_tokens=sum(r.get('verifier_prompt_tokens') or 0 for r in rows),
+                verifier_completion_tokens=sum(r.get('verifier_completion_tokens') or 0 for r in rows),
                 wall_s=sum(r['wall_s'] for r in rows), checkpoints=sum(r['checkpoints'] for r in rows),
                 pieces_counted=len(nov), novelty=float(mean) if mean is not None else None,
                 novelty_exact=str(mean) if mean is not None else None,
@@ -390,19 +393,35 @@ def statements(rec):
 
 
 def claim_counts(recs):
-    """Statements made / dropped / UNVERIFIED / agent-checked / VERIFIED, checker tokens and latency (facts notes)."""
-    claims = [x for r in recs for x in ((r.get('note') or {}).get('claims') or [])]
+    """Statements made / dropped / UNVERIFIED / agent-checked / VERIFIED (all and by family), drops by reason (a
+    checker reply without a verdict counted apart), the prefilter accuracy (share of the evaluable "E = V" statements
+    the solvers MADE, before any filtering, that hold), schema violations, checker tokens (all and new: only the
+    checker turn itself; the rest is the note sequence served from cache) and latency."""
+    def counts(rs):
+        claims = [x for r in rs for x in ((r.get('note') or {}).get('claims') or [])]
+        tags = Counter(x.get('tag') for x in claims)
+        status = [exact_claims.check_claim(x['text'])[0] for x in claims]
+        evaluable = [x for x in status if x in (exact_claims.TRUE, exact_claims.FALSE)]
+        return dict(claims_made=len(claims), claims_dropped=tags.get('drop', 0),
+                    drop_rate=float(ratio(tags.get('drop', 0), len(claims))) if claims else None,
+                    claims_unverified=tags.get('UNVERIFIED', 0), claims_agent_checked=tags.get('agent-checked', 0),
+                    claims_verified=tags.get('VERIFIED', 0),
+                    drops_by_reason=dict(Counter(x.get('mechanical') or 'unknown' for x in claims
+                                                 if x.get('tag') == 'drop')),
+                    checker_no_verdict=sum(1 for x in claims if x.get('mechanical') == 'checker gave no verdict'),
+                    prefilter_evaluable=len(evaluable),
+                    prefilter_accuracy=(float(ratio(sum(x == exact_claims.TRUE for x in evaluable), len(evaluable)))
+                                        if evaluable else None),
+                    schema_violations=dict(Counter((r.get('note') or {}).get('note_violation') for r in rs
+                                                   if (r.get('note') or {}).get('note_violation'))))
     checks = [v for r in recs for v in r.get('verifications') or []]
     lat = [v['t1'] - v['t0'] for v in checks if v.get('t1') is not None and v.get('t0') is not None]
-    tags = Counter(x.get('tag') for x in claims)
-    return dict(claims_made=len(claims), claims_dropped=tags.get('drop', 0),
-                claims_unverified=tags.get('UNVERIFIED', 0), claims_agent_checked=tags.get('agent-checked', 0),
-                claims_verified=tags.get('VERIFIED', 0),
-                drops_by_reason=dict(Counter(x.get('mechanical') if x.get('tag') == 'drop' and 'checker' not in x
-                                             else 'checker: ' + str((x.get('checker') or {}).get('verdict'))
-                                             for x in claims if x.get('tag') == 'drop')),
+    return dict(counts(recs), by_family={f: counts([r for r in recs if r.get('family') == f])
+                                         for f in sorted({r.get('family') for r in recs})},
                 verifier_calls=len(checks), verifier_prompt_tokens=sum(v.get('prompt_tokens') or 0 for v in checks),
+                verifier_new_prompt_tokens=sum(v.get('new_prompt_tokens') or 0 for v in checks),
                 verifier_completion_tokens=sum(v.get('completion_tokens') or 0 for v in checks),
+                verifier_cancelled=sum(1 for v in checks if v.get('cancelled')),
                 verifier_latency_median_s=statistics.median(lat) if lat else None,
                 verifier_latency_p90_s=sorted(lat)[int(0.9 * (len(lat) - 1))] if lat else None)
 
@@ -476,6 +495,10 @@ def s0_checks(plan, recs, summary):
     status = [exact_claims.check_claim(t)[0] for t in sentences]
     checkable = [x for x in status if x in (exact_claims.TRUE, exact_claims.FALSE)]
     values['arith_results_correct'] = ratio(sum(x == exact_claims.TRUE for x in checkable), len(checkable))
+    arith = [r for r in recs if r['family'] == 'arith']
+    covered = [any(exact_claims.check_claim(t)[0] in (exact_claims.TRUE, exact_claims.FALSE) for t, _ in statements(r))
+               for r in arith]
+    values['arith_coverage'] = ratio(sum(covered), len(covered))
     pairs, by_group = [], defaultdict(list)
     for r in recs:
         if r.get('note') and r['note']['kind'] == 'note' and r['note']['note']['focus']:
@@ -511,6 +534,7 @@ def s0_checks(plan, recs, summary):
                   cached_share=lambda v: v >= Fraction(95, 100), checkpoint_latency=lambda v: v <= 5.0,
                   reply_parse=lambda v: v >= Fraction(9, 10), note_within_256=lambda v: v >= Fraction(9, 10),
                   arith_results_correct=lambda v: v >= Fraction(9, 10), focus_distinct=lambda v: v >= Fraction(3, 4),
+                  arith_coverage=lambda v: v >= Fraction(3, 4),
                   answer_at_once=lambda v: v <= Fraction(1, 5), own_repeat=lambda v: v <= Fraction(1, 10))
     checks = []
     for spec in plan['checks']:
@@ -556,6 +580,12 @@ def s0_checks(plan, recs, summary):
 
 def build(plan, run_dirs):
     out = dict(study=plan['study'], screen=plan['screen'], runs=[str(d) for d in run_dirs])
+    dev_runs = [str(d) for d in run_dirs if 'dev' in (_meta(d).get('bypass') or []) or _meta(d).get('dev')]
+    if plan.get('dev') or dev_runs:  # before any screen branching: a dev plan or a dev run never decides
+        if plan['screen'] != 's0' or not plan.get('dev'):
+            why = 'dev plans are S0 only' if plan.get('dev') else f'dev runs {dev_runs} under a non-dev plan'
+            out.update(status='incomplete', problems=[why], decision=f'incomplete - {why} (never a decision)')
+            return out
     if plan['screen'] == 's1':
         extension_ids = {c['case_id'] for c in plan['cases'] if c['cohort'] == 'extension'}
         present = set()
@@ -620,6 +650,14 @@ def worker_exact_claims_sha256(revision, repo=ROOT):
     except (subprocess.CalledProcessError, OSError, TypeError):
         return None
     return hashlib.sha256(blob).hexdigest()
+
+
+def _meta(d):
+    path = Path(d) / 'metadata.json'
+    try:
+        return json.loads(path.read_text()) if path.exists() else {}
+    except ValueError:
+        return {}
 
 
 def exact_claims_sha256():

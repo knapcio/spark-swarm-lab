@@ -77,22 +77,43 @@ CREDIT = ('Blackboard architectures (Erman, Hayes-Roth, Lesser, Reddy, Hearsay-I
 NOTE_MAX_TOKENS = 200   # hard cap of the note call: every note is <= 256 tokens by construction
 BOARD_SHARE = 0.03      # the appended board turn <= 3 % of the retained context (astra, S0 review)
 WAVE_GROUPS = 20        # S0 v2: groups per wave (one stream per node per group: <= 20 streams per node)
-VERIFY_EXCERPT_CHARS, VERIFY_MAX_TOKENS = 6000, 8
+VERIFY_MAX_TOKENS = 8
+ARITH_COVERAGE = '>= 0.75'  # collab-s0-v1 under exact_claims: 63/80 = 0.79 of the arithmetic checkpoints had an
+                            # evaluable statement (3 result slots then, 1 "computed" now); collab-s0-v2-dev: 75/80
 PROTOCOL = dict(marks=[8192, 16384, 24576], note_max_tokens=NOTE_MAX_TOKENS, min_resume_think=4096, max_submissions=4,
                 board_limit_chars=1800, field_limit_chars=160, max_items=1, max_peers=8, board_share=BOARD_SHARE,
                 full_rejected_answer_chars=6000, thinking_cap=30720, total=32768,
                 note_format='facts only: {"focus", "computed", "tried", "checked"}, at most one statement per kind, '
                             '<= 60 words; no reviews (opinions about other entries are not observations)',
-                verifier=f'before posting: exact_claims.py (a false equation drops the statement; a true "computed" '
-                         f'one is VERIFIED; an arithmetic-looking one that does not parse is UNVERIFIED); "checked" '
-                         f'statements against the family\'s known cases (coding: the task examples and public cases; '
-                         f'match VERIFIED, contradiction dropped); otherwise one checker call (temperature 0, '
-                         f'max_tokens {VERIFY_MAX_TOKENS}, the last {VERIFY_EXCERPT_CHARS} characters of the solver\'s '
-                         f'own thinking): SUPPORTED -> agent-checked, else dropped; a checker fault is an infrastructure '
-                         f'fault; checker tokens are accounted apart (verifier_* fields) and count toward compute',
-                board_priority='rejections by the acceptance check (newest first, <= 3), VERIFIED, agent-checked, '
-                               'UNVERIFIED statements (each newest first), focus lines, end lines, old-format entries; '
-                               'the longest prefix within the budget is shown',
+                note_schema='validated before anything is cleaned or posted: only focus / computed / tried / checked, '
+                            'strings, <= 60 words in all, focus <= 12 words, a statement <= 240 characters (never '
+                            'clipped); a violation makes the reply unparseable (counted against reply_parse, reason '
+                            'recorded); tried must read "approach: ...; observed: ...", checked "input: ...; expected: '
+                            '...; got: ..." (else the statement is dropped)',
+                verifier=f'before posting: exact_claims.py (decimals exact from their text; a statement whose '
+                         f'equation is joined to a name is unparseable as a whole; a false equation drops the '
+                         f'statement; a true "computed" one is VERIFIED; an arithmetic-looking one that does not parse '
+                         f'is UNVERIFIED); "checked" statements against the family\'s known cases (coding: the task '
+                         f'examples and public cases): a contradiction is dropped, a match fixes input and expected '
+                         f'only so the observed "got" still goes to the checker; otherwise ONE CHECKER TURN on the '
+                         f'solver\'s own note sequence (its pinned prompt + prefix ids, its note turn, then a user turn '
+                         f'collab.CHECK_PROMPT; thinking closed, temperature 0, max_tokens {VERIFY_MAX_TOKENS}; the '
+                         f'prefix is served from the cache, only the checker turn is new prompt): a first word SUPPORTED '
+                         f'-> agent-checked, else dropped (no verdict counted apart); a checker fault is an '
+                         f'infrastructure fault; checker tokens (cancelled included) are accounted apart (verifier_* '
+                         f'fields) and count toward compute. S0: inline under the solver\'s permit; S1 protocol arms '
+                         f'(verify_async): next to the continuation, the solver\'s permit counting two units',
+                board_priority='with a budget: compact WHOLE lines for peer rejections (who, pass count; <= 3, newest '
+                               'first) are reserved and always shown, then VERIFIED, agent-checked, UNVERIFIED statements '
+                               '(each newest first), focus lines, end lines, old-format entries; the longest prefix '
+                               'within the budget is shown and an omission line counts the rest',
+                board_budget_rule='the budget (board_share x retained context) applies to the peer entries; the fixed '
+                                  'board text, the solver\'s own rejection evidence (one failing public case in full, '
+                                  'owner decision 3) and the reserved rejection lines with the omission line are always '
+                                  'sent; the final token count is checked before dispatch. Consequence for cached_share '
+                                  '(gate unchanged): a board turn after an own coding rejection can exceed 3 % of a '
+                                  'short context (about 670 tokens of fixed text + evidence against about 274 at 8,192), '
+                                  'which lowers that node\'s cached share; it is reported per node, not exempted',
                 note_prompts='collab.NOTE_FIRST / collab.NOTE_LATER (facts-only, S0 amendment)',
                 board_prompt='collab.BOARD_PROMPT; the division-of-work rule only in arms with division_of_work true '
                              '(owner decision 2026-11-26)',
@@ -334,6 +355,11 @@ S0_CHECKS = [
          'implementation the pre-posting verifier uses); statements with an arithmetic-looking but unparseable '
          'equation and statements without one are reported, not counted; none evaluable = not met', limit='>= 0.90',
          on_fail='stop'),
+    dict(id='arith_coverage', metric='ADDED in collab-s0-v2 (sol review): share of ALL arithmetic checkpoints with at '
+         'least one POSTED statement containing an evaluable equation (exact_claims TRUE or FALSE); keeps '
+         'arith_results_correct from passing on a few posts after many drops; derivation: collab-s0-v1 under '
+         'exact_claims 63/80 = 0.79, collab-s0-v2-dev 75/80 = 0.94', limit=ARITH_COVERAGE,
+         on_fail='fix the note prompt once, then fallback B'),
     dict(id='focus_distinct', metric='share of focus-line pairs of a group (same case and cut, groups of >= 2 notes) '
          'with word-set Jaccard < 0.6', limit='>= 0.75', on_fail='stop: nothing to divide'),
     dict(id='answer_at_once', metric='share of continuations whose thinking closes within the first 512 tokens (token '
@@ -406,10 +432,10 @@ def make_s1(root, revision):
                 arms={"D'": dict(tag='dp', protocol=False, note='plain continuation, the worker logic: thinking to '
                                  '30,720, forced answer within 32,768'),
                       "C'": dict(tag='cp', protocol=True, division_of_work=False, board='live',
-                                 note_max_tokens=NOTE_MAX_TOKENS, board_share=BOARD_SHARE,
+                                 note_max_tokens=NOTE_MAX_TOKENS, board_share=BOARD_SHARE, verify_async=True,
                                  note='protocol, default form (no division-of-work rule)'),
                       "C'div": dict(tag='cdiv', protocol=True, division_of_work=True, board='live',
-                                    note_max_tokens=NOTE_MAX_TOKENS, board_share=BOARD_SHARE,
+                                    note_max_tokens=NOTE_MAX_TOKENS, board_share=BOARD_SHARE, verify_async=True,
                                     note='protocol + division-of-work rule (owner decision 2: a separate arm)')},
                 cohort_rule=__doc__.split('S1 cohort (design 4.2, Fable\'s A6): ')[1].split('\n\n')[0],
                 cohort_counts=dict(primary=sum(k['cohort'] == 'primary' for k in cases),
@@ -459,8 +485,13 @@ S0_AMENDMENTS = [
     'arith_results_correct: over the POSTED statements (exact_claims.py, the verifier\'s implementation; whole '
     'expressions and chains), unparseable ones reported apart; collab-s0-v1\'s regex substring check was a checker '
     'artifact (astra review: 12 flagged equations correct, one real error missed)',
-    'reported, not gated: statements made / dropped / UNVERIFIED / agent-checked / VERIFIED, checker tokens and latency, '
-    'board-phase prefill split into new text and eviction per node',
+    'reported, not gated: statements made / dropped / UNVERIFIED / agent-checked / VERIFIED and drop rate by family, '
+    'drops by reason (checker without a verdict apart), prefilter accuracy, schema violations, checker tokens (new and '
+    'cached), latency, board-phase prefill split into new text and eviction per node',
+    'review round (sol + collab-s0-v2-dev): the checker is a turn on the solver\'s own cached note sequence (dev: '
+    '603K fresh excerpt prompt tokens evicted the streams\' prefixes, cached_share 0.385), its verdict the first word '
+    '(dev: 32 "SUPPORTEDThe..." replies lost); a new gate arith_coverage >= 0.75 (stricter; no limit loosened); the '
+    'note schema enforced before cleaning; budgeted boards reserve compact rejection lines',
 ]
 
 

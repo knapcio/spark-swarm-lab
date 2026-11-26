@@ -19,7 +19,7 @@
   ]
  },
  "per_node": 20,
- "source_revision": "5b0742fa4d214d8f8c5e6af81f92b66602f61854",
+ "source_revision": "1a91212d8af87078b8e9d80b2538a3619b4a2f93",
  "source_path": ".runtime/collab-source",
  "driver": "collab_replay.py",
  "judge_code_sha256": {
@@ -71,8 +71,10 @@
   "thinking_cap": 30720,
   "total": 32768,
   "note_format": "facts only: {\"focus\", \"computed\", \"tried\", \"checked\"}, at most one statement per kind, <= 60 words; no reviews (opinions about other entries are not observations)",
-  "verifier": "before posting: exact_claims.py (a false equation drops the statement; a true \"computed\" one is VERIFIED; an arithmetic-looking one that does not parse is UNVERIFIED); \"checked\" statements against the family's known cases (coding: the task examples and public cases; match VERIFIED, contradiction dropped); otherwise one checker call (temperature 0, max_tokens 8, the last 6000 characters of the solver's own thinking): SUPPORTED -> agent-checked, else dropped; a checker fault is an infrastructure fault; checker tokens are accounted apart (verifier_* fields) and count toward compute",
-  "board_priority": "rejections by the acceptance check (newest first, <= 3), VERIFIED, agent-checked, UNVERIFIED statements (each newest first), focus lines, end lines, old-format entries; the longest prefix within the budget is shown",
+  "note_schema": "validated before anything is cleaned or posted: only focus / computed / tried / checked, strings, <= 60 words in all, focus <= 12 words, a statement <= 240 characters (never clipped); a violation makes the reply unparseable (counted against reply_parse, reason recorded); tried must read \"approach: ...; observed: ...\", checked \"input: ...; expected: ...; got: ...\" (else the statement is dropped)",
+  "verifier": "before posting: exact_claims.py (decimals exact from their text; a statement whose equation is joined to a name is unparseable as a whole; a false equation drops the statement; a true \"computed\" one is VERIFIED; an arithmetic-looking one that does not parse is UNVERIFIED); \"checked\" statements against the family's known cases (coding: the task examples and public cases): a contradiction is dropped, a match fixes input and expected only so the observed \"got\" still goes to the checker; otherwise ONE CHECKER TURN on the solver's own note sequence (its pinned prompt + prefix ids, its note turn, then a user turn collab.CHECK_PROMPT; thinking closed, temperature 0, max_tokens 8; the prefix is served from the cache, only the checker turn is new prompt): a first word SUPPORTED -> agent-checked, else dropped (no verdict counted apart); a checker fault is an infrastructure fault; checker tokens (cancelled included) are accounted apart (verifier_* fields) and count toward compute. S0: inline under the solver's permit; S1 protocol arms (verify_async): next to the continuation, the solver's permit counting two units",
+  "board_priority": "with a budget: compact WHOLE lines for peer rejections (who, pass count; <= 3, newest first) are reserved and always shown, then VERIFIED, agent-checked, UNVERIFIED statements (each newest first), focus lines, end lines, old-format entries; the longest prefix within the budget is shown and an omission line counts the rest",
+  "board_budget_rule": "the budget (board_share x retained context) applies to the peer entries; the fixed board text, the solver's own rejection evidence (one failing public case in full, owner decision 3) and the reserved rejection lines with the omission line are always sent; the final token count is checked before dispatch. Consequence for cached_share (gate unchanged): a board turn after an own coding rejection can exceed 3 % of a short context (about 670 tokens of fixed text + evidence against about 274 at 8,192), which lowers that node's cached share; it is reported per node, not exempted",
   "note_prompts": "collab.NOTE_FIRST / collab.NOTE_LATER (facts-only, S0 amendment)",
   "board_prompt": "collab.BOARD_PROMPT; the division-of-work rule only in arms with division_of_work true (owner decision 2026-11-26)",
   "evidence": "arithmetic: the judge reason (none if the judge thinking was cut); coding: pass count and exactly one failing public case (owner decision 2026-11-26)"
@@ -108,6 +110,7 @@
    "board": "live",
    "note_max_tokens": 200,
    "board_share": 0.03,
+   "verify_async": true,
    "note": "protocol, default form (no division-of-work rule)"
   },
   "C'div": {
@@ -117,6 +120,7 @@
    "board": "live",
    "note_max_tokens": 200,
    "board_share": 0.03,
+   "verify_async": true,
    "note": "protocol + division-of-work rule (owner decision 2: a separate arm)"
   }
  },
