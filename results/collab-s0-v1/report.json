@@ -1,0 +1,175 @@
+{
+ "study": "collab-s0-v1",
+ "screen": "s0",
+ "runs": [
+  "runs/collab-s0-v1"
+ ],
+ "torn_lines": [],
+ "status": "complete",
+ "checks": [
+  {
+   "id": "prefix_identical",
+   "metric": "share of checkpoints whose composed sequence starts with the recorded prompt and prefix ids and (if continued) whose continuation starts with the note call prompt + reply ids",
+   "limit": "== 1.0",
+   "on_fail": "fix",
+   "value": 1.0,
+   "exact": "1",
+   "met": true
+  },
+  {
+   "id": "turn_boundaries",
+   "metric": "the rendered-fixture preflight passed on every endpoint (full note, board and own-rejection sequences equal to the template rendering) and every join of a finished reply kept exactly the template terminator",
+   "limit": "== 1.0",
+   "on_fail": "fix",
+   "value": 1.0,
+   "exact": "1",
+   "met": true
+  },
+  {
+   "id": "cached_share",
+   "metric": "per node: 1 - prefill_compute / prompt tokens during the board phase; valid only with finite nonnegative deltas on every node whose request delta equals the continuation requests (attempts) the driver sent to that node in the phase; the check uses the LOWEST node",
+   "limit": ">= 0.95",
+   "on_fail": "fix or fallback B",
+   "value": 0.9297896880905053,
+   "exact": "37888/40749",
+   "met": false
+  },
+  {
+   "id": "checkpoint_latency",
+   "metric": "PROXY: median over ALL continued checkpoints (every one must have both first-token times) of (note call first-token time - send time) + (continuation first-token time - send time), raw seconds, at the frozen per_node",
+   "limit": "<= 5.0 s",
+   "on_fail": "fix or fallback B",
+   "value": 14.509669661521912,
+   "exact": "14.509669661521912",
+   "met": false
+  },
+  {
+   "id": "reply_parse",
+   "metric": "share of note turns returning a parseable note or a parseable answer",
+   "limit": ">= 0.90",
+   "on_fail": "fix the note prompt once, then fallback B",
+   "value": 1.0,
+   "exact": "1",
+   "met": true
+  },
+  {
+   "id": "note_within_256",
+   "metric": "share of parsed notes with at most 256 reply tokens",
+   "limit": ">= 0.90",
+   "on_fail": "fix the note prompt once, then fallback B",
+   "value": 0.45,
+   "exact": "9/20",
+   "met": false
+  },
+  {
+   "id": "arith_results_correct",
+   "metric": "share of arithmetic note result sentences WITH at least one checkable a op b = c equation whose equations are all correct (offline regex); sentences without one are reported, not counted; no checkable sentence = not met",
+   "limit": ">= 0.90",
+   "on_fail": "stop",
+   "value": 0.8125,
+   "exact": "13/16",
+   "met": false
+  },
+  {
+   "id": "focus_distinct",
+   "metric": "share of focus-line pairs of a group (same case and cut, groups of >= 2 notes) with word-set Jaccard < 0.6",
+   "limit": ">= 0.75",
+   "on_fail": "stop: nothing to divide",
+   "value": 0.9927007299270073,
+   "exact": "136/137",
+   "met": true
+  },
+  {
+   "id": "answer_at_once",
+   "metric": "share of continuations whose thinking closes within the first 512 tokens (token position of the end-of-thinking ids) among continuations that stayed open or have a located close; needs every continuation present and the close located in >= 90 % of the continuations that closed",
+   "limit": "<= 0.20",
+   "on_fail": "stop, or fallback B",
+   "value": 0.0,
+   "exact": "0",
+   "met": true
+  },
+  {
+   "id": "own_repeat",
+   "metric": "PROXY: mean share of a continuation's word 5-grams already in its own recorded prefix, minus the same share for the recorded continuation (recorded texts split by character share: the shim has no /detokenize)",
+   "limit": "<= +0.10",
+   "on_fail": "stop, or fallback B",
+   "value": -0.040679494762130355,
+   "exact": "-873651241315452586856403788751797667583103776034612318333998778967512092240013118425265145213544778479908446760946674403885377972265962025947540406194338498662203787503342603296011587882964925570953/21476452606504794238370868525895877009068005484147459396367336208822761422665429141265825659466015969553404602779260894766229148329252496709133441491545208188917458368536592102977080569487004373536000",
+   "met": true
+  }
+ ],
+ "verdict": "STOP",
+ "failed": [
+  "cached_share",
+  "checkpoint_latency",
+  "note_within_256",
+  "arith_results_correct"
+ ],
+ "note_turns": 100,
+ "reply_kinds": {
+  "note": 100
+ },
+ "by_family": {
+  "arith": {
+   "checkpoints": 80,
+   "singleton_groups": 0,
+   "reply_kinds": {
+    "note": 80
+   },
+   "note_tokens_median": 272.5
+  },
+  "coding": {
+   "checkpoints": 20,
+   "singleton_groups": 5,
+   "reply_kinds": {
+    "note": 20
+   },
+   "note_tokens_median": 224.5
+  }
+ },
+ "accepted_at_checkpoint_no_continuation": 0,
+ "continuations": 100,
+ "continuations_expected": 100,
+ "closes": 0,
+ "closes_located": 0,
+ "board_requests_sent": {
+  "http://127.0.0.1:18081/v1": 26,
+  "http://127.0.0.1:18082/v1": 25,
+  "http://127.0.0.1:18083/v1": 24,
+  "http://127.0.0.1:18084/v1": 25
+ },
+ "board_counters_reconciled": {
+  "http://127.0.0.1:18081/v1": true,
+  "http://127.0.0.1:18082/v1": true,
+  "http://127.0.0.1:18083/v1": true,
+  "http://127.0.0.1:18084/v1": true
+ },
+ "result_sentences": 225,
+ "result_sentences_checkable": 64,
+ "focus_pairs": 137,
+ "cached_share_by_node": {
+  "http://127.0.0.1:18081/v1": 0.9300490261820674,
+  "http://127.0.0.1:18082/v1": 0.9348661357347101,
+  "http://127.0.0.1:18083/v1": 0.9301872161293896,
+  "http://127.0.0.1:18084/v1": 0.9297896880905053
+ },
+ "board_phase_peak_per_node": {
+  "Spark_01": 20,
+  "Spark_02": 20,
+  "Spark_03": 20,
+  "Spark_04": 20
+ },
+ "joins": 100,
+ "latency_samples": 100,
+ "checkpoint_latency_p90": 35.58702278137207,
+ "recorded_own_repeat": 0.08984053087031223,
+ "replay_own_repeat": 0.049161036108181864,
+ "answers_at_checkpoint": 0,
+ "answers_accepted": 0,
+ "answers_accepted_wrong": 0,
+ "proxies": [
+  "checkpoint_latency (sum of two first-token times)",
+  "own_repeat (recorded texts split by character share)"
+ ],
+ "decision": "STOP"
+}

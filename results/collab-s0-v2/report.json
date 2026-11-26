@@ -1,0 +1,280 @@
+{
+ "study": "collab-s0-v2",
+ "screen": "s0",
+ "runs": [
+  "runs/collab-s0-v2"
+ ],
+ "torn_lines": [],
+ "status": "complete",
+ "checks": [
+  {
+   "id": "prefix_identical",
+   "metric": "share of checkpoints whose composed sequence starts with the recorded prompt and prefix ids and (if continued) whose continuation starts with the note call prompt + reply ids",
+   "limit": "== 1.0",
+   "on_fail": "fix",
+   "value": 1.0,
+   "exact": "1",
+   "met": true
+  },
+  {
+   "id": "turn_boundaries",
+   "metric": "the rendered-fixture preflight passed on every endpoint (full note, board and own-rejection sequences equal to the template rendering) and every join of a finished reply kept exactly the template terminator",
+   "limit": "== 1.0",
+   "on_fail": "fix",
+   "value": 1.0,
+   "exact": "1",
+   "met": true
+  },
+  {
+   "id": "cached_share",
+   "metric": "per node: 1 - prefill_compute / prompt tokens during the board phase; valid only with finite nonnegative deltas on every node whose request delta equals the continuation requests (attempts) the driver sent to that node in the phase; the check uses the LOWEST node",
+   "limit": ">= 0.95",
+   "on_fail": "fix or fallback B",
+   "value": 0.9659931650183398,
+   "exact": "293120/303439",
+   "met": true
+  },
+  {
+   "id": "checkpoint_latency",
+   "metric": "PROXY: median over ALL continued checkpoints (every one must have both first-token times) of (note call first-token time - send time) + (continuation first-token time - send time), raw seconds, at the frozen per_node",
+   "limit": "<= 5.0 s",
+   "on_fail": "fix or fallback B",
+   "value": 23.492505431175232,
+   "exact": "23.492505431175232",
+   "met": false
+  },
+  {
+   "id": "reply_parse",
+   "metric": "share of note turns returning a parseable note or a parseable answer",
+   "limit": ">= 0.90",
+   "on_fail": "fix the note prompt once, then fallback B",
+   "value": 1.0,
+   "exact": "1",
+   "met": true
+  },
+  {
+   "id": "note_within_256",
+   "metric": "share of parsed notes with at most 256 reply tokens",
+   "limit": ">= 0.90",
+   "on_fail": "fix the note prompt once, then fallback B",
+   "value": 1.0,
+   "exact": "1",
+   "met": true
+  },
+  {
+   "id": "arith_results_correct",
+   "metric": "share of the POSTED statements of arithmetic checkpoints (facts-only notes; old-format notes: result sentences) WITH at least one evaluable equation (exact_claims.find_equations: maximal arithmetic runs, identifiers break a run) whose equations all hold (exact_claims.check_statement: whole expressions with precedence, parentheses and powers, chained equalities, exact rationals; the implementation the pre-posting verifier uses); statements with an arithmetic-looking but unparseable equation and statements without one are reported, not counted; none evaluable = not met",
+   "limit": ">= 0.90",
+   "on_fail": "stop",
+   "value": 1.0,
+   "exact": "1",
+   "met": true
+  },
+  {
+   "id": "arith_coverage",
+   "metric": "ADDED in collab-s0-v2 (sol review): share of ALL arithmetic checkpoints with at least one POSTED statement containing an evaluable equation (exact_claims TRUE or FALSE); keeps arith_results_correct from passing on a few posts after many drops; derivation: collab-s0-v1 under exact_claims 63/80 = 0.79, collab-s0-v2-dev 75/80 = 0.94",
+   "limit": ">= 0.75",
+   "on_fail": "fix the note prompt once, then fallback B",
+   "value": 0.9,
+   "exact": "9/10",
+   "met": true
+  },
+  {
+   "id": "focus_distinct",
+   "metric": "share of focus-line pairs of a group (same case and cut, groups of >= 2 notes) with word-set Jaccard < 0.6",
+   "limit": ">= 0.75",
+   "on_fail": "stop: nothing to divide",
+   "value": 0.948905109489051,
+   "exact": "130/137",
+   "met": true
+  },
+  {
+   "id": "answer_at_once",
+   "metric": "share of continuations whose thinking closes within the first 512 tokens (token position of the end-of-thinking ids) among continuations that stayed open or have a located close; needs every continuation present and the close located in >= 90 % of the continuations that closed",
+   "limit": "<= 0.20",
+   "on_fail": "stop, or fallback B",
+   "value": 0.0,
+   "exact": "0",
+   "met": true
+  },
+  {
+   "id": "own_repeat",
+   "metric": "PROXY: mean share of a continuation's word 5-grams already in its own recorded prefix, minus the same share for the recorded continuation (recorded texts split by character share: the shim has no /detokenize)",
+   "limit": "<= +0.10",
+   "on_fail": "stop, or fallback B",
+   "value": -0.03508061410683866,
+   "exact": "-20432390474589972780185760999052680088580484102262857972517209645166216198080707388733738011048872933314129739443532748744762478143199982542818415927636534268942353299798942527519740311919234845472899942485417284334081/582441071651788926513279228454621749747443390760833941678042022830850871607477104191442959276318248237634736566837325848468103935028960202021909176222877780421584691965967120997545261472944824179780969590347467242400000",
+   "met": true
+  }
+ ],
+ "verdict": "FIX",
+ "failed": [
+  "checkpoint_latency"
+ ],
+ "note_turns": 100,
+ "reply_kinds": {
+  "note": 100
+ },
+ "by_family": {
+  "arith": {
+   "checkpoints": 80,
+   "singleton_groups": 0,
+   "reply_kinds": {
+    "note": 80
+   },
+   "note_tokens_median": 119.0
+  },
+  "coding": {
+   "checkpoints": 20,
+   "singleton_groups": 5,
+   "reply_kinds": {
+    "note": 20
+   },
+   "note_tokens_median": 120.5
+  }
+ },
+ "accepted_at_checkpoint_no_continuation": 0,
+ "continuations": 100,
+ "continuations_expected": 100,
+ "closes": 0,
+ "closes_located": 0,
+ "board_requests_sent": {
+  "http://127.0.0.1:18081/v1": 26,
+  "http://127.0.0.1:18082/v1": 25,
+  "http://127.0.0.1:18083/v1": 24,
+  "http://127.0.0.1:18084/v1": 25
+ },
+ "board_counters_reconciled": {
+  "http://127.0.0.1:18081/v1": true,
+  "http://127.0.0.1:18082/v1": true,
+  "http://127.0.0.1:18083/v1": true,
+  "http://127.0.0.1:18084/v1": true
+ },
+ "result_sentences": 117,
+ "result_sentences_checkable": 80,
+ "result_sentences_false": 0,
+ "result_sentences_unsupported": 8,
+ "claims": {
+  "claims_made": 300,
+  "claims_dropped": 162,
+  "drop_rate": 0.54,
+  "claims_unverified": 20,
+  "claims_agent_checked": 47,
+  "claims_verified": 71,
+  "drops_by_reason": {
+   "malformed tried (approach: ...; observed: ...)": 79,
+   "malformed checked (input: ...; expected: ...; got: ...)": 75,
+   "false equation": 5,
+   "checker call": 2,
+   "known case; the observation goes to the checker call": 1
+  },
+  "checker_no_verdict": 0,
+  "prefilter_evaluable": 140,
+  "prefilter_accuracy": 0.9642857142857143,
+  "schema_violations": {},
+  "by_family": {
+   "arith": {
+    "claims_made": 240,
+    "claims_dropped": 123,
+    "drop_rate": 0.5125,
+    "claims_unverified": 6,
+    "claims_agent_checked": 40,
+    "claims_verified": 71,
+    "drops_by_reason": {
+     "malformed tried (approach: ...; observed: ...)": 59,
+     "malformed checked (input: ...; expected: ...; got: ...)": 59,
+     "false equation": 4,
+     "checker call": 1
+    },
+    "checker_no_verdict": 0,
+    "prefilter_evaluable": 139,
+    "prefilter_accuracy": 0.9712230215827338,
+    "schema_violations": {}
+   },
+   "coding": {
+    "claims_made": 60,
+    "claims_dropped": 39,
+    "drop_rate": 0.65,
+    "claims_unverified": 14,
+    "claims_agent_checked": 7,
+    "claims_verified": 0,
+    "drops_by_reason": {
+     "malformed tried (approach: ...; observed: ...)": 20,
+     "malformed checked (input: ...; expected: ...; got: ...)": 16,
+     "checker call": 1,
+     "false equation": 1,
+     "known case; the observation goes to the checker call": 1
+    },
+    "checker_no_verdict": 0,
+    "prefilter_evaluable": 1,
+    "prefilter_accuracy": 0.0,
+    "schema_violations": {}
+   }
+  },
+  "verifier_calls": 50,
+  "verifier_prompt_tokens": 706522,
+  "verifier_new_prompt_tokens": 6229,
+  "verifier_completion_tokens": 304,
+  "verifier_cancelled": 0,
+  "verifier_latency_median_s": 0.7508801221847534,
+  "verifier_latency_p90_s": 0.9723200798034668
+ },
+ "board_miss_by_node": {
+  "http://127.0.0.1:18081/v1": {
+   "prompt_tokens": 321834.0,
+   "prefill_compute_tokens": 10666.0,
+   "structural_new_tokens": 7249,
+   "eviction_tokens": 3417.0,
+   "best_possible_share": 0.9774759658706041
+  },
+  "http://127.0.0.1:18082/v1": {
+   "prompt_tokens": 312218.0,
+   "prefill_compute_tokens": 9882.0,
+   "structural_new_tokens": 6995,
+   "eviction_tokens": 2887.0,
+   "best_possible_share": 0.9775957824340685
+  },
+  "http://127.0.0.1:18083/v1": {
+   "prompt_tokens": 303439.0,
+   "prefill_compute_tokens": 10319.0,
+   "structural_new_tokens": 7180,
+   "eviction_tokens": 3139.0,
+   "best_possible_share": 0.9763379130566605
+  },
+  "http://127.0.0.1:18084/v1": {
+   "prompt_tokens": 312271.0,
+   "prefill_compute_tokens": 9679.0,
+   "structural_new_tokens": 7229,
+   "eviction_tokens": 2450.0,
+   "best_possible_share": 0.9768502358528329
+  }
+ },
+ "note_tokens_max": 190,
+ "note_finish_length": 0,
+ "focus_pairs": 137,
+ "cached_share_by_node": {
+  "http://127.0.0.1:18081/v1": 0.9668586911264814,
+  "http://127.0.0.1:18082/v1": 0.9683490381720464,
+  "http://127.0.0.1:18083/v1": 0.9659931650183398,
+  "http://127.0.0.1:18084/v1": 0.9690044864876982
+ },
+ "board_phase_peak_per_node": {
+  "Spark_01": 20,
+  "Spark_02": 20,
+  "Spark_03": 20,
+  "Spark_04": 20
+ },
+ "joins": 100,
+ "latency_samples": 100,
+ "checkpoint_latency_p90": 39.86996388435364,
+ "recorded_own_repeat": 0.08984053087031223,
+ "replay_own_repeat": 0.05475991676347356,
+ "answers_at_checkpoint": 0,
+ "answers_accepted": 0,
+ "answers_accepted_wrong": 0,
+ "proxies": [
+  "checkpoint_latency (sum of two first-token times)",
+  "own_repeat (recorded texts split by character share)"
+ ],
+ "decision": "FIX"
+}
