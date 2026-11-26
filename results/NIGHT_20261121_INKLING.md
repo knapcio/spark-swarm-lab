@@ -358,8 +358,10 @@ owner's direction the notes became facts only, and every statement is checked be
 public cases for code, otherwise a short checker turn on the solver's own context; tags VERIFIED / agent-checked /
 UNVERIFIED). v2: all gates pass (cached 0.966, notes within 256 tokens 1.0, posted arithmetic 80 evaluable / 0 false,
 coverage 0.90) except checkpoint latency 23.5 s: each note waited behind the other streams' replay warm-up prefill
-(note first token 21 s vs 2.5 s for the continuation). Fix in progress: a wave's warm-ups complete before its notes;
-S0 v3 with unchanged thresholds, then S1.
+(note first token 21 s vs 2.5 s for the continuation). v3 (a wave's warm-ups complete before its notes, thresholds
+unchanged): **PASS** on every gate ([collab-s0-v3](collab-s0-v3/REPORT.md)): checkpoint latency 3.1 s, cached 0.967,
+posted arithmetic 89 evaluable / 0 false, coverage 0.95, focus 0.98. Weak spot: 137 of 300 statements were dropped as
+malformed tried/checked lines (not a gate). Next: S1, the decisive replay screen.
 
 ## Incidents
 
@@ -373,4 +375,4 @@ S0 v3 with unchanged thresholds, then S1.
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md) · [coding-reserve-v2](coding-reserve-v2/REPORT.md) · [swarm-fair-hard23-v1](swarm-fair-hard23-v1/REPORT.md) · [coding-elastic-v1](coding-elastic-v1/REPORT.md) · [coding-elastic-v2](coding-elastic-v2/REPORT.md) · [collab-s0-v1](collab-s0-v1/REPORT.md) · [collab-s0-v2](collab-s0-v2/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md) · [coding-reserve-v2](coding-reserve-v2/REPORT.md) · [swarm-fair-hard23-v1](swarm-fair-hard23-v1/REPORT.md) · [coding-elastic-v1](coding-elastic-v1/REPORT.md) · [coding-elastic-v2](coding-elastic-v2/REPORT.md) · [collab-s0-v1](collab-s0-v1/REPORT.md) · [collab-s0-v2](collab-s0-v2/REPORT.md) · [collab-s0-v3](collab-s0-v3/REPORT.md)
