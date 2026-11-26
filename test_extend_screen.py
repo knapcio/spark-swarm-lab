@@ -107,6 +107,7 @@ class ReportTests(unittest.TestCase):
             r = rep.build(plan, self.run_dir(Path(d) / 'h', plan, trail))
             self.assertEqual((r['extension_rescues'], r['arms']['extension']['wrong']), (0, 1))
             self.assertEqual(r['arms']['extension']['forced_replies'], {'json': 6})
+            self.assertIn('pairing labels attempts only', r['seeds'])  # disclosed in every report
 
 
 if __name__ == '__main__':

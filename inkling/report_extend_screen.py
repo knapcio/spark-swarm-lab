@@ -23,6 +23,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import strict_verify as sv  # noqa: E402
 ARMS, ATTEMPTS = ('extension', 'fresh'), (1, 2)
+SEED_NOTE = ('pairing labels attempts only; draws are independent on this server (per-request seeds not honoured: '
+             'no deterministic inference on the launch; live probe 2026-11-26 21:06Z, identical requests with the same '
+             'seed at temperature 0.8 gave different outputs)')
 
 
 def sign_test(wins, losses):
@@ -65,7 +68,7 @@ def build(plan, run_dir):
                 elif r.get('error') or r.get('judge_error') or r.get('judge_infra'):
                     problems.append(f"attempt {item['item_id']} {arm}{k} faulted: "
                                     f"{r.get('error') or r.get('judge_error') or 'judge infra'}")
-    out = dict(study=plan['study'], run=str(run_dir), items=len(plan['items']))
+    out = dict(study=plan['study'], run=str(run_dir), items=len(plan['items']), seeds=SEED_NOTE)
     if problems:
         return dict(out, status='incomplete', problems=problems, decision='INCOMPLETE (no decision)')
     puzzles, arms = {}, {}
@@ -110,7 +113,8 @@ def main(argv=None):
     out = a.out or ROOT / 'results' / plan['study']
     out.mkdir(parents=True, exist_ok=True)
     (out / 'report.json').write_text(json.dumps(r, indent=1) + '\n')
-    print(json.dumps(dict(decision=r['decision'], extension=r.get('extension_rescues'), fresh=r.get('fresh_rescues'))))
+    print(json.dumps(dict(decision=r['decision'], extension=r.get('extension_rescues'), fresh=r.get('fresh_rescues'),
+                          seeds=SEED_NOTE)))
     return 0
 
 
