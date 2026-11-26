@@ -62,18 +62,26 @@ class SelectionTests(unittest.TestCase):
 
 
 class ReportTests(unittest.TestCase):
-    def run_dir(self, d, plan, outcomes, drained=True):
+    GOOD = {'moves': [{'i': 0, 'j': 1, 'op': '+'}]}  # 2 + 3 = 5
+    TRAILING = {'moves': [{'i': 0, 'j': 1, 'op': '+'}, {'i': 7, 'j': 8, 'op': '+'}]}  # 5, then an illegal move
+    BAD = {'moves': [{'i': 0, 'j': 2, 'op': '+'}]}  # 9
+
+    def run_dir(self, d, plan, outcomes, drained=True, complete=True, extra=()):
         run = Path(d)
         (run / 'run').mkdir(parents=True)
         (run / 'metadata.json').write_text(json.dumps(dict(plan=plan)))
-        (run / 'summary.json').write_text(json.dumps(dict(drain_confirmed=drained)))
-        recs = [dict(item=i, arm=a, attempt=k, error=None, verdict=v, verifier_solved=s, tokens_generated=10)
-                for (i, a, k), (v, s) in outcomes.items()]
+        (run / 'summary.json').write_text(json.dumps(dict(drain_confirmed=drained, complete=complete)))
+        recs = [dict(item=i, arm=a, attempt=k, error=None, verdict=v, candidate=dict(plan=self.GOOD if s is True else
+                                                                                    self.TRAILING if s == 'trail'
+                                                                                    else self.BAD),
+                     verifier_solved=bool(s), tokens_generated=10, forced_reply='json')
+                for (i, a, k), (v, s) in outcomes.items()] + list(extra)
         (run / 'run' / 'records.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in recs))
         return run
 
     def test_rule(self):
-        plan = dict(study='s', items=[dict(item_id=f'x{i}', puzzle_key=f'p{i}') for i in range(3)])
+        plan = dict(study='s', items=[dict(item_id=f'x{i}', puzzle_key=f'p{i}', numbers=[2, 3, 7], target=5)
+                                      for i in range(3)])
         base = {(f'x{i}', a, k): (False, False) for i in range(3) for a in rep.ARMS for k in rep.ATTEMPTS}
         with tempfile.TemporaryDirectory() as d:
             win = {**base, ('x0', 'extension', 2): (True, True), ('x1', 'extension', 1): (True, True),
@@ -88,6 +96,17 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(rep.build(plan, self.run_dir(Path(d) / 'c', plan, missing))['status'], 'incomplete')
             self.assertEqual(rep.build(plan, self.run_dir(Path(d) / 'e', plan, base, drained=False))['status'],
                              'incomplete')
+            # sol review: the driver's own verdict and exactly the planned records
+            self.assertIn('summary is not complete', ' '.join(rep.build(
+                plan, self.run_dir(Path(d) / 'f', plan, win, complete=False))['problems']))
+            stray = dict(item='x9', arm='fresh', attempt=1, error=None, verdict=True)
+            self.assertIn('outside the plan', ' '.join(rep.build(
+                plan, self.run_dir(Path(d) / 'g', plan, win, extra=[stray]))['problems']))
+            # strict verifier: a plan that reaches the target and then makes an illegal move is a wrong acceptance
+            trail = {**base, ('x0', 'extension', 1): (True, 'trail')}
+            r = rep.build(plan, self.run_dir(Path(d) / 'h', plan, trail))
+            self.assertEqual((r['extension_rescues'], r['arms']['extension']['wrong']), (0, 1))
+            self.assertEqual(r['arms']['extension']['forced_replies'], {'json': 6})
 
 
 if __name__ == '__main__':

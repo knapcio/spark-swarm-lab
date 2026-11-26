@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Report of the idea #1 fleet screen (EXTEND_SCREEN_PLAN.json, extend_replay.py): the frozen rule.
 
-Validation: the run embeds this plan, every planned attempt (item x arm x attempt) has exactly one record without a
-transport or judge fault, and the end-of-run drain is confirmed; otherwise INCOMPLETE (no decision).
-Per puzzle an arm rescues it if any of its attempts is accepted by the judge AND solved by the exact verifier.
+Validation: the run embeds this plan, its summary says complete (the driver's own verdict) and the end-of-run drain is
+confirmed, and the records are EXACTLY the planned attempts (item x arm x attempt), each once and without a transport
+or judge fault; otherwise INCOMPLETE (no decision).
+Per puzzle an arm rescues it if any of its attempts is accepted by the judge AND solved by the STRICT exact verifier
+(inkling/strict_verify.py: every submitted move legal, the target appeared; recomputed here from the candidate plan,
+never the driver's lenient flag). Forced-turn replies (empty / non_json / json) are reported per arm.
 STOP if the extensions rescue no more puzzles than the fresh agents (E <= F, clustered by puzzle); otherwise PASS AS A
 SCREEN only (adoption needs a fresh confirmation). Reported: wrong acceptances per arm, tokens, exact sign test over
 the discordant puzzles.
@@ -12,10 +15,13 @@ usage: report_extend_screen.py --plan EXTEND_SCREEN_PLAN.json --run runs/extend-
 """
 import argparse
 import json
+import sys
 from math import comb
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import strict_verify as sv  # noqa: E402
 ARMS, ATTEMPTS = ('extension', 'fresh'), (1, 2)
 
 
@@ -36,6 +42,8 @@ def build(plan, run_dir):
     summary = json.loads((run_dir / 'summary.json').read_text()) if (run_dir / 'summary.json').exists() else {}
     if summary.get('drain_confirmed') is not True:
         problems.append('the end-of-run drain was not confirmed')
+    if summary.get('complete') is not True:
+        problems.append('the run summary is not complete')
     path = run_dir / 'run' / 'records.jsonl'
     records = [json.loads(line) for line in path.read_text().splitlines() if line.strip()] if path.exists() else []
     by_key = {}
@@ -44,6 +52,10 @@ def build(plan, run_dir):
         if key in by_key:
             problems.append(f'attempt {key} recorded twice')
         by_key[key] = r
+    planned = {(i['item_id'], arm, k) for i in plan['items'] for arm in ARMS for k in ATTEMPTS}
+    extra = sorted(set(by_key) - planned, key=str)
+    if extra:
+        problems.append(f'records outside the plan: {extra[:3]}')
     for item in plan['items']:
         for arm in ARMS:
             for k in ATTEMPTS:
@@ -57,16 +69,24 @@ def build(plan, run_dir):
     if problems:
         return dict(out, status='incomplete', problems=problems, decision='INCOMPLETE (no decision)')
     puzzles, arms = {}, {}
+    items = {i['item_id']: i for i in plan['items']}
+
+    def solved(r):  # the strict exact verifier on the submitted plan
+        item = items[r['item']]
+        return sv.strict_solved(item['numbers'], item['target'], (r.get('candidate') or {}).get('plan') or r.get('plan'))
     for arm in ARMS:
         recs = [by_key[(i['item_id'], arm, k)] for i in plan['items'] for k in ATTEMPTS]
         accepted = [r for r in recs if r.get('verdict') is True]
-        arms[arm] = dict(attempts=len(recs), accepted=len(accepted),
-                         wrong=sum(1 for r in accepted if not r.get('verifier_solved')),
+        replies = {}
+        for r in recs:
+            replies[str(r.get('forced_reply'))] = replies.get(str(r.get('forced_reply')), 0) + 1
+        arms[arm] = dict(attempts=len(recs), accepted=len(accepted), forced_replies=replies,
+                         wrong=sum(1 for r in accepted if not solved(r)),
                          tokens=sum(r.get('tokens_generated') or 0 for r in recs),
                          judge_tokens=sum(r.get('judge_tokens') or 0 for r in recs))
     for item in plan['items']:
         puzzles[item['puzzle_key']] = {arm: any(by_key[(item['item_id'], arm, k)].get('verdict') is True
-                                                and by_key[(item['item_id'], arm, k)].get('verifier_solved')
+                                                and solved(by_key[(item['item_id'], arm, k)])
                                                 for k in ATTEMPTS) for arm in ARMS}
     e = sum(p['extension'] for p in puzzles.values())
     f = sum(p['fresh'] for p in puzzles.values())
