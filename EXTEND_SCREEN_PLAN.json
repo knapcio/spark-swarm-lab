@@ -3,7 +3,7 @@
  "study": "extend-screen-v1",
  "status": "FROZEN",
  "screen": "idea-1",
- "source_revision": "02255eadbd4a4df2061e5f4d80a6ba5e10da62e6",
+ "source_revision": "d0e723bbd00e55ede3304eed7c87fc8f66d73d04",
  "source_path": ".runtime/idea1-source",
  "driver": "extend_replay.py",
  "idea": "astra IDEAS 2026-11-26 #1: transfer a replacement's budget into deeper private reasoning",
@@ -12,7 +12,7 @@
   "swarm-fair-hard23-v1-roll12fair",
   "swarm-baseline-hard26-v1-roll12fair"
  ],
- "selection_rule": "  runs       the default-policy arithmetic runs RUNS (roll12fair, hard-v22 / v23 / v26), their base segment;\n  failure    an agent whose plan request used the whole thinking budget (finish length, 30,720 recorded ids, thinking\n             still open), whose trace has budget_forced, whose forced answer the judge REJECTED (verdict false), in a\n             case the run never solved (cases.jsonl solved false);\n  puzzle     (corpus, task_id); per puzzle its first failure in the order run (as listed), seed, task_id, slot;\n  order      the eligible puzzles sorted by sha256(SELECTION_SEED + ':' + corpus + ':' + task_id); the first N_PUZZLES\n             (12) are frozen.\nPer selected failure the driver (extend_replay.py on research/idea1-extend-v1) runs two private extensions (the same\nagent's recorded thinking ids + another 30,720 thinking tokens, then the normal forced answer) and two fresh agents (new\nseeds, full normal budget), all judged on the original task (judge seeds paired by attempt).",
+ "selection_rule": "  runs       the default-policy arithmetic runs RUNS (roll12fair, hard-v22 / v23 / v26), their base segment;\n  failure    an agent whose plan request used the whole thinking budget (finish length, 30,720 recorded ids, thinking\n             still open), whose trace has budget_forced, whose forced answer the judge REJECTED (verdict false), in a\n             case the run never solved (cases.jsonl solved false);\n  puzzle     (corpus, task_id); per puzzle its first failure in the order run (as listed), seed, task_id, slot;\n  order      the eligible puzzles sorted by sha256(SELECTION_SEED + ':' + corpus + ':' + task_id); the first N_PUZZLES\n             (12) are frozen.\nPer selected failure the driver (extend_replay.py on research/idea1-extend-v1) runs two private extensions (the same\nagent's recorded thinking ids + another 30,720 thinking tokens, then the normal forced answer) and two fresh agents (new\nseeds, full normal budget), all judged on the original task (judge wire seeds paired by attempt and stage).",
  "selection_seed": "2026112701",
  "eligible_puzzles": 21,
  "items": [
@@ -334,9 +334,9 @@
   "fresh": "a fresh agent (worker seed agent_seed + 1,000,003 k), thinking 30,720 + answer 2,048"
  },
  "attempts_per_arm": 2,
- "judge": "run_variants.judge_with_reason, unchanged; seeds paired by attempt",
+ "judge": "run_variants.judge_once (one attempt, no judge-level retry), unchanged prompt; the dispatched seed is derived from the attempt pair and judge stage only; transport retries off",
  "decision_rule": {
-  "rescue": "a puzzle is rescued by an arm if any of its attempts is accepted by the judge and solved by the exact verifier",
+  "rescue": "a puzzle is rescued by an arm if any of its attempts is accepted by the judge and solved by the strict exact verifier (every submitted move legal, target appeared)",
   "stop": "STOP if extensions rescue no more puzzles than fresh agents (E <= F)",
   "pass_": "PASS AS A SCREEN ONLY if E > F; adoption needs a fresh confirmation",
   "report": "wrong acceptances per arm, exact sign test over discordant puzzles"

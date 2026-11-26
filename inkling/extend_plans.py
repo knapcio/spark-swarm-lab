@@ -12,10 +12,10 @@ Selection rule (mechanical, frozen here; reads recorded runs only, no model call
              (12) are frozen.
 Per selected failure the driver (extend_replay.py on research/idea1-extend-v1) runs two private extensions (the same
 agent's recorded thinking ids + another 30,720 thinking tokens, then the normal forced answer) and two fresh agents (new
-seeds, full normal budget), all judged on the original task (judge seeds paired by attempt).
+seeds, full normal budget), all judged on the original task (judge wire seeds paired by attempt and stage).
 
 Pre-registered rule (report: inkling/report_extend_screen.py): per puzzle, an arm rescues it if any of its two
-attempts is accepted by the judge AND solves the puzzle (exact verifier); STOP if the extensions rescue no more
+attempts is accepted by the judge AND solves the puzzle (strict exact verifier); STOP if the extensions rescue no more
 puzzles than the fresh agents (E <= F, clustered by puzzle); otherwise PASS AS A SCREEN only (adoption needs a fresh
 confirmation). Wrong acceptances (accepted, not solved) are reported per arm.
 
@@ -124,9 +124,11 @@ def make(root, revision):
         arms=dict(extension='the same agent\'s recorded 30,720 thinking ids + another 30,720 thinking tokens, then '
                             'forced72\'s answer path within the 2,048 reserve (a replacement\'s 32,768 budget)',
                   fresh='a fresh agent (worker seed agent_seed + 1,000,003 k), thinking 30,720 + answer 2,048'),
-        attempts_per_arm=2, judge='run_variants.judge_with_reason, unchanged; seeds paired by attempt',
+        attempts_per_arm=2,
+        judge=('run_variants.judge_once (one attempt, no judge-level retry), unchanged prompt; the dispatched seed is '
+               'derived from the attempt pair and judge stage only; transport retries off'),
         decision_rule=dict(rescue='a puzzle is rescued by an arm if any of its attempts is accepted by the judge and '
-                                  'solved by the exact verifier',
+                                  'solved by the strict exact verifier (every submitted move legal, target appeared)',
                            stop='STOP if extensions rescue no more puzzles than fresh agents (E <= F)',
                            pass_='PASS AS A SCREEN ONLY if E > F; adoption needs a fresh confirmation',
                            report='wrong acceptances per arm, exact sign test over discordant puzzles'),

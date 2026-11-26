@@ -73,7 +73,8 @@ def build(plan, run_dir):
 
     def solved(r):  # the strict exact verifier on the submitted plan
         item = items[r['item']]
-        return sv.strict_solved(item['numbers'], item['target'], (r.get('candidate') or {}).get('plan') or r.get('plan'))
+        submitted = (r.get('candidate') or {}).get('plan') or r.get('plan')
+        return sv.strict_solved(item['numbers'], item['target'], submitted)
     for arm in ARMS:
         recs = [by_key[(i['item_id'], arm, k)] for i in plan['items'] for k in ATTEMPTS]
         accepted = [r for r in recs if r.get('verdict') is True]
