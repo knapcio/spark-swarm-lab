@@ -3,7 +3,7 @@
  "study": "fork-screen-v1",
  "status": "FROZEN",
  "screen": "idea-4",
- "source_revision": "dff075c14bbf0862b0d2ab8737463da5bb27f0c9",
+ "source_revision": "841d4058e9bc72b386f34b0aa4e6d8f927ced241",
  "source_path": ".runtime/idea4-source",
  "driver": "fork_replay.py",
  "idea": "astra IDEAS 2026-11-26 #4: fork unfinished private prefixes to amortize repeated reasoning",
@@ -341,6 +341,7 @@
   "chat_template": "thinkingmachines/Inkling-2-Mini snapshot ed40e7da chat_template.jinja"
  },
  "execution": "fork_replay.py --plan PLAN --run --output runs/fork-screen-v1 from a clean worktree of the source revision: fleet lease, admission, <= per_node per node, fenced drain",
- "estimate": "12 puzzles: 48 fresh attempts, 24 stems, 48 continuations (<= 2.95M generated tokens) on 4 nodes at <= 20 in flight per node: 60-90 fleet min",
+ "estimate": "12 puzzles: 48 fresh attempts, 24 stems, 48 continuations (<= 2.95M generated agent tokens; judge tokens not included) on 4 nodes at <= 20 in flight per node: 60-90 fleet min",
+ "prompt_rule": "the owner's generic-only prompt rule applies to mechanisms this screen adds; forking adds no prompt (a continuation is the same agent's own token ids). The production solver and judge prompts (forced72 system prompt and task text, run_judge prompts) are the task harness and stay unchanged in both arms (coordinator decision 2026-11-27)",
  "report": "inkling/report_fork_screen.py"
 }

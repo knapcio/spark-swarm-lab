@@ -125,8 +125,12 @@ def make(root, revision):
         judge_code_sha256=collab_plans.judge_hashes(ROOT), serving=collab_plans.serving(ROOT),
         execution='fork_replay.py --plan PLAN --run --output runs/fork-screen-v1 from a clean worktree of the source '
                   'revision: fleet lease, admission, <= per_node per node, fenced drain',
-        estimate='12 puzzles: 48 fresh attempts, 24 stems, 48 continuations (<= 2.95M generated tokens) on 4 nodes at '
-                 '<= 20 in flight per node: 60-90 fleet min',
+        estimate='12 puzzles: 48 fresh attempts, 24 stems, 48 continuations (<= 2.95M generated agent tokens; judge '
+                 'tokens not included) on 4 nodes at <= 20 in flight per node: 60-90 fleet min',
+        prompt_rule=('the owner\'s generic-only prompt rule applies to mechanisms this screen adds; forking adds no '
+                     'prompt (a continuation is the same agent\'s own token ids). The production solver and judge '
+                     'prompts (forced72 system prompt and task text, run_judge prompts) are the task harness and stay '
+                     'unchanged in both arms (coordinator decision 2026-11-27)'),
         report='inkling/report_fork_screen.py')
 
 
