@@ -1,0 +1,87 @@
+{
+ "protocol": "coding-agents-v1",
+ "status": "FROZEN",
+ "source_revision": "2b0195eb115a9e4edc35566e37be2a6c43db33b8",
+ "source_path": ".runtime/coding-reserve-source",
+ "limits": {
+  "per_agent_completion_tokens": 32768,
+  "idle_timeout_seconds": 120,
+  "agent_wall_deadline_seconds": 7200,
+  "sandbox": "CPU-only Docker python@c61cffc3, no network, 256 MB, 1 CPU, 10 s per grade"
+ },
+ "scheduling": {
+  "concurrent_agents_per_node": 20,
+  "placement": "agent j of case c on replica/grader host (c+j)%4",
+  "concurrency_note": "each arm alone on the fleet: 20 client requests per node <= 25"
+ },
+ "runner": "run_coding_earlystop.py",
+ "study": "coding-elastic-v2-p",
+ "agent_variants": [
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl"
+ ],
+ "agent_seed_offset": 14700,
+ "matrix": {
+  "tasks": "datasets/coding-hard-v1/tasks.json",
+  "tests": "datasets/coding-hard-v1/hidden-tests.json",
+  "tasks_sha256": "01cb39b1b18d7e6565576fa8b96a30681b3fe2a31796399bfd8f0f6761033da0",
+  "tests_sha256": "57cf4420c5db07ae2afab10b86c93f07fc24da6318386856cd10399b11effa13",
+  "split": "evaluation",
+  "tasks_count": 24,
+  "seeds": [
+   40,
+   41,
+   42
+  ]
+ },
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@ed40e7da625f594fc9c4990f5f66be24873c22d7",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "Inkling-2-Mini-1x-DGX-Spark v2.9.2 (a29380b; scripts/launch.sh sha 9428eb69...) `scripts/launch.sh up` with release defaults (SPEC=dflash2, drafter incoai/Inkling-2-Mini-DFlash2@4f9088ea, MEM_FRACTION 0.88, CTX 262144, memguard 3.5 GiB) and only the swarm wiring env NAME=swarm-recipe PORT=30000 HOST=127.0.0.1 SERVED=inkling; the swarm serving default since 2026-11-25 (coding-v29-r2-v1: -20 % wall, -20 % Wh at equal quality)",
+  "container": "swarm-recipe",
+  "shim_container": "swarm-inkling-shim",
+  "adapter": "inkling/shim.py (unchanged; upstream 127.0.0.1:30000)",
+  "temperature": "0.8 (harness constant)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "mem_fraction": "0.88"
+ },
+ "early_stop": "first_feedback_pass_in_time",
+ "selection": "the first proposal in TIME order that passes ALL feedback cases ends the case: other agents of the case are terminated, queued ones never start; solved if it passes ALL holdout cases",
+ "resume_rule": "As in earlier coding plans: on an operational fault the runner stops admissions; the same arm is continued only for unfinished cases with the same seeds and documented as an amendment.",
+ "frozen_note": "Replication of coding-elastic-v1 (an adoption needs its replication). Frozen before any call with fresh seeds 40-42 on coding-hard-v1.",
+ "study_group": "coding-elastic-v2",
+ "question": "Retest after the failed code_reserve replication (astra review 2026-11-26): code_elastic keeps the code_xl first-call cap (30,720) and only continues length-cut answers in 2,048-token steps (total <= 40,960, all charged). P = code_xl. Both R2.",
+ "arms_order": [
+  "S coding-roll-v1-s (default)",
+  "R4 coding-roll-v1-r4",
+  "R2 coding-roll-v1-r2"
+ ],
+ "execution": "Each arm alone on the fleet via inkling/coding_arms.py (fresh admission with shim sha and mem fraction 0.75, prefix-cache flush, server counters, idle wait, GPU energy), 20 agents per node, in the order S, R4, R2.",
+ "primary_outcomes": {
+  "tokens": "Server-counted generated tokens per case, R4 and R2 vs S.",
+  "accuracy": "Solved/72 per arm, paired two-sided exact sign tests vs S (run-to-run noise of a few cases applies).",
+  "wall": "Arm wall time and median / p90 case stop time."
+ },
+ "decision_rule": "A adopted if A unanswered <= P, A solved >= P - 1, A wrong <= P + 1, A server tokens <= 1.00 x P (report_reserve_coding.py).",
+ "secondary_outcomes": "GPU energy per solved case; agents started per case; cases with replacement; never-started agents; wrong answers (passed public tests, failed holdout).",
+ "exclusions": "None; all 72 cases of each arm count.",
+ "report": "inkling/report_reserve_coding.py --variant code_elastic (study/plans repointed by .runtime/report_rep.py) -> results/coding-elastic-v2/",
+ "rolling": {
+  "width": 2
+ },
+ "arm": "R2: early stop, 2 in flight, every agent ending without a passing proposal is replaced, up to 8",
+ "code_sha256": {
+  "run_coding_earlystop.py": "e761c523e9f273583c3eb02d6d5076aa468d86f6df5480652ca8fbc0baff97ea",
+  "inkling/coding_arms.py": "3d4bd09954966b91587dcd8678b90271d681db5a83cb6c86ea2aee0a59eb678e",
+  "inkling/admit.py": "d6ff34d23f80919eddce2b0866b86350a7ed1a9382aa52575a121e88bbb0858b",
+  "inkling/report_reserve_coding.py": "c1b5bdc355111e98cec17e5c6b5ed28e4c94be40dbc6defa9fb6adc7e70cbb30",
+  ".runtime/coding-reserve-source/coding_forced.py": "423cce289ce5f092f71d7ac566ff6c945ac32022bed5c54722814c346a90d615"
+ }
+}
