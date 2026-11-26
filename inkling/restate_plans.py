@@ -13,7 +13,9 @@ Selection rule (mechanical, frozen here; reads recorded runs only, no model call
               puzzle_key) mod 10^7.
 The driver (restate_replay.py on research/idea2-restate-v1) runs per puzzle two fresh workers on the original task text
 and two workers on independent restatements (a separate restater per worker, generic instructions, tokens charged);
-every candidate is judged on the untouched original task (judge pair seeds original k <-> restated k).
+every candidate is judged on the untouched original task (original k and restated k share a judge pair label).
+Seeds: pairing labels attempts only; draws are independent on this server (seeds not honoured; probe 2026-11-26
+21:06Z: identical requests with the same seed gave different outputs).
 
 Pre-registered rule (report: inkling/report_restate_screen.py): an arm rescues a puzzle if any of its candidates is
 accepted by the judge AND solved by the strict exact verifier. STOP if the restated arm rescues no more puzzles than the
@@ -38,6 +40,9 @@ N_PUZZLES, SELECTION_SEED = 12, '2026112702'
 SEED_OFFSET = 70_000_000
 PER_NODE = 12
 SOURCE_PATH = '.runtime/idea2-source'
+SEED_NOTE = ('pairing labels attempts only; draws are independent on this server (per-request seeds not honoured: '
+             'no deterministic inference on the launch; live probe 2026-11-26 21:06Z, identical requests with the same '
+             'seed at temperature 0.8 gave different outputs)')
 RESTATE_SYSTEM = ('Rewrite the task you are given completely and precisely in your own words. Keep every requirement, '
                   'constraint, given value and the required output format. Do not add assumptions, examples, hints or '
                   'advice, and do not solve the task. Return only the rewritten task.')
@@ -104,7 +109,7 @@ def make(root, revision):
                            'seed_base + k, unchanged system prompt, full normal budget) solves the restatement'),
         workers_per_arm=2,
         judge=('run_variants.judge_once (one attempt, no judge-level retry), unchanged prompt, on the ORIGINAL numbers '
-               'and target; the dispatched seed is derived from the pair (original k <-> restated k) and the judge '
+               'and target; the seed sent is derived from the pair (original k <-> restated k) and the judge '
                'stage only; transport retries off'),
         decision_rule=dict(rescue='an arm rescues a puzzle if any of its candidates is accepted by the judge and '
                                   'solved by the strict exact verifier (every submitted move legal, target appeared)',
@@ -112,7 +117,7 @@ def make(root, revision):
                            pass_='PASS AS A SCREEN ONLY if R > O; adoption needs a fresh confirmation',
                            report='wrong acceptances, empty restatements, generated tokens per arm (restatement '
                                   'included), exact sign test over discordant puzzles'),
-        fleet=collab_plans.FLEET, per_node=PER_NODE, nodes=4,
+        seeds=SEED_NOTE, fleet=collab_plans.FLEET, per_node=PER_NODE, nodes=4,
         judge_code_sha256=collab_plans.judge_hashes(ROOT), serving=collab_plans.serving(ROOT),
         execution='restate_replay.py --plan PLAN --run --output runs/restate-screen-v1 from a clean worktree of the '
                   'source revision: fleet lease, admission, <= per_node per node, fenced drain',

@@ -3,7 +3,7 @@
  "study": "restate-screen-v1",
  "status": "FROZEN",
  "screen": "idea-2",
- "source_revision": "342cc209ab31efe8aec70956367824b38bf325da",
+ "source_revision": "774eb6364bbc65be1bad318767a1db606987f651",
  "source_path": ".runtime/idea2-source",
  "driver": "restate_replay.py",
  "idea": "astra IDEAS 2026-11-26 #2: independent, whole-task re-expression",
@@ -12,7 +12,7 @@
   "swarm-fair-hard23-v1-roll12fair",
   "swarm-baseline-hard26-v1-roll12fair"
  ],
- "selection_rule": "  runs        the default-policy arithmetic runs RUNS (roll12fair, hard-v22 / v23 / v26), cases.jsonl of each run;\n  abstention  a recorded case that ended with no accepted answer (cases.jsonl answered false);\n  puzzle      (corpus, task_id); per puzzle its first abstention in the order run (as listed), seed, task_id;\n  pins        the puzzle text and prompt_ids_sha256 of that case's first started agent (lowest slot with a plan request;\n              variant xl_forced_original), so the driver can prove it sends the recorded task;\n  order       the eligible puzzles sorted by sha256(SELECTION_SEED + ':' + corpus + ':' + task_id); the first\n              N_PUZZLES (12) are frozen; worker seeds seed_base = SEED_OFFSET + sha256(SELECTION_SEED + ':' +\n              puzzle_key) mod 10^7.\nThe driver (restate_replay.py on research/idea2-restate-v1) runs per puzzle two fresh workers on the original task text\nand two workers on independent restatements (a separate restater per worker, generic instructions, tokens charged);\nevery candidate is judged on the untouched original task (judge pair seeds original k <-> restated k).",
+ "selection_rule": "  runs        the default-policy arithmetic runs RUNS (roll12fair, hard-v22 / v23 / v26), cases.jsonl of each run;\n  abstention  a recorded case that ended with no accepted answer (cases.jsonl answered false);\n  puzzle      (corpus, task_id); per puzzle its first abstention in the order run (as listed), seed, task_id;\n  pins        the puzzle text and prompt_ids_sha256 of that case's first started agent (lowest slot with a plan request;\n              variant xl_forced_original), so the driver can prove it sends the recorded task;\n  order       the eligible puzzles sorted by sha256(SELECTION_SEED + ':' + corpus + ':' + task_id); the first\n              N_PUZZLES (12) are frozen; worker seeds seed_base = SEED_OFFSET + sha256(SELECTION_SEED + ':' +\n              puzzle_key) mod 10^7.\nThe driver (restate_replay.py on research/idea2-restate-v1) runs per puzzle two fresh workers on the original task text\nand two workers on independent restatements (a separate restater per worker, generic instructions, tokens charged);\nevery candidate is judged on the untouched original task (original k and restated k share a judge pair label).\nSeeds: pairing labels attempts only; draws are independent on this server (seeds not honoured; probe 2026-11-26\n21:06Z: identical requests with the same seed gave different outputs).",
  "selection_seed": "2026112702",
  "eligible_puzzles": 21,
  "items": [
@@ -276,13 +276,14 @@
   "restated": "per worker k a separate restater (seed seed_base + 1,000,003 + k; thinking 6,144, forced answer within 8,192; tokens charged) rewrites the complete task; a fresh worker (seed seed_base + k, unchanged system prompt, full normal budget) solves the restatement"
  },
  "workers_per_arm": 2,
- "judge": "run_variants.judge_once (one attempt, no judge-level retry), unchanged prompt, on the ORIGINAL numbers and target; the dispatched seed is derived from the pair (original k <-> restated k) and the judge stage only; transport retries off",
+ "judge": "run_variants.judge_once (one attempt, no judge-level retry), unchanged prompt, on the ORIGINAL numbers and target; the seed sent is derived from the pair (original k <-> restated k) and the judge stage only; transport retries off",
  "decision_rule": {
   "rescue": "an arm rescues a puzzle if any of its candidates is accepted by the judge and solved by the strict exact verifier (every submitted move legal, target appeared)",
   "stop": "STOP if the restated arm rescues no more puzzles than the original arm (R <= O)",
   "pass_": "PASS AS A SCREEN ONLY if R > O; adoption needs a fresh confirmation",
   "report": "wrong acceptances, empty restatements, generated tokens per arm (restatement included), exact sign test over discordant puzzles"
  },
+ "seeds": "pairing labels attempts only; draws are independent on this server (per-request seeds not honoured: no deterministic inference on the launch; live probe 2026-11-26 21:06Z, identical requests with the same seed at temperature 0.8 gave different outputs)",
  "fleet": {
   "endpoints": [
    "http://127.0.0.1:18081/v1",

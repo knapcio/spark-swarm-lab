@@ -100,6 +100,7 @@ class ReportTests(unittest.TestCase):
             r = rep.build(self.PLAN, self.run_dir(d / 'b', win))
             self.assertTrue(r['decision'].startswith('PASS'))
             self.assertEqual(r['restated_only'], 1)
+            self.assertIn('pairing labels attempts only', r['seeds'])  # disclosed in every report
             trail = {**tie, ('z1', 'restated', 0): (True, TRAILING), ('z2', 'restated', 1): (False, None)}
             r = rep.build(self.PLAN, self.run_dir(d / 'c', trail))
             self.assertEqual((r['restated_rescues'], r['arms']['restated']['wrong'], r['decision']), (1, 1, 'STOP'))
