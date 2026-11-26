@@ -1,7 +1,7 @@
 {
  "protocol": "collab-replay-screen-v3",
  "screen": "s0",
- "study": "collab-s0-v2-dev",
+ "study": "collab-s0-v3-dev",
  "status": "FROZEN",
  "nodes": 2,
  "fleet": {
@@ -9,7 +9,7 @@
   "endpoints": "given at launch (--dev --endpoint/--host)"
  },
  "per_node": 20,
- "source_revision": "1a91212d8af87078b8e9d80b2538a3619b4a2f93",
+ "source_revision": "e0576ea71704b6394fae7f054cd08a0c458506f4",
  "source_path": ".runtime/collab-source",
  "driver": "collab_replay.py",
  "judge_code_sha256": {
@@ -88,11 +88,13 @@
  "continuation_tokens": 2048,
  "answer_at_once_tokens": 512,
  "phases": [
+  "warm",
   "note",
   "board"
  ],
  "wave_groups": 20,
- "amends": "collab-s0-v1 (STOP; results/collab-s0-v1 kept as is)",
+ "warm_barrier": true,
+ "amends": "collab-s0-v2 (FIX on checkpoint_latency only; results/collab-s0-v2 kept as is), which amended collab-s0-v1 (STOP; results/collab-s0-v1 kept as is)",
  "amendments": [
   "notes: facts only (focus + at most one computed / tried / checked statement), every statement checked before posting (protocol_constants.verifier); owner 2026-11-26 after collab-s0-v1 STOP",
   "note call max_tokens 200 (note_within_256 holds by construction; a note cut by the cap is unparseable and counts against reply_parse)",
@@ -101,6 +103,7 @@
   "waves of 20 whole groups (each group on distinct nodes: <= 20 streams per node), note and board phases per wave, board-phase barrier per wave; per_node stays 20",
   "arith_results_correct: over the POSTED statements (exact_claims.py, the verifier's implementation; whole expressions and chains), unparseable ones reported apart; collab-s0-v1's regex substring check was a checker artifact (astra review: 12 flagged equations correct, one real error missed)",
   "reported, not gated: statements made / dropped / UNVERIFIED / agent-checked / VERIFIED and drop rate by family, drops by reason (checker without a verdict apart), prefilter accuracy, schema violations, checker tokens (new and cached), latency, board-phase prefill split into new text and eviction per node",
+  "collab-s0-v3 (after collab-s0-v2 FIX, checkpoint_latency 23.5 s, every other gate met): warm-ups of a wave complete before its notes: the latency proxy measures cached-prefix notes, not replay prefill queueing (v2: note first-token median 21.0 s behind the other streams' warm-up prefill on the node, continuation 2.5 s); thresholds, on_fail actions, waves, per_node and protocol unchanged",
   "review round (sol + collab-s0-v2-dev): the checker is a turn on the solver's own cached note sequence (dev: 603K fresh excerpt prompt tokens evicted the streams' prefixes, cached_share 0.385), its verdict the first word (dev: 32 \"SUPPORTEDThe...\" replies lost); a new gate arith_coverage >= 0.75 (stricter; no limit loosened); the note schema enforced before cleaning; budgeted boards reserve compact rejection lines"
  ],
  "exact_claims_sha256": "476f810eff530545283e3f2c7b06edd1a5a25cc6ff1d418bdacb7a10a62b36c9",

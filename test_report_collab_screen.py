@@ -573,7 +573,9 @@ class S0V2PlanTests(unittest.TestCase):
         s0 = json.loads((self.ROOT / 'COLLAB_S0_PLAN.json').read_text())
         s1 = json.loads((self.ROOT / 'COLLAB_S1_PLAN.json').read_text())
         dev = json.loads((self.ROOT / 'COLLAB_S0_DEV_PLAN.json').read_text())
-        self.assertEqual((s0['study'], s0['per_node'], s0['wave_groups'], s0['nodes']), ('collab-s0-v2', 20, 20, 4))
+        self.assertEqual((s0['study'], s0['per_node'], s0['wave_groups'], s0['nodes']), ('collab-s0-v3', 20, 20, 4))
+        self.assertTrue(s0['warm_barrier'])
+        self.assertIn('warm-ups of a wave complete before its notes', ' '.join(s0['amendments']))
         self.assertEqual(s0['protocol_constants']['note_max_tokens'], 200)
         self.assertLessEqual(s0['protocol_constants']['note_max_tokens'], 256)  # note_within_256 by construction
         self.assertEqual(s0['protocol_constants']['board_share'], 0.03)
