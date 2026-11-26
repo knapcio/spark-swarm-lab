@@ -32,6 +32,12 @@ novelty is the share of them absent from every text another agent of the case ha
 reported).
 
 S0: the plan's checks; PASS if all hold, else the failed checks' actions (STOP if any says stop, else FIX).
+Arithmetic statements are checked with exact_claims.py (whole expressions with precedence, parentheses and powers,
+chained equalities, exact rationals), the SAME implementation as the workers' pre-posting verifier: the plan pins its
+sha256 (exact_claims_sha256) and the report refuses a plan or a worker revision whose copy differs. Facts-only notes
+(collab-s0-v2): arith_results_correct is over the POSTED statements of arithmetic checkpoints that contain at least one
+evaluable equation; unparseable ones are reported apart. Old-format notes (collab-s0-v1): over the result sentences.
+A dev plan (plan.dev, a 2-node development fleet) gets the checks computed but never a decision.
 
 usage: report_collab_screen.py --plan PLAN --runs DIR [DIR ...] [--out DIR]
 """
@@ -49,6 +55,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
+import exact_claims  # noqa: E402
 from report_round3_hard17 import sign_test  # noqa: E402
 
 NGRAM = 5
@@ -56,7 +63,6 @@ MIN_GRAMS = 20
 NOVELTY_MARGIN = Fraction(2, 100)
 BOUNDARIES = (8192, 16384, 24576, 30720)
 WORD = re.compile(r"[a-z0-9]+(?:'[a-z]+)?")
-EQUATION = re.compile(r'(-?\d+(?:\.\d+)?)\s*([+\-*/x×÷])\s*(-?\d+(?:\.\d+)?)\s*=\s*(-?\d+(?:\.\d+)?)')
 
 
 def read_jsonl(path, torn):
@@ -93,7 +99,7 @@ def read_dir(plan, d, problems, torn):
     if meta.get('plan') != plan:
         problems.append(f'{d}: embedded plan differs from the plan file')
         return None
-    if meta.get('bypass'):
+    if [b for b in meta.get('bypass') or [] if not (b == 'dev' and plan.get('dev'))]:
         problems.append(f"{d}: run bypassed the freeze checks ({', '.join(meta['bypass'])})")
         return None
     summary = json.loads((d / 'summary.json').read_text()) if (d / 'summary.json').exists() else None
@@ -301,6 +307,9 @@ def arm_summary(plan, jobs, records, arm):
                 generated_tokens=sum(r['generated_tokens'] for r in rows),
                 retry_tokens=sum(r.get('retry_tokens') or 0 for r in rows),
                 cancelled_tokens=sum(r.get('cancelled_tokens') or 0 for r in rows),
+                verifier_calls=sum(r.get('verifier_calls') or 0 for r in rows),  # checker compute, cancelled included
+                verifier_prompt_tokens=sum(r.get('verifier_prompt_tokens') or 0 for r in rows),
+                verifier_completion_tokens=sum(r.get('verifier_completion_tokens') or 0 for r in rows),
                 wall_s=sum(r['wall_s'] for r in rows), checkpoints=sum(r['checkpoints'] for r in rows),
                 pieces_counted=len(nov), novelty=float(mean) if mean is not None else None,
                 novelty_exact=str(mean) if mean is not None else None,
@@ -372,11 +381,70 @@ def s1_decision(plan, jobs, records, pooled):
 
 # ---------------------------------------------------------------- s0
 
-def equation_ok(m):
-    a, op, b, c = float(m.group(1)), m.group(2), float(m.group(3)), float(m.group(4))
-    value = {'+': a + b, '-': a - b, '*': a * b, 'x': a * b, '×': a * b,
-             '/': a / b if b else None, '÷': a / b if b else None}[op]
-    return value is not None and abs(value - c) < 1e-9
+def statements(rec):
+    """(text, tag) of the arithmetic-relevant statements of one checkpoint's note: the POSTED statements of a
+    facts-only note (tag VERIFIED / agent-checked / UNVERIFIED), else the result sentences of an old-format note."""
+    note = rec.get('note') or {}
+    if note.get('kind') != 'note':
+        return []
+    if 'claims' in note:
+        return [(x['text'], x['tag']) for x in note['claims'] if x.get('tag') != 'drop']
+    return [(x, None) for x in (note.get('note') or {}).get('results') or []]
+
+
+def claim_counts(recs):
+    """Statements made / dropped / UNVERIFIED / agent-checked / VERIFIED (all and by family), drops by reason (a
+    checker reply without a verdict counted apart), the prefilter accuracy (share of the evaluable "E = V" statements
+    the solvers MADE, before any filtering, that hold), schema violations, checker tokens (all and new: only the
+    checker turn itself; the rest is the note sequence served from cache) and latency."""
+    def counts(rs):
+        claims = [x for r in rs for x in ((r.get('note') or {}).get('claims') or [])]
+        tags = Counter(x.get('tag') for x in claims)
+        status = [exact_claims.check_claim(x['text'])[0] for x in claims]
+        evaluable = [x for x in status if x in (exact_claims.TRUE, exact_claims.FALSE)]
+        return dict(claims_made=len(claims), claims_dropped=tags.get('drop', 0),
+                    drop_rate=float(ratio(tags.get('drop', 0), len(claims))) if claims else None,
+                    claims_unverified=tags.get('UNVERIFIED', 0), claims_agent_checked=tags.get('agent-checked', 0),
+                    claims_verified=tags.get('VERIFIED', 0),
+                    drops_by_reason=dict(Counter(x.get('mechanical') or 'unknown' for x in claims
+                                                 if x.get('tag') == 'drop')),
+                    checker_no_verdict=sum(1 for x in claims if x.get('mechanical') == 'checker gave no verdict'),
+                    prefilter_evaluable=len(evaluable),
+                    prefilter_accuracy=(float(ratio(sum(x == exact_claims.TRUE for x in evaluable), len(evaluable)))
+                                        if evaluable else None),
+                    schema_violations=dict(Counter((r.get('note') or {}).get('note_violation') for r in rs
+                                                   if (r.get('note') or {}).get('note_violation'))))
+    checks = [v for r in recs for v in r.get('verifications') or []]
+    lat = [v['t1'] - v['t0'] for v in checks if v.get('t1') is not None and v.get('t0') is not None]
+    return dict(counts(recs), by_family={f: counts([r for r in recs if r.get('family') == f])
+                                         for f in sorted({r.get('family') for r in recs})},
+                verifier_calls=len(checks), verifier_prompt_tokens=sum(v.get('prompt_tokens') or 0 for v in checks),
+                verifier_new_prompt_tokens=sum(v.get('new_prompt_tokens') or 0 for v in checks),
+                verifier_completion_tokens=sum(v.get('completion_tokens') or 0 for v in checks),
+                verifier_cancelled=sum(1 for v in checks if v.get('cancelled')),
+                verifier_latency_median_s=statistics.median(lat) if lat else None,
+                verifier_latency_p90_s=sorted(lat)[int(0.9 * (len(lat) - 1))] if lat else None)
+
+
+def board_miss(recs, board):
+    """Board-phase prefill per node split into the structurally new tokens (each continuation's appended board turn,
+    read.appended_tokens; runs without it: reply + board turn, board_new_tokens) and the rest (recomputed cached
+    prefix: eviction)."""
+    out = {}
+    for node, v in (board.get('per_node') or {}).items():
+        if 'error' in v:
+            continue
+        mine = [r for r in recs if r.get('endpoint') == node and r.get('continuation')]
+        turn = [((r.get('read') or {}).get('appended_tokens')) for r in mine]
+        # the appended board turn is new text; the note reply was generated (and cached) by the note call
+        new = sum(turn) if mine and all(isinstance(x, int) for x in turn) else sum(
+            r.get('board_new_tokens') or 0 for r in mine)
+        computed = v.get('prefill_compute_tokens') or 0
+        prompt = v.get('prompt_tokens') or 0
+        out[node] = dict(prompt_tokens=prompt, prefill_compute_tokens=computed, structural_new_tokens=new,
+                         eviction_tokens=max(0, computed - new),
+                         best_possible_share=float(1 - Fraction(round(new), round(prompt))) if prompt else None)
+    return out
 
 
 def ratio(a, b):
@@ -423,11 +491,14 @@ def s0_checks(plan, recs, summary):
     values['reply_parse'] = ratio(len(parsed), len(notes))
     real = [n for n in notes if n['kind'] == 'note']
     values['note_within_256'] = ratio(sum(n['tokens'] <= 256 for n in real), len(real))
-    sentences = [s for r in recs if r['family'] == 'arith' and r.get('note') and r['note']['kind'] == 'note'
-                 for s in r['note']['note']['results']]
-    checkable = [s for s in sentences if EQUATION.search(s)]
-    values['arith_results_correct'] = ratio(sum(all(equation_ok(m) for m in EQUATION.finditer(s)) for s in checkable),
-                                            len(checkable))
+    sentences = [t for r in recs if r['family'] == 'arith' for t, _ in statements(r)]
+    status = [exact_claims.check_claim(t)[0] for t in sentences]
+    checkable = [x for x in status if x in (exact_claims.TRUE, exact_claims.FALSE)]
+    values['arith_results_correct'] = ratio(sum(x == exact_claims.TRUE for x in checkable), len(checkable))
+    arith = [r for r in recs if r['family'] == 'arith']
+    covered = [any(exact_claims.check_claim(t)[0] in (exact_claims.TRUE, exact_claims.FALSE) for t, _ in statements(r))
+               for r in arith]
+    values['arith_coverage'] = ratio(sum(covered), len(covered))
     pairs, by_group = [], defaultdict(list)
     for r in recs:
         if r.get('note') and r['note']['kind'] == 'note' and r['note']['note']['focus']:
@@ -463,6 +534,7 @@ def s0_checks(plan, recs, summary):
                   cached_share=lambda v: v >= Fraction(95, 100), checkpoint_latency=lambda v: v <= 5.0,
                   reply_parse=lambda v: v >= Fraction(9, 10), note_within_256=lambda v: v >= Fraction(9, 10),
                   arith_results_correct=lambda v: v >= Fraction(9, 10), focus_distinct=lambda v: v >= Fraction(3, 4),
+                  arith_coverage=lambda v: v >= Fraction(3, 4),
                   answer_at_once=lambda v: v <= Fraction(1, 5), own_repeat=lambda v: v <= Fraction(1, 10))
     checks = []
     for spec in plan['checks']:
@@ -481,7 +553,12 @@ def s0_checks(plan, recs, summary):
                  accepted_at_checkpoint_no_continuation=len(accepted), continuations=len(conts),
                  continuations_expected=expected_conts, closes=len(closes), closes_located=len(located),
                  board_requests_sent=dict(sent), board_counters_reconciled=reconciled,
-                 result_sentences=len(sentences), result_sentences_checkable=len(checkable), focus_pairs=len(pairs),
+                 result_sentences=len(sentences), result_sentences_checkable=len(checkable),
+                 result_sentences_false=sum(x == exact_claims.FALSE for x in status),
+                 result_sentences_unsupported=sum(x == exact_claims.UNPARSEABLE for x in status),
+                 claims=claim_counts(recs), board_miss_by_node=board_miss(recs, board),
+                 note_tokens_max=max((n['tokens'] for n in real), default=None),
+                 note_finish_length=sum(n.get('finish_reason') == 'length' for n in notes), focus_pairs=len(pairs),
                  cached_share_by_node={k: (float(v) if v is not None else None) for k, v in shares.items()},
                  board_phase_peak_per_node=board.get('peak_per_node'), joins=len(joins),
                  latency_samples=len(lat), checkpoint_latency_p90=sorted(lat)[int(0.9 * (len(lat) - 1))] if lat else None,
@@ -503,6 +580,12 @@ def s0_checks(plan, recs, summary):
 
 def build(plan, run_dirs):
     out = dict(study=plan['study'], screen=plan['screen'], runs=[str(d) for d in run_dirs])
+    dev_runs = [str(d) for d in run_dirs if 'dev' in (_meta(d).get('bypass') or []) or _meta(d).get('dev')]
+    if plan.get('dev') or dev_runs:  # before any screen branching: a dev plan or a dev run never decides
+        if plan['screen'] != 's0' or not plan.get('dev'):
+            why = 'dev plans are S0 only' if plan.get('dev') else f'dev runs {dev_runs} under a non-dev plan'
+            out.update(status='incomplete', problems=[why], decision=f'incomplete - {why} (never a decision)')
+            return out
     if plan['screen'] == 's1':
         extension_ids = {c['case_id'] for c in plan['cases'] if c['cohort'] == 'extension'}
         present = set()
@@ -542,12 +625,44 @@ def build(plan, run_dirs):
             problems.append('S0 run has no summary or was aborted' + (
                 f": {got['summary']['aborted']}" if got['summary'] and got['summary'].get('aborted') else ''))
     out['torn_lines'] = torn
+    pin = plan.get('exact_claims_sha256')
+    if pin and pin != exact_claims_sha256():
+        problems.append('this report\'s exact_claims.py differs from the plan pin')
+    if pin and worker_exact_claims_sha256(plan.get('source_revision')) != pin:
+        problems.append('the worker revision\'s exact_claims.py differs from the plan pin (not one implementation)')
     if problems:
         out.update(status='incomplete', problems=problems, decision=f"incomplete - {' | '.join(problems)}")
         return out
     out.update(status='complete', **s0_checks(plan, recs, got['summary']))
     out['decision'] = out['verdict']
+    if plan.get('dev'):
+        out.update(status='dev', decision=f"DEV RUN, not for decisions (checks: {out['verdict']})")
     return out
+
+
+def worker_exact_claims_sha256(revision, repo=ROOT):
+    """sha256 of exact_claims.py at the plan's worker revision (same repository); None if unreadable."""
+    import hashlib
+    import subprocess
+    try:
+        blob = subprocess.run(['git', '-C', str(repo), 'show', f'{revision}:exact_claims.py'], capture_output=True,
+                              check=True).stdout
+    except (subprocess.CalledProcessError, OSError, TypeError):
+        return None
+    return hashlib.sha256(blob).hexdigest()
+
+
+def _meta(d):
+    path = Path(d) / 'metadata.json'
+    try:
+        return json.loads(path.read_text()) if path.exists() else {}
+    except ValueError:
+        return {}
+
+
+def exact_claims_sha256():
+    import hashlib
+    return hashlib.sha256((HERE / 'exact_claims.py').read_bytes()).hexdigest()
 
 
 def load_problems(plan, run_dirs):
@@ -568,13 +683,18 @@ def plan_members(group):
 
 def markdown(r):
     lines = [f"# {r['study']} ({r['screen']})", '', f"Decision: **{r['decision']}**", '']
-    if r['status'] != 'complete':
+    if r['status'] not in ('complete', 'dev'):
         return '\n'.join(lines + ['Problems:'] + [f'- {p}' for p in r['problems']]) + '\n'
     if r['screen'] == 's0':
         lines += ['| check | value | limit | met | on fail |', '|---|---:|---|---|---|']
         for c in r['checks']:
             lines.append(f"| {c['id']} | {c['value']} | {c['limit']} | {c['met']} | {c['on_fail']} |")
-        lines += ['', f"Proxies: {', '.join(r['proxies'])}", f"By family: {json.dumps(r['by_family'])}"]
+        lines += ['', f"Proxies: {', '.join(r['proxies'])}", f"By family: {json.dumps(r['by_family'])}",
+                  f"Statements: {json.dumps(r.get('claims'))}",
+                  f"Arithmetic statements: {r.get('result_sentences')} made, {r.get('result_sentences_checkable')} "
+                  f"evaluable, {r.get('result_sentences_false')} false, {r.get('result_sentences_unsupported')} "
+                  f"not parseable",
+                  f"Board-phase prefill by node: {json.dumps(r.get('board_miss_by_node'))}"]
         return '\n'.join(lines) + '\n'
     keys = ['cases', 'rescued_puzzles', 'puzzles', 'answered', 'wrong', 'accepted_agents', 'generated_tokens',
             'retry_tokens', 'cancelled_tokens', 'novelty', 'novelty_token_weighted', 'pieces_counted', 'checkpoints',

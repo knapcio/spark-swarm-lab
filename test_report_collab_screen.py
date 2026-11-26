@@ -76,6 +76,15 @@ class S1ReportTests(unittest.TestCase):
         self.assertEqual((r['verdicts']["C'"]['verdict'], r['verdicts']["C'div"]['verdict']), ('PASS', 'STOP'))
         self.assertEqual(r['passing_arms'], ["C'"])
         self.assertEqual(r['verdicts']["C'"]['paired_puzzles']['protocol_only'], 4)
+        self.assertEqual(r['arms']["C'"]['verifier_prompt_tokens'], 0)  # checker compute is an arm total
+        rows = self.rows(5, 1)
+        for x in rows:
+            if x['arm'] == "C'":
+                x.update(verifier_calls=2, verifier_prompt_tokens=50, verifier_completion_tokens=3)
+        write_s1(self.root / 'checker', plan, rows)
+        arms = rep.build(plan, [self.root / 'checker'])['arms']
+        self.assertEqual((arms["C'"]['verifier_calls'], arms["C'"]['verifier_prompt_tokens']),
+                         (2 * sum(x['arm'] == "C'" for x in rows), 50 * sum(x['arm'] == "C'" for x in rows)))
         write_s1(self.root / 'grey', plan, self.rows(3, 1))
         self.assertEqual(rep.build(plan, [self.root / 'grey'])['decision'], 'GREY')
         write_s1(self.root / 'wrong', plan, self.rows(5, 1, c_wrong=1))
@@ -320,6 +329,112 @@ class S0ReportTests(unittest.TestCase):
         self.assertEqual(r['result_sentences_checkable'], 1)
         self.assertIn('focus_distinct', r['failed'])
 
+    # collab-s0-v1 result sentences the old a-op-b=c regex flagged (records.jsonl lines 5, 16, 24, 30, 31, 48, 53,
+    # 56, 66, 70, 71, 75): correct when read whole; and record 42's real false equality the regex missed
+    V1_CORRECT = [
+        "75+4*2=83 is a clean way to build 83 using 75,4,2.",
+        "(25-5-1)+3-1 = 21 uses 25,5,1,3,1 and leaves 50; then need 19 somehow but only 50 remains, so not complete.",
+        "Initial values: 1, 50, 75, 4, 2, 9; 916=4*229=2*458, so multiplication and division endpoints are promising.",
+        "800=50*16=50*(4+10+2) is exact, leaving 33 to be made from 100 and 5, which is impossible (only 105,95,500,20).",
+        "Other factorization to test: 833=119*7, with 100+10+5+4=119, leaving 2 and50 which do not yield 7.",
+        "The subset {75,1,5,2} reduces to 75+1+5+2=83, but leaves {4,25} unusable for 8, so that partition fails.",
+        "Pair results: 25-5-1=19 and 50*19=950, but the remaining 3,1 cannot make 21.",
+        "A promising route is 50*19+21=971, requiring disjoint subsets for 19 and 21 from {3,25,1,5,1}; triple {25,1,5} "
+        "can make both 19 and 21, but leaves an unusable\u2026",
+        "Factoring shows 972=9*108=2*486=4*243; direct final division is not integer for 75,50,10.",
+        "Factorization 833=7^2*17=49*17=7*119, useful for final multiplication.",
+        "Preliminary check: 100+10+5+4=119, but the remaining 2 and 50 cannot make 7, so 119*7 is not achievable with "
+        "that split.",
+        "I found a promising subtree: 6-4=2, 25+2=27, 5*27=135, 100+135=235, and 4*235-1=939, but it needs a 1 that "
+        "cannot be made from the remaining single 4."]
+    V1_FALSE = "17 = 3 + (25-5): triple {5,25,3}; operations 25-5=20 then 20-3=17? Actually 20-3=17, so 5+? no; use " \
+               "3+(5+9) for safety."
+
+    def test_v1_checker_artifacts_count_correct_and_the_real_error_counts_wrong(self):
+        plan = self.plan()
+        plan['groups'][0]['members'] = [dict(slot=i) for i in range(len(self.V1_CORRECT) + 1)]
+        recs = []
+        for i, text in enumerate(self.V1_CORRECT + [self.V1_FALSE]):
+            r = self.rec(0, f'focus number {i} ' + 'abcdefghijklmnopqrstuvwxyz'[i], text, 'x y z w v u')
+            r.update(slot=i, endpoint=self.EPS[0])
+            recs.append(r)
+        r = rep.build(plan, [self.write(plan, recs)])
+        self.assertEqual(self.checks(r)['arith_results_correct']['exact'], '12/13')
+        self.assertEqual(r['result_sentences_false'], 1)
+        for text in self.V1_CORRECT:
+            self.assertEqual(rep.exact_claims.check_claim(text)[0], rep.exact_claims.TRUE, text)
+
+    def test_facts_notes_count_only_posted_statements(self):
+        plan = self.plan()
+        recs = self.good()
+        for r, claims in zip(recs, ([dict(kind='computed', text='6*7=42', tag='VERIFIED'),
+                                     dict(kind='tried', text='approach: 2+2=5 tried', tag='drop', mechanical='false equation')],
+                                    [dict(kind='computed', text='x = 4*y', tag='UNVERIFIED'),
+                                     dict(kind='tried', text='approach: a; observed: b', tag='agent-checked',
+                                          checker=dict(verdict='SUPPORTED'))])):
+            r['note']['claims'] = claims
+        recs[0]['verifications'] = [dict(prompt_tokens=1500, completion_tokens=2, t0=1.0, t1=2.5)]
+        r = rep.build(plan, [self.write(plan, recs)])
+        self.assertEqual(self.checks(r)['arith_results_correct']['exact'], '1')  # the dropped false one never posted
+        self.assertEqual(r['result_sentences_unsupported'], 1)
+        c = r['claims']
+        self.assertEqual((c['claims_made'], c['claims_dropped'], c['claims_unverified'], c['claims_agent_checked'],
+                          c['claims_verified']), (4, 1, 1, 1, 1))
+        self.assertEqual((c['verifier_prompt_tokens'], c['verifier_latency_median_s']), (1500, 1.5))
+
+    def test_review_blocker_4_coverage_gate(self):
+        # one true post and every other statement dropped: arith_results_correct alone would be 100 %
+        plan = self.plan()
+        plan['groups'][0]['members'] = [dict(slot=i) for i in range(5)]
+        recs = []
+        for i in range(5):
+            r = self.rec(0, f'distinct focus {i} ' + 'abcde'[i], 'x', 'x y z w v u')
+            r.update(slot=i)
+            r['note']['claims'] = ([dict(kind='computed', text='6*7=42', tag='VERIFIED')] if i == 0 else
+                                   [dict(kind='computed', text='6*7=43', tag='drop', mechanical='false equation')])
+            recs.append(r)
+        r = rep.build(plan, [self.write(plan, recs)])
+        self.assertEqual(self.checks(r)['arith_results_correct']['exact'], '1')
+        self.assertEqual(self.checks(r)['arith_coverage']['exact'], '1/5')
+        self.assertIn('arith_coverage', r['failed'])
+        c = r['claims']['by_family']['arith']
+        self.assertEqual((c['claims_made'], c['claims_dropped'], c['drop_rate'], c['prefilter_accuracy']),
+                         (5, 4, 0.8, 0.2))
+
+    def test_review_blocker_7_dev_is_refused_before_any_screen_branch(self):
+        s1 = dict(screen='s1', study='x', dev=True, cases=[], arms={}, per_node=20)
+        self.assertIn('dev plans are S0 only', rep.build(s1, [])['decision'])
+        plan = self.plan()
+        d = self.write(plan, self.good(), name='devrun')
+        meta = json.loads((d / 'metadata.json').read_text())
+        (d / 'metadata.json').write_text(json.dumps(dict(meta, bypass=['dev'])))
+        r = rep.build(plan, [d])
+        self.assertIn('under a non-dev plan', r['decision'])
+        self.assertEqual(r['status'], 'incomplete')
+
+    def test_dev_plans_never_decide_and_the_checker_is_pinned(self):
+        plan = dict(self.plan(), dev=True)
+        d = self.write(plan, self.good())
+        meta = json.loads((d / 'metadata.json').read_text())
+        (d / 'metadata.json').write_text(json.dumps(dict(meta, bypass=['dev'])))
+        r = rep.build(plan, [d])
+        self.assertEqual(r['status'], 'dev')
+        self.assertTrue(r['decision'].startswith('DEV RUN, not for decisions'))
+        r = rep.build(self.plan(), [self.write(self.plan(), self.good(), name='nodev')])
+        self.assertEqual(r['status'], 'complete')
+        pinned = dict(self.plan(), exact_claims_sha256='0' * 64, source_revision='0' * 40)
+        r = rep.build(pinned, [self.write(pinned, self.good(), name='pin')])
+        self.assertIn('differs from the plan pin', r['decision'])
+
+    def test_board_miss_splits_new_text_from_eviction(self):
+        plan = self.plan()
+        recs = self.good()
+        for r in recs:
+            r['board_new_tokens'] = 15
+        r = rep.build(plan, [self.write(plan, recs)])
+        self.assertEqual(r['board_miss_by_node'][self.EPS[1]]['eviction_tokens'], 25)
+        self.assertEqual(r['board_miss_by_node'][self.EPS[0]]['eviction_tokens'], 5)
+
     def test_one_intact_attempt_unique_rows_and_frozen_load(self):
         plan = self.plan()
         recs = self.good()
@@ -438,6 +553,41 @@ class PlanTests(unittest.TestCase):
         order = sorted(groups, key=lambda k: (-len(groups[k]), k[0], k[2], k[3]))
         self.assertEqual([(k[2], len(groups[k])) for k in order], [('eva-a', 6), ('eva-c', 2), ('eva-b', 1),
                                                                     ('eva-d', 1)])
+
+
+class S0V2PlanTests(unittest.TestCase):
+    ROOT = Path(__file__).resolve().parent
+    V1_LIMITS = [('prefix_identical', '== 1.0', 'fix'), ('turn_boundaries', '== 1.0', 'fix'),
+                 ('cached_share', '>= 0.95', 'fix or fallback B'), ('checkpoint_latency', '<= 5.0 s', 'fix or fallback B'),
+                 ('reply_parse', '>= 0.90', 'fix the note prompt once, then fallback B'),
+                 ('note_within_256', '>= 0.90', 'fix the note prompt once, then fallback B'),
+                 ('arith_results_correct', '>= 0.90', 'stop'), ('focus_distinct', '>= 0.75', 'stop: nothing to divide'),
+                 ('answer_at_once', '<= 0.20', 'stop, or fallback B'), ('own_repeat', '<= +0.10', 'stop, or fallback B')]
+
+    def test_thresholds_are_not_loosened(self):
+        got = [(c['id'], c['limit'], c['on_fail']) for c in cp.S0_CHECKS]
+        self.assertEqual([x for x in got if x[0] != 'arith_coverage'], self.V1_LIMITS)  # v1 gates unchanged
+        self.assertIn(('arith_coverage', '>= 0.75', 'fix the note prompt once, then fallback B'), got)  # one added
+
+    def test_committed_plans(self):
+        s0 = json.loads((self.ROOT / 'COLLAB_S0_PLAN.json').read_text())
+        s1 = json.loads((self.ROOT / 'COLLAB_S1_PLAN.json').read_text())
+        dev = json.loads((self.ROOT / 'COLLAB_S0_DEV_PLAN.json').read_text())
+        self.assertEqual((s0['study'], s0['per_node'], s0['wave_groups'], s0['nodes']), ('collab-s0-v2', 20, 20, 4))
+        self.assertEqual(s0['protocol_constants']['note_max_tokens'], 200)
+        self.assertLessEqual(s0['protocol_constants']['note_max_tokens'], 256)  # note_within_256 by construction
+        self.assertEqual(s0['protocol_constants']['board_share'], 0.03)
+        self.assertEqual(s0['exact_claims_sha256'], rep.exact_claims_sha256())
+        self.assertEqual(s0['source_revision'], s1['source_revision'])
+        self.assertEqual(rep.worker_exact_claims_sha256(s0['source_revision']), s0['exact_claims_sha256'])
+        self.assertEqual(s0['s1_plan_cases'], sorted(s0['s1_plan_cases']) and s0['s1_plan_cases'])
+        for arm in ("C'", "C'div"):
+            self.assertEqual((s1['arms'][arm]['note_max_tokens'], s1['arms'][arm]['board_share'],
+                              s1['arms'][arm]['verify_async']), (200, 0.03, True))
+        self.assertEqual((s1['cohort_counts']['primary'], s1['cohort_counts']['extension']), (41, 29))
+        self.assertEqual(s1['decision_rule']['margins']['primary_margin'], 7)
+        self.assertTrue(dev['dev'] and dev['nodes'] == 2 and dev['study'].endswith('-dev'))
+        self.assertEqual(dev['groups'], s0['groups'])
 
 
 if __name__ == '__main__':

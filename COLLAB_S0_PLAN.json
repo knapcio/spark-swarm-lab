@@ -1,7 +1,7 @@
 {
  "protocol": "collab-replay-screen-v3",
  "screen": "s0",
- "study": "collab-s0-v1",
+ "study": "collab-s0-v2",
  "status": "FROZEN",
  "nodes": 4,
  "fleet": {
@@ -19,7 +19,7 @@
   ]
  },
  "per_node": 20,
- "source_revision": "718340d2f674b064b79a69d27801bc83cd4197a7",
+ "source_revision": "1a91212d8af87078b8e9d80b2538a3619b4a2f93",
  "source_path": ".runtime/collab-source",
  "driver": "collab_replay.py",
  "judge_code_sha256": {
@@ -59,17 +59,23 @@
    16384,
    24576
   ],
-  "note_max_tokens": 2048,
+  "note_max_tokens": 200,
   "min_resume_think": 4096,
   "max_submissions": 4,
   "board_limit_chars": 1800,
   "field_limit_chars": 160,
-  "max_items": 3,
+  "max_items": 1,
   "max_peers": 8,
+  "board_share": 0.03,
   "full_rejected_answer_chars": 6000,
   "thinking_cap": 30720,
   "total": 32768,
-  "note_prompts": "collab.NOTE_FIRST / collab.NOTE_LATER (design 1.10 verbatim)",
+  "note_format": "facts only: {\"focus\", \"computed\", \"tried\", \"checked\"}, at most one statement per kind, <= 60 words; no reviews (opinions about other entries are not observations)",
+  "note_schema": "validated before anything is cleaned or posted: only focus / computed / tried / checked, strings, <= 60 words in all, focus <= 12 words, a statement <= 240 characters (never clipped); a violation makes the reply unparseable (counted against reply_parse, reason recorded); tried must read \"approach: ...; observed: ...\", checked \"input: ...; expected: ...; got: ...\" (else the statement is dropped)",
+  "verifier": "before posting: exact_claims.py (decimals exact from their text; a statement whose equation is joined to a name is unparseable as a whole; a false equation drops the statement; a true \"computed\" one is VERIFIED; an arithmetic-looking one that does not parse is UNVERIFIED); \"checked\" statements against the family's known cases (coding: the task examples and public cases): a contradiction is dropped, a match fixes input and expected only so the observed \"got\" still goes to the checker; otherwise ONE CHECKER TURN on the solver's own note sequence (its pinned prompt + prefix ids, its note turn, then a user turn collab.CHECK_PROMPT; thinking closed, temperature 0, max_tokens 8; the prefix is served from the cache, only the checker turn is new prompt): a first word SUPPORTED -> agent-checked, else dropped (no verdict counted apart); a checker fault is an infrastructure fault; checker tokens (cancelled included) are accounted apart (verifier_* fields) and count toward compute. S0: inline under the solver's permit; S1 protocol arms (verify_async): next to the continuation, the solver's permit counting two units",
+  "board_priority": "with a budget: compact WHOLE lines for peer rejections (who, pass count; <= 3, newest first) are reserved and always shown, then VERIFIED, agent-checked, UNVERIFIED statements (each newest first), focus lines, end lines, old-format entries; the longest prefix within the budget is shown and an omission line counts the rest",
+  "board_budget_rule": "the budget (board_share x retained context) applies to the peer entries; the fixed board text, the solver's own rejection evidence (one failing public case in full, owner decision 3) and the reserved rejection lines with the omission line are always sent; the final token count is checked before dispatch. Consequence for cached_share (gate unchanged): a board turn after an own coding rejection can exceed 3 % of a short context (about 670 tokens of fixed text + evidence against about 274 at 8,192), which lowers that node's cached share; it is reported per node, not exempted",
+  "note_prompts": "collab.NOTE_FIRST / collab.NOTE_LATER (facts-only, S0 amendment)",
   "board_prompt": "collab.BOARD_PROMPT; the division-of-work rule only in arms with division_of_work true (owner decision 2026-11-26)",
   "evidence": "arithmetic: the judge reason (none if the judge thinking was cut); coding: pass count and exactly one failing public case (owner decision 2026-11-26)"
  },
@@ -92,10 +98,22 @@
  "continuation_tokens": 2048,
  "answer_at_once_tokens": 512,
  "phases": [
-  "warm",
   "note",
   "board"
  ],
+ "wave_groups": 20,
+ "amends": "collab-s0-v1 (STOP; results/collab-s0-v1 kept as is)",
+ "amendments": [
+  "notes: facts only (focus + at most one computed / tried / checked statement), every statement checked before posting (protocol_constants.verifier); owner 2026-11-26 after collab-s0-v1 STOP",
+  "note call max_tokens 200 (note_within_256 holds by construction; a note cut by the cap is unparseable and counts against reply_parse)",
+  "board turn budget: the whole appended turn <= 0.03 x the retained context, lowest-priority entries dropped first (astra: new board suffixes alone capped cached_share at 94.2-94.5 %)",
+  "warm-up: per stream on prompt + prefix WITHOUT its last token (no discarded token inside the reused prefix), its note at once under the same permit; no global warm phase (collab-s0-v1: 1.03M of 1.20M note prompt tokens recomputed after a 1.17M-token warm phase)",
+  "waves of 20 whole groups (each group on distinct nodes: <= 20 streams per node), note and board phases per wave, board-phase barrier per wave; per_node stays 20",
+  "arith_results_correct: over the POSTED statements (exact_claims.py, the verifier's implementation; whole expressions and chains), unparseable ones reported apart; collab-s0-v1's regex substring check was a checker artifact (astra review: 12 flagged equations correct, one real error missed)",
+  "reported, not gated: statements made / dropped / UNVERIFIED / agent-checked / VERIFIED and drop rate by family, drops by reason (checker without a verdict apart), prefilter accuracy, schema violations, checker tokens (new and cached), latency, board-phase prefill split into new text and eviction per node",
+  "review round (sol + collab-s0-v2-dev): the checker is a turn on the solver's own cached note sequence (dev: 603K fresh excerpt prompt tokens evicted the streams' prefixes, cached_share 0.385), its verdict the first word (dev: 32 \"SUPPORTEDThe...\" replies lost); a new gate arith_coverage >= 0.75 (stricter; no limit loosened); the note schema enforced before cleaning; budgeted boards reserve compact rejection lines"
+ ],
+ "exact_claims_sha256": "476f810eff530545283e3f2c7b06edd1a5a25cc6ff1d418bdacb7a10a62b36c9",
  "selection": "S0_CASES primary S1 cases drawn with random.Random(S0_SEED) (their four first-wave streams cut\nat 8,192 and again at 16,384: 80 checkpoints) and 20 coding streams of coding-v29-r2-v1 and coding-aot-v1-p whose\ncode_propose request is longer than 16K tokens and still thinking at the coding cut, grouped by recorded case: cases\nwith more such streams first (at most 4 streams per case, lowest agent index first), then run order, task, seed, until\n20 streams (100 checkpoints in all).",
  "checkpoints": 100,
  "checks": [
@@ -137,9 +155,15 @@
   },
   {
    "id": "arith_results_correct",
-   "metric": "share of arithmetic note result sentences WITH at least one checkable a op b = c equation whose equations are all correct (offline regex); sentences without one are reported, not counted; no checkable sentence = not met",
+   "metric": "share of the POSTED statements of arithmetic checkpoints (facts-only notes; old-format notes: result sentences) WITH at least one evaluable equation (exact_claims.find_equations: maximal arithmetic runs, identifiers break a run) whose equations all hold (exact_claims.check_statement: whole expressions with precedence, parentheses and powers, chained equalities, exact rationals; the implementation the pre-posting verifier uses); statements with an arithmetic-looking but unparseable equation and statements without one are reported, not counted; none evaluable = not met",
    "limit": ">= 0.90",
    "on_fail": "stop"
+  },
+  {
+   "id": "arith_coverage",
+   "metric": "ADDED in collab-s0-v2 (sol review): share of ALL arithmetic checkpoints with at least one POSTED statement containing an evaluable equation (exact_claims TRUE or FALSE); keeps arith_results_correct from passing on a few posts after many drops; derivation: collab-s0-v1 under exact_claims 63/80 = 0.79, collab-s0-v2-dev 75/80 = 0.94",
+   "limit": ">= 0.75",
+   "on_fail": "fix the note prompt once, then fallback B"
   },
   {
    "id": "focus_distinct",
