@@ -1,0 +1,333 @@
+{
+ "protocol": "restate-screen-v1",
+ "study": "restate-screen-v1",
+ "status": "FROZEN",
+ "screen": "idea-2",
+ "source_revision": "c678ebd1f0f974dc4653cddb3e3af50f2ec78e3b",
+ "source_path": ".runtime/idea2-source",
+ "driver": "restate_replay.py",
+ "idea": "astra IDEAS 2026-11-26 #2: independent, whole-task re-expression",
+ "runs": [
+  "swarm-fair-hard22-v1-roll12fair",
+  "swarm-fair-hard23-v1-roll12fair",
+  "swarm-baseline-hard26-v1-roll12fair"
+ ],
+ "selection_rule": "  runs        the default-policy arithmetic runs RUNS (roll12fair, hard-v22 / v23 / v26), cases.jsonl of each run;\n  abstention  a recorded case that ended with no accepted answer (cases.jsonl answered false);\n  puzzle      (corpus, task_id); per puzzle its first abstention in the order run (as listed), seed, task_id;\n  pins        the puzzle text and prompt_ids_sha256 of that case's first started agent (lowest slot with a plan request;\n              variant xl_forced_original), so the driver can prove it sends the recorded task;\n  order       the eligible puzzles sorted by sha256(SELECTION_SEED + ':' + corpus + ':' + task_id); the first\n              N_PUZZLES (12) are frozen; worker seeds seed_base = SEED_OFFSET + sha256(SELECTION_SEED + ':' +\n              puzzle_key) mod 10^7.\nThe driver (restate_replay.py on research/idea2-restate-v1) runs per puzzle two fresh workers on the original task text\nand two workers on independent restatements (a separate restater per worker, generic instructions, tokens charged);\nevery candidate is judged on the untouched original task (original k and restated k share a judge pair label).\nSeeds: pairing labels attempts only; draws are independent on this server (seeds not honoured; probe 2026-11-26\n21:06Z: identical requests with the same seed gave different outputs).",
+ "selection_seed": "2026112702",
+ "eligible_puzzles": 21,
+ "items": [
+  {
+   "run": "swarm-baseline-hard26-v1-roll12fair",
+   "corpus": "arithmetic-hard-v26",
+   "task_id": "eva-h543347f0983",
+   "seed": 1,
+   "pin_trace": "runs/swarm-baseline-hard26-v1-roll12fair/agents/eva-h543347f0983-s1-roll12fair-a0.jsonl",
+   "puzzle": "8,3,50,4,100,4:543",
+   "numbers": [
+    8,
+    3,
+    50,
+    4,
+    100,
+    4
+   ],
+   "target": 543,
+   "prompt_ids_sha256": "51bef6642075c1a0211f7b21a7e5c0b62d19ccd9945c56eb9a5ceaee6ab5fa6b",
+   "puzzle_key": "arithmetic-hard-v26:eva-h543347f0983",
+   "item_id": "z00",
+   "seed_base": 71078593
+  },
+  {
+   "run": "swarm-baseline-hard26-v1-roll12fair",
+   "corpus": "arithmetic-hard-v26",
+   "task_id": "eva-h4d3dc3714fc",
+   "seed": 1,
+   "pin_trace": "runs/swarm-baseline-hard26-v1-roll12fair/agents/eva-h4d3dc3714fc-s1-roll12fair-a0.jsonl",
+   "puzzle": "75,4,25,6,2,6:982",
+   "numbers": [
+    75,
+    4,
+    25,
+    6,
+    2,
+    6
+   ],
+   "target": 982,
+   "prompt_ids_sha256": "33f474b664424dd4270a12a205f94f5dbd9720620489a613b3e1b04ab05ffb54",
+   "puzzle_key": "arithmetic-hard-v26:eva-h4d3dc3714fc",
+   "item_id": "z01",
+   "seed_base": 75637280
+  },
+  {
+   "run": "swarm-baseline-hard26-v1-roll12fair",
+   "corpus": "arithmetic-hard-v26",
+   "task_id": "eva-h5647d913c6a",
+   "seed": 1,
+   "pin_trace": "runs/swarm-baseline-hard26-v1-roll12fair/agents/eva-h5647d913c6a-s1-roll12fair-a0.jsonl",
+   "puzzle": "9,9,50,4,8,25:822",
+   "numbers": [
+    9,
+    9,
+    50,
+    4,
+    8,
+    25
+   ],
+   "target": 822,
+   "prompt_ids_sha256": "007264ebe58a55aa210598e52d962bcf0d6c47b389930c578d02d2362d82797a",
+   "puzzle_key": "arithmetic-hard-v26:eva-h5647d913c6a",
+   "item_id": "z02",
+   "seed_base": 70148443
+  },
+  {
+   "run": "swarm-fair-hard22-v1-roll12fair",
+   "corpus": "arithmetic-hard-v22",
+   "task_id": "eva-ha39a99c2b9f",
+   "seed": 2,
+   "pin_trace": "runs/swarm-fair-hard22-v1-roll12fair/agents/eva-ha39a99c2b9f-s2-roll12fair-a0.jsonl",
+   "puzzle": "100,3,4,3,2,25:913",
+   "numbers": [
+    100,
+    3,
+    4,
+    3,
+    2,
+    25
+   ],
+   "target": 913,
+   "prompt_ids_sha256": "5bd2574bd5b036a182690fadb591b0cf6215c639128466952d4bd8920a73ed44",
+   "puzzle_key": "arithmetic-hard-v22:eva-ha39a99c2b9f",
+   "item_id": "z03",
+   "seed_base": 73429179
+  },
+  {
+   "run": "swarm-fair-hard23-v1-roll12fair",
+   "corpus": "arithmetic-hard-v23",
+   "task_id": "eva-ha8ba95c0990",
+   "seed": 1,
+   "pin_trace": "runs/swarm-fair-hard23-v1-roll12fair/agents/eva-ha8ba95c0990-s1-roll12fair-a0.jsonl",
+   "puzzle": "4,1,50,10,25,3:956",
+   "numbers": [
+    4,
+    1,
+    50,
+    10,
+    25,
+    3
+   ],
+   "target": 956,
+   "prompt_ids_sha256": "1aeef71c72a9d215df6d0d0290c846b25ab1c8832ba86fc9026e7751e728f01d",
+   "puzzle_key": "arithmetic-hard-v23:eva-ha8ba95c0990",
+   "item_id": "z04",
+   "seed_base": 74025428
+  },
+  {
+   "run": "swarm-baseline-hard26-v1-roll12fair",
+   "corpus": "arithmetic-hard-v26",
+   "task_id": "eva-h84f5b2f14e2",
+   "seed": 1,
+   "pin_trace": "runs/swarm-baseline-hard26-v1-roll12fair/agents/eva-h84f5b2f14e2-s1-roll12fair-a0.jsonl",
+   "puzzle": "75,25,1,8,6,4:886",
+   "numbers": [
+    75,
+    25,
+    1,
+    8,
+    6,
+    4
+   ],
+   "target": 886,
+   "prompt_ids_sha256": "6d0cefdd8485f24f269c12508dc2d9547c46101f7686243fb96ff4c96ae64976",
+   "puzzle_key": "arithmetic-hard-v26:eva-h84f5b2f14e2",
+   "item_id": "z05",
+   "seed_base": 73141575
+  },
+  {
+   "run": "swarm-baseline-hard26-v1-roll12fair",
+   "corpus": "arithmetic-hard-v26",
+   "task_id": "eva-h35f61bc6bfc",
+   "seed": 1,
+   "pin_trace": "runs/swarm-baseline-hard26-v1-roll12fair/agents/eva-h35f61bc6bfc-s1-roll12fair-a0.jsonl",
+   "puzzle": "8,100,75,4,1,7:942",
+   "numbers": [
+    8,
+    100,
+    75,
+    4,
+    1,
+    7
+   ],
+   "target": 942,
+   "prompt_ids_sha256": "4651d2e81022e70497a6f1b802e96878a67e4f01bff9be5642b628cb5856f659",
+   "puzzle_key": "arithmetic-hard-v26:eva-h35f61bc6bfc",
+   "item_id": "z06",
+   "seed_base": 70266459
+  },
+  {
+   "run": "swarm-fair-hard22-v1-roll12fair",
+   "corpus": "arithmetic-hard-v22",
+   "task_id": "eva-h3e80f1c7944",
+   "seed": 1,
+   "pin_trace": "runs/swarm-fair-hard22-v1-roll12fair/agents/eva-h3e80f1c7944-s1-roll12fair-a0.jsonl",
+   "puzzle": "6,50,100,5,9,1:726",
+   "numbers": [
+    6,
+    50,
+    100,
+    5,
+    9,
+    1
+   ],
+   "target": 726,
+   "prompt_ids_sha256": "813b7169979f3768d2551b52780fc556f8021590d40f6c9755891a2bce524aa0",
+   "puzzle_key": "arithmetic-hard-v22:eva-h3e80f1c7944",
+   "item_id": "z07",
+   "seed_base": 77640741
+  },
+  {
+   "run": "swarm-fair-hard22-v1-roll12fair",
+   "corpus": "arithmetic-hard-v22",
+   "task_id": "eva-hbc235d66b31",
+   "seed": 1,
+   "pin_trace": "runs/swarm-fair-hard22-v1-roll12fair/agents/eva-hbc235d66b31-s1-roll12fair-a0.jsonl",
+   "puzzle": "8,50,10,6,2,100:721",
+   "numbers": [
+    8,
+    50,
+    10,
+    6,
+    2,
+    100
+   ],
+   "target": 721,
+   "prompt_ids_sha256": "21cfb00a38d5eef3a7071e6acbf1a1516000a6f6c0ebf4852cd094fb07615419",
+   "puzzle_key": "arithmetic-hard-v22:eva-hbc235d66b31",
+   "item_id": "z08",
+   "seed_base": 70157232
+  },
+  {
+   "run": "swarm-baseline-hard26-v1-roll12fair",
+   "corpus": "arithmetic-hard-v26",
+   "task_id": "eva-h587b5dbe50a",
+   "seed": 2,
+   "pin_trace": "runs/swarm-baseline-hard26-v1-roll12fair/agents/eva-h587b5dbe50a-s2-roll12fair-a0.jsonl",
+   "puzzle": "1,6,100,1,7,50:512",
+   "numbers": [
+    1,
+    6,
+    100,
+    1,
+    7,
+    50
+   ],
+   "target": 512,
+   "prompt_ids_sha256": "6d31a6ef2aba681ef94406bb73ba42eba550a62841e8affe93e699abca36337c",
+   "puzzle_key": "arithmetic-hard-v26:eva-h587b5dbe50a",
+   "item_id": "z09",
+   "seed_base": 71445598
+  },
+  {
+   "run": "swarm-fair-hard23-v1-roll12fair",
+   "corpus": "arithmetic-hard-v23",
+   "task_id": "eva-hebf731bbd05",
+   "seed": 2,
+   "pin_trace": "runs/swarm-fair-hard23-v1-roll12fair/agents/eva-hebf731bbd05-s2-roll12fair-a0.jsonl",
+   "puzzle": "100,9,2,25,1,9:563",
+   "numbers": [
+    100,
+    9,
+    2,
+    25,
+    1,
+    9
+   ],
+   "target": 563,
+   "prompt_ids_sha256": "aea490cd3af67ecc596b9179b77d9a048261c76e015f9f28928dbf3ff8fdf8bf",
+   "puzzle_key": "arithmetic-hard-v23:eva-hebf731bbd05",
+   "item_id": "z10",
+   "seed_base": 75679054
+  },
+  {
+   "run": "swarm-fair-hard22-v1-roll12fair",
+   "corpus": "arithmetic-hard-v22",
+   "task_id": "eva-h82dbd3ae870",
+   "seed": 1,
+   "pin_trace": "runs/swarm-fair-hard22-v1-roll12fair/agents/eva-h82dbd3ae870-s1-roll12fair-a0.jsonl",
+   "puzzle": "100,9,75,7,3,8:311",
+   "numbers": [
+    100,
+    9,
+    75,
+    7,
+    3,
+    8
+   ],
+   "target": 311,
+   "prompt_ids_sha256": "55890b9d132a7b11e23f3264d4d1258c36bc2a2b59160f1c3577076340c759e9",
+   "puzzle_key": "arithmetic-hard-v22:eva-h82dbd3ae870",
+   "item_id": "z11",
+   "seed_base": 73497547
+  }
+ ],
+ "restate_system": "Rewrite the task you are given completely and precisely in your own words. Keep every requirement, constraint, given value and the required output format. Do not add assumptions, examples, hints or advice, and do not solve the task. Return only the rewritten task.",
+ "restate_user": "Task:\n\n{task}",
+ "prompt_rule": "the owner's generic-only prompt rule applies to mechanisms this screen adds: the restater template (restate_system / restate_user), checked free of task-family words. The production solver and judge prompts (forced72 system prompt and task text, run_judge prompts) are the task harness and stay unchanged in both arms (coordinator decision 2026-11-27)",
+ "arms": {
+  "original": "two fresh workers k = 0, 1 (worker seed seed_base + k) on the original task text: thinking 30,720 + answer 2,048, forced72 xl_forced_original's own path",
+  "restated": "per worker k a separate restater (seed seed_base + 1,000,003 + k; thinking 6,144, forced answer within 8,192; tokens charged) rewrites the complete task; a fresh worker (seed seed_base + k, unchanged system prompt, full normal budget) solves the restatement"
+ },
+ "workers_per_arm": 2,
+ "judge": "run_variants.judge_once (one attempt, no judge-level retry), unchanged prompt, on the ORIGINAL numbers and target; the seed sent is derived from the pair (original k <-> restated k) and the judge stage only; transport retries off",
+ "decision_rule": {
+  "rescue": "an arm rescues a puzzle if any of its candidates is accepted by the judge and solved by the strict exact verifier (every submitted move legal, target appeared)",
+  "stop": "STOP if the restated arm rescues no more puzzles than the original arm (R <= O)",
+  "pass_": "PASS AS A SCREEN ONLY if R > O; adoption needs a fresh confirmation",
+  "report": "wrong acceptances, empty restatements, generated tokens per arm (restatement included), exact sign test over discordant puzzles"
+ },
+ "seeds": "pairing labels attempts only; draws are independent on this server (per-request seeds not honoured: no deterministic inference on the launch; live probe 2026-11-26 21:06Z, identical requests with the same seed at temperature 0.8 gave different outputs)",
+ "fleet": {
+  "endpoints": [
+   "http://127.0.0.1:18081/v1",
+   "http://127.0.0.1:18082/v1",
+   "http://127.0.0.1:18083/v1",
+   "http://127.0.0.1:18084/v1"
+  ],
+  "hosts": [
+   "Spark_01",
+   "Spark_02",
+   "Spark_03",
+   "Spark_04"
+  ]
+ },
+ "per_node": 12,
+ "nodes": 4,
+ "judge_code_sha256": {
+  "harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+  "inkling/admit.py": "d6ff34d23f80919eddce2b0866b86350a7ed1a9382aa52575a121e88bbb0858b",
+  "inkling/fleet_lease.py": "911b0ee5570bfe164f8afd923445b098ac1c957c09432b70942a70223dbfdeeb",
+  "run_agents72.py": "d9fd620bc3b0a93e9238e32170b6a876415ce043ddf70f239077884f5f62e068",
+  "run_arbiterfree.py": "af165c85b32c335345923ece29d1c1d6f0883cea99d4a5fcdc290ca95fd360f8",
+  "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+  "run_judge.py": "dadc67dba63432c095794dff9c04d81ac7952eecc0215488b3f6d7c28ca21956",
+  "run_nemotron72_known.py": "635cd512b176389ebf6e7572ec912a6ccf0e33c7c33d714869dcebb02711276f",
+  "run_variants.py": "29a7fd2102da8029ad1edae8b3d7cfe14e430b9078d93e16f66ce605ead0355b"
+ },
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@ed40e7da625f594fc9c4990f5f66be24873c22d7",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "Inkling-2-Mini-1x-DGX-Spark v2.9.2 (a29380b; scripts/launch.sh sha 9428eb69...) `scripts/launch.sh up` with release defaults (SPEC=dflash2, drafter incoai/Inkling-2-Mini-DFlash2@4f9088ea, MEM_FRACTION 0.88, CTX 262144, memguard 3.5 GiB) and only the swarm wiring env NAME=swarm-recipe PORT=30000 HOST=127.0.0.1 SERVED=inkling; the swarm serving default since 2026-11-25 (coding-v29-r2-v1: -20 % wall, -20 % Wh at equal quality)",
+  "container": "swarm-recipe",
+  "shim_container": "swarm-inkling-shim",
+  "adapter": "inkling/shim.py (unchanged; upstream 127.0.0.1:30000)",
+  "temperature": "0.8 (harness constant)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "mem_fraction": "0.88",
+  "identity_from": "SWARM_FAIR_HARD23_PLAN.json",
+  "chat_template_sha256": "53a9035f3255945704b5857657cfb00c1165090c0641c4f782a0cbf268cc16dc",
+  "chat_template": "thinkingmachines/Inkling-2-Mini snapshot ed40e7da chat_template.jinja"
+ },
+ "execution": "restate_replay.py --plan PLAN --run --output runs/restate-screen-v1 from a clean worktree of the source revision: fleet lease, admission, <= per_node per node, fenced drain",
+ "estimate": "12 puzzles x 4 workers (<= 32,768 each) + 24 restatements (<= 8,192) on 4 nodes at <= 12 in flight per node: 60-90 fleet min",
+ "report": "inkling/report_restate_screen.py"
+}
