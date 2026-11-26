@@ -385,6 +385,34 @@ plain control from 6 to 11 and left the protocol at 8 to 9, so v1's +3 was mostl
 puzzles than independent continuation; novelty is again lower (0.938 vs 0.957). The A/B does not run. Peak load 20 per
 node (driver), 17 measured, drain confirmed.
 
+## 2026-11-26 (39): live collaboration CLOSED for Inkling-2-Mini
+
+The owner's swarm idea, agents that share findings while they work, was built as a generic protocol (design
+DESIGN-live-collab-fable.md; credit blackboard systems and multi-agent debate, Du et al. 2023) and screened under frozen
+rules. It is closed for this model on these tasks (astra: DEAD for this live-board program; not a claim that every
+collaboration design fails).
+
+What worked:
+- **Verification before posting:** exact arithmetic checking, public cases for code, and a short checker turn on the
+  solver's own context kept every posted arithmetic statement correct (S0 v3: 89 evaluable, 0 false) and every arm at
+  **0 wrong** across S1 v1 and v2.
+- **Plumbing:** prefix-exact replays, turn composition verified against the server's template on every node, cached
+  checkpoints (0.967), 3.1 s checkpoint latency; fleet lease, abort confirmation per request and fenced drain held load
+  at or below 20 per node.
+- **The terminal fix:** an explicit answer-only turn ended the "Paused." contamination (247 of 275 forced calls in v1;
+  0 of 264 in v2).
+
+What failed:
+- **No rescue gain:** with a fair ending in both arms the plain control rescued 11 of 41 all-fail puzzles and the
+  protocol 8 (v1's +3 for C'div was mostly the control's missing answer turn; the fix gave the control +5).
+- **Herding:** novelty fell in every protocol arm (0.938-0.945 vs 0.957-0.966), and boards show solvers revisiting a
+  shared construction that cannot work.
+- **Lossy communication:** about 40 % of note statements were dropped as malformed even after the lossless parser fix;
+  peer rejections were never read.
+
+No further screen is justified by the recorded evidence. The A/B was not run; the stage-2 code (live arms, controls,
+concurrency smoke, which passed clean on the fleet) stays on its branches, unmerged.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
