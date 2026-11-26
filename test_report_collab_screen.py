@@ -580,13 +580,14 @@ class S0V2PlanTests(unittest.TestCase):
         self.assertLessEqual(s0['protocol_constants']['note_max_tokens'], 256)  # note_within_256 by construction
         self.assertEqual(s0['protocol_constants']['board_share'], 0.03)
         self.assertEqual(s0['exact_claims_sha256'], rep.exact_claims_sha256())
-        self.assertEqual(s0['source_revision'], s1['source_revision'])
+        self.assertEqual(s0['source_revision'], 'e0576ea71704b6394fae7f054cd08a0c458506f4')  # S0 v3 as frozen
         self.assertEqual(rep.worker_exact_claims_sha256(s0['source_revision']), s0['exact_claims_sha256'])
         self.assertEqual(s0['s1_plan_cases'], sorted(s0['s1_plan_cases']) and s0['s1_plan_cases'])
         for arm in ("C'", "C'div"):
             self.assertEqual((s1['arms'][arm]['note_max_tokens'], s1['arms'][arm]['board_share'],
                               s1['arms'][arm]['verify_async']), (200, 0.03, True))
         self.assertEqual((s1['cohort_counts']['primary'], s1['cohort_counts']['extension']), (41, 29))
+        self.assertIn('S1 abort confirmation', ' '.join(s1['amendments']))
         self.assertEqual(s1['decision_rule']['margins']['primary_margin'], 7)
         self.assertTrue(dev['dev'] and dev['nodes'] == 2 and dev['study'].endswith('-dev'))
         self.assertEqual(dev['groups'], s0['groups'])
