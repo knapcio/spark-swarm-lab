@@ -323,8 +323,16 @@ p = 0.06). Pooled v1+v2: 137 / 7 wrong vs 141 / 3. I adopted code_reserve on a +
 30,720), but five of the six wrong answers closed their own thinking below either cap. Same-seed agents diverge within
 about 60 characters on this serving, so the arms are independent samples; the same slot won in all five flipped cases,
 and paired thinking length is unchanged (p = 0.19). No mechanism found beyond sampling variance, plus one answer forced
-at the lower cap. Lesson: a single-study adoption that wins on efficiency at +1 quality needs its replication before it
+at the lower cap (astra: pairing by task stays valid; selection effects are not excluded; RETEST code_elastic, which keeps
+the 30,720 cap, is queued as coding-elastic-v1 on seeds 37-39). Lesson: a single-study adoption that wins on efficiency at +1 quality needs its replication before it
 becomes the default.
+
+## 2026-11-26 (33): water-filling replicated ([swarm-fair-hard23-v1](swarm-fair-hard23-v1/REPORT.md))
+
+Same plan and rule on fresh hard-v23: roll12fair 88 vs roll12wide 86, 0 wrong in both (F-only 4, W-only 2, p = 0.69);
+wall 0.93x, tokens 0.90x, energy 0.93x. Pooled with hard-v22: 170 vs 166 of 192, 0 wrong. **roll12fair stays the
+arithmetic default for batch runs.** The per-case latency cost (median time to an answer 567 s vs 300 s) appears only in
+batches; single-task use is unaffected by construction (same 4 / 8 / 12 limits, nothing to share), not measured.
 
 ## Incidents
 
@@ -338,4 +346,4 @@ becomes the default.
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md) · [coding-reserve-v2](coding-reserve-v2/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md) · [coding-reserve-v2](coding-reserve-v2/REPORT.md) · [swarm-fair-hard23-v1](swarm-fair-hard23-v1/REPORT.md)

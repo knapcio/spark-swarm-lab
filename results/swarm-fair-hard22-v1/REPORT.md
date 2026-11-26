@@ -36,3 +36,8 @@ Weaknesses that remain in arms.py-driven arms (arms.py is pinned; disclose in re
 Design notes: (1) W and F run the same agents with the same prompts and seeds (slot s of a case has the same seed in both arms); F only changes which case gets a free agent slot and when: every case is open from the start, a free slot (a node below its cap minus 2 permits kept for judges) goes to the case with the fewest agents in flight (ties: fewest started, then the earlier case), at most 4 in flight before the case's first failed agent and 8 after, never beyond 12 agents; an F agent may run on another node than in W; (2) the rule reads slot counts and failure counts only, never elapsed time or task content; (3) time to answer from the segment start is comparable between arms only within one segment (a resumed segment restarts its clock).
 
 Idea: IDEAS-swarm-round5-fable.md, idea 2 (water-filling admission).
+
+## Replicated
+
+[swarm-fair-hard23-v1](../swarm-fair-hard23-v1/REPORT.md) on a fresh corpus passed the same rule (88 vs 86, 0 wrong,
+wall 0.93x). roll12fair stays the default for batch runs; the per-case latency cost appears only in batches.
