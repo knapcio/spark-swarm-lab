@@ -1,0 +1,60 @@
+{
+ "protocol": "swarm-variants-screen-v1",
+ "judge": "thinking judge with one-sentence reason (run_variants.judge_with_reason), unchanged; the exact verifier only scores",
+ "agent_wall_deadline_seconds": 14400,
+ "concurrent_requests_per_endpoint": 20,
+ "execution": "Arms run sequentially in arm_order, each alone on the fleet via inkling/arms.py (fresh admission with the shim sha and mem fraction below, prefix-cache flush, server counters, idle wait, GPU energy). Watchdog inkling/watch.sh; MemAvailable logged every 60 s.",
+ "resume_rule": "If an arm stops on an infrastructure fault (runner stop flag, worker or judge infra failure, node fault), the fault is fixed and the same arm is continued with arms.py --resume-from (skips its cases that finished without infra faults; reruns the others with the same seeds) and documented as an amendment. Server tokens, wall and energy of an arm are then the sums over its segments (wasted work of the stopped segment included and reported separately). Never a silent restart; no case is dropped.",
+ "exclusions": "None. All 96 cases of each arm count.",
+ "concurrent_policy_cases": 20,
+ "status": "FROZEN",
+ "split": "evaluation",
+ "tasks": 48,
+ "seeds": [
+  1,
+  2
+ ],
+ "agent_variant": "xl_forced_original",
+ "baseline_note": "Defaults: arithmetic roll12cancel (generic, no hints); coding R2; worker transport retry and judge retry; roll12relay under test on hard-v19.",
+ "study": "swarm-baseline-hard29-v1",
+ "study_group": "swarm-baseline-hard29-v1",
+ "dataset": "datasets/arithmetic-hard-v29/tasks.json",
+ "dataset_protocol": "arithmetic-hard-v29",
+ "policies": [
+  "roll12fair"
+ ],
+ "arm_order": [
+  "roll12fair"
+ ],
+ "seed_offsets": {
+  "roll12fair": 29400
+ },
+ "source_revision": "553307333e81db4961b75687a6ed815f9e410a0d",
+ "source_path": ".runtime/xl-night-source",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@ed40e7da625f594fc9c4990f5f66be24873c22d7",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "Inkling-2-Mini-1x-DGX-Spark v2.9.2 (a29380b; scripts/launch.sh sha 9428eb69...) `scripts/launch.sh up` with release defaults (SPEC=dflash2, drafter incoai/Inkling-2-Mini-DFlash2@4f9088ea, MEM_FRACTION 0.88, CTX 262144, memguard 3.5 GiB) and only the swarm wiring env NAME=swarm-recipe PORT=30000 HOST=127.0.0.1 SERVED=inkling; the swarm serving default since 2026-11-25 (coding-v29-r2-v1: -20 % wall, -20 % Wh at equal quality)",
+  "container": "swarm-recipe",
+  "shim_container": "swarm-inkling-shim",
+  "adapter": "inkling/shim.py (unchanged; upstream 127.0.0.1:30000)",
+  "temperature": "0.8 (harness constant)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "mem_fraction": "0.88"
+ },
+ "code_sha256": {
+  "run_variants.py": "29a7fd2102da8029ad1edae8b3d7cfe14e430b9078d93e16f66ce605ead0355b",
+  "run_judge.py": "dadc67dba63432c095794dff9c04d81ac7952eecc0215488b3f6d7c28ca21956",
+  "inkling/arms.py": "5ae0b3963e3e942a7e211b6d0d30ae382f336f08c8b79b975d59ae140c005999",
+  "inkling/admit.py": "d6ff34d23f80919eddce2b0866b86350a7ed1a9382aa52575a121e88bbb0858b",
+  "inkling/shim.py": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "inkling/report_fair.py": "74b8ca57780feb5724a32443080f6dd1d768a0529a1756b358426d69f4064d58"
+ },
+ "generator": "make_arithmetic_hard.py --seed 2026112629 --protocol arithmetic-hard-v29 --output datasets/arithmetic-hard-v29 (after this plan is committed and pushed)",
+ "concurrency_note": "W: roll12wide default. F: all cases open at once; a free agent permit (2 per node reserved for judges) goes to the case with the fewest in flight (ties: fewest started, then earlier case); <= 4 in flight before the first failure, 8 after, cap 12; per-endpoint cap 20. Each arm alone.",
+ "question": "Baseline of today's arithmetic default (roll12fair) on a fresh corpus, for later screens. Pre-registered as a BASELINE, not a decision: no adoption rule.",
+ "pairing": "Single arm; later screens pair against it by task and seed (agent base seeds 1000*seed + 26400 + slot).",
+ "decision_rule": "none (baseline measurement: solved, wrong over all attempts, abstentions, server tokens, wall, Wh, time to answer)",
+ "report": "arms.py summary (descriptive only)"
+}
