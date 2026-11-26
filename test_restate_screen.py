@@ -70,7 +70,7 @@ class ReportTests(unittest.TestCase):
     PLAN = dict(study='s', items=[dict(item_id=f'z{i}', puzzle_key=f'p{i}', numbers=[2, 3, 7], target=5)
                                   for i in range(3)])
 
-    def run_dir(self, d, outcomes, complete=True, drained=True, extra=(), drop=()):
+    def run_dir(self, d, outcomes, complete=True, drained=True, extra=(), drop=(), truncated=()):
         run = Path(d)
         (run / 'run').mkdir(parents=True)
         (run / 'metadata.json').write_text(json.dumps(dict(plan=self.PLAN)))
@@ -86,7 +86,8 @@ class ReportTests(unittest.TestCase):
                     recs.append(dict(item=key[0], arm=arm, index=k, error=None, verdict=verdict,
                                      candidate=None if plan is None else dict(plan=plan), tokens_generated=100,
                                      restate_tokens=20 if arm == 'restated' else 0, judge_tokens=10,
-                                     restatement_empty=plan is None, forced_reply='json'))
+                                     restatement_empty=plan is None, forced_reply='json',
+                                     restatement_truncated=key in truncated))
         (run / 'run' / 'records.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in recs + list(extra)))
         return run
 
@@ -106,6 +107,9 @@ class ReportTests(unittest.TestCase):
             self.assertEqual((r['restated_rescues'], r['arms']['restated']['wrong'], r['decision']), (1, 1, 'STOP'))
             self.assertEqual(r['arms']['restated']['empty_restatements'], 1)
             self.assertEqual(r['arms']['restated']['restate_tokens'], 120)
+            self.assertEqual(r['arms']['restated']['truncated_restatements'], 0)
+            r = rep.build(self.PLAN, self.run_dir(d / 'f', {}, truncated=[('z0', 'restated', 0)]))
+            self.assertEqual(r['arms']['restated']['truncated_restatements'], 1)  # labelled outcomes are counted
 
     def test_incomplete(self):
         with tempfile.TemporaryDirectory() as d:

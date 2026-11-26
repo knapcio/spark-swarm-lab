@@ -84,6 +84,7 @@ def build(plan, run_dir):
                          accepted=len(accepted), successes=sum(map(success, recs)),
                          wrong=sum(1 for r in accepted if not success(r)), forced_replies=replies,
                          empty_restatements=sum(1 for r in recs if r.get('restatement_empty')),
+                         truncated_restatements=sum(1 for r in recs if r.get('restatement_truncated')),
                          restate_tokens=sum(r.get('restate_tokens') or 0 for r in recs),
                          agent_tokens=agent, judge_tokens=judge, generated=agent + judge)
     for i in plan['items']:

@@ -3,7 +3,7 @@
  "study": "restate-screen-v1",
  "status": "FROZEN",
  "screen": "idea-2",
- "source_revision": "774eb6364bbc65be1bad318767a1db606987f651",
+ "source_revision": "c678ebd1f0f974dc4653cddb3e3af50f2ec78e3b",
  "source_path": ".runtime/idea2-source",
  "driver": "restate_replay.py",
  "idea": "astra IDEAS 2026-11-26 #2: independent, whole-task re-expression",
@@ -271,6 +271,7 @@
  ],
  "restate_system": "Rewrite the task you are given completely and precisely in your own words. Keep every requirement, constraint, given value and the required output format. Do not add assumptions, examples, hints or advice, and do not solve the task. Return only the rewritten task.",
  "restate_user": "Task:\n\n{task}",
+ "prompt_rule": "the owner's generic-only prompt rule applies to mechanisms this screen adds: the restater template (restate_system / restate_user), checked free of task-family words. The production solver and judge prompts (forced72 system prompt and task text, run_judge prompts) are the task harness and stay unchanged in both arms (coordinator decision 2026-11-27)",
  "arms": {
   "original": "two fresh workers k = 0, 1 (worker seed seed_base + k) on the original task text: thinking 30,720 + answer 2,048, forced72 xl_forced_original's own path",
   "restated": "per worker k a separate restater (seed seed_base + 1,000,003 + k; thinking 6,144, forced answer within 8,192; tokens charged) rewrites the complete task; a fresh worker (seed seed_base + k, unchanged system prompt, full normal budget) solves the restatement"

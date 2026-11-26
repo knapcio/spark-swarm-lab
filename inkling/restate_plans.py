@@ -102,6 +102,10 @@ def make(root, revision):
                                                        'only, no model call):\n')[1].split('\n\n')[0],
         selection_seed=SELECTION_SEED, eligible_puzzles=eligible, items=items,
         restate_system=RESTATE_SYSTEM, restate_user=RESTATE_USER,
+        prompt_rule=('the owner\'s generic-only prompt rule applies to mechanisms this screen adds: the restater '
+                     'template (restate_system / restate_user), checked free of task-family words. The production '
+                     'solver and judge prompts (forced72 system prompt and task text, run_judge prompts) are the task '
+                     'harness and stay unchanged in both arms (coordinator decision 2026-11-27)'),
         arms=dict(original='two fresh workers k = 0, 1 (worker seed seed_base + k) on the original task text: thinking '
                            '30,720 + answer 2,048, forced72 xl_forced_original\'s own path',
                   restated='per worker k a separate restater (seed seed_base + 1,000,003 + k; thinking 6,144, forced '
