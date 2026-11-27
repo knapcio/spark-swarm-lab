@@ -15,7 +15,8 @@ def write_run(root, run, cases):
     d.mkdir(parents=True)
     rows, out = [], []
     for task, seed, answered, solved, agents in cases:
-        out.append(dict(task_id=task, seed=seed, answered=answered, solved=solved, winner_agent=0 if answered else None))
+        out.append(dict(task_id=task, seed=seed, answered=answered, solved=solved,
+                        winner_agent=0 if answered else None))
         for agent, (fb, code) in agents.items():
             events = d / f'{task}-s{seed}-a{agent}.jsonl'
             end = dict(type='puzzle_end', feedback_pass=fb, holdout_pass=solved, code=code)
@@ -49,6 +50,24 @@ class PopulationTests(unittest.TestCase):
                        key=lambda k: dp.sha(f'{dp.SEED}:{k[0]}:{k[1]}:{k[2]}'))[:2]
         self.assertEqual([(i['run'], i['task_id'], i['seed']) for i in correct], order)
         self.assertTrue(all(len(i['passers']) == 1 for i in correct if i['run'] == 'r2'))  # empty code is no passer
+        # references: same task, other cases, code different from the accepted code, identical code once
+        refs = {(r['run'], r['seed'], r['agent']) for r in wrong['references']}
+        self.assertEqual(refs, {('r2', 2, 0)})  # task a's other passers: r2 seed 2 (r1's own passers excluded)
+        b = next(i for i in pop['items'] if i['task_id'] == 'b' and i['run'] == 'r2') if any(
+            i['task_id'] == 'b' and i['run'] == 'r2' for i in pop['items']) else None
+        if b is not None:
+            self.assertEqual([r['code'] for r in b['references']], ['def f(): 4'])
+
+    def test_reference_rule_dedupes_and_caps(self):
+        item = dict(item_id='g000', run='r1', seed=1, task_id='t', passers=[dict(code_sha256='A')])
+        pool = [dict(run='r1', seed=1, agent=1, code_sha256='B'),  # same case: never a reference
+                dict(run='r2', seed=1, agent=0, code_sha256='A')]  # same code as the accepted program
+        pool += [dict(run='r3', seed=s, agent=0, code_sha256=f'C{s % 3}') for s in range(20)]
+        refs = dp.references(item, {'t': pool})
+        self.assertEqual(len(refs), 3)  # three distinct codes C0, C1, C2
+        self.assertEqual(len({r['code_sha256'] for r in refs}), 3)
+        many = [dict(run='r3', seed=s, agent=0, code_sha256=f'D{s}') for s in range(20)]
+        self.assertEqual(len(dp.references(item, {'t': many})), dp.K_REFERENCES)
 
 
 class patch_n:
