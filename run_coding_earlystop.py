@@ -20,10 +20,21 @@ still counts). Optional plan field judge = {"thinking_tokens", "answer_tokens", 
 only; defaults 6144 / 2048 / 2, the original judge budget) is passed to every worker as --judge-* options. The hidden feedback and holdout grading after a decision is scoring only (bounded by SCORING_GRACE_SECONDS) and
 can neither change the winner nor move the decision. A case is solved if the winner passes ALL hidden cases (feedback and
 holdout). Without the field everything is exactly as before (the public-tests path: the first feedback pass observed when a
-worker exits, after its in-worker hidden grading, as in every earlier coding study). Plan-only by default.
+worker exits, after its in-worker hidden grading, as in every earlier coding study). Optional plan field
+suspend_siblings = "hold_dispatch" (acceptance "judge" only; idea #5 live validation): while an agent of a case has a
+PENDING verdict (from its first observed 'judge_start' until its decision), the case's other agents hold their next
+model dispatch and no new agent of the case starts. One judge per case at a time: the worker's first judge call takes
+the case's judge ownership atomically (OUTPUT/holds/<task>-s<seed>.owner, the worker's --hold-file / --agent-index;
+the agent is pending from its observed 'judge_owner' event). A pending verdict is never an acceptance and the winner rule
+is unchanged (the earliest recorded in-time accepted decision). The frozen wall deadline is the same with and without holds
+(no credit for held time). An accepted decision keeps the ownership until the case's siblings are shut down; a
+rejection, a late or untimed decision, or an owner that ends without an in-time acceptance removes it. Nothing is
+cancelled and resumed: true in-flight pausing is not possible on this server. SIGINT / SIGTERM (with --run) only latch:
+no new agent starts, every running worker is terminated and reaped, then the runner exits. Plan-only by default.
 """
 import argparse
 import json
+import signal
 import subprocess
 import threading
 import time
@@ -37,6 +48,7 @@ from run_coding_agents import ENDPOINTS, HERE, PROTOCOL, agent_outcome, hashes, 
 from run_variants import execute_cancellable
 
 ACCEPTANCE = ('self_tests', 'judge')
+SUSPEND = ('hold_dispatch',)
 EARLY_STOP = {None: 'first_feedback_pass_in_time', 'self_tests': 'first_accepted_in_time', 'judge': 'first_accepted_in_time'}
 JUDGE_DEFAULTS = dict(thinking_tokens=6144, answer_tokens=2048, max_calls=2)  # the original judge budget (8192 in total)
 
@@ -58,6 +70,13 @@ def judge_flags(budget):
             str(budget['answer_tokens']), '--judge-max-calls', str(budget['max_calls'])]
 
 
+ABORT = []  # signals received by a running runner (latch only; see main)
+
+
+def on_signal(signum, frame):
+    ABORT.append(signum)
+
+
 SCORING_GRACE_SECONDS = 600  # hidden grading after a decision: two sandbox grades, normally well under a minute
 
 
@@ -65,6 +84,25 @@ class TraceTail:
     """Complete JSON lines appended to a worker trace since the last read (a partial last line waits)."""
     def __init__(self, path):
         self.path, self.offset = Path(path), 0
+
+    def first_of(self, kinds):
+        """{kind: the first record of that kind} among the complete lines appended since the last read."""
+        found = {}
+        if not self.path.exists():
+            return found
+        with self.path.open('rb') as stream:
+            stream.seek(self.offset)
+            data = stream.read()
+        end = data.rfind(b'\n') + 1
+        self.offset += end
+        for line in data[:end].splitlines():
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            if record.get('type') in kinds and record['type'] not in found:
+                found[record['type']] = record
+        return found
 
     def find(self, kind):
         if not self.path.exists():
@@ -98,6 +136,63 @@ def in_time_acceptance(event, start, deadline_seconds):
     """An acceptance counts only if accepted, timestamped and recorded within the agent's deadline."""
     t = decided_at(event)
     return bool(event and event.get('accepted') is True and t is not None and t - start <= deadline_seconds)
+
+
+class HoldBoard:
+    """Judge ownership per case (suspend_siblings = hold_dispatch). The ownership itself is the file
+    directory/<task>-s<seed>.owner, created atomically by the owning worker (it holds the agent index); held(key) is
+    its existence. pend/release keep every owner's pending interval (for the report); release removes the file only if
+    it still names that agent; close ends the case's open intervals and removes the file once the case's siblings are
+    shut down after an acceptance."""
+
+    def __init__(self, directory, clock=time.monotonic):
+        self.dir, self.clock, self.lock = Path(directory), clock, threading.RLock()
+        self.dir.mkdir(parents=True, exist_ok=True)
+        self.intervals = {}
+
+    def path(self, key):
+        return self.dir / f'{key[0]}-s{key[1]}.owner'
+
+    def owner(self, key):
+        try:
+            return int(self.path(key).read_text().strip())
+        except (OSError, ValueError):
+            return None
+
+    def pend(self, key, agent):
+        with self.lock:
+            ivs = self.intervals.setdefault(key, {}).setdefault(agent, [])
+            if not ivs or ivs[-1][1] is not None:
+                ivs.append([self.clock(), None])
+
+    def _close(self, key, agent):
+        ivs = self.intervals.get(key, {}).get(agent)
+        if ivs and ivs[-1][1] is None:
+            ivs[-1][1] = self.clock()
+
+    def release(self, key, agent):
+        with self.lock:
+            self._close(key, agent)
+            if self.owner(key) == agent:
+                self.path(key).unlink(missing_ok=True)
+
+    def close(self, key):
+        with self.lock:
+            for agent in self.intervals.get(key, {}):
+                self._close(key, agent)
+            self.path(key).unlink(missing_ok=True)
+
+    def held(self, key):
+        return self.path(key).exists()
+
+    def summary(self):
+        with self.lock:
+            now = self.clock()
+            seconds = sum((b if b is not None else now) - a for case in self.intervals.values()
+                          for ivs in case.values() for a, b in ivs)
+            return dict(cases=len(self.intervals), pending_windows=sum(len(ivs) for case in self.intervals.values()
+                                                                        for ivs in case.values()),
+                        pending_seconds=round(seconds, 1))
 
 
 class Arbiter:
@@ -135,30 +230,41 @@ class Arbiter:
             return self.winners.get(key, (None, None))[0]
 
 
-def execute_accepting(case, deadline_seconds, arbiter, grace_seconds=SCORING_GRACE_SECONDS, poll=.1):
+def execute_accepting(case, deadline_seconds, arbiter, grace_seconds=SCORING_GRACE_SECONDS, poll=.1, holds=None):
     """execute_cancellable for the no-provided-tests modes (case = a job: task_id, seed, agent, command, events, stdout,
     stderr). The worker's first 'acceptance' event is the decision. An accepted in-time decision asks the arbiter to pick
     the case winner; an agent that is not the winner is terminated once a winner exists (cancelled); the winner never is.
     A decision recorded after deadline_seconds is not an acceptance (deadline). After an in-time decision the hidden
     scoring may take up to grace_seconds (then terminated and flagged scoring_timeout). Returns the run_benchmark row plus
-    accepted, won, decision_seconds (recorded decision - start), late_decision, scoring_timeout."""
+    accepted, won, decision_seconds (recorded decision - start), late_decision, scoring_timeout. holds (a HoldBoard,
+    suspend_siblings only): the agent is pending from its observed 'judge_owner' until a decision that is not an
+    in-time acceptance or its end without one (the ownership is then released); an accepted owner keeps it. The wall
+    deadline is the same as without holds. A latched ABORT (SIGINT / SIGTERM to the runner) terminates the worker."""
     key, me = (case['task_id'], case['seed']), case['agent']
     start = time.monotonic()
     arbiter.register(key, me, case['events'], start, deadline_seconds)
-    deadline = cancelled = scoring_timeout = late = False
+    deadline = cancelled = scoring_timeout = late = aborted = False
     error = returncode = decision = decided = None
     tail = TraceTail(case['events'])
 
     def observe():
         nonlocal decision, decided, late
         if decision is None:
-            event = tail.find('acceptance')
+            if holds is None:
+                event = tail.find('acceptance')
+            else:
+                found = tail.first_of(('judge_owner', 'acceptance'))
+                if 'judge_owner' in found:
+                    holds.pend(key, me)  # pending: never an acceptance
+                event = found.get('acceptance')
             if event is not None:
                 decided = decided_at(event)
                 late = decided is None or decided - start > deadline_seconds
                 decision = in_time_acceptance(event, start, deadline_seconds)
                 if decision:
                     arbiter.decide(key)
+                elif holds is not None:
+                    holds.release(key, me)  # a rejection (or a late / untimed decision) releases the siblings
 
     with Path(case['stdout']).open('x') as stdout, Path(case['stderr']).open('x') as stderr:
         try:
@@ -167,6 +273,9 @@ def execute_accepting(case, deadline_seconds, arbiter, grace_seconds=SCORING_GRA
                 observe()  # before poll(): a decision written just before exit is still seen
                 if process.poll() is not None:
                     returncode = process.returncode
+                    break
+                if ABORT:
+                    aborted, returncode = True, terminate(process)  # stop requested: terminate and reap
                     break
                 winner = arbiter.winner(key)
                 if winner is not None and winner != me:
@@ -190,6 +299,8 @@ def execute_accepting(case, deadline_seconds, arbiter, grace_seconds=SCORING_GRA
     if not (cancelled or deadline):
         observe()
         deadline = late
+    if holds is not None and not decision:
+        holds.release(key, me)  # ended without an in-time acceptance: its siblings go on
     won = not cancelled and not late and arbiter.winner(key) == me
     trace = Path(case['events'])
     records, _ = read_trace(trace)
@@ -198,7 +309,7 @@ def execute_accepting(case, deadline_seconds, arbiter, grace_seconds=SCORING_GRA
                server_cost_known=False, server_cost_reason='shared_endpoint', server_prompt_tokens=None,
                server_completion_tokens=None, server_idle_after=None, time_to_verified_solution_seconds=None,
                accepted=bool(decision) and not cancelled, won=won, late_decision=late, scoring_timeout=scoring_timeout,
-               decision_seconds=round(decided - start, 3) if decided is not None else None)
+               decision_seconds=round(decided - start, 3) if decided is not None else None, aborted=aborted)
     if cancelled:
         row.update(status='cancelled', solved=False)
     if row['controller_stop']:
@@ -257,10 +368,17 @@ def main(argv=None):
     require(len(tasks) == plan['matrix']['tasks_count'], 'Wrong task count')
     jobs = make_jobs(tasks, output, source, plan, tasks_path, tests_path)
     judge = judge_budget(plan)
+    suspend = plan.get('suspend_siblings')
+    require(suspend is None or (suspend in SUSPEND and acceptance == 'judge'),
+            'suspend_siblings needs judge acceptance')
     if acceptance:
         for job in jobs:
             job['command'] = job['command'] + ['--acceptance', acceptance] + (judge_flags(judge) if acceptance == 'judge'
                                                                                else [])
+    if suspend:
+        for job in jobs:
+            hold_file = output / 'holds' / f"{job['task_id']}-s{job['seed']}.owner"
+            job['command'] = job['command'] + ['--hold-file', str(hold_file), '--agent-index', str(job['agent'])]
     per_node, deadline = plan['scheduling']['concurrent_agents_per_node'], plan['limits']['agent_wall_deadline_seconds']
     meta = dict(protocol=plan, plan_sha256=sha(a.plan), jobs=len(jobs), source_sha256=before, output=str(output),
                 runner_sha256=sha(Path(__file__)))
@@ -271,10 +389,15 @@ def main(argv=None):
     admission = read(a.admission)
     age = (datetime.now(timezone.utc) - datetime.fromisoformat(admission['verified_utc'])).total_seconds()
     require(admission.get('verified') is True and 0 <= age <= 900, 'Fresh admission required')
+    if plan.get('ab_arm') is not None:  # A/B plans: the receipt must be bound to this plan file and revision
+        require(admission.get('plan_sha256') == sha(a.plan) and admission.get('allow_busy') is False
+                and admission.get('source_revision') == plan['source_revision'], 'Admission not bound to this plan')
     output.mkdir(parents=True)
     meta.update(started_utc=datetime.now(timezone.utc).isoformat(), admission=admission,
                 server_before={e: server_metrics(e, timeout=3) for e in ENDPOINTS})
     write(output / 'metadata.json', meta)
+    holds = HoldBoard(output / 'holds') if suspend else None
+    started_agents = {}
     rows, errors, lock, stop = [], [], threading.Lock(), threading.Event()
     cancel = {(j['task_id'], j['seed']): threading.Event() for j in jobs}
     first_start, first_done, failed = {}, {}, {}
@@ -284,9 +407,14 @@ def main(argv=None):
     later = {e: [j for j in jobs if j['endpoint'] == e and j['agent'] >= first_k] for e in ENDPOINTS}
     start = time.monotonic()
 
+    held_first = {e: [] for e in ENDPOINTS}  # suspend_siblings: first-wave jobs skipped while their case was held
+
     def take(endpoint):
         """Next job for this endpoint (caller holds the lock): a due later agent of an open case first, else the next
-        first-wave agent of an open case. Returns (job, waiting) where waiting means later agents are not due yet."""
+        first-wave agent of an open case. Returns (job, waiting) where waiting means later agents are not due yet.
+        With suspend_siblings no agent of a case with a pending verdict starts (it waits; other cases go first)."""
+        if holds is not None:
+            return take_unheld(endpoint)
         pending = later[endpoint]
         pending[:] = [j for j in pending if not cancel[(j['task_id'], j['seed'])].is_set()]  # answered: never start
         now = time.monotonic()
@@ -304,11 +432,45 @@ def main(argv=None):
             job = next(queues[endpoint], None)  # case already answered: this agent never starts
         return job, bool(pending)
 
+    def take_unheld(endpoint):
+        """take() with suspend_siblings: the same order, skipping (not dropping) jobs of held cases."""
+        def open_(j):
+            return not cancel[(j['task_id'], j['seed'])].is_set()
+        pending = later[endpoint]
+        pending[:] = [j for j in pending if open_(j)]
+        held_first[endpoint][:] = [j for j in held_first[endpoint] if open_(j)]
+        now = time.monotonic()
+        for j in pending:
+            k = (j['task_id'], j['seed'])
+            if holds.held(k):
+                continue
+            if rolling:
+                due = failed.get(k, 0) >= j['agent'] - first_k + 1
+            else:
+                due = k in first_start and (now - first_start[k] >= stagger['after_seconds']
+                                            or first_done.get(k, 0) >= first_k)
+            if due:
+                pending.remove(j)
+                return j, False
+        for j in list(held_first[endpoint]):
+            if not holds.held((j['task_id'], j['seed'])):
+                held_first[endpoint].remove(j)
+                return j, False
+        job = next(queues[endpoint], None)
+        while job is not None and (not open_(job) or holds.held((job['task_id'], job['seed']))):
+            if open_(job):
+                held_first[endpoint].append(job)  # its case has a pending verdict: start it later
+            job = next(queues[endpoint], None)
+        return job, bool(pending) or bool(held_first[endpoint])
+
     arbiter = Arbiter(cancel)
 
     def worker(endpoint):
         while True:
             with lock:
+                if ABORT and not any(e.get('reason') == 'signal' for e in errors):
+                    stop.set()  # no new admissions; running workers are terminated by their executors
+                    errors.append(dict(reason='signal', signals=list(ABORT)))
                 if stop.is_set():
                     return
                 job, waiting = take(endpoint)
@@ -330,8 +492,11 @@ def main(argv=None):
                     return
                 key = (job['task_id'], job['seed'])
                 first_start.setdefault(key, time.monotonic())
+                started_agents[key] = started_agents.get(key, 0) + 1
             try:
-                if acceptance:
+                if acceptance and holds is not None:
+                    row = execute_accepting(job, deadline, arbiter, holds=holds)
+                elif acceptance:
                     row = execute_accepting(job, deadline, arbiter)
                 else:
                     row = execute_cancellable(job, deadline, cancel[key])
@@ -358,7 +523,12 @@ def main(argv=None):
                     row.update(winner=True, stop_seconds=round(time.monotonic() - first_start[key], 1))
                     cancel[key].set()
                 rows.append(row)
+                if holds is not None and cancel[key].is_set() and \
+                        sum((r['task_id'], r['seed']) == key for r in rows) == started_agents[key]:
+                    holds.close(key)  # every started agent of the answered case has ended
                 reason = fault(row)
+                if row.get('aborted'):
+                    reason = reason or 'aborted_by_signal'
                 if acceptance and row.get('scoring_timeout'):
                     reason = reason or 'scoring_timeout'
                 if reason:
@@ -372,14 +542,21 @@ def main(argv=None):
                     line['accepted'] = row['accepted']
                 print(json.dumps(line), flush=True)
 
-    with ThreadPoolExecutor(max_workers=per_node * 4) as pool:
-        for future in [pool.submit(worker, e) for e in ENDPOINTS for _ in range(per_node)]:
-            future.result()
+    handlers = signal.getsignal(signal.SIGINT), signal.getsignal(signal.SIGTERM)
+    signal.signal(signal.SIGINT, on_signal)  # latch only: workers are terminated and reaped by their executors
+    signal.signal(signal.SIGTERM, on_signal)
+    try:
+        with ThreadPoolExecutor(max_workers=per_node * 4) as pool:
+            for future in [pool.submit(worker, e) for e in ENDPOINTS for _ in range(per_node)]:
+                future.result()
+    finally:
+        signal.signal(signal.SIGINT, handlers[0])
+        signal.signal(signal.SIGTERM, handlers[1])
     cases = cases_summary(rows, jobs, acceptance)
     write(output / 'cases.json', cases)
     meta.update(completed_utc=datetime.now(timezone.utc).isoformat(), batch_wall_seconds=time.monotonic() - start,
                 started_jobs=len(rows), errors=errors, server_after={e: server_metrics(e, timeout=3) for e in ENDPOINTS},
-                final_source_sha256=hashes(source),
+                final_source_sha256=hashes(source), **(dict(holds=holds.summary()) if holds is not None else {}),
                 summary=dict(cases=len(cases), solved=sum(c['solved'] for c in cases), answered=sum(c['answered'] for c in cases),
                              cancelled=sum(c['cancelled'] for c in cases), never_started=sum(c['never_started'] for c in cases)))
     meta['source_changed_during_run'] = before != meta['final_source_sha256']
