@@ -97,13 +97,13 @@ class DriverTests(Guarded):
         path.write_text(json.dumps(plan))
         return path
 
-    def harness(self, fetches, runner_polls=2, signal_at=None, admission_ok=True, raise_in_loop=False):
+    def harness(self, fetches, runner_polls=2, signal_at=None, admission_ok=True, raise_in_loop=False,
+                pre_signal=False):
         order = []
         fetch_iter = iter(fetches)
 
         def fetch(i):
-            text = next(fetch_iter) if i == 0 else IDLE
-            return text
+            return next(fetch_iter, IDLE) if i == 0 else IDLE  # idle once the scripted samples are used up
 
         class Lease:
             @staticmethod
@@ -134,6 +134,12 @@ class DriverTests(Guarded):
                 order.append('terminate')
                 self.returncode = -15
 
+            def wait(self):
+                order.append('wait')  # the runner reaps its workers before it exits
+                if self.returncode is None:
+                    self.returncode = 0
+                return self.returncode
+
         def admit(cmd, **kw):
             out = Path(cmd[cmd.index('--output') + 1])
             plan_path = Path(cmd[cmd.index('--plan') + 1])
@@ -142,6 +148,11 @@ class DriverTests(Guarded):
                                            plan_sha256=hashlib.sha256(plan_path.read_bytes()).hexdigest(),
                                            source_revision='r' * 40)))
             return type('R', (), dict(returncode=0, stderr=''))()
+
+        def flush():
+            if pre_signal:
+                sa.on_signal(15, None)  # a signal arrives before the launch
+            return {}
 
         def drain_spy(fetch_fn, poll=2.0, warn_every=600):
             order.append('drain')
@@ -152,7 +163,7 @@ class DriverTests(Guarded):
         saved = sa.signal.getsignal(sa.signal.SIGINT), sa.signal.getsignal(sa.signal.SIGTERM)
         try:
             with patch.object(sa, 'fleet_lease', Lease), patch.object(sa, 'freeze_problem', lambda *a: None), \
-                    patch.object(sa.subprocess, 'run', admit), patch.object(sa.arms, 'flush_caches', lambda: {}), \
+                    patch.object(sa.subprocess, 'run', admit), patch.object(sa.arms, 'flush_caches', flush), \
                     patch.object(sa.energy, 'window', lambda a, b: dict(total_wh=1.0, nodes={})), \
                     patch.object(sa, 'drain', drain_spy), patch.object(sa.time, 'sleep', lambda s: None), \
                     patch.object(sa, 'ROOT', self.root), contextlib.redirect_stdout(io.StringIO()):
@@ -171,7 +182,7 @@ class DriverTests(Guarded):
     def test_lease_is_held_until_the_fenced_drain_confirms_idle(self):
         # before: idle; after the runner: busy twice, then idle
         order, code, record = self.harness([IDLE, BUSY, BUSY, IDLE])
-        self.assertEqual(order, ['lease', 'runner', 'drain', 'release'])
+        self.assertEqual(order, ['lease', 'runner', 'wait', 'drain', 'release'])
         self.assertEqual(code, 0)
         self.assertTrue(record['drain_confirmed'] and not record['stopped_by_signal'])
 
@@ -189,14 +200,35 @@ class DriverTests(Guarded):
 
     def test_a_signal_stops_the_runner_and_still_drains(self):
         order, code, record = self.harness([IDLE, BUSY, IDLE], runner_polls=5, signal_at=1)
-        self.assertEqual(order, ['lease', 'runner', 'terminate', 'drain', 'release'])
+        self.assertEqual(order, ['lease', 'runner', 'terminate', 'wait', 'drain', 'release'])
         self.assertTrue(record['stopped_by_signal'])
         self.assertNotEqual(code, 0)
 
     def test_an_exception_in_the_runner_loop_still_drains_before_release(self):
         order, code, _ = self.harness([IDLE, BUSY, IDLE], runner_polls=5, raise_in_loop=True)
-        self.assertEqual(order, ['lease', 'runner', 'terminate', 'drain', 'release'])
+        self.assertEqual(order, ['lease', 'runner', 'terminate', 'wait', 'drain', 'release'])
         self.assertIsInstance(code, RuntimeError)
+
+    def test_review_a_signal_before_the_launch_starts_nothing(self):
+        order, code, _ = self.harness([IDLE], pre_signal=True)
+        self.assertEqual(order, ['lease', 'release'])
+        self.assertIn('signal before the launch', str(code))
+
+    def test_review_raw_gauges_must_be_finite_non_negative_numbers(self):
+        for text in ('sglang:num_running_reqs{a="b"}\nsglang:num_queue_reqs{a="b"} 0\n',  # no value
+                     'sglang:num_running_reqs{a="b"} abc\nsglang:num_queue_reqs{a="b"} 0\n',
+                     'sglang:num_running_reqs{a="b"} NaN\nsglang:num_queue_reqs{a="b"} 0\n',
+                     'sglang:num_running_reqs{a="b"} -1\nsglang:num_queue_reqs{a="b"} 0\n',
+                     'sglang:num_queue_reqs{a="b"} 0\n'):
+            snap = sa.snapshot(lambda i, t=text: t if i == 0 else IDLE)
+            self.assertFalse(sa.idle(snap), text)
+        self.assertTrue(sa.idle(sa.snapshot(lambda i: IDLE)))
+
+    def test_review_an_invalid_sample_is_retried_under_the_lease(self):
+        texts = iter(['sglang:num_running_reqs{a="b"} abc\nsglang:num_queue_reqs{a="b"} 0\n', IDLE])
+        with patch.object(sa.time, 'sleep', lambda s: None):
+            snap, _ = sa.drain(lambda i: next(texts) if i == 0 else IDLE, poll=0, warn_every=10 ** 6)
+        self.assertTrue(sa.idle(snap))
 
     def test_drain_warning_failures_never_escape(self):
         texts = iter([BUSY, IDLE])
@@ -217,40 +249,63 @@ class DriverTests(Guarded):
 
 
 class ReportTests(Guarded):
+    def build(self, *a):
+        return rep.build(*a, root=self.root)
+
     def plans(self):
-        base = dict(study_group='g', matrix=dict(tasks_count=2, seeds=[58, 59]), decision_rule=sp.RULE)
+        tasks = self.root / 'tasks.json'
+        tasks.write_text(json.dumps(dict(tasks=[dict(id='a', split='evaluation'), dict(id='b', split='evaluation'),
+                                                dict(id='z', split='development')])))
+        base = dict(study_group='g', matrix=dict(tasks='tasks.json', tasks_sha256=hashlib.sha256(tasks.read_bytes())
+                                                 .hexdigest(), split='evaluation', tasks_count=2, seeds=[58, 59]),
+                    decision_rule=sp.RULE)
         return dict(base, study='c', ab_arm='control'), dict(base, study='h', ab_arm='hold',
                                                               suspend_siblings='hold_dispatch')
 
-    def arm_run(self, name, plan, solved, wrong, wh, drained=True, coverage=1.0, errors=(), drop=0, signal=False):
+    def arm_run(self, name, plan, solved, wrong, wh, drained=True, coverage=1.0, errors=(), drop=0, signal=False,
+                keys=None, nodes=('01', '02', '03', '04')):
         d = self.root / name
         d.mkdir()
         cases = []
-        for i, (task, seed) in enumerate([(t, s) for s in (58, 59) for t in ('a', 'b')]):
+        for i, (task, seed) in enumerate(keys or [(t, s) for s in (58, 59) for t in ('a', 'b')]):
             cases.append(dict(task_id=task, seed=seed, solved=i < solved, answered=i < solved + wrong))
         (d / 'cases.json').write_text(json.dumps(cases[:len(cases) - drop]))
         (d / 'metadata.json').write_text(json.dumps(dict(protocol=plan, errors=list(errors), holds=dict(cases=1))))
         (d / 'arm_accounting.json').write_text(json.dumps(dict(
             runner_exit=0, drain_confirmed=drained, stopped_by_signal=signal, runner_wall_seconds=10,
             server=dict(total=dict(generation_tokens=1000 if name == 'c' else 880, requests=5)),
-            energy=dict(total_wh=wh, nodes={n: dict(coverage=coverage) for n in ('01', '02', '03', '04')}))))
+            energy=dict(total_wh=wh, nodes={n: dict(coverage=coverage) for n in nodes}))))
         return d
 
     def test_rule(self):
         control, hold = self.plans()
         c = self.arm_run('c', control, solved=4, wrong=0, wh=40.0)
-        r = rep.build(control, hold, c, self.arm_run('h1', hold, solved=4, wrong=0, wh=35.0))
-        self.assertEqual((r['decision'], r['energy_per_solved_ratio']), ('PASS', 0.875))
+        r = self.build(control, hold, c, self.arm_run('h1', hold, solved=4, wrong=0, wh=35.0))
+        self.assertEqual(r['decision'], 'PASS')
+        self.assertAlmostEqual(r['energy_per_solved_ratio'], 0.875)
         self.assertEqual(r['server_generation_token_saving'], 0.12)
-        r = rep.build(control, hold, c, self.arm_run('h2', hold, solved=4, wrong=0, wh=37.0))
+        r = self.build(control, hold, c, self.arm_run('h2', hold, solved=4, wrong=0, wh=37.0))
         self.assertEqual((r['decision'], r['checks']['energy']), ('STOP', False))  # 0.925 > 0.90
-        r = rep.build(control, hold, c, self.arm_run('h3', hold, solved=3, wrong=1, wh=20.0))
+        r = self.build(control, hold, c, self.arm_run('h3', hold, solved=3, wrong=1, wh=20.0))
         self.assertEqual((r['decision'], r['checks']['no_additional_wrong']), ('STOP', False))
-        r = rep.build(control, hold, c, self.arm_run('h4', hold, solved=3, wrong=0, wh=20.0))
+        r = self.build(control, hold, c, self.arm_run('h4', hold, solved=3, wrong=0, wh=20.0))
         self.assertEqual(r['decision'], 'PASS')  # one solved case fewer is allowed
         r2 = self.arm_run('c2', control, solved=4, wrong=0, wh=40.0)
-        r = rep.build(control, hold, r2, self.arm_run('h5', hold, solved=2, wrong=0, wh=10.0))
+        r = self.build(control, hold, r2, self.arm_run('h5', hold, solved=2, wrong=0, wh=10.0))
         self.assertEqual((r['decision'], r['checks']['solved']), ('STOP', False))
+
+    def test_review_exact_frozen_keys_four_node_energy_and_unrounded_comparison(self):
+        control, hold = self.plans()
+        c = self.arm_run('c', control, solved=4, wrong=0, wh=40.0)
+        mixed = [('a', 58), ('b', 58), ('a', 59), ('z', 59)]  # four cases, both seeds, but not the frozen keys
+        r = self.build(control, hold, c, self.arm_run('k', hold, solved=4, wrong=0, wh=30.0, keys=mixed))
+        self.assertIn('not exactly the 4 frozen task x seed keys', ' '.join(r.get('problems', [])))
+        r = self.build(control, hold, c, self.arm_run('n', hold, solved=4, wrong=0, wh=30.0, nodes=('01',)))
+        self.assertIn('energy not covered on all four nodes', ' '.join(r.get('problems', [])))
+        # control 10 Wh / 1 solved; hold 27.00001 Wh / 3 solved = 9.0000033 > 0.90 x 10 (rounded it would pass)
+        c1 = self.arm_run('c1', control, solved=1, wrong=0, wh=10.0)
+        r = self.build(control, hold, c1, self.arm_run('h1x', hold, solved=3, wrong=0, wh=27.00001))
+        self.assertEqual((r['checks']['energy'], r['decision']), (False, 'STOP'))
 
     def test_incomplete(self):
         control, hold = self.plans()
@@ -258,12 +313,12 @@ class ReportTests(Guarded):
         for name, kw, needle in (('a', dict(drained=False), 'drain not confirmed'),
                                  ('b', dict(coverage=0.5), 'energy not covered'),
                                  ('d', dict(errors=[dict(reason='x')]), 'runner errors'),
-                                 ('e', dict(drop=1), '3 of 4 planned cases'),
+                                 ('e', dict(drop=1), 'cases are not exactly the 4 frozen task x seed keys'),
                                  ('f', dict(signal=True), 'stopped by a signal')):
-            r = rep.build(control, hold, c, self.arm_run(name, hold, solved=4, wrong=0, wh=30.0, **kw))
+            r = self.build(control, hold, c, self.arm_run(name, hold, solved=4, wrong=0, wh=30.0, **kw))
             self.assertEqual(r['status'], 'incomplete')
             self.assertIn(needle, ' '.join(r['problems']))
-        r = rep.build(control, dict(hold, judge=dict(thinking_tokens=1)), c,
+        r = self.build(control, dict(hold, judge=dict(thinking_tokens=1)), c,
                       self.arm_run('g', dict(hold, judge=dict(thinking_tokens=1)), solved=4, wrong=0, wh=30.0))
         self.assertIn('differ beyond their arm fields', ' '.join(r['problems']))
 

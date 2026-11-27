@@ -9,15 +9,18 @@ alone on the fleet, with inkling/coding_arms.py's accounting and a fenced fleet:
   released only after every node reports running = queued = 0 with both raw gauges present) -> counters again -> GPU
   energy for the window (inkling/energy.py) -> OUTPUT/arm_accounting.json.
 
-SIGINT / SIGTERM only latch (no I/O in the handler): the runner is then terminated (no new agents; workers already
-started finish their streams) and the fenced drain runs before the lease is released. Drain warnings that cannot be
-written never escape the drain.
+SIGINT / SIGTERM only latch (no I/O in the handler). A latch before the launch starts nothing. After the launch the
+runner gets SIGTERM: it stops admissions, terminates and reaps every worker it started, and exits; this driver waits for
+that exit (also after an exception) before the fenced drain, and the lease is released only after the drain. Both raw
+gauges must parse as finite non-negative numbers on every node; an unreadable or invalid sample is retried under the
+lease. Drain warnings that cannot be written never escape the drain.
 
 usage: suspend_arms.py --plan CODING_SUSPEND_<ARM>_PLAN.json --output runs/NAME
 """
 import argparse
 import hashlib
 import json
+import math
 import re
 import signal
 import subprocess
@@ -92,32 +95,53 @@ def metrics_text(i):
     return urllib.request.urlopen(f'http://127.0.0.1:{18081 + i}/metrics', timeout=10).read().decode()
 
 
+def raw_gauge(text, name):
+    """Sum of every sample of the raw sglang gauge `name`; None if it has no sample or any sample is not a finite
+    non-negative number (a missing or broken gauge never reads as 0)."""
+    values = re.findall(rf'^{re.escape(name)}(?:\{{[^}}]*\}})?[ \t]+(\S+)[ \t]*(?:\S+)?[ \t]*$', text, re.M)
+    if not values:
+        return None
+    total = 0.0
+    for value in values:
+        try:
+            v = float(value)
+        except ValueError:
+            return None
+        if not math.isfinite(v) or v < 0:
+            return None
+        total += v
+    return total
+
+
 def snapshot(fetch=metrics_text):
-    """Counters per node plus raw: both raw sglang gauges present on that node (arms.parse reads missing ones as 0)."""
+    """Counters per node (arms.parse) plus raw: {node: {gauge: value}} or None when a raw gauge is missing or invalid,
+    or the node cannot be read."""
     from datetime import datetime, timezone
     snap = dict(utc=datetime.now(timezone.utc).isoformat(), nodes={}, raw={})
     for i, n in enumerate(NODES):
         try:
             text = fetch(i)
+            raw = {name: raw_gauge(text, name) for name in RAW}
+            snap['raw'][n] = raw if all(v is not None for v in raw.values()) else None
+            snap['nodes'][n] = arms.parse(text) if snap['raw'][n] is not None else None
         except Exception:
-            snap['raw'][n] = False
-            snap['nodes'][n] = None
-            continue
-        snap['nodes'][n] = arms.parse(text)
-        snap['raw'][n] = all(re.search(rf'^{re.escape(name)}(\{{[^}}]*\}})?\s', text, re.M) for name in RAW)
+            snap['raw'][n], snap['nodes'][n] = None, None
     return snap
 
 
 def idle(snap):
-    return all(snap['raw'].get(n) and snap['nodes'][n] and snap['nodes'][n]['running'] == 0
-               and snap['nodes'][n]['queued'] == 0 for n in NODES)
+    return all(snap['raw'].get(n) is not None and all(v == 0 for v in snap['raw'][n].values())
+               and snap['nodes'].get(n) is not None for n in NODES)
 
 
 def drain(fetch=metrics_text, poll=2.0, warn_every=600):
     """Returns only when every node reports running = queued = 0 with both raw gauges present."""
     t0, warned = time.monotonic(), 0
     while True:
-        snap = snapshot(fetch)
+        try:
+            snap = snapshot(fetch)
+        except Exception:  # never unwinds the drain: retried under the lease
+            snap = dict(nodes={}, raw={})
         if idle(snap):
             return snap, round(time.monotonic() - t0, 1)
         if time.monotonic() - t0 >= (warned + 1) * warn_every:
@@ -159,6 +183,8 @@ def run_arm(a, plan, out, fetch, popen):
     problem = admission_problem(json.loads(admission.read_text()), a.plan, plan)
     if problem:
         raise SystemExit(problem)
+    if SIGNALS:
+        raise SystemExit('signal before the launch: nothing started')
     flushed = arms.flush_caches()
     before = snapshot(fetch)
     if not idle(before):
@@ -166,6 +192,8 @@ def run_arm(a, plan, out, fetch, popen):
     command = [sys.executable, str(ROOT / 'run_coding_earlystop.py'), '--plan', str(a.plan), '--output', str(out),
                '--source', str(source), '--admission', str(admission), '--run']
     start, runner, code = time.monotonic(), None, None
+    if SIGNALS:
+        raise SystemExit('signal before the launch: nothing started')
     try:
         with open(str(out) + '.log', 'x') as log:
             runner = popen(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
@@ -173,13 +201,15 @@ def run_arm(a, plan, out, fetch, popen):
             while runner.poll() is None:
                 if SIGNALS and not stopped:
                     stopped = True
-                    runner.terminate()  # no new agents; started workers finish, then the drain confirms idle
+                    runner.terminate()  # the runner stops admissions, terminates and reaps its workers, then exits
                 time.sleep(1)
             code = runner.returncode
     finally:
         wall = time.monotonic() - start
         if runner is not None and runner.poll() is None:
-            runner.terminate()  # an exception here: stop new starts, then drain before the lease is released
+            runner.terminate()  # an exception here: the runner stops admissions and reaps its workers
+        if runner is not None:
+            runner.wait()  # every owned worker is reaped before the drain samples the fleet
         after, waited = drain(fetch)  # also on an exception: the lease stays held until idle is confirmed
     out.mkdir(parents=True, exist_ok=True)
     try:
