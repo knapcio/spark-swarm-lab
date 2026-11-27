@@ -1,0 +1,14 @@
+{
+  "protocol": "diffgate-live-gate-rerun2-amendment-v1",
+  "recorded_utc": "2026-11-27T12:50:16.990442+00:00",
+  "study_group": "coding-diffgate-v1",
+  "cause": {
+    "event": "gate-arm rerun 1 (started 2026-11-27T12:07:17Z) stopped 12:33:44Z by the SIGTERM latch: with the Mac off the Sparks' LAN every ssh went through NVIDIA Sync proxies that outlived ssh and held the pipes, so sandbox grades hit the controller deadline (infrastructure, not candidate behaviour)",
+    "aborted_run": "runs/coding-diffgate-v1-gate-aborted-sshlag-20261127",
+    "failure_kinds": {
+      "None": 817
+    }
+  },
+  "action": "Rerun the WHOLE gate arm again from scratch with the identical frozen CODING_DIFFGATE_GATE_PLAN.json (sha256 185998271da971b99f99ac33b8dc081a502cb8ee3287938abae6595aff9dcaa0), same pins and cases, with the launcher-level ssh shim of SSH_ROUTE_AMENDMENT.json (184fc1d) on PATH, after a sandbox grading smoke on all four hosts. Control kept (LAN era). Wall time and energy are NOT comparable with the control (network change); primary outcome = wrong and solved. If the frozen decision depends on the energy check the verdict is PROVISIONAL and a paired rerun of both arms on the LAN is queued.",
+  "decision_rule": "unchanged"
+}
