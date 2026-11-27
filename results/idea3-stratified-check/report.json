@@ -1,0 +1,97 @@
+{
+ "protocol": "idea3-stratified-check-v1",
+ "seed": 2026112703,
+ "draws": 200000,
+ "checks": [
+  {
+   "name": "exact single-position marginal",
+   "cases": 200,
+   "passed": 200
+  },
+  {
+   "name": "exact full-sequence marginal (toy models, vocab 3, length 3, n = 2 and 4)",
+   "cases": 12,
+   "passed": 12
+  },
+  {
+   "name": "Monte Carlo sibling marginals (vocab 4, length 3, n = 4)",
+   "siblings": [
+    {
+     "sibling": 0,
+     "chi_square": 53.12,
+     "dof": 50,
+     "p_value": 0.3547
+    },
+    {
+     "sibling": 1,
+     "chi_square": 49.61,
+     "dof": 50,
+     "p_value": 0.4891
+    },
+    {
+     "sibling": 2,
+     "chi_square": 54.34,
+     "dof": 50,
+     "p_value": 0.3125
+    },
+    {
+     "sibling": 3,
+     "chi_square": 63.2,
+     "dof": 50,
+     "p_value": 0.0994
+    }
+   ],
+   "passed": 4,
+   "cases": 4
+  }
+ ],
+ "control": {
+  "name": "wrong coupling (fixed strata) is detected",
+  "detected": true
+ },
+ "coupling_effect": {
+  "duplicate_first_token": {
+   "coupled": 0.1393,
+   "independent": 0.2802
+  },
+  "duplicate_whole_sequence": {
+   "coupled": 0.0042,
+   "independent": 0.0336
+  }
+ },
+ "speculative_path": {
+  "target": [
+   0.45,
+   0.3,
+   0.15,
+   0.1
+  ],
+  "draft": [
+   0.25,
+   0.25,
+   0.25,
+   0.25
+  ],
+  "marginal_chi_square": 1.57,
+  "dof": 3,
+  "p_value": 0.6703,
+  "duplicate_token": {
+   "coupled_coins": 0.2757,
+   "independent": 0.324,
+   "inverse_cdf_stratified": 0.05,
+   "iid": 0.325
+  }
+ },
+ "fleet_screen": {
+  "implementable_without_server_change": false,
+  "stop": "a fleet screen needs an SGLang change; stopped here (coordinator 2026-11-27, item 3)",
+  "evidence": [
+   "serving: swarm-recipe (Inkling-2-Mini-1x-DGX-Spark v2.9.2) samples through DFLASH speculative decoding (--speculative-algorithm DFLASH, block verification); the plan serving block and admission receipts record the launch command, without --enable-custom-logit-processor and without --enable-deterministic-inference",
+   "SGLang source read (repos/external/sglang-v3-survey-20261027 @7fe5b127e4, not the serving image itself): the DFLASH verify step draws its accept and final-sampling coins with torch.rand inside the server (speculative/dflash_utils.py ~982-990); no request field carries per-position uniforms",
+   "per-request seed (the shim maps seed -> sampling_seed) is only used when deterministic inference is enabled (sampling/sampling_batch_info.py ~157-171); otherwise sampling is global torch randomness, so sibling coupling through request seeds is impossible on this launch",
+   "a custom logit processor could force each position to the coupled inverse-CDF choice (one-hot target, exact under rejection sampling) but needs --enable-custom-logit-processor (a relaunch) and a per-position processor over the full vocabulary inside the verify block (DFLASH fast paths disabled): a server change",
+   "feeding coupled coins into the existing rejection-sampling path keeps the marginals but barely couples the tokens (speculative_path: duplicate rate 0.276 vs 0.324 independent, against 0.05 for inverse-CDF stratification on the same distribution)"
+  ]
+ },
+ "verdict": "marginals preserved exactly"
+}
