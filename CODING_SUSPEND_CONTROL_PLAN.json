@@ -1,0 +1,119 @@
+{
+ "protocol": "coding-agents-v1",
+ "limits": {
+  "per_agent_completion_tokens": 32768,
+  "idle_timeout_seconds": 120,
+  "agent_wall_deadline_seconds": 7200,
+  "sandbox": "CPU-only Docker python@c61cffc3, no network, 256 MB, 1 CPU, 10 s per grade"
+ },
+ "scheduling": {
+  "concurrent_agents_per_node": 20,
+  "placement": "agent j of case c on replica/grader host (c+j)%4",
+  "concurrency_note": "each arm alone on the fleet: 20 client requests per node <= 25"
+ },
+ "runner": "run_coding_earlystop.py",
+ "agent_variants": [
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl",
+  "code_xl"
+ ],
+ "agent_seed_offset": 9700,
+ "early_stop": "first_accepted_in_time",
+ "selection": "the first proposal in TIME order that passes ALL feedback cases ends the case: other agents of the case are terminated, queued ones never start; solved if it passes ALL holdout cases",
+ "rolling": {
+  "width": 2
+ },
+ "arm": "R2: early stop, 2 in flight, every agent ending without a passing proposal is replaced, up to 8",
+ "acceptance": "judge",
+ "judge": {
+  "thinking_tokens": 16384,
+  "answer_tokens": 2048,
+  "max_calls": 2
+ },
+ "matrix": {
+  "tasks": "datasets/coding-hard-v1/tasks.json",
+  "tests": "datasets/coding-hard-v1/hidden-tests.json",
+  "tasks_sha256": "01cb39b1b18d7e6565576fa8b96a30681b3fe2a31796399bfd8f0f6761033da0",
+  "tests_sha256": "57cf4420c5db07ae2afab10b86c93f07fc24da6318386856cd10399b11effa13",
+  "split": "evaluation",
+  "tasks_count": 24,
+  "seeds": [
+   58,
+   59,
+   60
+  ]
+ },
+ "status": "FROZEN",
+ "study": "coding-suspend-v1-control",
+ "study_group": "coding-suspend-v1",
+ "screen": "idea-5-live",
+ "ab_arm": "control",
+ "arm_order": [
+  "control",
+  "hold"
+ ],
+ "source_revision": "cccdcb3479c99ef0d6aaf9feb485ca287212fcac",
+ "source_path": ".runtime/coding-suspend-source",
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@ed40e7da625f594fc9c4990f5f66be24873c22d7",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "Inkling-2-Mini-1x-DGX-Spark v2.9.2 (a29380b; scripts/launch.sh sha 9428eb69...) `scripts/launch.sh up` with release defaults (SPEC=dflash2, drafter incoai/Inkling-2-Mini-DFlash2@4f9088ea, MEM_FRACTION 0.88, CTX 262144, memguard 3.5 GiB) and only the swarm wiring env NAME=swarm-recipe PORT=30000 HOST=127.0.0.1 SERVED=inkling; the swarm serving default since 2026-11-25 (coding-v29-r2-v1: -20 % wall, -20 % Wh at equal quality)",
+  "container": "swarm-recipe",
+  "shim_container": "swarm-inkling-shim",
+  "adapter": "inkling/shim.py (unchanged; upstream 127.0.0.1:30000)",
+  "temperature": "0.8 (harness constant)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "mem_fraction": "0.88",
+  "identity_from": "SWARM_FAIR_HARD23_PLAN.json",
+  "chat_template_sha256": "53a9035f3255945704b5857657cfb00c1165090c0641c4f782a0cbf268cc16dc",
+  "chat_template": "thinkingmachines/Inkling-2-Mini snapshot ed40e7da chat_template.jinja"
+ },
+ "code_sha256": {
+  "run_coding_earlystop.py": "c82f56e1ac2bb2d7040ff1a7be732af264acbe863d402fc7a4f58466c79b4818",
+  "run_coding_agents.py": "ff525e9e8b108f6a2f975efec408fbc32b86865bdd9e004e1c8837b48f04182a",
+  "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+  "run_agents72.py": "d9fd620bc3b0a93e9238e32170b6a876415ce043ddf70f239077884f5f62e068",
+  "inkling/suspend_arms.py": "cec31461c8a033cf703eaa3ba236c5da23fdcf03a9f5244c3598a9e6dd014879",
+  "inkling/admit.py": "d6ff34d23f80919eddce2b0866b86350a7ed1a9382aa52575a121e88bbb0858b",
+  "inkling/fleet_lease.py": "911b0ee5570bfe164f8afd923445b098ac1c957c09432b70942a70223dbfdeeb",
+  "inkling/arms.py": "5ae0b3963e3e942a7e211b6d0d30ae382f336f08c8b79b975d59ae140c005999",
+  "inkling/energy.py": "41f458152ce0dc377800588701c102caa1b5d937524a0110992a4720b5d24acb",
+  "inkling/report_suspend_ab.py": "f4b5b8d265f8e4ffbfac806e9d859a10027faa3ea4f4843db93fa112a102277f",
+  ".runtime/coding-suspend-source/coding_forced.py": "c92951fcec2287893b17711a5eeea4bf7b0c1ab26e5c7d65c79a576ff8b0e2ca",
+  ".runtime/coding-suspend-source/coding_forced_worker.py": "6d78b06b57e6c722c45faed3b77cf0490963f8e8737c70ef179ca69efd2c8191",
+  ".runtime/coding-suspend-source/forced72.py": "2b21ce618b527cd56b77e546d7d9cd460198cce00e22aa6a4c9afac00067f01c",
+  ".runtime/coding-suspend-source/harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+  ".runtime/coding-suspend-source/sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+  ".runtime/coding-suspend-source/coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2"
+ },
+ "question": "Frozen A/B plans of the idea #5 LIVE validation (astra IDEAS 2026-11-26 #5; coordinator 2026-11-27) for the only\nfamily that survived the offline bound, judge-only coding (results/screen-suspend-siblings: optimistic 22.2 %,\npessimistic 13.9 % of server generation tokens).",
+ "mechanism": "Mechanism (what this server allows): hold_dispatch. True pausing of an in-flight stream is not possible here (SGLang has\nno per-request pause, a stopped client does not stop decoding, and per-request seeds are not honoured, so an aborted\nstream cannot be resumed token-exactly). While a candidate's judge verdict is PENDING, its case siblings hold their NEXT\nmodel dispatch and no new agent of the case starts; streams already in flight continue. On an acceptance the siblings\nare terminated (as today); on a rejection they resume. Offline bound of this mechanism on coding-notests-v1-judge:\n12.3 % of server generation tokens (dispatches that started inside accepted pending windows; median window 576 s),\nagainst 22.2 % for true suspension; a rejection costs delay only (nothing is recomputed).",
+ "arms_text": "Arms (each alone on the fleet via inkling/suspend_arms.py; arm_order control, hold):\n  control  the production no-provided-tests judge path of coding-notests-v1-judge (run_coding_earlystop.py, acceptance\n           judge, early stop first_accepted_in_time, R2 rolling width 2 up to 8 agents, judge 16,384 + 2,048 tokens,\n           2 calls, per-agent 32,768 tokens, 20 agents per node);\n  hold     the same plus suspend_siblings = hold_dispatch.\nBoth use the same worker revision (research/coding-suspend-v1; without --hold-file it is the 9d60b36 worker), the same\n72 fresh cases (coding-hard-v1 evaluation split, 24 tasks x seeds 58-60, never used before on this corpus), the same\njudge and budgets.",
+ "decision_rule": {
+  "wrong": "wrong(hold) <= wrong(control): no additional wrong answers (answered but not solved)",
+  "solved": "solved(hold) >= solved(control) - 1",
+  "energy": "GPU Wh per solved case (inkling/energy.py over the arm window) <= 0.90 x control",
+  "decision": "PASS only if all three hold; otherwise STOP",
+  "reported": "server generated tokens, wall, energy, pending windows and holds per arm"
+ },
+ "offline_bound": {
+  "run": "coding-notests-v1-judge",
+  "accepted_windows": 72,
+  "median_window_seconds": 576.1,
+  "hold_dispatch_share": 0.1226,
+  "true_suspension_share": 0.2215,
+  "generation_tokens": 3938332.0,
+  "energy_wh": 120.24
+ },
+ "base_plan": "CODING_NOTESTS_JUDGE_PLAN.json",
+ "base_plan_sha256": "b734ab777aa4652e9e442aff03c25744c7e3528549c552bd2ba0bb6e489d1f76",
+ "execution": "python inkling/suspend_arms.py --plan CODING_SUSPEND_CONTROL_PLAN.json --output runs/coding-suspend-v1-control (alone on the fleet: lease, admission, raw idle gauges, fenced drain), in arm_order",
+ "report": "inkling/report_suspend_ab.py --control CODING_SUSPEND_CONTROL_PLAN.json --hold CODING_SUSPEND_HOLD_PLAN.json",
+ "frozen_note": "Frozen before any call with seeds 58-60 on coding-hard-v1 (no earlier plan or run used them)."
+}
