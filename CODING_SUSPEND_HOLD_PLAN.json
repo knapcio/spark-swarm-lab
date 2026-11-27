@@ -57,7 +57,7 @@
   "control",
   "hold"
  ],
- "source_revision": "cccdcb3479c99ef0d6aaf9feb485ca287212fcac",
+ "source_revision": "fbdbcdc4f1fc2a29af6b4befb46797280dbcf308",
  "source_path": ".runtime/coding-suspend-source",
  "serving": {
   "model": "thinkingmachines/Inkling-2-Mini@ed40e7da625f594fc9c4990f5f66be24873c22d7",
@@ -75,17 +75,17 @@
   "chat_template": "thinkingmachines/Inkling-2-Mini snapshot ed40e7da chat_template.jinja"
  },
  "code_sha256": {
-  "run_coding_earlystop.py": "c82f56e1ac2bb2d7040ff1a7be732af264acbe863d402fc7a4f58466c79b4818",
+  "run_coding_earlystop.py": "62eae53c36e3c5ed9f1c950b62f31af011ccd6501f192d4f88fdfb5d61b5be92",
   "run_coding_agents.py": "ff525e9e8b108f6a2f975efec408fbc32b86865bdd9e004e1c8837b48f04182a",
   "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
   "run_agents72.py": "d9fd620bc3b0a93e9238e32170b6a876415ce043ddf70f239077884f5f62e068",
-  "inkling/suspend_arms.py": "cec31461c8a033cf703eaa3ba236c5da23fdcf03a9f5244c3598a9e6dd014879",
+  "inkling/suspend_arms.py": "a6cae495f9509f3a9a9b8e4907d41ee0e7c0e0f081368ad314445e80c12eaf0a",
   "inkling/admit.py": "d6ff34d23f80919eddce2b0866b86350a7ed1a9382aa52575a121e88bbb0858b",
   "inkling/fleet_lease.py": "911b0ee5570bfe164f8afd923445b098ac1c957c09432b70942a70223dbfdeeb",
   "inkling/arms.py": "5ae0b3963e3e942a7e211b6d0d30ae382f336f08c8b79b975d59ae140c005999",
   "inkling/energy.py": "41f458152ce0dc377800588701c102caa1b5d937524a0110992a4720b5d24acb",
-  "inkling/report_suspend_ab.py": "f4b5b8d265f8e4ffbfac806e9d859a10027faa3ea4f4843db93fa112a102277f",
-  ".runtime/coding-suspend-source/coding_forced.py": "c92951fcec2287893b17711a5eeea4bf7b0c1ab26e5c7d65c79a576ff8b0e2ca",
+  "inkling/report_suspend_ab.py": "2501346d4c8836708b5cffad6844665f038e8e68d467abedd38966cbf1700151",
+  ".runtime/coding-suspend-source/coding_forced.py": "fa7170644ede5ff6767690b50ed1f7c393fea525d847694f9d3e4037766eafa7",
   ".runtime/coding-suspend-source/coding_forced_worker.py": "6d78b06b57e6c722c45faed3b77cf0490963f8e8737c70ef179ca69efd2c8191",
   ".runtime/coding-suspend-source/forced72.py": "2b21ce618b527cd56b77e546d7d9cd460198cce00e22aa6a4c9afac00067f01c",
   ".runtime/coding-suspend-source/harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
@@ -93,7 +93,7 @@
   ".runtime/coding-suspend-source/coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2"
  },
  "question": "Frozen A/B plans of the idea #5 LIVE validation (astra IDEAS 2026-11-26 #5; coordinator 2026-11-27) for the only\nfamily that survived the offline bound, judge-only coding (results/screen-suspend-siblings: optimistic 22.2 %,\npessimistic 13.9 % of server generation tokens).",
- "mechanism": "Mechanism (what this server allows): hold_dispatch. True pausing of an in-flight stream is not possible here (SGLang has\nno per-request pause, a stopped client does not stop decoding, and per-request seeds are not honoured, so an aborted\nstream cannot be resumed token-exactly). While a candidate's judge verdict is PENDING, its case siblings hold their NEXT\nmodel dispatch and no new agent of the case starts; streams already in flight continue. On an acceptance the siblings\nare terminated (as today); on a rejection they resume. Offline bound of this mechanism on coding-notests-v1-judge:\n12.3 % of server generation tokens (dispatches that started inside accepted pending windows; median window 576 s),\nagainst 22.2 % for true suspension; a rejection costs delay only (nothing is recomputed).",
+ "mechanism": "Mechanism (what this server allows): hold_dispatch. True pausing of an in-flight stream is not possible here (SGLang has\nno per-request pause, a stopped client does not stop decoding, and per-request seeds are not honoured, so an aborted\nstream cannot be resumed token-exactly). One judge per case at a time (an atomic ownership file taken before the\nfirst judge call). While a candidate's judge verdict is PENDING, its case siblings hold their NEXT model dispatch and no\nnew agent of the case starts; streams already in flight continue. On an acceptance the siblings are terminated (as\ntoday); on a rejection they resume. The frozen wall deadline is the same in both arms (no credit for held time). Offline bound of this mechanism on coding-notests-v1-judge:\n12.3 % of server generation tokens (dispatches that started inside accepted pending windows; median window 576 s),\nagainst 22.2 % for true suspension; a rejection costs delay only (nothing is recomputed).",
  "arms_text": "Arms (each alone on the fleet via inkling/suspend_arms.py; arm_order control, hold):\n  control  the production no-provided-tests judge path of coding-notests-v1-judge (run_coding_earlystop.py, acceptance\n           judge, early stop first_accepted_in_time, R2 rolling width 2 up to 8 agents, judge 16,384 + 2,048 tokens,\n           2 calls, per-agent 32,768 tokens, 20 agents per node);\n  hold     the same plus suspend_siblings = hold_dispatch.\nBoth use the same worker revision (research/coding-suspend-v1; without --hold-file it is the 9d60b36 worker), the same\n72 fresh cases (coding-hard-v1 evaluation split, 24 tasks x seeds 58-60, never used before on this corpus), the same\njudge and budgets.",
  "decision_rule": {
   "wrong": "wrong(hold) <= wrong(control): no additional wrong answers (answered but not solved)",
