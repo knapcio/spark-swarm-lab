@@ -1,0 +1,42 @@
+{
+ "protocol": "diffgate-replay-v1",
+ "study": "diffgate-v1",
+ "status": "FROZEN",
+ "frozen_note": "Frozen before any analysis of these runs and before any model call (coordinator 2026-11-27; idea borrowed generically from Cortheon v2 differential testing). The gate ADDS abstention on top of the public-test gate; it never replaces it.",
+ "question": "Does a differential-consensus gate (all public-test passers of a case must agree on generated inputs) flag the wrong accepted coding answers while keeping the correct ones?",
+ "runs": ["coding-baseline-v1", "coding-baseline-v2", "coding-baseline-v3", "coding-baseline-s52", "coding-baseline-s55",
+          "coding-baseline-s61", "coding-elastic-v1-a", "coding-elastic-v2-a"],
+ "corpus": "datasets/coding-hard-v1/tasks.json (all eight runs; evaluation split)",
+ "population": {
+  "accepted": "a case (run, task_id, seed) that ended with an answer: cases.json answered true (the winner passed the public feedback tests)",
+  "wrong": "an accepted case whose winner failed the hidden holdout tests (cases.json solved false): ALL of them",
+  "correct": "an accepted case with solved true: the first 60 in the order sha256('2026112705:' + run + ':' + task_id + ':' + seed) (all of them if fewer)",
+  "passers": "every recorded agent of the case whose puzzle_end has feedback_pass true and a code string (the winner included); the agent's final code from puzzle_end.code",
+  "generator": "inkling/diffgate_population.py writes the frozen item list DIFFGATE_POPULATION.json (no model call)"
+ },
+ "generator_call": {
+  "count": "one per population case, run as a frozen fleet job (DIFFGATE_GEN_PLAN.json, driver diffgate_gen.py on research/diffgate-v1; lease, admission bound to that plan, raw idle gauges, fenced drain, retries 0, stop latch, <= 20 per node)",
+  "payload": "the case's task as JSON {function_name, spec} only (no examples, no tests, no candidate code)",
+  "system": "You write example inputs for a described function. Return only the requested Python code.",
+  "user": "{payload}\n\nWrite a Python function named generate_inputs that takes no arguments and returns a list of about 30 diverse, valid inputs for the function described above: small inputs, edge cases and a few larger ones, derived only from the description. Each input is a dict with key \"args\" (a list of positional arguments) and optionally \"kwargs\" (a dict of keyword arguments), built from JSON values only. Do not compute or include expected results. Return only the code.",
+  "budget": "thinking 8,192 tokens, then the forced answer within 2,048 (forced72 path); temperature 0.8 (harness constant)",
+  "generic": "the added prompts contain no task-family words; the payload is the task's own text"
+ },
+ "execution": {
+  "where": "the CPU-only Docker sandbox (sandbox_code.py container settings: no network, read-only, 256 MB, 1 CPU, user 65534) on a fleet host over ssh, never on the controller host; run by the coordinator (inkling/diffgate_exec.py)",
+  "inputs": "the generator code is executed in the sandbox (timeout 10 s) and must return a list of 1..64 dicts with args list / optional kwargs dict of JSON values; otherwise the case's gate is unavailable",
+  "outputs": "each passer's code is executed in the sandbox on every input (fresh deep copy per call; timeout 20 s per candidate); the outcome of an input is the type-tagged canonical encoding of the return value (bool, int, float, str, None, list, dict with sorted keys; any other type by its type name and repr) or the exception's type name; a candidate that times out or cannot be loaded has the outcome 'unavailable' for every input"
+ },
+ "gate": {
+  "agree": "all passers have identical outcomes on every input (equal exceptions agree)",
+  "flag": "any input on which two passers' outcomes differ, or any passer unavailable",
+  "single_passer": "a case with exactly one passer is reported separately as 'would need one extra agent' (neither flagged nor passed)",
+  "gate_unavailable": "a case whose generated inputs are unavailable is reported separately and not counted as flagged or passed"
+ },
+ "decision_rule": {
+  "kill": "KILL if the gate flags < 40 % of the wrong cases or > 10 % of the correct cases, both over cases with >= 2 passers and an available gate",
+  "otherwise": "SURVIVES (a live validation would follow)",
+  "reported": "flag rates with counts, single-passer share, gate-unavailable share, added generator tokens (completion), sandbox CPU seconds, per run"
+ },
+ "report": "inkling/report_diffgate.py -> results/diffgate-v1/report.json"
+}
