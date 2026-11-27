@@ -1,0 +1,142 @@
+{
+ "protocol": "coding-agents-v1",
+ "status": "FROZEN",
+ "source_revision": "2b0195eb115a9e4edc35566e37be2a6c43db33b8",
+ "source_path": ".runtime/coding-reserve-source",
+ "limits": {
+  "per_agent_completion_tokens": 40960,
+  "idle_timeout_seconds": 120,
+  "agent_wall_deadline_seconds": 7200,
+  "sandbox": "CPU-only Docker python@c61cffc3, no network, 256 MB, 1 CPU, 10 s per grade"
+ },
+ "scheduling": {
+  "concurrent_agents_per_node": 20,
+  "placement": "agent j of case c on replica/grader host (c+j)%4",
+  "concurrency_note": "each arm alone on the fleet: 20 client requests per node <= 25"
+ },
+ "runner": "run_coding_diffgate.py",
+ "study": "coding-diffgate-v1-gate",
+ "agent_variants": [
+  "code_elastic",
+  "code_elastic",
+  "code_elastic",
+  "code_elastic",
+  "code_elastic",
+  "code_elastic",
+  "code_elastic",
+  "code_elastic"
+ ],
+ "agent_seed_offset": 70700,
+ "matrix": {
+  "tasks": "datasets/coding-hard-v1/tasks.json",
+  "tests": "datasets/coding-hard-v1/hidden-tests.json",
+  "tasks_sha256": "01cb39b1b18d7e6565576fa8b96a30681b3fe2a31796399bfd8f0f6761033da0",
+  "tests_sha256": "57cf4420c5db07ae2afab10b86c93f07fc24da6318386856cd10399b11effa13",
+  "split": "evaluation",
+  "tasks_count": 24,
+  "seeds": [
+   70,
+   71,
+   72,
+   73,
+   74,
+   75,
+   76,
+   77,
+   78
+  ]
+ },
+ "serving": {
+  "model": "thinkingmachines/Inkling-2-Mini@ed40e7da625f594fc9c4990f5f66be24873c22d7",
+  "engine": "SGLang lmsysorg/sglang:inkling-2-mini",
+  "image_id": "sha256:efac853b46811ccb760545b7b29e7119bdf907537ccf6e863fac3011fe8b98de",
+  "launch": "Inkling-2-Mini-1x-DGX-Spark v2.9.2 (a29380b; scripts/launch.sh sha 9428eb69...) `scripts/launch.sh up` with release defaults (SPEC=dflash2, drafter incoai/Inkling-2-Mini-DFlash2@4f9088ea, MEM_FRACTION 0.88, CTX 262144, memguard 3.5 GiB) and only the swarm wiring env NAME=swarm-recipe PORT=30000 HOST=127.0.0.1 SERVED=inkling; the swarm serving default since 2026-11-25 (coding-v29-r2-v1: -20 % wall, -20 % Wh at equal quality)",
+  "container": "swarm-recipe",
+  "shim_container": "swarm-inkling-shim",
+  "adapter": "inkling/shim.py (unchanged; upstream 127.0.0.1:30000)",
+  "temperature": "0.8 (harness constant)",
+  "shim_sha256": "f03627ebd42dcaafa0bd9ce55a70e100f2579979568cc9e207e112ccbdd9ccc3",
+  "mem_fraction": "0.88"
+ },
+ "early_stop": "first_feedback_pass_in_time",
+ "selection": "the first proposal in TIME order that passes ALL feedback cases ends the case: other agents of the case are terminated, queued ones never start; solved if it passes ALL holdout cases",
+ "resume_rule": "As in earlier coding plans: on an operational fault the runner stops admissions; the same arm is continued only for unfinished cases with the same seeds and documented as an amendment.",
+ "frozen_note": "Frozen before any call with fresh seeds 70-78 (coding-hard-v1 used <= 66) and offset 70700 (unused); the arms differ only in study, ab_arm, runner, differential_gate, execution.",
+ "study_group": "coding-diffgate-v1",
+ "question": "Does a live differential-consensus gate on top of the public-test gate cut wrong coding answers at an acceptable cost in solved cases and energy?",
+ "execution": "python inkling/diffgate_arms.py --plan CODING_DIFFGATE_GATE_PLAN.json --output runs/coding-diffgate-v1-gate (alone on the fleet; arm order control, gate)",
+ "decision_rule": {
+  "pass": "PASS iff wrong(gate) <= 0.6 x wrong(control) AND solved(gate) >= solved(control) - 3 AND GPU Wh per solved case(gate) <= 1.5 x control (unrounded; energy covering all four nodes)",
+  "otherwise": "STOP",
+  "wrong": "an answered case whose answer fails the hidden holdout tests",
+  "reported": "solved, wrong, unanswered, agents started, generator tokens, sandbox seconds, wall, server generated tokens, Wh per solved, fallback cases, and SHARED-BUG cases separately (gate arm: every distinct passer agreed and the accepted answer is still wrong: the known blind spot)",
+  "incomplete": "INCOMPLETE (no decision) unless both arms are complete: each run embeds its plan, the plans differ only in arm fields, no runner errors, cases exactly the frozen 216 task x seed keys, runner exit 0, drain confirmed, no signal, energy covering all four nodes"
+ },
+ "exclusions": "None; all 72 cases of each arm count.",
+ "report": "inkling/report_diffgate_live.py",
+ "rolling": {
+  "width": 2
+ },
+ "code_sha256": {
+  "run_coding_earlystop.py": "62eae53c36e3c5ed9f1c950b62f31af011ccd6501f192d4f88fdfb5d61b5be92",
+  "run_coding_diffgate.py": "a180f6d3594baac57b93ad5b991611bdf014d9945d5dfb90d66102cd6e1618f9",
+  "run_coding_agents.py": "ff525e9e8b108f6a2f975efec408fbc32b86865bdd9e004e1c8837b48f04182a",
+  "run_benchmark.py": "6a2fd79122b020d9af7b720a747f1d4591be7a93d029459820a0ab21097e404a",
+  "run_agents72.py": "d9fd620bc3b0a93e9238e32170b6a876415ce043ddf70f239077884f5f62e068",
+  "run_variants.py": "29a7fd2102da8029ad1edae8b3d7cfe14e430b9078d93e16f66ce605ead0355b",
+  "sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+  "inkling/diffgate_arms.py": "340d5cb1342621aff67c69d2f893e168eb964d8fd06645e10b761e7460f20024",
+  "inkling/suspend_arms.py": "a6cae495f9509f3a9a9b8e4907d41ee0e7c0e0f081368ad314445e80c12eaf0a",
+  "inkling/admit.py": "d6ff34d23f80919eddce2b0866b86350a7ed1a9382aa52575a121e88bbb0858b",
+  "inkling/fleet_lease.py": "911b0ee5570bfe164f8afd923445b098ac1c957c09432b70942a70223dbfdeeb",
+  "inkling/arms.py": "5ae0b3963e3e942a7e211b6d0d30ae382f336f08c8b79b975d59ae140c005999",
+  "inkling/energy.py": "41f458152ce0dc377800588701c102caa1b5d937524a0110992a4720b5d24acb",
+  "inkling/sandbox_outputs.py": "452ebeb0c64f83657736cc5523bd7d51a9ec2ea5a50563d761d90a3c2d18ffe3",
+  "inkling/diffgate_exec.py": "c15b54742254c5e7fc3e6fd9fb7262bd05e295d34dc1ded194e1909c9e7341e8",
+  "inkling/report_diffgate_live.py": "6918afddd4089d132b6005598e975b5d235dda906d64dcddbae0872ec78c0a64",
+  "inkling/report_suspend_ab.py": "2501346d4c8836708b5cffad6844665f038e8e68d467abedd38966cbf1700151",
+  ".runtime/coding-reserve-source/coding_forced.py": "423cce289ce5f092f71d7ac566ff6c945ac32022bed5c54722814c346a90d615",
+  ".runtime/coding-reserve-source/coding_forced_worker.py": "b14b1f8524bd188e38bc322620961004319c7ae5eb120f7944a8ab376aeb46ca",
+  ".runtime/coding-reserve-source/forced72.py": "2b21ce618b527cd56b77e546d7d9cd460198cce00e22aa6a4c9afac00067f01c",
+  ".runtime/coding-reserve-source/harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+  ".runtime/coding-reserve-source/sandbox_code.py": "34951a8d7f64d3429020761dcab8af3a96948419a0d960983c748425de493cc0",
+  ".runtime/coding-reserve-source/coding_harness.py": "bbbc321c68dd75e6c4ebdb8e5a57a53e954a0cae6eeb6650041d82d536caeaf2",
+  ".runtime/diffgate-source/diffgate_gen.py": "68f6506064b47320ff5f2da0a7eb386a20c10e2f6eb63c341ed423c8886d3b3a",
+  ".runtime/diffgate-source/forced72.py": "8458cbe47766b442977c2e8f9585d1311a3e94f0a4b011046a7ab7c3cab859a5",
+  ".runtime/diffgate-source/harness.py": "f2f659f61c1624eeb818d44265fa8c709fa8bf193b07475e9656a882f5ab2a9e",
+  ".runtime/diffgate-source/tail_replay.py": "18718033c1cafe821bca2c2a641f9838f4e3876aabaf2db16313e117f10bcb35",
+  ".runtime/diffgate-source/extend_replay.py": "ab350f11036fecc2e209db55d249fb928c96eaffea7aa7280bdca47321b94323",
+  ".runtime/diffgate-source/followup72.py": "c901925e0b1f0bf3829bf80ca8110ef6e35c5da79f833939a710cdb6dd10feb4"
+ },
+ "disclosure": "code_elastic has a 25 % higher per-agent cap (40,960 vs 32,768 tokens); every extra token is charged.",
+ "ab_arm": "gate",
+ "arm_order": [
+  "control",
+  "gate"
+ ],
+ "design": "DIFFGATE_LIVE_PLAN.json",
+ "design_sha256": "f4f5f2989ae9354592630fb23758fbb5e0aae4fa579c9fd06775c22f644ce973",
+ "cases": "coding-hard-v1 evaluation split, 24 tasks x fresh seeds 70-78 = 216 cases per arm (no earlier plan or run used seeds >= 67 on this corpus); agent_seed_offset 70700 (unused); both arms the same cases and offset",
+ "differential_gate": {
+  "rule": "differential_v1",
+  "system": "You write example inputs for a described function. Return only the requested Python code.",
+  "user": "{payload}\n\nWrite a Python function named generate_inputs that takes no arguments and returns a list of about 30 diverse, valid inputs for the function described above: small inputs, edge cases and a few larger ones, derived only from the description. Each input is a dict with key \"args\" (a list of positional arguments) and optionally \"kwargs\" (a dict of keyword arguments), built from JSON values only. Do not compute or include expected results. Return only the code.",
+  "think_tokens": 8192,
+  "total_tokens": 10240,
+  "source_path": ".runtime/diffgate-source",
+  "source_revision": "15ed5b3ef342689e5f1f2f3b37be90ccb7b5ff26",
+  "design": {
+   "runner": "run_coding_diffgate.py (the control's runner and worker, plus the gate below; nothing else changes)",
+   "passer": "an agent whose final proposal passes ALL public feedback tests (the control's acceptance test); its code is the trace's puzzle_end code",
+   "distinct": "passers with byte-identical code (sha256) count once: a later identical passer neither votes nor counts",
+   "no_early_accept": "a public-test pass does NOT end the case; it counts as an ended agent for the rolling replacement (like a failure), so agents keep starting up to the existing cap of 8",
+   "generator": "at the case's first passer: one generator call with the frozen generic prompt of DIFFGATE_PLAN.json (system and user text, payload {function_name, spec} only), thinking 8,192 then the forced answer within 10,240 in total, on the endpoint of the passer that triggers it (its worker thread runs the call, so no node exceeds its per-node request cap); the reply's code block runs in the sandbox (generate mode, 10 s) to give the inputs (first 64); if the inputs are unusable, ONE more generator call; if still unusable the case uses the fallback below",
+   "sandbox": "each distinct passer runs on the inputs in the CPU-only Docker sandbox (inkling/sandbox_outputs.py, reviewed: fleet hosts Spark_01-04 only with verified host and daemon identity, host-side deadline, output cap and label-verified cleanup) on the case's host (agent-0 slot), 2 s per input, 60 s per program; its behaviour is the vector of outcome sha256 (exceptions and timeouts are outcomes); a passer that cannot be loaded or exceeds 60 s has no behaviour and never votes",
+   "vote": "behaviour classes are identical outcome vectors; after each distinct passer's behaviour is known, the case is ACCEPTED as soon as one class holds >= 2 distinct passers; the answer is the class member that passed first (in time); the case's other agents are then terminated and queued ones never start, as in the control",
+   "fallback": "if no usable inputs exist after two generator calls, the case is accepted when it has 2 distinct passers (agreement on the public tests only); such cases are reported as fallback",
+   "abstain": "if all 8 agents have ended and no class holds >= 2 distinct passers (including cases with fewer than 2 distinct passers), the case is UNANSWERED (abstention)",
+   "faults": "a generator transport fault or a sandbox infrastructure fault (ssh, docker, host identity, protocol) is a fault of the run (stop admissions, as worker faults), never an acceptance; the generator client has retries 0, terminal usage required and the stop fence at dispatch (research/diffgate-v1)",
+   "accounting": "generator completion tokens and sandbox container seconds per case and per arm, extra agents (started beyond what the case needed in the control is not observable; reported: agents started per case), votes per case"
+  }
+ }
+}
