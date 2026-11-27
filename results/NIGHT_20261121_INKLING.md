@@ -422,6 +422,48 @@ Pre-registered as a baseline for later screens (plans 17fcc96, frozen before the
   1.58M generated tokens, 1,450 s wall, 43.5 Wh (0.62 Wh per solved case).
 Runs: runs/swarm-baseline-hard26-v1-roll12fair, runs/coding-baseline-v1 (arm_accounting.json, cases).
 
+## 2026-11-27 (41): night 26/27 November, morning summary
+
+Owner: "work on the swarms all night". Spark_01-04 only (Spark_05/06 went to a model comparison). Every screen was frozen
+and pushed before any call, had one focused sol review with narrow fixes verified fail-before/pass-after, ran with the
+fleet lease, a raw-gauge idle check and a fenced drain, and every rejection went to astra. 0 wrong answers in every
+arithmetic run of the night. Request seeds turned out not to be honoured by this server (live probe): "paired" seeds
+only label attempts; draws are independent.
+
+Screens (astra idea round 2026-11-26):
+- **Idea #1, extend a length-forced rejected agent by a replacement's budget** ([screen](extend-screen-v1/report.json),
+  [confirmation](extend-confirm-v1/report.json)): screen PASS (extension 3 vs fresh 1 of 12 recorded failures), frozen
+  confirmation on 12 fresh failures from hard-v27/v28/v29 STOP (1 vs 1, the same puzzle). Pooled 4 vs 2 of 24, p = 0.625.
+  **Not adopted**; astra: dead for this variant.
+- **Idea #4, fork 8K stems into two 24K continuations** ([report](fork-screen-v1/report.json)): **STOP**, coverage fork 2 vs
+  fresh 4 of 12 contested puzzles; 11 % fewer generated tokens but 32 % more prompt tokens. astra: inconclusive, STOP upheld.
+- **Idea #2, independent whole-task restatement** ([report](restate-screen-v1/report.json)): **STOP** at the 2-worker
+  floor (0 vs 0 rescues of 12 recorded abstentions; restatements faithful, 0 truncated). Mechanism untested at full swarm
+  scale; **parked for cost** (astra's 864-run retest not run).
+- **Idea #5, suspend siblings while a verdict is pending**: offline bound ([report](screen-suspend-siblings/report.json))
+  rejected it for arithmetic (0.67 %) and R2 coding (0.50 %); only judge-only coding survived (22.2 %). The only mechanism
+  this server allows is holding the next dispatch (bound 12.3 %). Live A/B on 72 fresh judge-only cases
+  ([report](coding-suspend-v1/report.json)): **STOP**, solved 69 vs 70, wrong 2 vs 1, energy per solved case 1.07x
+  (tokens -10.9 % but wall +15 %). **Closed**; astra: dead for hold_dispatch.
+- **Idea #3, couple sampling randomness across siblings** ([check](idea3-stratified-check/report.json)): the CPU check
+  shows exact marginals and halves duplicate first tokens, but the server's speculative decoding draws its own randomness,
+  so a fleet screen needs an SGLang change. **Stopped there.**
+- A strict-verifier audit found the shared arithmetic verifier lenient about an illegal trailing move; re-checking all 2,854
+  accepted answers of the recent runs flipped **0** ([audit](audit-strict-verifier/report.json)).
+
+Adoptions: none. Reverts: none. Defaults unchanged: arithmetic roll12fair, coding R2 + code_elastic.
+
+Baselines of today's defaults (descriptive fillers, each frozen before its corpus/seeds):
+- Arithmetic roll12fair, hard-v26..v30 (5 x 96 cases): **425 / 480 solved, 0 wrong**, 1.69 Wh per solved case
+  (per corpus 85, 92, 87, 80, 81). hard-v31 running at 07:40 Warsaw.
+- Coding R2 + code_elastic, seeds 43-57 and 61-63 (6 x 72 cases): **417 / 432 solved, 15 wrong (3.5 %)**, 0.61 Wh per
+  solved case. Coding is not at 0 wrong; any coding screen should be judged against this rate.
+
+Fleet idle (night, from about 19:55Z): about 42 minutes, almost all of it the 2-6 minute merge / freeze / CI-check phase
+before each queue item (12 items), plus 3 minutes after the idea #1 launch crash (a judge-client TypeError, fixed with a
+test, no model calls made). One test of the idea #1 driver may have sent up to 8 read-only /metrics GETs to the fleet
+before network blocking was added to all test harnesses.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -434,4 +476,4 @@ Runs: runs/swarm-baseline-hard26-v1-roll12fair, runs/coding-baseline-v1 (arm_acc
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md) · [coding-reserve-v2](coding-reserve-v2/REPORT.md) · [swarm-fair-hard23-v1](swarm-fair-hard23-v1/REPORT.md) · [coding-elastic-v1](coding-elastic-v1/REPORT.md) · [coding-elastic-v2](coding-elastic-v2/REPORT.md) · [collab-s0-v1](collab-s0-v1/REPORT.md) · [collab-s0-v2](collab-s0-v2/REPORT.md) · [collab-s0-v3](collab-s0-v3/REPORT.md) · [collab-s1-v1](collab-s1-v1/REPORT.md) · [collab-s1-v2](collab-s1-v2/REPORT.md)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md) · [coding-reserve-v2](coding-reserve-v2/REPORT.md) · [swarm-fair-hard23-v1](swarm-fair-hard23-v1/REPORT.md) · [coding-elastic-v1](coding-elastic-v1/REPORT.md) · [coding-elastic-v2](coding-elastic-v2/REPORT.md) · [collab-s0-v1](collab-s0-v1/REPORT.md) · [collab-s0-v2](collab-s0-v2/REPORT.md) · [collab-s0-v3](collab-s0-v3/REPORT.md) · [collab-s1-v1](collab-s1-v1/REPORT.md) · [collab-s1-v2](collab-s1-v2/REPORT.md) · [extend-screen-v1](extend-screen-v1/report.json) · [extend-confirm-v1](extend-confirm-v1/report.json) · [fork-screen-v1](fork-screen-v1/report.json) · [restate-screen-v1](restate-screen-v1/report.json) · [coding-suspend-v1](coding-suspend-v1/report.json)

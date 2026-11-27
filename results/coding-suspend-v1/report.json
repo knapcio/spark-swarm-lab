@@ -1,0 +1,51 @@
+{
+ "study": "coding-suspend-v1",
+ "control_run": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/coding-suspend-v1-control",
+ "hold_run": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/coding-suspend-v1-hold",
+ "rule": {
+  "wrong": "wrong(hold) <= wrong(control): no additional wrong answers (answered but not solved)",
+  "solved": "solved(hold) >= solved(control) - 1",
+  "energy": "GPU Wh per solved case (inkling/energy.py over the arm window) <= 0.90 x control",
+  "decision": "PASS only if all three hold; otherwise STOP",
+  "reported": "server generated tokens, wall, energy, pending windows and holds per arm"
+ },
+ "status": "complete",
+ "arms": {
+  "control": {
+   "cases": 72,
+   "solved": 70,
+   "answered": 71,
+   "wrong": 1,
+   "energy_wh": 106.29,
+   "wh_per_solved": 1.5184285714285715,
+   "server_generation_tokens": 3578648.0,
+   "server_requests": 363.0,
+   "runner_wall_seconds": 3870.4,
+   "holds": null
+  },
+  "hold": {
+   "cases": 72,
+   "solved": 69,
+   "answered": 71,
+   "wrong": 2,
+   "energy_wh": 112.28,
+   "wh_per_solved": 1.6272463768115941,
+   "server_generation_tokens": 3189394.0,
+   "server_requests": 298.0,
+   "runner_wall_seconds": 4464.9,
+   "holds": {
+    "cases": 72,
+    "pending_windows": 89,
+    "pending_seconds": 44027.7
+   }
+  }
+ },
+ "checks": {
+  "no_additional_wrong": false,
+  "solved": true,
+  "energy": false
+ },
+ "energy_per_solved_ratio": 1.0716647509343455,
+ "server_generation_token_saving": 0.1088,
+ "decision": "STOP"
+}
