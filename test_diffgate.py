@@ -29,18 +29,22 @@ class FakeHost:
     """Stands in for sandbox_code._ssh: answers the identity probe as spark-0N and, for the host script, runs the
     trusted RUNNER locally on the payload (only test snippets reach it) and appends the container state."""
 
-    def __init__(self, identity=None, state=None):
-        self.identity, self.state, self.commands = identity, state or STATE, []
+    def __init__(self, identity=None, state=None, left=0):
+        self.identity, self.state, self.left, self.commands = identity, state or STATE, left, []
 
     def __call__(self, host, command, payload=None, timeout=15):
         self.commands.append((host, command, payload))
         script = command[-1]
+        if 'swarm-lab.code-owner=' in script and 'docker run' not in script:  # sweep
+            self.swept = getattr(self, 'swept', 0) + 1
+            return subprocess.CompletedProcess(command, 0, f'{self.left}\n', '')
         if script.startswith('hostname;'):
             name = self.identity or so.FLEET[host]
             return subprocess.CompletedProcess(command, 0, f'{name}\n{name} DAEMON-{host}\n', '')
         run = subprocess.run([sys.executable, '-I', '-S', '-c', so.RUNNER], input=payload, capture_output=True,
                              text=True, timeout=timeout)
-        return subprocess.CompletedProcess(command, 0, run.stdout + so.STATE_MARK + json.dumps(self.state), '')
+        return subprocess.CompletedProcess(command, 0, run.stdout + so.STATE_MARK + json.dumps(self.state)
+                                           + so.CLEAN_MARK + f'{self.left}\n', '')
 
 
 class Guarded(unittest.TestCase):
@@ -98,13 +102,38 @@ class ReviewSandboxTests(Guarded):
         self.assertIn('size cap', so.run('generate', big, 'generate_inputs', 'Spark_01')['error'])
 
     def test_review_output_cap_and_host_deadline_outcomes(self):
-        self.assertEqual(so.parse_host_output('abc' + so.STATE_MARK + '{"Running": false}'),
-                         ('abc', {'Running': False}))
+        self.assertEqual(so.parse_host_output('abc' + so.STATE_MARK + '{"Running": false}' + so.CLEAN_MARK + '0\n'),
+                         ('abc', {'Running': False}, 0))
         with patch.object(so, 'OUTPUT_CAP', 10):
             self.assertIn('over the cap', so.run('outputs', F_OK, 'f', 'Spark_01', inputs=[{'args': [1]}])['error'])
         stuck = FakeHost(state=dict(STATE, Running=True))
         with patch.object(so.sc, '_ssh', stuck):
             self.assertEqual(so.run('outputs', F_OK, 'f', 'Spark_01', inputs=[{'args': [1]}])['status'], 'timeout')
+
+    def test_review_cleanup_is_verified_on_the_host(self):
+        """Live review blocker 4: the host removes the container explicitly and reports what is left; anything left
+        (or no report) is an infrastructure fault, never a result."""
+        so.run('outputs', F_OK, 'f', 'Spark_01', inputs=[{'args': [1]}])
+        script = self.host.commands[-1][1][-1]
+        tail = script[script.index('printf %s ' + __import__('shlex').quote(so.STATE_MARK)):]
+        self.assertIn('\ncleanup\n', tail)
+        self.assertIn('docker ps -aq --filter label=swarm-lab.code-task=', tail)
+        left = FakeHost(left=1)
+        with patch.object(so.sc, '_ssh', left):
+            out = so.run('outputs', F_OK, 'f', 'Spark_01', inputs=[{'args': [1]}])
+        self.assertTrue(out['infrastructure'])
+        self.assertIn('not verified removed', out['error'])
+
+    def test_review_sweep_removes_owned_containers_and_reports_what_is_left(self):
+        script = so.sweep_script('Spark_03')
+        self.assertTrue(script.startswith('[ "$(hostname)" = spark-03 ]'))
+        self.assertIn('docker ps -aq --filter label=swarm-lab.code-owner=' + so.sc.OWNER, script)
+        self.assertEqual(so.sweep(['Spark_01', 'Spark_02']), {'Spark_01': 0, 'Spark_02': 0})
+        with patch.object(so.sc, '_ssh', FakeHost(left=2)):
+            self.assertEqual(so.sweep(['Spark_01']), {'Spark_01': 2})
+        with patch.object(so.sc, '_ssh', FakeHost(identity='controller')):
+            so._IDENTITY.clear()
+            self.assertEqual(so.sweep(['Spark_04']), {'Spark_04': None})  # unverified host: not clean
 
     def test_should_container_seconds_from_the_host_state(self):
         self.assertEqual(so.run('outputs', F_OK, 'f', 'Spark_01', inputs=[{'args': [1]}])['container_seconds'], 1.5)
