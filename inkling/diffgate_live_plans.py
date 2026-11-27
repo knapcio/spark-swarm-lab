@@ -42,13 +42,12 @@ def make(gate_revision, root=ROOT):
     base = json.loads((Path(root) / BASE_PLAN).read_text())
     design = json.loads((Path(root) / DESIGN).read_text())
     prompts = json.loads((Path(root) / GATE_PROMPTS).read_text())['generator_call']
-    worker = Path(root) / base['source_path']
     pins = {n: hashlib.sha256((Path(root) / n).read_bytes()).hexdigest() for n in PINNED}
     for name in ('coding_forced.py', 'coding_forced_worker.py', 'forced72.py', 'harness.py', 'sandbox_code.py',
                  'coding_harness.py'):
-        pins[f"{base['source_path']}/{name}"] = blob_sha(worker, base['source_revision'], name)
+        pins[f"{base['source_path']}/{name}"] = blob_sha(root, base['source_revision'], name)  # shared object store
     for name in GATE_FILES:
-        pins[f'{GATE_SOURCE}/{name}'] = blob_sha(Path(root) / GATE_SOURCE, gate_revision, name)
+        pins[f'{GATE_SOURCE}/{name}'] = blob_sha(root, gate_revision, name)
     plans = {}
     for arm in ARMS:
         plan = copy.deepcopy(base)
