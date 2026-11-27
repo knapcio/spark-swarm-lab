@@ -9,8 +9,9 @@ stream cannot be resumed token-exactly). One judge per case at a time (an atomic
 first judge call). While a candidate's judge verdict is PENDING, its case siblings hold their NEXT model dispatch and no
 new agent of the case starts; streams already in flight continue. On an acceptance the siblings are terminated (as
 today); on a rejection they resume. The frozen wall deadline is the same in both arms (no credit for held time).
-Offline bound of this mechanism on coding-notests-v1-judge: 12.3 % of server generation tokens (dispatches that started inside accepted pending windows; median window 576 s),
-against 22.2 % for true suspension; a rejection costs delay only (nothing is recomputed).
+Offline bound of this mechanism on coding-notests-v1-judge: 12.3 % of server generation tokens (dispatches that
+started inside accepted pending windows; median window 576 s), against 22.2 % for true suspension; a rejection costs
+delay only (nothing is recomputed).
 
 Arms (each alone on the fleet via inkling/suspend_arms.py; arm_order control, hold):
   control  the production no-provided-tests judge path of coding-notests-v1-judge (run_coding_earlystop.py, acceptance
