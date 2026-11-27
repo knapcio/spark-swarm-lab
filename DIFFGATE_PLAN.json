@@ -1,0 +1,56 @@
+{
+ "protocol": "diffgate-replay-v1",
+ "study": "diffgate-v1",
+ "status": "FROZEN",
+ "frozen_note": "Frozen before any analysis of these runs and before any model call (coordinator 2026-11-27; idea borrowed generically from Cortheon v2 differential testing). The gate ADDS abstention on top of the public-test gate; it never replaces it. Amended once (see amendment) before any output analysis or model call.",
+ "question": "Does a differential-consensus gate (the accepted program must agree with independent public-test passers of the same task on generated inputs) flag the wrong accepted coding answers while keeping the correct ones?",
+ "runs": [
+  "coding-baseline-v1",
+  "coding-baseline-v2",
+  "coding-baseline-v3",
+  "coding-baseline-s52",
+  "coding-baseline-s55",
+  "coding-baseline-s61",
+  "coding-elastic-v1-a",
+  "coding-elastic-v2-a"
+ ],
+ "corpus": "datasets/coding-hard-v1/tasks.json (all eight runs; evaluation split)",
+ "population": {
+  "accepted": "a case (run, task_id, seed) that ended with an answer: cases.json answered true (the winner passed the public feedback tests)",
+  "wrong": "an accepted case whose winner failed the hidden holdout tests (cases.json solved false): ALL of them",
+  "correct": "an accepted case with solved true: the first 60 in the order sha256('2026112705:' + run + ':' + task_id + ':' + seed) (all of them if fewer)",
+  "passers": "every recorded agent of the case whose puzzle_end has feedback_pass true and a code string (the winner included); the agent's final code from puzzle_end.code",
+  "generator": "inkling/diffgate_population.py writes the frozen item list DIFFGATE_POPULATION.json with the accepted program and the references (no model call)",
+  "references": "for each item: the public-test passers (puzzle_end feedback_pass true with code) of the SAME task_id in OTHER cases (another run or seed) of the frozen runs, whose code differs from the item's accepted code; identical code counted once (the first in the order below); the first K_REFERENCES = 8 in the order sha256('2026112706:' + item_id + ':' + run + ':' + seed + ':' + agent); their hidden results are recorded for the report only and never read by the gate"
+ },
+ "generator_call": {
+  "count": "one per population item (79), run as a frozen fleet job (DIFFGATE_GEN_PLAN.json, driver diffgate_gen.py on research/diffgate-v1; lease, admission bound to that plan, raw idle gauges, fenced drain, retries 0, stop latch, no dispatch after a stop, terminal usage required, <= 20 per node)",
+  "payload": "the case's task as JSON {function_name, spec} only (no examples, no tests, no candidate code)",
+  "system": "You write example inputs for a described function. Return only the requested Python code.",
+  "user": "{payload}\n\nWrite a Python function named generate_inputs that takes no arguments and returns a list of about 30 diverse, valid inputs for the function described above: small inputs, edge cases and a few larger ones, derived only from the description. Each input is a dict with key \"args\" (a list of positional arguments) and optionally \"kwargs\" (a dict of keyword arguments), built from JSON values only. Do not compute or include expected results. Return only the code.",
+  "budget": "thinking 8,192 tokens, then the forced answer within 2,048 (forced72 path); temperature 0.8 (harness constant)",
+  "generic": "the added prompts contain no task-family words; the payload is the task's own text"
+ },
+ "execution": {
+  "where": "the CPU-only Docker sandbox (sandbox_code.py container settings: no network, read-only, 256 MB, 1 CPU, user 65534) on a fleet host over ssh, never on the controller host; run by the coordinator (inkling/diffgate_exec.py)",
+  "inputs": "the generator code (the reply's code block, or the whole reply) is executed in the sandbox (10 s) and must return a non-empty list of dicts with an args list and an optional kwargs dict of JSON values; the first 64 are used; otherwise the item's gate is unavailable",
+  "outputs": "the accepted program and each reference run in the sandbox on every input (fresh deep copy per call; 2 s per input, 60 s per program); the outcome of an input is the type-tagged canonical encoding of the return value (bool, int, float, str, None, list, dict with sorted keys; any other type by its type name and repr) or 'exception:<type name>' or 'timeout'; a program that cannot be loaded, has no callable of the task's name, or exceeds 60 s is unavailable"
+ },
+ "gate": {
+  "reference_disagrees": "a reference disagrees with the accepted program if their outcomes differ on at least one input (exceptions and timeouts are outcomes)",
+  "reference_errors": "an unavailable reference (cannot load, no function, over 60 s) is dropped: it neither agrees nor disagrees",
+  "min_references": "the gate needs >= 3 available references; otherwise the item's gate is unavailable",
+  "flag": "FLAG if more than half of the available references disagree with the accepted program, or the accepted program itself is unavailable",
+  "pass": "otherwise PASS (the accepted answer stands)",
+  "gate_unavailable": "items with unusable generated inputs or < 3 available references are reported separately and not counted as flagged or passed",
+  "secondary": "reported only, not decisive: the any-reference variant (flag if at least one available reference disagrees)",
+  "caveat": "references can be wrong themselves and can share a common bug with the accepted program (a wrong but common answer can pass the gate; a correct answer can be flagged by a wrong majority)"
+ },
+ "decision_rule": {
+  "kill": "KILL if the gate flags < 40 % of the wrong items or > 10 % of the correct items, both over items with an available gate",
+  "otherwise": "SURVIVES (a live validation would follow)",
+  "reported": "flag rates with counts, gate-unavailable share, the any-reference variant, added generator tokens (completion), sandbox seconds (container wall, 1 CPU each), per run and per task"
+ },
+ "report": "inkling/report_diffgate.py -> results/diffgate-v1/report.json",
+ "amendment": "2026-11-27, coordinator option 1, frozen before any analysis of outputs and before any model call: every accepted case has exactly one public-test passer (the frozen population), so the comparison set is the cross-case reference below instead of the case's other passers."
+}
