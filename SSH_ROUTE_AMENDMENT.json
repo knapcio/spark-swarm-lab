@@ -1,0 +1,15 @@
+{
+  "protocol": "ssh-route-launcher-amendment-v1",
+  "recorded_utc": "2026-11-27T12:27:16.959391+00:00",
+  "cause": "After the 2026-11-27 ~11:05-11:50Z outage the coordinating Mac returned on a different network (192.168.1.x; the Sparks are on 192.168.0.x; spark-0X.local no longer resolves). Every ssh to Spark_01..04 goes through the NVIDIA Sync ProxyCommand, which spends ~5 s on the dead LAN route before falling back to Tailscale: 6.1-6.5 s per ssh (measured), versus 0.7-1.0 s straight to the nodes' Tailscale IPs. Sandbox grading, admission, cache flush and energy reads all use ssh.",
+  "change": "Launcher-level only: queue items from 966 on put .runtime/ssh-ts first on PATH. That ssh shim adds -o ProxyCommand=none -o HostName=<node Tailscale IP> -o HostKeyAlias=spark-0X.local when an argument is exactly Spark_01..04 (same user, key and known host key as before, like the existing Spark_05ts/Spark_06ts aliases), and passes everything else to /usr/bin/ssh unchanged. No frozen plan, harness code, ssh config or network change.",
+  "shim_sha256": "7b4331675eb34db60ddd75642356c12bd60f36dd95855a842549416d0750c3ee",
+  "tailscale_ips": {
+    "Spark_01": "100.114.104.6",
+    "Spark_02": "100.84.251.96",
+    "Spark_03": "100.96.94.78",
+    "Spark_04": "100.89.243.108"
+  },
+  "scope": "Applies from queue item 966 (hard-v33 baseline) on. NOT applied mid-arm: the running live diff-gate gate-arm rerun (started 2026-11-27T12:07:17Z) keeps the slow route to its end; its wall time and energy are reported as not comparable with the LAN-era control. A paired rerun of both arms on the LAN (if the energy check decides) runs without the shim.",
+  "verification": "hostname over the shim = spark-01..04 (0.76-0.99 s each); subprocess capture from Python 0.85 s, rc 0."
+}
