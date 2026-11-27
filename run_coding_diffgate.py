@@ -4,6 +4,9 @@ early-stop runner (run_coding_earlystop.py: R2 rolling, code_elastic workers, th
 and fault rules) except that a public-test pass does not end the case.
 
   passer     an agent whose final proposal passes all public feedback tests (puzzle_end feedback_pass, code)
+  order      the worker's trace is tailed and its public-pass event (feedback evaluation_end, passed) is announced
+             with its recorded time BEFORE holdout grading; passers vote strictly in that public-pass order, an
+             announced passer still in holdout grading holds the later ones; holdout results never reach the gate
   distinct   byte-identical code (sha256) counts once
   rolling    a passer that does not decide the case counts as an ended agent for the replacement rule, so agents keep
              starting up to the plan's cap (agent_variants)
@@ -20,9 +23,12 @@ and fault rules) except that a public-test pass does not end the case.
   abstain    all agents ended without a class of >= 2: unanswered
   faults     a generator transport fault or a sandbox infrastructure fault stops admissions (like a worker fault)
 
-SIGINT / SIGTERM latch only: admissions stop and every running worker and generator process is terminated and
-reaped before the runner exits. Gate records: OUTPUT/gate.jsonl (one line per case event) and metadata.gate.
-Plan-only by default.
+SIGINT / SIGTERM latch only: running executors see the latch at their next poll and terminate and reap their worker;
+admissions stop and generator processes are terminated. A worker's own fault is checked before it votes, and a winner
+is published only while the stop latch is clear. Concurrency: plan.scheduling.concurrent_agents_per_node counts client
+dispatch slots (worker threads per endpoint); a generator call runs inside the triggering slot, so each node sees at
+most that many client requests at a time (sandbox runs are CPU containers on the hosts, outside that count).
+Gate records: OUTPUT/gate.jsonl (one line per case event) and metadata.gate. Plan-only by default.
 """
 import argparse
 import hashlib
@@ -38,9 +44,8 @@ from pathlib import Path
 
 import run_coding_earlystop as base
 from run_agents72 import read, require, sha, validate_source, write
-from run_benchmark import read_trace, server_metrics, terminate
+from run_benchmark import append_controller_stop, metrics, read_trace, server_metrics, terminate
 from run_coding_agents import ENDPOINTS, HERE, HOSTS, PROTOCOL, agent_outcome, hashes, make_jobs
-from run_variants import execute_cancellable
 
 sys.path.insert(0, str(HERE / 'inkling'))
 import diffgate_exec  # noqa: E402  (generator_code)
@@ -95,8 +100,9 @@ class CaseGate:
                  generator=run_generator):
         self.key, self.task, self.endpoint, self.host, self.folder = key, task, endpoint, host, Path(folder)
         self.cfg, self.stop, self.runner, self.generator = gate_cfg, stop, runner, generator
-        self.lock = threading.Lock()
+        self.lock, self.order_lock = threading.Lock(), threading.Lock()
         self.passers, self.inputs, self.fallback, self.decision = [], None, False, None
+        self.announced, self.ready_code, self.processed = {}, {}, set()
         self.generator_tokens, self.generator_calls, self.sandbox_seconds, self.duplicates = 0, 0, 0.0, 0
 
     def _inputs(self):
@@ -159,14 +165,121 @@ class CaseGate:
             return first['agent']
         return None
 
+    def announce(self, agent, ts):
+        """A public-pass event (recorded before holdout grading); only the order lock, never the gate lock."""
+        with self.order_lock:
+            self.announced.setdefault(agent, ts)
+
+    def ready(self, agent, code):
+        """The agent's worker ended: its final code if it is a passer, else None (it never votes). Caller holds
+        self.lock."""
+        with self.order_lock:
+            self.ready_code[agent] = code
+
+    def process(self, endpoint=None):
+        """Vote the announced passers in public-pass order (ts, agent) while the next one is ready; an announced
+        passer whose worker is still running (holdout grading) holds the later ones. Returns the decided agent or
+        None. Caller holds self.lock."""
+        while self.decision is None:
+            with self.order_lock:
+                order = sorted((ts, a) for a, ts in self.announced.items() if a not in self.processed)
+                if not order:
+                    return None
+                ts, agent = order[0]
+                if agent not in self.ready_code:
+                    return None
+                code = self.ready_code[agent]
+            self.processed.add(agent)
+            if code is not None:
+                decided = self.add(agent, code, ts, endpoint=endpoint)
+                if decided is not None:
+                    return decided
+        return None
+
     def summary(self):
         behaviours = {p['behaviour'] for p in self.passers if p['behaviour'] is not None}
         return dict(task_id=self.key[0], seed=self.key[1], passers=len(self.passers), duplicates=self.duplicates,
+                    announced=len(self.announced), unannounced=sum(1 for a, c in self.ready_code.items()
+                                                                  if c is not None and a not in self.announced),
                     behaviours=len(behaviours), fallback=self.fallback, inputs=len(self.inputs or []),
                     generator_calls=self.generator_calls, generator_tokens=self.generator_tokens,
                     sandbox_seconds=round(self.sandbox_seconds, 3), decision=self.decision,
                     all_passers_agree=len(self.passers) >= 2 and len(behaviours) == 1
                     and all(p['behaviour'] is not None for p in self.passers))
+
+
+def pass_time(event):
+    """The public-pass event: evaluation_end of the feedback phase with a passed report; its recorded time (epoch)."""
+    if event.get('type') != 'evaluation_end' or event.get('phase') != 'feedback':
+        return None
+    report = event.get('report')
+    if not isinstance(report, dict) or report.get('status') != 'passed':
+        return None
+    try:
+        return datetime.fromisoformat(event['timestamp']).timestamp()
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def execute_gated(case, deadline_seconds, cancel, announce, poll=.1):
+    """run_variants.execute_cancellable plus: the worker's trace is tailed and its public-pass event is announced to the
+    gate as soon as it is recorded (before holdout grading); a latched ABORT (SIGINT / SIGTERM) terminates and reaps
+    the worker at once (row aborted)."""
+    start = time.monotonic()
+    deadline = cancelled = aborted = announced = False
+    error = returncode = None
+    trace, offset = Path(case['events']), 0
+
+    def tail():
+        nonlocal offset, announced
+        if announced or not trace.exists():
+            return
+        with trace.open('rb') as stream:
+            stream.seek(offset)
+            data = stream.read()
+        end = data.rfind(b'\n') + 1
+        offset += end
+        for line in data[:end].splitlines():
+            try:
+                ts = pass_time(json.loads(line))
+            except ValueError:
+                continue
+            if ts is not None:
+                announced = True
+                announce(ts)
+                return
+    with Path(case['stdout']).open('x') as stdout, Path(case['stderr']).open('x') as stderr:
+        try:
+            process = subprocess.Popen(case['command'], cwd=HERE, stdout=stdout, stderr=stderr, start_new_session=True)
+            while True:
+                tail()
+                if process.poll() is not None:
+                    returncode = process.returncode
+                    break
+                if base.ABORT:
+                    aborted, returncode = True, terminate(process)
+                    break
+                if cancel.is_set():
+                    cancelled, returncode = True, terminate(process)
+                    break
+                if time.monotonic() - start >= deadline_seconds:
+                    deadline, returncode = True, terminate(process)
+                    break
+                time.sleep(poll)
+            tail()  # a pass recorded just before the exit
+        except OSError as exc:
+            error = f'{type(exc).__name__}: {exc}'
+    records, _ = read_trace(trace)
+    row = dict(metrics(records, deadline), returncode=returncode, controller_error=error, deadline=deadline,
+               cancelled=cancelled or aborted, aborted=aborted, wall_seconds=round(time.monotonic() - start, 6),
+               controller_stop=cancelled or deadline or aborted, server_cost_known=False,
+               server_cost_reason='shared_endpoint', server_prompt_tokens=None, server_completion_tokens=None,
+               server_idle_after=None, time_to_verified_solution_seconds=None)
+    if cancelled or aborted:
+        row.update(status='cancelled' if cancelled else 'aborted', solved=False)
+    if row['controller_stop']:
+        append_controller_stop(trace, records, row, case)
+    return row
 
 
 def check_gate(plan):
@@ -282,54 +395,56 @@ def main(argv=None, generator=run_generator, runner=sandbox_outputs.run):
                     return
                 key = (job['task_id'], job['seed'])
                 first_start.setdefault(key, time.monotonic())
+            gate = gates[key]
             try:
-                row = execute_cancellable(job, deadline, cancel[key])
+                row = execute_gated(job, deadline, cancel[key],
+                                    announce=lambda ts, agent=job['agent'], g=gate: g.announce(agent, ts))
                 row.update({k: job[k] for k in ('task_id', 'split', 'arm', 'seed', 'endpoint', 'events')},
                            agent=job['agent'], case_index=job['case_index'],
                            malformed_lines=read_trace(Path(job['events']))[1], **agent_outcome(job['events']))
-                if row['cancelled']:
+                if row['cancelled'] or row['aborted']:
                     row.update(feedback_pass=False, holdout_pass=False)
             except Exception as exc:
                 with lock:
                     latch('controller_exception', events=job['events'], detail=str(exc)[:300])
                 return
-            accepted = None
-            code = final_code(job['events']) if row['feedback_pass'] and not row['cancelled'] else None
-            if code is not None and not stop.is_set():
-                gate = gates[key]
-                try:
-                    with gate.lock:
-                        if not cancel[key].is_set():
-                            accepted = gate.add(job['agent'], code, time.monotonic(), endpoint=job['endpoint'])
-                except GateFault as exc:
-                    with lock:
-                        latch('gate_fault', events=job['events'], detail=str(exc)[:300])
-                except Exception as exc:
-                    with lock:
-                        latch('gate_exception', events=job['events'], detail=f'{type(exc).__name__}: {str(exc)[:300]}')
-            with lock:
+            with lock:  # the worker's own fault is checked BEFORE any vote
+                reason = base.fault(row) or ('aborted_by_signal' if row['aborted'] else None)
+                if reason:
+                    latch(reason, events=job['events'])
+            code = final_code(job['events']) if row['feedback_pass'] and not row['cancelled'] and not reason else None
+            decided = None
+            try:
+                with gate.lock:  # passers vote in public-pass order (announced before holdout grading)
+                    gate.ready(job['agent'], code)
+                    if not stop.is_set() and not cancel[key].is_set():
+                        decided = gate.process(endpoint=job['endpoint'])
+            except GateFault as exc:
+                with lock:
+                    latch('gate_fault', events=job['events'], detail=str(exc)[:300])
+            except Exception as exc:
+                with lock:
+                    latch('gate_exception', events=job['events'], detail=f'{type(exc).__name__}: {str(exc)[:300]}')
+            with lock:  # publication is serialized against the stop latch: no winner after a fault or a signal
                 row['winner'] = False
                 rows.append(row)
-                if accepted is not None and not cancel[key].is_set():
-                    winners[key] = (accepted, round(time.monotonic() - first_start[key], 1))
+                if decided is not None and not stop.is_set() and not cancel[key].is_set():
+                    winners[key] = (decided, round(time.monotonic() - first_start[key], 1))
                     cancel[key].set()
                 if key in winners:  # the winner's row may be appended before or after the deciding passer's
                     for r in rows:
                         if (r['task_id'], r['seed']) == key and r['agent'] == winners[key][0] and not r['winner']:
                             r.update(winner=True, stop_seconds=winners[key][1])
-                if accepted is None and not row['cancelled'] and key not in winners:
+                if decided is None and not row['cancelled'] and key not in winners:
                     ended[key] = ended.get(key, 0) + 1  # failed, or passed without deciding the case
-                reason = base.fault(row)
-                if reason:
-                    latch(reason, events=job['events'])
-                if code is not None or accepted is not None:
+                if code is not None or decided is not None:
                     with gate_log.open('a') as sink:
-                        sink.write(json.dumps(dict(event='passer', agent=job['agent'], accepted=accepted,
-                                                   **gates[key].summary())) + '\n')
+                        sink.write(json.dumps(dict(event='passer', agent=job['agent'], decided=decided,
+                                                   **gate.summary())) + '\n')
                 write(output / 'summary.json', rows)
                 print(json.dumps(dict(done=len(rows), total=len(jobs), task_id=row['task_id'], agent=row['agent'],
                                       feedback=row['feedback_pass'], cancelled=row['cancelled'],
-                                      accepted=accepted)), flush=True)
+                                      decided=decided)), flush=True)
 
     handlers = signal.getsignal(signal.SIGINT), signal.getsignal(signal.SIGTERM)
     signal.signal(signal.SIGINT, base.on_signal)  # latch only

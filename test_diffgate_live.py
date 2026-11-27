@@ -155,8 +155,10 @@ class RunnerTests(unittest.TestCase):
         del dg.base.ABORT[:]
         self.addCleanup(lambda: dg.base.ABORT.__delitem__(slice(None)))
 
-    def run_main(self, outcomes, plan_extra=None, agents=4, admission_extra=None, abort_at=None):
-        """outcomes[(task, agent)] = None (fails public tests) or a behaviour tag; started agents are recorded."""
+    def run_main(self, outcomes, plan_extra=None, agents=4, admission_extra=None, abort_at=None, timing=None,
+                 faulted=()):
+        """outcomes[(task, agent)] = None (fails public tests) or a behaviour tag; timing[(task, agent)] = (public-pass
+        time, seconds until the worker exits); faulted: agents whose row carries a controller error."""
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             tasks = root / 'tasks.json'
@@ -184,17 +186,23 @@ class RunnerTests(unittest.TestCase):
             def agent_of(events):
                 return int(Path(events).name.split('-a')[1].split('-')[0])
 
-            def execute(job, deadline, cancel):
-                started.append((job['task_id'], job['agent']))
+            def execute(job, deadline, cancel, announce):
+                key = (job['task_id'], job['agent'])
+                started.append(key)
                 if abort_at is not None and len(started) == abort_at:
                     dg.base.on_signal(15, None)
-                for _ in range(5):
-                    if cancel.is_set():
-                        return dict(cancelled=True, deadline=False, controller_error=None, returncode=-15,
-                                    controller_stop=True, status='cancelled', calls=1, unfinished_calls=1,
-                                    infrastructure_failures=None, completion_tokens=0)
-                    time.sleep(.01)
-                return dict(cancelled=False, deadline=False, controller_error=None, returncode=0,
+                pass_ts, wait = (timing or {}).get(key, (float(job['agent']), 0.05))
+                if outcomes.get(key) is not None:
+                    announce(pass_ts)  # the public pass, before holdout grading
+                for _ in range(int(wait / .01) + 1):
+                    if cancel.is_set() or dg.base.ABORT:
+                        aborted = bool(dg.base.ABORT) and not cancel.is_set()
+                        return dict(cancelled=True, aborted=aborted, deadline=False, controller_error=None,
+                                    returncode=-15, controller_stop=True, status='cancelled', calls=1,
+                                    unfinished_calls=1, infrastructure_failures=None, completion_tokens=0)
+                    real_sleep(.01)
+                return dict(cancelled=False, aborted=False, deadline=False,
+                            controller_error='boom' if key in faulted else None, returncode=0,
                             controller_stop=False, status='complete', calls=1, unfinished_calls=0,
                             infrastructure_failures=0, completion_tokens=10)
 
@@ -207,7 +215,8 @@ class RunnerTests(unittest.TestCase):
             def code(events):
                 key = (Path(events).name.split('-s')[0], agent_of(events))
                 return f'def f(x): pass  # {key[1]} # B:{outcomes.get(key)}'
-            with patch.object(dg, 'execute_cancellable', execute), patch.object(dg, 'agent_outcome', outcome), \
+            real_sleep = time.sleep
+            with patch.object(dg, 'execute_gated', execute), patch.object(dg, 'agent_outcome', outcome), \
                     patch.object(dg, 'final_code', code), patch.object(dg, 'validate_source', lambda *a: None), \
                     patch.object(dg, 'hashes', lambda s: {}), patch.object(dg, 'server_metrics', lambda *a, **k: {}), \
                     patch.object(dg.time, 'sleep', lambda s: None), contextlib.redirect_stdout(io.StringIO()):
@@ -246,6 +255,24 @@ class RunnerTests(unittest.TestCase):
         self.assertTrue(any(e['reason'] == 'signal' for e in meta['errors']))
         self.assertLessEqual(len(started), 4)  # no replacement after the latch
 
+    def test_review_passers_vote_in_public_pass_order_not_exit_order(self):
+        """Live review blocker 1: agent 1 passed the public tests first but its holdout grading is slow; agent 0
+        exits first. Both agree: the answer is agent 1 (the earliest public pass), not the first to exit."""
+        outs = {('t1', 0): 'good', ('t1', 1): 'good', ('t2', 0): 'good', ('t2', 1): 'good'}
+        timing = {('t1', 0): (5.0, 0.0), ('t1', 1): (1.0, 0.3)}
+        code, cases, *_ = self.run_main(outs, timing=timing)
+        self.assertEqual(cases['t1']['winner_agent'], 1)
+
+    def test_review_a_faulted_worker_never_votes_and_no_winner_after_the_latch(self):
+        """Live review blocker 2: the worker's own fault is checked before it votes; a fault latches the stop and no
+        winner is published behind it."""
+        outs = {('t1', 0): 'good', ('t1', 1): 'good', ('t2', 0): None, ('t2', 1): None}
+        code, cases, started, gates, meta = self.run_main(outs, faulted={('t1', 1)},
+                                                          timing={('t1', 0): (0.0, 0.0), ('t1', 1): (1.0, 0.1)})
+        self.assertNotEqual(code, 0)
+        self.assertFalse(cases['t1']['answered'])
+        self.assertTrue(any(e['reason'] != 'signal' for e in meta['errors']))
+
     def test_plan_checks(self):
         with self.assertRaisesRegex(ValueError, 'gate runner needs'):
             self.run_main({}, plan_extra=dict(differential_gate=dict(rule='other')))
@@ -253,7 +280,119 @@ class RunnerTests(unittest.TestCase):
             self.run_main({}, admission_extra=dict(plan_sha256='0' * 64))
 
 
+class ExecuteGatedTests(unittest.TestCase):
+    def test_review_a_running_executor_sees_the_signal_and_reaps_the_worker(self):
+        """Live review blocker 2: a SIGTERM latch stops a running worker at the next poll (no 7,200 s wait)."""
+        del dg.base.ABORT[:]
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            events = root / 'a.jsonl'
+            script = ('import json, sys, time\n'
+                      'p = sys.argv[1]\n'
+                      'open(p, "a").write(json.dumps(dict(type="evaluation_end", phase="feedback", '
+                      'timestamp="2026-11-27T10:00:00+00:00", report=dict(status="passed"))) + chr(10))\n'
+                      'time.sleep(30)\n')
+            job = dict(command=[sys.executable, '-c', script, str(events)], events=str(events),
+                       stdout=str(root / 'o'), stderr=str(root / 'e'), task_id='t1', seed=70, agent=0,
+                       arm='code_elastic', endpoint='http://n/v1')
+            seen = []
+            threading.Timer(0.5, dg.base.on_signal, args=(15, None)).start()
+            t0 = time.monotonic()
+            row = dg.execute_gated(job, 7200, threading.Event(), announce=seen.append, poll=.05)
+            del dg.base.ABORT[:]
+        self.assertLess(time.monotonic() - t0, 5)
+        self.assertTrue(row['aborted'] and row['cancelled'])
+        self.assertEqual(seen, [datetime.fromisoformat('2026-11-27T10:00:00+00:00').timestamp()])  # announced first
+
+
+class OrderTests(unittest.TestCase):
+    def test_process_holds_later_passers_until_the_earlier_one_is_ready(self):
+        with tempfile.TemporaryDirectory() as d:
+            g = gate_of(d)
+            g.announce(1, 1.0)
+            g.announce(0, 2.0)
+            with g.lock:
+                g.ready(0, 'x  # B:a')
+                self.assertIsNone(g.process())  # agent 1 (earlier public pass) is still in holdout grading
+                self.assertEqual(g.passers, [])
+                g.ready(1, 'y  # B:a')
+                self.assertEqual(g.process(), 1)  # then both vote in public-pass order: the answer is agent 1
+            g2 = gate_of(d)
+            g2.announce(1, 1.0)
+            g2.announce(0, 2.0)
+            with g2.lock:
+                g2.ready(1, None)  # cancelled or faulted: never votes
+                g2.ready(0, 'x  # B:a')
+                self.assertIsNone(g2.process())
+                self.assertEqual([p['agent'] for p in g2.passers], [0])
+
+
+IDLE = 'sglang:num_running_reqs{a="b"} 0\nsglang:num_queue_reqs{a="b"} 0\n'
+
+
 class ArmsDriverTests(unittest.TestCase):
+    def test_review_the_lease_is_released_only_after_drain_and_a_clean_sweep(self):
+        order = []
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            plan_path = root / 'plan.json'
+            plan_path.write_text(json.dumps(dict(study='coding-diffgate-v1-gate', runner='run_coding_diffgate.py',
+                                                 status='FROZEN', source_revision='r', source_path='src')))
+
+            class Lease:
+                @staticmethod
+                @contextlib.contextmanager
+                def lease(root_, holder):
+                    order.append('lease')
+                    try:
+                        yield
+                    finally:
+                        order.append('release')
+
+            class Runner:
+                def __init__(self, cmd, **kw):
+                    order.append(('runner', Path(cmd[1]).name))
+                    self.returncode = 0
+
+                def poll(self):
+                    return 0
+
+                def wait(self):
+                    order.append('wait')
+                    return 0
+
+            def admit(cmd, **kw):
+                Path(cmd[cmd.index('--output') + 1]).write_text(json.dumps(dict(endpoints=da.CANONICAL)))
+                return type('R', (), dict(returncode=0, stderr=''))()
+            del da.sa.SIGNALS[:]
+            saved = da.signal.getsignal(da.signal.SIGINT), da.signal.getsignal(da.signal.SIGTERM)
+            try:
+                with patch.object(da.sa, 'fleet_lease', Lease), \
+                        patch.object(da.sa, 'freeze_problem', lambda *a: None), \
+                        patch.object(da.sa, 'admission_problem', lambda *a: None), \
+                        patch.object(da.subprocess, 'run', admit), \
+                        patch.object(da.sa.arms, 'flush_caches', lambda: {}), \
+                        patch.object(da.sa, 'drain', lambda f: order.append('drain') or (da.sa.snapshot(f), 0)), \
+                        patch.object(da, 'sweep_until_clean', lambda: order.append('sweep') or dict(rounds=1)), \
+                        patch.object(da.sa.energy, 'window', lambda a, b: dict(total_wh=1.0, nodes={})), \
+                        patch.object(da.sa.arms, 'delta', lambda a, b: dict(total={})), \
+                        patch.object(da, 'ROOT', root), patch.object(da.time, 'sleep', lambda s: None), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    (root / '.runtime').mkdir()
+                    da.main(['--plan', str(plan_path), '--output', str(root / 'out')], fetch=lambda i: IDLE,
+                            popen=Runner)
+            finally:
+                da.signal.signal(da.signal.SIGINT, saved[0])
+                da.signal.signal(da.signal.SIGTERM, saved[1])
+        self.assertEqual(order, ['lease', ('runner', 'run_coding_diffgate.py'), 'wait', 'drain', 'sweep', 'release'])
+
+    def test_review_sweep_until_no_sandbox_container_is_left(self):
+        rounds = iter([{'Spark_01': 1, 'Spark_02': 0}, {'Spark_01': None, 'Spark_02': 0},
+                       {'Spark_01': 0, 'Spark_02': 0}])
+        with patch.object(da.time, 'sleep', lambda s: None):
+            out = da.sweep_until_clean(sweep=lambda: next(rounds), poll=0)
+        self.assertEqual(out['rounds'], 3)
+
     def test_unknown_runner_is_refused(self):
         with tempfile.TemporaryDirectory() as d:
             plan = Path(d) / 'p.json'
@@ -280,7 +419,13 @@ class PlanTests(unittest.TestCase):
         self.assertIn('run_coding_diffgate.py', c['code_sha256'])
 
 
-def write_arm(root, name, plan, solved, wrong, wh, gate_cases=None, agree_wrong=False):
+def receipts(plan, shared=()):
+    keys = [(t, s) for s in plan['matrix']['seeds'] for t in ('a', 'b')]
+    return [dict(task_id=t, seed=s, passers=2, all_passers_agree=(t, s) in shared,
+                 decision=dict(rule='class', agent=0, class_size=2)) for t, s in keys]
+
+
+def write_arm(root, name, plan, solved, wrong, wh, gate_cases=None, joules=None):
     d = root / name
     d.mkdir()
     cases = []
@@ -293,10 +438,11 @@ def write_arm(root, name, plan, solved, wrong, wh, gate_cases=None, agree_wrong=
         generator_calls=4, generator_tokens=400, sandbox_seconds=3.0, fallback_cases=0))))
     if gate_cases is not None:
         (d / 'gate_cases.json').write_text(json.dumps(gate_cases))
+    nodes = {n: dict(coverage=1.0, joules=(joules or {}).get(n, wh * 900)) for n in ('01', '02', '03', '04')}
     (d / 'arm_accounting.json').write_text(json.dumps(dict(
         runner_exit=0, drain_confirmed=True, stopped_by_signal=False, runner_wall_seconds=10,
         server=dict(total=dict(generation_tokens=1000)),
-        energy=dict(total_wh=wh, nodes={n: dict(coverage=1.0) for n in ('01', '02', '03', '04')}))))
+        energy=dict(total_wh=round(sum(n['joules'] for n in nodes.values()) / 3600, 2), nodes=nodes))))
     return d
 
 
@@ -314,15 +460,30 @@ class ReportTests(unittest.TestCase):
             root = Path(d)
             c, g = self.plans(root)
             cr = write_arm(root, 'c', c, solved=2, wrong=2, wh=20.0)
-            shared = [dict(task_id='a', seed=71, passers=2, all_passers_agree=True,
-                           decision=dict(rule='class', agent=0, class_size=2))]
-            r = rep.build(c, g, cr, write_arm(root, 'g', g, solved=2, wrong=1, wh=29.0, gate_cases=shared), root)
+            r = rep.build(c, g, cr, write_arm(root, 'g', g, solved=2, wrong=1, wh=29.0,
+                                              gate_cases=receipts(g, shared={('a', 71)})), root)
             self.assertEqual(r['decision'], 'PASS')  # 1 <= 0.6 x 2, 2 >= -1, 14.5 <= 15
             self.assertEqual(r['shared_bug_cases'][0]['task_id'], 'a')
-            r = rep.build(c, g, cr, write_arm(root, 'g2', g, solved=2, wrong=2, wh=20.0, gate_cases=[]), root)
+            r = rep.build(c, g, cr, write_arm(root, 'g2', g, solved=2, wrong=2, wh=20.0, gate_cases=receipts(g)),
+                          root)
             self.assertEqual((r['decision'], r['checks']['wrong']), ('STOP', False))
-            r = rep.build(c, g, cr, write_arm(root, 'g3', g, solved=2, wrong=0, wh=30.2, gate_cases=[]), root)
+            r = rep.build(c, g, cr, write_arm(root, 'g3', g, solved=2, wrong=0, wh=30.2, gate_cases=receipts(g)),
+                          root)
             self.assertEqual((r['decision'], r['checks']['energy']), ('STOP', False))
+
+    def test_review_energy_decision_uses_unrounded_node_joules(self):
+        """Live review blocker 5: total_wh is rounded to 0.01 Wh by energy.py; the decision uses the node joules."""
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            c, g = self.plans(root)
+            cr = write_arm(root, 'c', c, solved=2, wrong=2, wh=0, joules={n: 9000 for n in ('01', '02', '03', '04')})
+            # control 10.0 Wh / 2 solved = 5.0; gate 15.004 Wh / 2 = 7.502 > 1.5 x 5 = 7.5, but energy.py's total_wh
+            # rounds it to 15.0 (7.5: it would pass)
+            gj = {n: 13503.6 for n in ('01', '02', '03', '04')}
+            r = rep.build(c, g, cr, write_arm(root, 'g', g, solved=2, wrong=0, wh=0, joules=gj,
+                                              gate_cases=receipts(g)), root)
+            self.assertAlmostEqual(r['arms']['gate']['energy_wh'], 4 * 13503.6 / 3600)
+            self.assertEqual((r['checks']['energy'], r['decision']), (False, 'STOP'))
 
     def test_incomplete(self):
         with tempfile.TemporaryDirectory() as d:
@@ -330,9 +491,11 @@ class ReportTests(unittest.TestCase):
             c, g = self.plans(root)
             cr = write_arm(root, 'c', c, solved=2, wrong=0, wh=20.0)
             r = rep.build(c, g, cr, write_arm(root, 'g', g, solved=2, wrong=0, wh=20.0), root)
-            self.assertIn('gate: no gate_cases.json', r['problems'])
+            self.assertIn('gate: gate_cases.json is not exactly one receipt per frozen case', r['problems'])
+            r = rep.build(c, g, cr, write_arm(root, 'g1', g, solved=2, wrong=0, wh=20.0, gate_cases=[]), root)
+            self.assertIn('gate: gate_cases.json is not exactly one receipt per frozen case', r['problems'])  # SHOULD
             r = rep.build(c, dict(g, limits={'x': 1}), cr, write_arm(root, 'g2', dict(g, limits={'x': 1}), solved=2,
-                                                                     wrong=0, wh=20.0, gate_cases=[]), root)
+                                                                     wrong=0, wh=20.0, gate_cases=receipts(g)), root)
             self.assertIn('the two plans differ beyond their arm fields', r['problems'])
 
 

@@ -33,6 +33,7 @@ MAX_INPUTS = 64
 MAX_INPUTS_BYTES = 200_000
 OUTPUT_CAP = 262_144
 STATE_MARK = '\n@@SWARM_STATE@@'
+CLEAN_MARK = '\n@@SWARM_CLEAN@@'
 IDENTITY_EXIT = (96, 97)
 
 RUNNER = r'''
@@ -178,18 +179,57 @@ def host_script(host, daemon_id, name, task, total_timeout):
         f'timeout -k 5 {int(total_timeout) + 5} {shlex.join(docker)} | head -c {OUTPUT_CAP}',
         f'printf %s {q(STATE_MARK)}',
         f'docker inspect --format {q("{{json .State}}")} {q(name)} 2>/dev/null | head -c 4096',
+        'cleanup',  # explicitly, then verified: the number of containers left with this task's label
+        f'printf %s {q(CLEAN_MARK)}',
+        f'docker ps -aq --filter {q("label=swarm-lab.code-task=" + task)} | wc -l',
     ])
 
 
+def sweep_script(host):
+    """Remove every container with the sandbox owner label on the host (label filter only), then print how many are
+    left."""
+    q = shlex.quote
+    flt = q('label=swarm-lab.code-owner=' + sc.OWNER)
+    return '\n'.join([
+        f'[ "$(hostname)" = {q(FLEET[host])} ] || exit 96',
+        f'ids=$(docker ps -aq --filter {flt})',
+        '[ -z "$ids" ] || docker rm -f $ids >/dev/null 2>&1',
+        f'docker ps -aq --filter {flt} | wc -l',
+    ])
+
+
+def sweep(hosts=None):
+    """{host: containers left with the sandbox owner label (0 = verified clean), or None if the host could not be
+    checked}. Used before the fleet lease is released."""
+    out = {}
+    for host in hosts or sorted(FLEET):
+        try:
+            verify_host(host)
+            proc = sc._ssh(host, ['sh', '-c', sweep_script(host)], timeout=60)
+            out[host] = int(proc.stdout.strip()) if proc.returncode == 0 else None
+        except (HostIdentityError, ValueError, OSError, subprocess.TimeoutExpired):
+            out[host] = None
+    return out
+
+
 def parse_host_output(stdout):
-    """(runner text, container state or None)."""
-    text, _, state = (stdout or '').rpartition(STATE_MARK)
-    if not _:
-        return stdout or '', None
+    """(runner text, container state or None, containers left after cleanup or None)."""
+    head, mark, left = (stdout or '').rpartition(CLEAN_MARK)
+    remaining = None
+    if mark:
+        try:
+            remaining = int(left.strip())
+        except ValueError:
+            remaining = None
+    else:
+        head = stdout or ''
+    text, mark, state = head.rpartition(STATE_MARK)
+    if not mark:
+        return head, None, remaining
     try:
-        return text, json.loads(state)
+        return text, json.loads(state), remaining
     except ValueError:
-        return text, None
+        return text, None, remaining
 
 
 def run(mode, code, function_name, host, inputs=None, per_input=2.0, total_timeout=60.0):
@@ -212,9 +252,11 @@ def run(mode, code, function_name, host, inputs=None, per_input=2.0, total_timeo
                     container_seconds=None)
     if process.returncode in IDENTITY_EXIT:
         return dict(status='error', infrastructure=True, error='host identity changed', container_seconds=None)
-    text, state = parse_host_output(process.stdout)
+    text, state, remaining = parse_host_output(process.stdout)
     result = dict(status='error')
-    if state is None:
+    if remaining != 0:
+        result.update(error='sandbox container not verified removed', infrastructure=True)
+    elif state is None:
         result.update(error='no container state', infrastructure=True)
     elif len(text) >= OUTPUT_CAP:
         result.update(error='runner output over the cap')

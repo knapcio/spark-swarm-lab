@@ -6,7 +6,8 @@ every node before the start, the arm's runner (plan.runner: run_coding_earlystop
 run_coding_diffgate.py for the gate), fenced drain (no time limit) before the lease is released, GPU energy for the
 window, OUTPUT/arm_accounting.json. SIGINT / SIGTERM only latch; a latch before the launch starts nothing; after the
 launch the runner gets SIGTERM, stops admissions, terminates and reaps its workers and generator processes, and is
-waited for before the drain.
+waited for before the drain. After the drain, every fleet host is swept until no sandbox container with the sandbox
+owner label is left (verified; an unreachable host is retried), and only then is the lease released.
 
 usage: diffgate_arms.py --plan CODING_DIFFGATE_<ARM>_PLAN.json --output runs/NAME
 """
@@ -22,10 +23,29 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
+import sandbox_outputs  # noqa: E402
 import suspend_arms as sa  # noqa: E402  (the reviewed fleet controls)
 
 RUNNERS = ('run_coding_earlystop.py', 'run_coding_diffgate.py')
 CANONICAL = [f'http://127.0.0.1:{p}/v1' for p in range(18081, 18085)]
+
+
+def sweep_until_clean(sweep=None, poll=10.0, warn_every=600):
+    """Sweep every fleet host until each reports 0 sandbox containers left; returns the rounds' results."""
+    sweep = sweep or sandbox_outputs.sweep
+    rounds, t0, warned = [], time.monotonic(), 0
+    while True:
+        left = sweep()
+        rounds.append(left)
+        if left and all(v == 0 for v in left.values()):
+            return dict(rounds=len(rounds), last=left)
+        if time.monotonic() - t0 >= (warned + 1) * warn_every:
+            warned += 1
+            try:
+                print(json.dumps(dict(warning='sandbox containers left; the lease stays held', left=left)), flush=True)
+            except Exception:
+                pass
+        time.sleep(poll)
 
 
 def main(argv=None, fetch=sa.metrics_text, popen=subprocess.Popen):
@@ -90,6 +110,7 @@ def run_arm(a, plan, out, fetch, popen):
         if runner is not None:
             runner.wait()  # every owned worker is reaped before the drain samples the fleet
         after, waited = sa.drain(fetch)  # also on an exception: the lease stays held until idle is confirmed
+        swept = sweep_until_clean()  # no owned sandbox container outlives the lease
     out.mkdir(parents=True, exist_ok=True)
     try:
         joules = sa.energy.window(before['utc'], after['utc'])
@@ -100,7 +121,8 @@ def run_arm(a, plan, out, fetch, popen):
                   runner=plan['runner'], output=str(out), runner_exit=code, runner_wall_seconds=round(wall, 1),
                   admission=str(admission), cache_flush=flushed, before=before, after=after, idle_after=sa.idle(after),
                   drain_confirmed=sa.idle(after), drain_waited_seconds=waited, signals=list(sa.SIGNALS),
-                  stopped_by_signal=bool(sa.SIGNALS), server=sa.arms.delta(before, after), energy=joules)
+                  stopped_by_signal=bool(sa.SIGNALS), sandbox_sweep=swept, server=sa.arms.delta(before, after),
+                  energy=joules)
     (out / 'arm_accounting.json').write_text(json.dumps(record, indent=1) + '\n')
     print(json.dumps(dict(study=plan['study'], exit=code, wall=round(wall), server=record['server']['total'],
                           energy_wh=joules.get('total_wh'))), flush=True)

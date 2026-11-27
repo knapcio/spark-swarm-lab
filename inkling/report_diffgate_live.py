@@ -28,14 +28,22 @@ def arm_view(plan):
     return {k: v for k, v in plan.items() if k not in ARM_FIELDS}
 
 
+def energy_wh(acct):
+    """GPU Wh at full precision from the per-node joules (energy.py rounds total_wh to 2 decimals; inkling/energy.py
+    itself is pinned by other frozen plans and stays unchanged)."""
+    nodes = (acct.get('energy') or {}).get('nodes') or {}
+    return sum(n['joules'] for n in nodes.values()) / 3600
+
+
 def metrics(meta, cases, acct, rows):
     solved = sum(bool(c['solved']) for c in cases)
     answered = sum(bool(c['answered']) for c in cases)
-    wh = acct['energy']['total_wh']
+    wh = energy_wh(acct)
     total = (acct.get('server') or {}).get('total') or {}
     gate = meta.get('gate') or {}
     return dict(cases=len(cases), solved=solved, answered=answered, wrong=answered - solved,
                 unanswered=len(cases) - answered, agents_started=len(rows), energy_wh=wh,
+                energy_wh_display=round(wh, 2),
                 wh_per_solved=(wh / solved) if solved else None,
                 server_generation_tokens=total.get('generation_tokens'),
                 runner_wall_seconds=acct.get('runner_wall_seconds'),
@@ -69,8 +77,15 @@ def build(control_plan, gate_plan, control_run, gate_run, root=ROOT):
         rows = json.loads(rows_path.read_text()) if rows_path.exists() else []
         gate_path = Path(run) / 'gate_cases.json'
         gate_cases = json.loads(gate_path.read_text()) if gate_path.exists() else None
-        if arm == 'gate' and gate_cases is None:
-            problems.append('gate: no gate_cases.json')
+        if arm == 'gate':
+            from report_suspend_ab import expected_keys
+            keys = expected_keys(plan, root) or set()
+            got = [(g.get('task_id'), g.get('seed')) for g in gate_cases or []]
+            if gate_cases is None or len(got) != len(set(got)) or set(got) != keys:
+                problems.append('gate: gate_cases.json is not exactly one receipt per frozen case')
+        nodes = (acct.get('energy') or {}).get('nodes') or {}
+        if any(not isinstance((n or {}).get('joules'), (int, float)) for n in nodes.values()):
+            problems.append(f'{arm}: energy without per-node joules')
         loaded[arm] = (meta, cases, acct, rows, gate_cases)
     out = dict(study=control_plan.get('study_group'), control_run=str(control_run), gate_run=str(gate_run),
                rule=control_plan.get('decision_rule'))
