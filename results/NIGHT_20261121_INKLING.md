@@ -464,6 +464,46 @@ before each queue item (12 items), plus 3 minutes after the idea #1 launch crash
 test, no model calls made). One test of the idea #1 driver may have sent up to 8 read-only /metrics GETs to the fleet
 before network blocking was added to all test harnesses.
 
+## 2026-11-27 (42): differential-consensus gate for coding (offline replay, live A/B)
+
+Idea borrowed from a read-only study of an external swarm design: before accepting a coding answer that passes the
+public tests, run the other passing candidates on extra inputs and accept only if they agree.
+
+- **Offline replay** ([report](diffgate-v1/report.json)) on recorded coding runs, references from other cases of the
+  same task: flagged 8 of 19 wrong answers (42.1 %) and 2 of 49 correct ones (4.1 %); an any-reference variant flagged
+  73.7 % / 16.3 %. 13.9 % of items had no reference. Generator 545K tokens, sandbox 123 s. Blind spot: all 4 wrong
+  render_table answers passed (a bug every candidate shares). An arithmetic two-agree early accept was also replayed
+  offline and was not worth a screen (3 of 672 cases change; 0.28 % of judge tokens saved).
+- **Live A/B** ([report](diffgate-live-v1/report.json)), frozen before any call, 216 cases per arm (seeds 70-78): control =
+  production R2 + code_elastic, gate = the same plus the differential gate. Rule: PASS iff wrong(gate) <= 0.6 x control,
+  solved(gate) >= control - 3, GPU Wh per solved case <= 1.5 x control.
+
+| arm | solved | wrong | unanswered | agents | server tokens | Wh per solved | wall |
+|---|---|---|---|---|---|---|---|
+| control | 211 | 5 | 0 | 422 | 4.48M | 0.528 | 3606 s |
+| gate | 213 | 3 | 0 | 594 | 8.98M (generator 1.82M) | 0.985 (1.87x) | 6810 s |
+
+  **STOP on energy** (wrong and solved checks pass; wrong exactly at the bound, 3 <= 3.0). The three remaining gate
+  errors are all the shared-bug blind spot: render_table seeds 70 and 77, json_select seed 78 (every passer agreed).
+  Paired outcomes: 208 both right, 5 fixed by the gate, 3 broken (exact McNemar p = 0.73).
+
+  **Verdict PROVISIONAL**, because the arms ran under different networks: two Mac network outages interrupted the
+  gate arm. Gate run 1 was invalidated by the first outage; gate rerun 1 lost every sandbox grade to ssh timeouts on
+  the off-LAN route and was stopped; gate rerun 2 ran off-LAN through a launcher-level ssh route to the nodes' Tailscale
+  addresses (0 infrastructure failures). Each rerun was a whole fresh arm under the same frozen plan, with an amendment
+  committed first (DIFFGATE_GATE_RERUN_AMENDMENT.json, DIFFGATE_GATE_RERUN2_AMENDMENT.json, SSH_ROUTE_AMENDMENT.json).
+  Wall time and energy are therefore not strictly comparable; the report file itself prints an unconditional STOP.
+  The energy failure looks driven by work, not the network: average fleet power 111.1 vs 110.9 W and energy per
+  generated token 24.8 vs 23.4 uWh were the same, while the gate generated 2.0x the tokens; scaling the control's
+  energy per token to the gate's tokens gives 1.98x.
+
+  astra: execution sound; **formally inconclusive / provisional STOP, operationally reject the unchanged v1** rather than
+  spend about 3 fleet hours on a paired LAN rerun (held, not run). Retest only a cheaper redesign (cached spec-only
+  inputs per task, shorter generator budgets, or a trigger from an existing cheap disagreement signal), frozen on
+  development data and evaluated on fresh paired cases with identical transport.
+
+Adoptions: none. Defaults unchanged.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
@@ -476,4 +516,4 @@ before network blocking was added to all test harnesses.
 [inkling-hard4-v1](inkling-hard4-v1/REPORT.md) · [inkling-coding-hard-v1](inkling-coding-hard-v1/REPORT.md) ·
 [inkling-bugbench-long-v1](inkling-bugbench-long-v1/REPORT.md) · [disproof-selection-v1](disproof-selection-v1/REPORT.md) ·
 [efficiency-v1](efficiency-v1/REPORT.md) · [inkling-hard5-v1](inkling-hard5-v1/REPORT.md) ·
-[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md) · [coding-reserve-v2](coding-reserve-v2/REPORT.md) · [swarm-fair-hard23-v1](swarm-fair-hard23-v1/REPORT.md) · [coding-elastic-v1](coding-elastic-v1/REPORT.md) · [coding-elastic-v2](coding-elastic-v2/REPORT.md) · [collab-s0-v1](collab-s0-v1/REPORT.md) · [collab-s0-v2](collab-s0-v2/REPORT.md) · [collab-s0-v3](collab-s0-v3/REPORT.md) · [collab-s1-v1](collab-s1-v1/REPORT.md) · [collab-s1-v2](collab-s1-v2/REPORT.md) · [extend-screen-v1](extend-screen-v1/report.json) · [extend-confirm-v1](extend-confirm-v1/report.json) · [fork-screen-v1](fork-screen-v1/report.json) · [restate-screen-v1](restate-screen-v1/report.json) · [coding-suspend-v1](coding-suspend-v1/report.json)
+[swarm-cancel-hard6-v1](swarm-cancel-hard6-v1/REPORT.md) · [swarm-escalate-hard7-v1](swarm-escalate-hard7-v1/REPORT.md) · [coding-earlystop-v1](coding-earlystop-v1/REPORT.md) · [swarm-burst-hard8-v1](swarm-burst-hard8-v1/REPORT.md) · [coding-stagger-v1](coding-stagger-v1/REPORT.md) · [swarm-repair-hard9-v1](swarm-repair-hard9-v1/REPORT.md) · [swarm-strategy-hard10-v1](swarm-strategy-hard10-v1/REPORT.md) · [swarm-width3-hard11-v1](swarm-width3-hard11-v1/REPORT.md) · [swarm-cap12-hard12-v1](swarm-cap12-hard12-v1/REPORT.md) · [mixed-task-v1](mixed-task-v1/REPORT.md) · [swarm-cap12-hard14-v1](swarm-cap12-hard14-v1/REPORT.md) · [swarm-fair-hard22-v1](swarm-fair-hard22-v1/REPORT.md) · [coding-reserve-v1](coding-reserve-v1/REPORT.md) · [coding-reserve-v2](coding-reserve-v2/REPORT.md) · [swarm-fair-hard23-v1](swarm-fair-hard23-v1/REPORT.md) · [coding-elastic-v1](coding-elastic-v1/REPORT.md) · [coding-elastic-v2](coding-elastic-v2/REPORT.md) · [collab-s0-v1](collab-s0-v1/REPORT.md) · [collab-s0-v2](collab-s0-v2/REPORT.md) · [collab-s0-v3](collab-s0-v3/REPORT.md) · [collab-s1-v1](collab-s1-v1/REPORT.md) · [collab-s1-v2](collab-s1-v2/REPORT.md) · [extend-screen-v1](extend-screen-v1/report.json) · [extend-confirm-v1](extend-confirm-v1/report.json) · [fork-screen-v1](fork-screen-v1/report.json) · [restate-screen-v1](restate-screen-v1/report.json) · [coding-suspend-v1](coding-suspend-v1/report.json) · [diffgate-v1](diffgate-v1/report.json) · [diffgate-live-v1](diffgate-live-v1/report.json)

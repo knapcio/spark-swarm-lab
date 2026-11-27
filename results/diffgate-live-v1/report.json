@@ -1,0 +1,76 @@
+{
+ "study": "coding-diffgate-v1",
+ "control_run": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/coding-diffgate-v1-control",
+ "gate_run": "/Users/zbizbi/Projects/sparks/apps/swarm-lab/runs/coding-diffgate-v1-gate",
+ "rule": {
+  "pass": "PASS iff wrong(gate) <= 0.6 x wrong(control) AND solved(gate) >= solved(control) - 3 AND GPU Wh per solved case(gate) <= 1.5 x control (unrounded; energy covering all four nodes)",
+  "otherwise": "STOP",
+  "wrong": "an answered case whose answer fails the hidden holdout tests",
+  "reported": "solved, wrong, unanswered, agents started, generator tokens, sandbox seconds, wall, server generated tokens, Wh per solved, fallback cases, and SHARED-BUG cases separately (gate arm: every distinct passer agreed and the accepted answer is still wrong: the known blind spot)",
+  "incomplete": "INCOMPLETE (no decision) unless both arms are complete: each run embeds its plan, the plans differ only in arm fields, no runner errors, cases exactly the frozen 216 task x seed keys, runner exit 0, drain confirmed, no signal, energy covering all four nodes"
+ },
+ "status": "complete",
+ "arms": {
+  "control": {
+   "cases": 216,
+   "solved": 211,
+   "answered": 216,
+   "wrong": 5,
+   "unanswered": 0,
+   "agents_started": 422,
+   "energy_wh": 111.31694444444445,
+   "energy_wh_display": 111.32,
+   "wh_per_solved": 0.5275684570826751,
+   "server_generation_tokens": 4483044.0,
+   "runner_wall_seconds": 3605.6,
+   "generator_calls": 0,
+   "generator_tokens": 0,
+   "sandbox_seconds": 0.0,
+   "fallback_cases": 0
+  },
+  "gate": {
+   "cases": 216,
+   "solved": 213,
+   "answered": 216,
+   "wrong": 3,
+   "unanswered": 0,
+   "agents_started": 594,
+   "energy_wh": 209.86111111111111,
+   "energy_wh_display": 209.86,
+   "wh_per_solved": 0.985263432446531,
+   "server_generation_tokens": 8977390.0,
+   "runner_wall_seconds": 6810.3,
+   "generator_calls": 249,
+   "generator_tokens": 1823435,
+   "sandbox_seconds": 142.0,
+   "fallback_cases": 10
+  }
+ },
+ "checks": {
+  "wrong": true,
+  "solved": true,
+  "energy": false
+ },
+ "energy_per_solved_ratio": 1.8675556114457592,
+ "shared_bug_cases": [
+  {
+   "task_id": "eva-render_table",
+   "seed": 70,
+   "passers": 2,
+   "rule": "class"
+  },
+  {
+   "task_id": "eva-render_table",
+   "seed": 77,
+   "passers": 2,
+   "rule": "class"
+  },
+  {
+   "task_id": "eva-json_select",
+   "seed": 78,
+   "passers": 2,
+   "rule": "class"
+  }
+ ],
+ "decision": "STOP"
+}
