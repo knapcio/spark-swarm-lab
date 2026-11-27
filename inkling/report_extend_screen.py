@@ -96,7 +96,9 @@ def build(plan, run_dir):
     f = sum(p['fresh'] for p in puzzles.values())
     ext_only = sum(p['extension'] and not p['fresh'] for p in puzzles.values())
     fresh_only = sum(p['fresh'] and not p['extension'] for p in puzzles.values())
-    decision = 'STOP' if e <= f else 'PASS AS A SCREEN (adoption needs a fresh confirmation)'
+    passed = 'PASS (confirmation)' if plan.get('screen') == 'idea-1-confirmation' else \
+        'PASS AS A SCREEN (adoption needs a fresh confirmation)'
+    decision = 'STOP' if e <= f else passed
     return dict(out, status='complete', arms=arms, puzzles=puzzles, extension_rescues=e, fresh_rescues=f,
                 extension_only=ext_only, fresh_only=fresh_only, sign_test_p=sign_test(ext_only, fresh_only),
                 decision=decision)
