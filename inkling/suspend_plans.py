@@ -5,9 +5,10 @@ pessimistic 13.9 % of server generation tokens).
 
 Mechanism (what this server allows): hold_dispatch. True pausing of an in-flight stream is not possible here (SGLang has
 no per-request pause, a stopped client does not stop decoding, and per-request seeds are not honoured, so an aborted
-stream cannot be resumed token-exactly). While a candidate's judge verdict is PENDING, its case siblings hold their NEXT
-model dispatch and no new agent of the case starts; streams already in flight continue. On an acceptance the siblings
-are terminated (as today); on a rejection they resume. Offline bound of this mechanism on coding-notests-v1-judge:
+stream cannot be resumed token-exactly). One judge per case at a time (an atomic ownership file taken before the
+first judge call). While a candidate's judge verdict is PENDING, its case siblings hold their NEXT model dispatch and no
+new agent of the case starts; streams already in flight continue. On an acceptance the siblings are terminated (as
+today); on a rejection they resume. The frozen wall deadline is the same in both arms (no credit for held time). Offline bound of this mechanism on coding-notests-v1-judge:
 12.3 % of server generation tokens (dispatches that started inside accepted pending windows; median window 576 s),
 against 22.2 % for true suspension; a rejection costs delay only (nothing is recomputed).
 
