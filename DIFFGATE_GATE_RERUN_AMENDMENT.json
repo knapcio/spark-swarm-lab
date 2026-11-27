@@ -1,0 +1,20 @@
+{
+  "protocol": "diffgate-live-gate-rerun-amendment-v1",
+  "recorded_utc": "2026-11-27T12:04:49.365628+00:00",
+  "study_group": "coding-diffgate-v1",
+  "cause": {
+    "event": "infrastructure outage: the coordinating Mac lost its network ~11:05-11:50Z 2026-11-27 (owner took it offline); requests failed during the gate arm",
+    "aborted_run": "runs/coding-diffgate-v1-gate (moved to runs/coding-diffgate-v1-gate-aborted-outage-20261127, marked ABORTED, not used)",
+    "aborted_summary": {
+      "cases": 216,
+      "solved": 42,
+      "answered": 44,
+      "cancelled": 12,
+      "never_started": 1536
+    },
+    "arm_started_utc": "2026-11-27T10:45:56Z"
+  },
+  "action": "Rerun the WHOLE gate arm from scratch with the identical frozen CODING_DIFFGATE_GATE_PLAN.json (sha256 185998271da971b99f99ac33b8dc081a502cb8ee3287938abae6595aff9dcaa0), the same source pins and cases, alone on the fleet, into runs/coding-diffgate-v1-gate. A full fresh rerun is used instead of the resume rule's continuation of unfinished cases because outage-hit cases were finished as failures, not left unfinished; no partial results are mixed.",
+  "control": "kept: runs/coding-diffgate-v1-control (09:45:15-10:45:56Z, complete, before the outage). The frozen plans fix the arm order (control, gate) and require each arm alone on the fleet; they do not require one window, so the control is not rerun. The time gap between the arms is reported.",
+  "decision_rule": "unchanged"
+}
