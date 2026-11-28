@@ -504,6 +504,24 @@ public tests, run the other passing candidates on extra inputs and accept only i
 
 Adoptions: none. Defaults unchanged.
 
+## 2026-11-28 (43): final baselines and swarm idle
+
+Final descriptive baselines, verified against the complete run case records, accounting and runner summaries; all seven frozen plans were committed before their calls. Hard-v33 uses the valid full rerun after the outage.
+
+| baseline | solved | wrong | unanswered | report |
+|---|---|---|---|---|
+| hard-v33 | 85/96 | 0 | 11 | [swarm-baseline-hard33-v1](swarm-baseline-hard33-v1/REPORT.md) |
+| hard-v34 | 86/96 | 0 | 10 | [swarm-baseline-hard34-v1](swarm-baseline-hard34-v1/REPORT.md) |
+| hard-v35 | 86/96 | 0 | 10 | [swarm-baseline-hard35-v1](swarm-baseline-hard35-v1/REPORT.md) |
+| hard-v36 | 91/96 | 0 | 5 | [swarm-baseline-hard36-v1](swarm-baseline-hard36-v1/REPORT.md) |
+| coding s79 (79-81) | 70/72 | 2 | 0 | [coding-baseline-s79](coding-baseline-s79/REPORT.md) |
+| coding s82 (82-84) | 72/72 | 0 | 0 | [coding-baseline-s82](coding-baseline-s82/REPORT.md) |
+| coding s85 (85-87) | 68/72 | 4 | 0 | [coding-baseline-s85](coding-baseline-s85/REPORT.md) |
+
+The swarm is idle by owner decision on 2026-11-27. Defaults remain arithmetic **roll12fair** and coding **R2 + code_elastic**. No adoption or revert follows from these baselines.
+
+The diff gate remains a **provisional STOP**: wrong and solved checks pass, energy fails, and the network conditions differed between arms. The paired LAN rerun remains held in `.runtime/queue/hold/98-diffgate-paired-lan.sh`; it has not been run. Serving endpoints were left as is; this wrap-up used local evidence only.
+
 ## Incidents
 
 - Coding source a41c312 still had a 1800 s per-request wall limit; Inkling at ~18 tok/s per request under 25-request load
