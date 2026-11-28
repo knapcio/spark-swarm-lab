@@ -1,296 +1,135 @@
-# Swarm Lab: verified agent search on four DGX Sparks
+# 🐝 Swarm Lab on four DGX Sparks
 
-**Completed exploratory overnight study.** [Article draft](ARTICLE_DRAFT.md) · [X draft for the owner to publish](X_POST_DRAFT.md) · [DeepSeek reference](results/reference-deepseek-v1-analysis/REPORT.md) · [Reproduction guide](REPRODUCING.md). [Published raw evidence: 85.9 MB archive, manifests and checksums](EVIDENCE_RELEASE.md).
+Generic agent scheduling, verification and cancellation with **Inkling-2-Mini on 4× NVIDIA DGX Spark**.
 
-**Follow-up research is active:** [frozen 168-case emission/format experiment](FOLLOWUP72.md), informed by [Fable 5.2 high-effort design review](results/fable52-advisory-20261116/README.md) and independent diagnostics. No new Nemotron quality score is available yet; gains on the already-seen 24 tasks will be exploratory and separate from the frozen overnight release.
+[Results](docs/results.md) · [Mechanisms](docs/mechanisms.md) · [Running](docs/running.md) ·
+[Method](docs/method.md) · [Changelog](CHANGELOG.md)
 
-The frozen primary comparison covers 900 attempts:
-24 arithmetic tasks and 18 Python-function tasks, three sampling seeds, and
-strong solo, independent-ensemble, shared-state and voting controls. Repeated
-seeds remain clustered by task. See [EVALUATION_SELECTION.json](EVALUATION_SELECTION.json)
-for the primary protocol and [EVALUATION_PROGRESS.md](EVALUATION_PROGRESS.md)
-for completed coverage and instrumentation exclusions. Development results below
-do not establish a generally superior agent architecture.
+## Headline results
 
-A standard-library Python prototype for four independent Nemotron replicas.
-Arithmetic moves are verified with `fractions.Fraction`. Generated Python
-functions are evaluated separately in constrained, CPU-only Docker containers;
-feedback tests guide repairs, and a frozen selected candidate receives one
-held-out evaluation. See [EXPERIMENT_PLAN.md](EXPERIMENT_PLAN.md) for the design.
+Current-default baselines, completed by 2026-11-28. Counts are attempts; coding repeats the same tasks with new
+sampling draws. These descriptive runs do not compare alternative policies.
 
-Each move consumes two indexed numbers and appends their result. Supported
-operations are `+ - * /`; results must be positive integers. `--allow-fractions`
-permits positive rational intermediate results. A game succeeds as soon as the
-exact target appears; using all starting numbers is optional. The default puzzle
-is `25,50,75,100,3,6:952`. One valid five-move solution exists.
+| Current default | Scope | Solved | Wrong |
+|---|---|---:|---:|
+| **Arithmetic: roll12fair** | 11 hard sets, hard-v26–v36 | **947/1,056**; mean **86.1/96** | **0** |
+| **Coding: R2 + code_elastic + cancel-on-accept** | 10 baseline cohorts | **696/720 (96.7%)** | **24 (3.3%)** |
 
-## Research questions
+Arithmetic left 109 cases unanswered; coding answered every case. A wrong coding answer passed the public tests
+but failed hidden tests. [Every baseline and its case outcomes](results/default-baselines-20261128/REPORT.md).
 
-Does cooperation improve exact puzzle success over independent search when
-measured against actual prompt/completion tokens, request counts and wall time?
-Can shared state or voting improve on independent whole-plan sampling and
-sequential self-repair? The frozen comparison reports quality, latency and actual
-costs; a separate single-policy queue experiment measures verified solutions per
-minute under load. Reputation-weighted voting remains an exploratory prototype,
-not a primary evaluation arm. Equal agent counts alone do not match budgets.
-Preserve seeds, model/runtime/code revisions, calibration artifacts and JSONL
-events so each experiment can be traced and repeated, while recognizing that
-API seeds do not guarantee identical GPU execution.
+**Swarm versus a single model — 25 November 2026, the same 72 coding cases:**
 
-## Current evidence
+| System | Solved | Wrong | Unanswered | GPU Wh / solved |
+|---|---:|---:|---:|---:|
+| **Inkling swarm, R2** | **67/72** | 4 | 1 | **1.33** |
+| One DeepSeek V4.1, TP4, one thinking call | 57/72 | 0 | 15 | 2.64 |
 
-The separate native DeepSeek TP4 reference completed **72/72 arithmetic and 54/54 coding attempts**, on the same 24/18 tasks and three repetitions, with independent verification. This is a pinned custom abliterated checkpoint and a different serving/compute recipe, not an equal-cost model ranking. Native client usage is complete; global server token cost is unknown. [Reference comparison and limitations](results/reference-deepseek-v1-analysis/REPORT.md) · [independent audit](results/reference-deepseek-v1-audit/AUDIT.json). The planned Opus reference was unavailable because the account hit its weekly usage limit; the optional GLM hybrid was not run.
+The swarm solved more at about half the GPU energy per solved case, with more wrong answers. This is the older
+R2 configuration, before the serving upgrade and code_elastic. Models, engines and workflows differ together;
+energy is GPU-rail energy, not wall-socket energy. [Comparison and cost scope](results/deepseek-coding3-v1/REPORT.md).
 
-**Nemotron study runtime: vLLM 0.32.0 ARM64, DSpark3, four independent replicas.** At the overnight study closure these replicas were stopped and retained, and native DeepSeek TP4 was restored. The new follow-up runs in a separate coordinated window; see [current follow-up status](FOLLOWUP72.md). The uniform runtime-v2 study completed **900 primary attempts**, **80 supplemental solo-control attempts** (8 development and 72 evaluation), and **45 corrected loaded-queue cohorts / 2,016 attempts** (36 development batches and 9 evaluation batches). [Progress and exclusions](EVALUATION_PROGRESS.md).
+## What the swarm does
 
-The arithmetic primary four-sample reasoning ensemble solved **49/72 attempts (68.1%)**; sequential own-feedback refinement solved **45/72 (62.5%; task-cluster 95% interval 47.2–77.8%)**, versus **18/72 (25.0%)** for one reasoning call. The paired ensemble-minus-refinement difference is **+5.56 percentage points (95% interval −5.56 to +16.67)**, spanning zero. These are repeated attempts on **24 distinct tasks**, with separate execution schedules and different realized costs. [Completed stronger-solo comparison](results/solo-control-v2/complete-comparison/solo-comparison/REPORT.md).
+Four independent model replicas run candidate attempts. A rejected attempt frees a slot for a replacement;
+an accepted answer ends the case and cancels siblings. Scheduling uses capacity and failure counts. The current
+policies use generic mechanisms, without task-specific hints or a task-specific search algorithm.
 
-Under load, shared frontier 8 recorded **12/96 successes at 21.31 successful attempts/minute**; four full plans recorded **48/96 at 2.87/minute**. These describe quality/rate tradeoffs for finite batches, not a universal efficiency winner. Admission was selected on development within **1/2/4/8 cases per node**; that bounded sweep does not establish globally optimal solo saturation. Four cheap-policy arms were a later exploratory amendment. [Completed throughput report, costs and figures](results/throughput-timeoutguard-20261115/REPORT.md).
+- **Arithmetic — roll12fair:** share free slots across open cases, favouring those with fewer agents in flight;
+  escalate after failures and stop on judge acceptance. Exact arithmetic verification scores outcomes separately.
+- **Coding — R2 + code_elastic:** keep two agents in flight, replace failures, continue length-cut answers, and
+  cancel on the first public-test pass. Hidden tests score the winner; they never select or repair it.
 
-Independent outer-parent coding confirmation completed **824 unique grading jobs for all 324 cases / 323 selected artifacts**. Original holdout outcomes agree in every case: **295 passes, 28 failures and one no-candidate failure**. Original scores are preserved; public examples and posthoc probes remain separate. This confirms finite test outcomes without repairing the original grader or proving general correctness. [Confirmation analysis](results/coding-confirmation-v1-analysis/NOTES.md) · [grader audit and limitations](CORRECTNESS_AUDIT.md).
+The swarm is **idle by owner decision since 2026-11-27**. These are the retained defaults, not a live-service claim.
+[Policy limits and acceptance rules](docs/mechanisms.md) · [Study method and limitations](docs/method.md).
 
-The runtime-v2 serving qualification completed **416 mixed requests including warmups**, with **69,158 output tokens / 39.008007 full wall seconds = 1,772.918 output tok/s** and zero recorded transport errors. Separate short-JSON probes passed **100/100 at T0 and 100/100 at T0.8**. These bounded serving checks do not measure task-solving efficiency. The historical v0.27.1 DSpark comparison measured **+51.40%** on its particular matched workload; that is not a measured gain for the current runtime. [Serving reports and exact pins](SERVING.md).
+## Adopted levers
 
-The original [direct-assignment graph-search study](SEARCH_SELECTION.json) is complete: **0/252 core evaluation cases and 0/288 extended 64-call cases solved**. Across development and evaluation, 568 cases used 22,912 model calls, including reviewer reuse and ordinary/quality-weighted voting. Independent replay checked every one of 22,422 assignment proofs; malformed cardinality/domain responses were genuine candidate failures. The separately budgeted CPU controls solved 30/36 evaluation cases with min-conflicts and 18/36 with genetic search. [Independent audit](results/csp-independent-audit-20261116/FINAL_AUDIT.json).
+Effects below belong to their own measured comparisons; they are not additive.
 
-In the separate [reusable-program experiment](PROGRAM_SEARCH_SELECTION.json), Nemotron wrote Python solvers scored only on four development graphs. Four independent chains selected programs solving **47/48 original evaluation outcomes**, compared with **29/48** for sequential refinement, at 16 training calls per program. These are **four paired trained programs per method on 12 reused graphs**, with wide uncertainty; generating a program and executing it on CPU is a different workflow from emitting assignments. [Completed report and figures](results/program-search-v1-analysis/REPORT.md) · [independent protocol audit](results/program-search-v1-audit/NOTES.md). Prospectively planned confirmation on **96 new graphs** is now complete: **376/384 (97.92%)** for independent chains and **237/384 (61.72%)** for sequential refinement. Three independent-chain programs each solve **96/96**; all eight sources were frozen before these 768 CPU-only grades, with zero extra model calls or repairs. [Fresh confirmation report, cost scope and figures](results/program-confirmation-v1-analysis/REPORT.md) · [independent audit](results/program-confirmation-v1-audit/AUDIT.json). The late exploratory reasoning-enabled assignment cohort also completed **0/96**: all **1,464 assignment calls** exhausted the 4,096-token cap in separate reasoning and returned no answer content; 72 review calls completed normally. This is an observed output-budget/format failure for this configuration, not evidence of general inability to color graphs. [Exact completed audit](results/csp-thinking-on16-late-audit-20261116/FINAL_AUDIT.json). Earlier assignment results remain unchanged.
+| Lever | Measured effect against the previous policy | Evidence |
+|---|---|---|
+| Cancel on accept | Coding 69 vs 66/72; tokens −37%, wall −36% | [early stop](results/coding-earlystop-v1/REPORT.md) |
+| Replace failed arithmetic attempts | 90 vs 82/96, 0 wrong; tokens −19%, wall −21% | [escalation](results/swarm-escalate-hard7-v1/REPORT.md) |
+| Raise arithmetic cap to twelve | Pooled 173 vs 167/192; four correct late rescues; extra cost disclosed | [replication](results/swarm-cap12-hard14-v1/REPORT.md) |
+| Remove strategy hints | Generic 85 vs hinted 83/96, 0 wrong; fewer tokens and Wh/solved | [generic default](results/swarm-generic-hard18-v1/REPORT.md) |
+| Widen into free capacity | 87/96 in both arms; wall 0.90x, GPU Wh 0.91x | [widening](results/swarm-wide-hard20-v1/REPORT.md) |
+| Water-filling admission | Replication 88 vs 86/96, 0 wrong; wall 0.93x, tokens 0.90x | [roll12fair](results/swarm-fair-hard23-v1/REPORT.md) |
+| Coding R2 | Replication 71 vs staggered 68/72; tokens −48%; pooled wrong 2 vs 8 | [R2 replication](results/coding-roll2-v1/REPORT.md) |
+| Elastic answer continuation | Replication 70/72, 2 wrong in both; cut-offs 0 vs 12; wall 0.91x | [elastic](results/coding-elastic-v2/REPORT.md) |
+| Single-Spark recipe serving | 68 vs 67/72; wall −20%, GPU Wh −20% | [recipe comparison](results/coding-v29-r2-v1/REPORT.md) |
 
-The separate program-context reviewer experiment completed **47/48 original outcomes and 376/384 known-96 outcomes**, matching the independent-chain totals in these runs. Four training episodes each spent 16 calls: ten program proposals and six reviews. These late exploratory runs do not isolate a causal reviewer effect. [Completed report, costs and real review lineage](results/program-review-v1.1-analysis/REPORT.md) · [producer audit](results/program-review-v1.1-audit/FINAL_AUDIT.json) · [384-grade audit](results/program-review-confirmation-v1.1-audit/AUDIT.json). The pre-call phase-stop defect was fixed and [audited](results/program-review-precall-audit-20261116/PRECALL_AUDIT.json) before any variant calls.
+Two tradeoffs matter: water-filling improves batch throughput while increasing per-case latency in batches;
+code_elastic raises the per-agent cap by 25%, with every token charged. Its pooled wrong count was 4 vs 3 for plain
+R2, within the frozen adoption rule. [Full mechanisms, costs and limits](docs/mechanisms.md).
 
-The optional adversarial JSON-schema qualification passed 24 entries, then failed at 64 entries when a 512-token response ended in whitespace before completing JSON. It stopped after two calls; the third probe and 84-case quality study were not run. This is not a general backend-incompatibility result. [Exact qualification records](results/guided-schema-qualification-20261116/README.md) · [independent audit](results/guided-schema-qualification-v1-audit/AUDIT.json).
+## What didn't work
 
-The saved four-agent DeepSeek pipeline check (`runs/pipeline-check-deepseek-4.jsonl`, local only)
-made **24 calls**, using **341 completion tokens** and **2,952 prompt tokens**.
-On `2,3,7,8:24`, democracy ended at **31**, so the exact target was not reached.
-This checks the request, voting, evaluator and event pipeline; it is not a
-Nemotron performance result or evidence of method superiority.
+| Attempt | Recorded outcome | Details |
+|---|---|---|
+| Failed-artifact relay | In-swarm 83 vs 84/96; compute +12% despite promising screens | [relay](results/swarm-relay-hard19-v1/REPORT.md) |
+| Atom-of-Thoughts | Arithmetic 82 vs 89/96, wall 2.15x; coding 66 vs 68/72 | [arithmetic](results/swarm-aot-hard21-v1/REPORT.md), [coding](results/coding-aot-v1/REPORT.md) |
+| Earlier answer reserve | Replication 66/72, 6 wrong vs 71/72, 1 wrong; reverted | [reversal](results/coding-reserve-v2/REPORT.md) |
+| Live collaboration board | Corrected screen rescued 8 vs plain continuation 11/41; closed for this protocol | [retest](results/collab-s1-v2/REPORT.md) |
+| Differential consensus gate | Wrong 3 vs 5/216, but energy/solved 1.87x; provisional STOP, transports differed | [caveats](docs/results.md#study-42) |
 
-The historical target-only NemotronLightning baseline used four TP1 replicas on
-vLLM **v0.27.1**. Its short 100-request JSON probe returned **100/100 correct** responses
-in **1.759 seconds**, with **1,890 completion tokens** and **1,074.43 completion
-tokens/second** aggregate. Server logs recorded a peak of **25 running requests
-per replica**. This measures short-output serving throughput, not puzzle quality.
-
-The [first 100-agent democracy pilot](results/traces/democracy-100-952.jsonl)
-on target 952 completed **1,000 calls**, **16,595 completion tokens** in
-**29.700536 seconds**, with **0 infrastructure failures** and **0 successes**.
-This is one thinking-off run; it establishes neither method superiority nor a
-thinking-on/off comparison. Comparative quality and the value of reputation
-remain unestablished. See [PILOT.md](PILOT.md) for the independent run, a solved easy case, output-budget failures and included traces.
-
-The separate [governance pilot](GOVERNANCE.md) includes an interleaved 18-run
-follow-up with stable candidate identifiers: independent paths solved 2/6 games,
-ordinary democracy 0/6, and democracy with verified-solution acceptance 1/6.
-The 500-call ceiling censored every ordinary-democracy trajectory; these small,
-stochastic experiments do not rank methods generally. Full prompts, costs and
-negative earlier cohorts are retained. [PILOT.md](PILOT.md) also records reasoning
-budget and reputation-pipeline checks.
+More rejected, parked and untested ideas—and their independent review dispositions—are in
+[Mechanisms](docs/mechanisms.md#what-did-not-become-a-default) and the [complete experiment log](docs/results.md).
 
 ## Quick start
 
-Published evidence can be replayed without live models; see [REPRODUCING.md](REPRODUCING.md). The live-play commands below describe the historical interactive prototype. A separate fixed follow-up is currently running; avoid adding interactive requests to its measurement endpoints.
-
-Run commands from this repository directory (`cd apps/swarm-lab` in the original workspace).
-
-The read-only tree viewer is at http://127.0.0.1:18777 while `server.py` runs.
-Select a run, move the timeline, and click a node to inspect proposals and votes.
-`pipeline-check-deepseek-4.jsonl` is an explicitly separate pipeline check using
-DeepSeek, not a Nemotron result.
+Replay included traces without GPUs or model credentials:
 
 ```sh
-# Four loopback SSH forwards to the prototype model servers:
-./connect.sh
-# Start the local viewer if it is not already running:
-python3 server.py --port 18777
-# In another terminal: method, puzzle, number of agents:
-./play.sh democracy '1,2,3,4:10' 100
-./play.sh independent '25,50,75,100,3,6:952' 100
-```
-
-`SWARM_CONCURRENCY=8` lowers simultaneous requests per endpoint while keeping
-100 separate agents. `SWARM_SEED=2` changes seeded sampling. New runs appear in
-the viewer. Weighted play accepts its calibration file as the fourth argument.
-
-Fleet-specific operational note: the original overnight experiment has closed; the follow-up uses a separately admitted measurement window. `fleet.sh` is the historical deployment adapter for this study; its `restore` path targets an older service and must not be used to restore the current native pico/dsgb10 production service. The verified native restoration uses the saved native service settings and an owner-checked release of the two study guard files after all reference work finishes. Fresh deployments require an explicitly scheduled fleet window.
-
-Historical study configuration: `fleet.sh start` selected DSpark3 with the pinned draft (`download_draft.py`, 1.35 GB of weight files per node); `SWARM_SPECULATION=none` selected the target-only configuration. NFS and Spark_05–06 were preserved throughout the study.
-
-Prototype containers use restart=no; start them explicitly after a reboot.
-`connect.sh disconnect` closes only this prototype's four SSH forwards.
-
-## Replay without GPUs
-
-See [REPRODUCING.md](REPRODUCING.md) for fresh-checkout analysis, plots and own-endpoint commands, including grading and study-gate limitations.
-
-```sh
+git clone https://github.com/knapcio/spark-swarm-lab.git
+cd spark-swarm-lab
 python3 server.py --runs-dir results/traces --port 18777
 ```
 
-This reads the included English pilot traces. Live experiments write to `runs/`.
-`fleet.sh` is the deployment adapter for this particular fleet; the experiment
-harness itself only needs compatible API endpoints.
+Open http://127.0.0.1:18777 to inspect proposals, votes and outcomes. These are historical pilot traces.
+[Offline tables, figures and evidence archive](REPRODUCING.md).
 
-## Run
-
-Python 3.10+; no packages or credentials required for the local endpoints.
-Endpoints must serve OpenAI-compatible `/v1/chat/completions`. Each request sets
-`chat_template_kwargs: {enable_thinking: false}` by default, `stream: false`,
-a finite `max_tokens`, temperature 0.8, and a per-agent seed. Add `--thinking`
-to enable reasoning while keeping the prompt unchanged. Reported completion
-tokens include reasoning; the default 192-token cap may truncate a thinking
-response before its JSON answer. For an explicit larger cap use
-`--thinking --max-tokens 1024` and set the total completion budget accordingly;
-no limit changes automatically. Model alias is `nemotron-lightning`.
-
-Eight-agent smoke against a single endpoint (replace the address):
+Inspect a current arithmetic baseline plan without contacting the fleet:
 
 ```sh
-python3 harness.py --method democracy \
-  --endpoint http://127.0.0.1:18081/v1 --model nemotron-lightning \
-  --agents 8 --per-endpoint-concurrency 4 --rounds 5 \
-  --max-tokens 192 --max-calls 80 --max-completion-tokens 15360 \
-  --seed 1 --events runs/smoke-democracy-8.jsonl
+python3 -m json.tool SWARM_BASELINE_HARD36_PLAN.json
 ```
 
-One hundred agents across four endpoints, at most eight requests in flight per
-endpoint (replace tunnel ports if needed):
+For live experiments, [Running](docs/running.md) covers both current study runners, pinned source and admission
+requirements, and historical interactive commands. Serving comes from the
+[Inkling single-Spark recipe](https://github.com/knapcio/Inkling-2-Mini-1x-DGX-Spark), one replica per node.
+The original fleet adapters are environment-specific; the [reproduction guide](REPRODUCING.md) also covers
+standalone experiments on your own compatible endpoint.
 
-```sh
-python3 harness.py --method democracy \
-  --endpoint http://127.0.0.1:18081/v1 \
-  --endpoint http://127.0.0.1:18082/v1 \
-  --endpoint http://127.0.0.1:18083/v1 \
-  --endpoint http://127.0.0.1:18084/v1 \
-  --model nemotron-lightning --agents 100 --per-endpoint-concurrency 8 \
-  --rounds 5 --max-tokens 192 --max-calls 1000 \
-  --max-completion-tokens 192000 --seed 1 \
-  --events runs/democracy-100.jsonl
-```
+## Version history
 
-Use `--method independent` and a new events filename for the independent arm.
-All output files refuse overwrite. URLs identify model servers only; no SSH,
-remote configuration, downloads, generated-code execution or deployment occurs.
-The process prints one JSON summary when done. A completed run may have
-`budget_limited` or `complete_with_errors` status; inspect `run_end` before
-interpreting its outcome. Network calls time out after 90 seconds by default;
-there are no hidden retries.
+| Date | Default change | Comparison |
+|---|---|---|
+| 2026-11-26 | roll12fair replaces roll12wide; code_elastic confirmed after reserve revert | [water-filling](results/swarm-fair-hard23-v1/REPORT.md), [elastic](results/coding-elastic-v2/REPORT.md) |
+| 2026-11-25 | Work-conserving widening; single-Spark recipe serving | [widening](results/swarm-wide-hard20-v1/REPORT.md), [serving](results/coding-v29-r2-v1/REPORT.md) |
+| 2026-11-24 | Generic arithmetic policy replaces strategy hints; R2 replicated | [generic](results/swarm-generic-hard18-v1/REPORT.md), [R2](results/coding-roll2-v1/REPORT.md) |
+| 2026-11-23 | Arithmetic cap twelve; coding R2 replaces staggered start | [cap](results/swarm-cap12-hard14-v1/REPORT.md), [R2](results/coding-roll-v1/REPORT.md) |
 
-## Methods
+Every transition, including earlier defaults and the failed reserve adoption: [CHANGELOG.md](CHANGELOG.md).
 
-- `independent`: each agent pursues its own path for up to five moves. The group
-  succeeds if any path reaches the target. Invalid proposals terminate that path.
-- `democracy`: all agents independently propose a move from the same state.
-  Duplicate resulting multisets are pruned. **Every agent then makes a separate
-  model call to vote** among all distinct candidates; the winner becomes the
-  next shared state. A tied tally uses first candidate order (lowest proposing
-  agent ID), not an evaluator or solver. With no valid votes the game halts.
-- `weighted`: the same process, but a vote weighs
-  `(past_exact_successes + 1) / (past_games + 2)`. Agreement with other agents,
-  distance to the target and candidate popularity do not train reputation.
-- `calibrate`: independent games on a separate supplied puzzle list. Writes
-  per-agent counts of exact binary successes for a later weighted run. A transport
-  failure or exhausted budget prevents writing the reputation artifact; malformed
-  model output is an unsuccessful path. No solver/oracle evaluates future moves.
+## Documentation
 
-The opt-in `--accept-verified-solution` policy accepts any already proposed,
-exactly verified terminal candidate before voting. It applies to democracy and
-weighted votes; independent paths already stop on exact success. It performs no
-extra move generation or lookahead. The default keeps the original voting rule,
-so both policies can be compared. The tree records `exact_target_verified` as the
-selection reason and ends other branches without labeling them mathematically wrong.
+| File | Contents |
+|---|---|
+| [Mechanisms](docs/mechanisms.md) | Current policies, measured levers, rejected ideas, historical voting methods |
+| [Results](docs/results.md) | Complete experiment chronology, previous-model comparisons, original study evidence |
+| [Running](docs/running.md) | Replay, plan inspection, current study runners, historical commands and event format |
+| [Method](docs/method.md) | Frozen plans, acceptance vs scoring, replication, accounting and rejection reviews |
+| [Reproducing](REPRODUCING.md) | Fresh-checkout analysis, own-endpoint runs, grading limits |
+| [Evidence release](EVIDENCE_RELEASE.md) | Published archive, manifests and checksums |
+| [Changelog](CHANGELOG.md) | Dated default changes and reversals |
 
-A finite three-puzzle, two-seed experiment uses 100 agents and the same ceilings
-of 500 calls and 96,000 completion tokens per run. Actual costs differ by method:
+## Credits and licences
 
-```sh
-python3 run_study.py                 # Print the plan; no model calls
-python3 run_study.py --run           # 12 independent/democracy runs
-python3 run_study.py --run --include-guarded  # 18 interleaved policy runs
-python3 run_study.py --run --method democracy --accept-verified-solution
-```
+Inkling-2-Mini and its original draft head are from Thinking Machines Lab; SGLang supplies the serving runtime.
+The adopted serving recipe uses [incoai's DFlash2 drafter](https://huggingface.co/incoai/Inkling-2-Mini-DFlash2).
+The experiment log retains the Atom-of-Thoughts credit to Teng et al. and alkimiadev, and the collaboration credit
+to blackboard systems and multi-agent debate (Du et al.). [Credits in context](docs/results.md).
 
-Proposal identifiers are deterministic functions of seed, puzzle, depth, agent and
-state, preventing random labels from changing voter inputs. Concurrent sampled
-model responses can still differ across runs with the same seed.
-
-Each invocation creates a new study directory with configuration hashes, commands,
-raw events and actual-cost summaries. The six-run opt-in experiment is separate
-from the original twelve-run experiment; inspect budget-limited outcomes explicitly.
-
-For calibration, repeat the same four endpoints and other desired runtime flags:
-
-```sh
-python3 harness.py --method calibrate \
-  --endpoint http://127.0.0.1:18081/v1 --model nemotron-lightning \
-  --agents 8 --rounds 5 --seed 1 \
-  --calibration-puzzles '25,50,75,100,2,4:810;25,50,75,100,3,5:650;1,3,7,10,25,50:765' \
-  --reputation runs/reputation-8.json \
-  --events runs/calibration-8.jsonl
-
-python3 harness.py --method weighted \
-  --endpoint http://127.0.0.1:18081/v1 --model nemotron-lightning \
-  --agents 8 --seed 1 --reputation runs/reputation-8.json \
-  --events runs/weighted-8.jsonl
-```
-
-A weighted run requires matching model alias, agent count, seed, thinking mode
-and arithmetic rules, and rejects exact overlap between its puzzle and calibration puzzles.
-Agent identity here is only model + seeded sampling stream, **not a learned
-specialist**. Few calibration games may yield equal or noisy weights. The listed
-calibration targets are examples, not a validated difficulty-balanced dataset.
-
-## Budgets and comparability
-
-`--max-calls` caps dispatched requests. `--max-completion-tokens` caps reserved
-completion capacity; reservations occur after acquiring an endpoint slot. Actual
-reported completion usage releases unused reservation. Missing usage or transport
-failure conservatively charges that request's full `--max-tokens`. A server
-violating `max_tokens` can exceed the total by already dispatched requests; the
-actual report remains visible and prevents further reservations. Prompt tokens
-are logged when reported, but are **not capped** by this completion budget.
-
-At 100 agents and five rounds independent uses at most 500 calls; democracy and
-weighted use at most 1000 (500 proposals + 500 votes). Thus equal agent counts
-and rounds are **not equal compute**. Compare actual reported prompt/completion
-usage, charged missing usage, requests and wall time. A fair quality study needs
-multiple held-out puzzles/seeds and matched token or time budgets; this demo
-does not establish statistical superiority of a method. API seeds do not promise
-bitwise reproducibility across servers, batching schedules or runtime versions.
-Endpoint concurrency controls hardware pressure; 100 logical agents can run
-through fewer than 100 simultaneous requests.
-
-## Events and viewing
-
-Each JSONL record has `event_id`, UTC `timestamp`, `run_id`, `method`, `type`,
-and puzzle context where applicable. Node state is a list of exact fraction
-strings. Main records:
-
-- `node`: `node_id`, `parent_id`, `state`, `depth`, `agent_id`.
-- `proposal`: input `node_id`, `proposal_id`, `action`, `legal`, plus
-  `child_node_id`/`child_state` or `error`.
-- `vote`: `node_id`, `agent_id`, `candidate_id`, `valid`, `weight`.
-- `chosen`: selected child `node_id`, previous `parent_id`, `candidate_id`, tally.
-- `pruned`: child `node_id`, `parent_id`, reason.
-- `reward`: terminal node, exact `solved`, binary `reward`, exact `distance`.
-- `request_start`/`request_end`: request ID, agent, stage, endpoint index, latency,
-  reported usage, conservative charge, response/error, `finish_reason` and optional
-  `reasoning` text. A reasoning-only truncated response is an invalid proposal,
-  not a transport failure. `budget_exhausted` and
-  `halt` expose stopped work.
-- `run_start`, `puzzle_start`, `puzzle_end`, `run_end`: configuration/outcomes.
-
-The companion viewer/server, if present, reads these events. The harness is
-independent of it. Logs contain model outputs and supplied puzzle numbers;
-endpoint URLs are deliberately omitted from event configuration.
-
-## Offline verification
-
-```sh
-python3 -m unittest discover -s . -p 'test_harness.py' -v
-```
-
-Tests check exact fractional arithmetic and a known 952 solution, illegal moves,
-JSON-only parsing, concurrent budget reservations, conservative failed-request
-charging, legal event parentage, independent paths, a real separate vote stage,
-pruning, no-vote halt, overlap rejection, and failed-calibration artifact refusal.
-They do not measure or assert GPU/model performance.
+Model weights, drafter and serving runtime retain their upstream licences. This checkout has no repository-wide
+licence file; this documentation change introduces no new licence.

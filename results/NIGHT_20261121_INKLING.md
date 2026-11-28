@@ -289,7 +289,7 @@ which these hard search tasks need in one stream. **AoT not adopted** (rejection
 code_aot 66/72 vs plain code_xl 68/72 (AoT-only 3, plain-only 5, p = 0.73), 3 vs 4 wrong, 3 unanswered, 2.5x tokens,
 1.78 vs 0.64 Wh per solved: **not adopted** (with arithmetic AoT, both rejections go to astra).
 
-## 2026-11-25 (29): coding without provided tests ([coding-notests-v1](coding-notests-v1/REPORT.md))
+## 2026-11-25 (29): coding without provided tests ([coding-notests-v1](coding-notests-v1/tables.md))
 
 Owner question: what does the swarm lose without given tests? Same 72 fresh cases, scored on all hidden tests. Public
 tests (default) 69/72, 3 wrong; no tests + Inkling judge acceptance (16,384-token judge) 70/72, 2 wrong; no tests + the
